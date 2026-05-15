@@ -7,13 +7,14 @@ BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
 API_KEY = os.getenv('API_KEY')
 
-TEAM_ID = 19904  # UCSA (Partita Ucraina)
+# ID specifico Inter U20 per il test live
+TEAM_ID = 24734  
 STATE_FILE = "match_state_test.json"
 
 url_api = f"https://v3.football.api-sports.io/fixtures?live=all&team={TEAM_ID}"
 headers = {"x-rapidapi-key": API_KEY, "x-rapidapi-host": "v3.football.api-sports.io"}
 
-print("🚀 MOTORE LIVE AVVIATO - Controllo continuo ogni 60 secondi...")
+print("🚀 MOTORE LIVE AVVIATO - Controllo continuo ogni 90 secondi (Inter U20)...")
 
 # Questo ciclo tiene il bot ACCESO per tutta la partita
 while True:
@@ -29,7 +30,7 @@ while True:
             goals_away = fixture["goals"]["away"]
             events = fixture.get("events", [])
             
-            print(f"[LIVE] {home} {goals_home}-{goals_away} {away} | Stato: {status}")
+            print(f"[LIVE TEST] {home} {goals_home}-{goals_away} {away} | Stato: {status}")
 
             # Se la partita è finita, il bot si spegne da solo e chiude il server
             if status in ["FT", "AET", "PEN"]:
@@ -77,10 +78,10 @@ while True:
                 json.dump(sent_events, f)
 
         else:
-            print("Nessun dato live al momento (pausa o problemi API).")
+            print("Nessun dato live al momento per l'Inter U20 (pausa, fine o match non iniziato).")
 
     except Exception as e:
         print(f"Errore temporaneo: {e}")
     
-    # Blocca lo script per 60 secondi esatti, poi ricomincia il giro da solo
-    time.sleep(60)
+    # Blocca lo script per 90 secondi esatti, poi ricomincia il giro da solo
+    time.sleep(90)
