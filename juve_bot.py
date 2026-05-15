@@ -57,9 +57,9 @@ TEAM_EMOJIS = {
     508: '<tg-emoji emoji-id="5911176739458912845">🇮🇹</tg-emoji>', # Bari
     515: '<tg-emoji emoji-id="5911075708943209811">🇮🇹</tg-emoji>', # Venezia
     511: '<tg-emoji emoji-id="5911181365138690645">🇮🇹</tg-emoji>', # Frosinone
-    551: '<tg-emoji emoji-id="5190496525863654450">🇮🇹</tg-emoji>',  # Basilea
+    551: '<tg-emoji emoji-id="5190496525863654450">🇨🇭</tg-emoji>',  # Basilea
     522: '<tg-emoji emoji-id="5911464631116765226">🇮🇹</tg-emoji>',  # Palermo
-    49: '<tg-emoji emoji-id="6048407545930846973">🇮🇹</tg-emoji>',  # Chelsea
+    49: '<tg-emoji emoji-id="6048407545930846973"></tg-emoji>',  # Chelsea
 }
 
 def get_emoji(team_id):
