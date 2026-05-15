@@ -122,7 +122,16 @@ def main():
             if "sent_cards" not in state: state["sent_cards"] = []
 
             # Chiamata HTTP
-            res = requests.get(url, headers=headers, params=params).json()
+            response = requests.get(
+            url,
+            headers=headers,
+            params=params,
+            timeout=15
+            )
+        
+            response.raise_for_status()
+        
+            res = response.json()
             
             # Se la partita non è ancora iniziata o non è rilevata live
             if not res.get('response') or len(res['response']) == 0:
