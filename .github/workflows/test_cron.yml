@@ -1,8 +1,9 @@
 name: Test Live Cina
 
 on:
+  workflow_dispatch: # <--- Questo ti sblocca il tasto manuale SUBITO!
   schedule:
-    - cron: '*/2 * * * *' # Fà girare questo test specifico ogni 2 minuti
+    - cron: '*/2 * * * *'
 
 jobs:
   run-test:
