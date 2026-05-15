@@ -61,7 +61,7 @@ TEAM_EMOJIS = {
     504: '<tg-emoji emoji-id="5911515857191703670">🇮🇹</tg-emoji>', # Verona
     508: '<tg-emoji emoji-id="5911176739458912845">🇮🇹</tg-emoji>', # Bari
     515: '<tg-emoji emoji-id="5911075708943209811">🇮🇹</tg-emoji>', # Venezia
-    511: '<tg-emoji emoji-id="5911181365138690645">🇮🇹</tg-emoji>'  # Frosinone
+    511: '<tg-emoji emoji-id="5911181365138690645">🇮🇹</tg-emoji>',  # Frosinone
     1578: '<tg-emoji emoji-id="5911382086140303241">🇮🇹</tg-emoji>'  # Sudtirol
 }
 
@@ -163,7 +163,7 @@ def main():
             if state.get("live_match_id") != current_match_id:
                 state = {"live_match_id": current_match_id, "sent_periods": [], "goals_detected": 0, "sent_subs": [], "sent_cards": []}
 
-            print(f"[LIVE JUVE] {home_name} {g_home_int}-{g_away_int} {away_name} | Stato: {status}")
+            print(f"[LIVE BARI] {home_name} {g_home_int}-{g_away_int} {away_name} | Stato: {status}")
 
             # --------------------------------------------------------------------------
             # 1. BLOCCHI CRONACA PERIODI DI GARA
