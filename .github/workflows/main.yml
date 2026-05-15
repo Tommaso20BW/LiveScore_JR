@@ -1,4 +1,4 @@
-name: Juve Live Bot Continuo
+name: Juve Live Bot
 
 on:
   workflow_dispatch: # Attivazione manuale pulita tramite pulsante
