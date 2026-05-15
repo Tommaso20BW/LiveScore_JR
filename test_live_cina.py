@@ -7,8 +7,8 @@ BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
 API_KEY = os.getenv('API_KEY')
 
-# ID specifico Inter U20 per il test live
-TEAM_ID = 24734  
+# ID specifico Bari per il test live
+TEAM_ID = 508  
 STATE_FILE = "match_state_test.json"
 
 url_api = f"https://v3.football.api-sports.io/fixtures?live=all&team={TEAM_ID}"
