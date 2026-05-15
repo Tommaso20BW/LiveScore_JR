@@ -1,0 +1,36 @@
+name: Juve Live Score Bot
+
+on:
+  schedule:
+    - cron: '*/2 * * * *' # Controlla ogni 2 minuti
+  workflow_dispatch: # Permette l'avvio manuale
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Installa Librerie
+        run: pip install requests
+
+      - name: Esegui lo Script
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+        run: python juve_bot.py
+
+      - name: Salva i cambiamenti di stato
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add match_state.json || true
+          git commit -m "Aggiornato stato del match [skip ci]" || true
+          git push || true
