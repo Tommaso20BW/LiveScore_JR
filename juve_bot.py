@@ -229,7 +229,7 @@ def main():
                         subs_by_minute[minute]["out"].append(p_out)
                         subs_by_minute[minute]["ids"].append(sub_id)
 
-                # --- CARTELLINI ---
+                # --- CARTELLINI (SOLO ROSSI) ---
                 elif ev_type == 'card':
                     p_name = e.get('player', {}).get('name', 'Giocatore')
                     card_detail = e.get('detail', '').lower()
@@ -238,14 +238,11 @@ def main():
                     if card_id not in state["sent_cards"]:
                         team_name = e.get('team', {}).get('name', 'Squadra')
                         
-                        if "yellow" in card_detail:
-                            msg = f"<b>CARTELLINO GIALLO {E_YELLOW}</b>\n\nAmmonito {p_name} ({team_name}) al minuto {minute}’.\n\n{e_comp} {hashtag}"
-                            send_telegram(msg)
-                        elif "red" in card_detail:
+                        # Filtrato per catturare solo i cartellini rossi (diretti o per doppia ammonizione)
+                        if "red" in card_detail:
                             msg = f"<b>CARTELLINO ROSSO {E_RED}</b>\n\nEspulso {p_name} ({team_name}) al minuto {minute}’.\n\n{e_comp} {hashtag}"
                             send_telegram(msg)
-                            
-                        state["sent_cards"].append(card_id)
+                            state["sent_cards"].append(card_id)
 
             # Invio dei cambi raggruppati
             for min_key, sub_data in subs_by_minute.items():
