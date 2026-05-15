@@ -79,7 +79,6 @@ def send_telegram(text):
     payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}
     try:
         requests.post(url, data=payload)
-        time.sleep(0.8)
     except Exception as e:
         print(f"Errore invio Telegram: {e}")
 
