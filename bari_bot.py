@@ -128,7 +128,7 @@ def main():
             
             # Se la partita non è ancora iniziata o non è rilevata live
             if not res.get('response') or len(res['response']) == 0:
-                print("In attesa che la partita della Juventus inizi o appaia nei feed Live...")
+                print("In attesa che la partita del Bari inizi o appaia nei feed Live...")
                 time.sleep(60)
                 continue
 
@@ -218,7 +218,7 @@ def main():
                 ev_type = e.get('type', '').lower()
                 minute = e.get('time', {}).get('elapsed', 0)
                 
-                # --- SOSTITUZIONI (Solo Juventus) ---
+                # --- SOSTITUZIONI (Solo Bari) ---
                 if ev_type == 'subst' and e.get('team', {}).get('id') == BARI_ID:
                     p_out = e.get('player', {}).get('name', 'Uscente')
                     p_in = e.get('assist', {}).get('name', 'Entrante')
@@ -250,7 +250,7 @@ def main():
             for min_key, sub_data in subs_by_minute.items():
                 ins_text = ", ".join(sub_data["in"])
                 outs_text = ", ".join(sub_data["out"])
-                msg = f"<b>CAMBIO JUVENTUS {E_SUB}</b>\n\n{E_UP} {ins_text}\n{E_DOWN} {outs_text}\n\n{e_comp} {hashtag}"
+                msg = f"<b>CAMBIO Bari {E_SUB}</b>\n\n{E_UP} {ins_text}\n{E_DOWN} {outs_text}\n\n{e_comp} {hashtag}"
                 send_telegram(msg)
                 state["sent_subs"].extend(sub_data["ids"])
 
