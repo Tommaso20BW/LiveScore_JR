@@ -1,4 +1,4 @@
-name: Test Live Bari
+name: Bari Live Goal Scorer
 
 on:
   workflow_dispatch:
@@ -7,13 +7,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: bari-bot-test
-  cancel-in-progress: true
+  group: bari-live-bot
+  cancel-in-progress: false
 
 jobs:
-  run-test:
+  run-live:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 180
 
     steps:
       - name: Checkout del codice
@@ -30,7 +30,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Esegui Test Bari Bot
+      - name: Avvia Bari Live Bot
         env:
           API_KEY: ${{ secrets.API_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
