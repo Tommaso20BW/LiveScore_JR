@@ -7,8 +7,8 @@ BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
 API_KEY = os.getenv('API_KEY')
 
-# ID specifico Bari per il test live
-TEAM_ID = 508  
+# ID specifico Karvan per il test live
+TEAM_ID = 11239  
 STATE_FILE = "match_state_test.json"
 
 url_api = f"https://v3.football.api-sports.io/fixtures?live=all&team={TEAM_ID}"
@@ -78,7 +78,7 @@ while True:
                 json.dump(sent_events, f)
 
         else:
-            print("Nessun dato live al momento per l'Inter U20 (pausa, fine o match non iniziato).")
+            print("Nessun dato live al momento per il Karvan (pausa, fine o match non iniziato).")
 
     except Exception as e:
         print(f"Errore temporaneo: {e}")
