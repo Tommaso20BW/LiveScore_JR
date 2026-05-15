@@ -276,7 +276,7 @@ def main():
             print(f"Errore durante l'esecuzione del ciclo live: {e}")
 
         # Aspetta 90 secondi prima del prossimo controllo
-        time.sleep(90)
+        time.sleep(180)
 
 if __name__ == "__main__":
     main()
