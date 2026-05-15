@@ -31,7 +31,7 @@ E_SAVE   = '<tg-emoji emoji-id="5778268624296878374">🧤</tg-emoji>'
 # Dizionario icone Competizioni automatiche
 LEAGUE_EMOJIS = {
     135: '<tg-emoji emoji-id="5985546632219858247">🇮🇹</tg-emoji>', # Serie A
-    135: '<tg-emoji emoji-id="5985500865048351185">🇮🇹</tg-emoji>', # Serie B
+    136: '<tg-emoji emoji-id="5985500865048351185">🇮🇹</tg-emoji>', # Serie B
     137: '<tg-emoji emoji-id="5983047472354695060">🇮🇹</tg-emoji>', # Coppa Italia
     2:   '<tg-emoji emoji-id="6048563272855064239">🇪🇺</tg-emoji>', # Champions League
     3:   '<tg-emoji emoji-id="5850498991984218771">🇪🇺</tg-emoji>'  # Europa League
