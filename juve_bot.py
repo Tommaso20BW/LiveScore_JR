@@ -158,7 +158,7 @@ def main():
             current_match_id = fixture.get('id')
             elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
             
-            # Rallenta le chiamate se siamo nei supplementari o rigori
+            # Controllo sleep time per i supplementari o rigori
             if status in ["ET", "AET", "PEN"]:
                 current_sleep_time = 140
             else:
@@ -181,7 +181,7 @@ def main():
             g_home_int = goals_home if goals_home is not None else 0
             g_away_int = goals_away if goals_away is not None else 0
             
-            # Gestione Punteggio Rigori (Formato Elegante e Simmetrico Richiesto)
+            # Gestione Punteggio Rigori (Formato Simmetrico Elegante)
             penalties = match.get('score', {}).get('penalty', {})
             p_home = penalties.get('home')
             p_away = penalties.get('away')
@@ -313,16 +313,17 @@ def main():
                     p_name = e.get('player', {}).get('name', 'Giocatore')
                     card_detail = e.get('detail', '').lower()
                     card_id = f"card_{minute}_{p_name}_{card_detail}".replace(" ", "_")
+                    
                     if card_id not in state["sent_cards"] and "red" in card_detail:
-                        team_name = e.get('team', {}).get('name', 'Squadra')
-                        msg = f"<b>CARTELLINO ROSSO {E_RED}</b>\n\nEspulso {p_name} ({team_name}) al minuto {minute}’.\n\n{e_comp} {hashtag}"
+                        # Formato Richiesto per Cartellino Rosso
+                        msg = f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>{minute}’ {p_name}</i>\n\n{e_comp} {hashtag}"
                         send_telegram(msg)
                         state["sent_cards"].append(card_id)
 
                 if "penalty" in detail and ("missed" in detail or "saved" in detail):
                     p_name = e.get('player', {}).get('name', 'Giocatore')
                     pen_failed_id = f"pen_fail_{minute}_{p_name}".replace(" ", "_")
-                    if pen_failed_id not in state["sent_failed_penalties"]:
+                    if pen_failed_id not in state["failed_penalties" if "failed_penalties" in state else "sent_failed_penalties"]:
                         has_scored_now = any(evt.get('type', '').lower() == 'goal' and evt.get('team', {}).get('id') == team_id and evt.get('time', {}).get('elapsed', 0) == minute for evt in events)
                         if has_scored_now: continue
                         if team_id == JUVE_ID:
