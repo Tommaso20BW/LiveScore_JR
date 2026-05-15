@@ -1,38 +1,26 @@
-name: Bari Live Goal Scorer
+name: Test Live Bari
 
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: bari-live-bot
-  cancel-in-progress: false
+  workflow_dispatch: # Solo attivazione manuale al bisogno
 
 jobs:
-  run-live:
+  run-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-
     steps:
-      - name: Checkout del codice
-        uses: actions/checkout@v5
+    - name: Checkout del codice
+      uses: actions/checkout@v3
 
-      - name: Configura Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-          cache: 'pip'
+    - name: Configura Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
-      - name: Installa librerie
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests
+    - name: Installa librerie
+      run: pip install requests
 
-      - name: Avvia Bari Live Bot
-        env:
-          API_KEY: ${{ secrets.API_KEY }}
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
-        run: python bari_bot.py
+    - name: Esegui Test Continuo
+      env:
+        API_KEY: ${{ secrets.API_KEY }}
+        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+      run: python bari_bot.py
