@@ -31,6 +31,7 @@ E_SAVE   = '<tg-emoji emoji-id="5778268624296878374">🧤</tg-emoji>'
 # Dizionario icone Competizioni automatiche
 LEAGUE_EMOJIS = {
     135: '<tg-emoji emoji-id="5985546632219858247">🇮🇹</tg-emoji>', # Serie A
+    137: '<tg-emoji emoji-id="5983047472354695060">🇮🇹</tg-emoji>', # Coppa Italia
     2:   '<tg-emoji emoji-id="6048563272855064239">🇪🇺</tg-emoji>', # Champions League
     3:   '<tg-emoji emoji-id="5850498991984218771">🇪🇺</tg-emoji>'  # Europa League
 }
@@ -41,23 +42,23 @@ TEAM_EMOJIS = {
     499: '<tg-emoji emoji-id="5910979475905974750">🇮🇹</tg-emoji>', # Atalanta
     500: '<tg-emoji emoji-id="5911440952962061517">🇮🇹</tg-emoji>', # Bologna
     490: '<tg-emoji emoji-id="5913307249396158963">🇮🇹</tg-emoji>', # Cagliari
-    512: '<tg-emoji emoji-id="5911329799208440998">🇮🇹</tg-emoji>', # Como
-    514: '<tg-emoji emoji-id="5913404448801034977">🇮🇹</tg-emoji>', # Cremonese
+    895: '<tg-emoji emoji-id="5911329799208440998">🇮🇹</tg-emoji>', # Como
+    520: '<tg-emoji emoji-id="5913404448801034977">🇮🇹</tg-emoji>', # Cremonese
     502: '<tg-emoji emoji-id="5913639563900752614">🇮🇹</tg-emoji>', # Fiorentina
     495: '<tg-emoji emoji-id="5911268059053560883">🇮🇹</tg-emoji>', # Genoa
     505: '<tg-emoji emoji-id="5911036032035329229">🇮🇹</tg-emoji>', # Inter
     487: '<tg-emoji emoji-id="5911295933391312208">🇮🇹</tg-emoji>', # Lazio
-    541: '<tg-emoji emoji-id="5911196788366251729">🇮🇹</tg-emoji>', # Lecce
+    867: '<tg-emoji emoji-id="5911196788366251729">🇮🇹</tg-emoji>', # Lecce
     489: '<tg-emoji emoji-id="5911391075506852997">🇮🇹</tg-emoji>', # Milan
     492: '<tg-emoji emoji-id="5785268171153872458">🇮🇹</tg-emoji>', # Napoli
     523: '<tg-emoji emoji-id="5913350542666503216">🇮🇹</tg-emoji>', # Parma
-    518: '<tg-emoji emoji-id="5911205468495156874">🇮🇹</tg-emoji>', # Pisa
+    801: '<tg-emoji emoji-id="5911205468495156874">🇮🇹</tg-emoji>', # Pisa
     497: '<tg-emoji emoji-id="5911111254092551875">🇮🇹</tg-emoji>', # Roma
     488: '<tg-emoji emoji-id="5911488085933169181">🇮🇹</tg-emoji>', # Sassuolo
     503: '<tg-emoji emoji-id="5911471790827247161">🇮🇹</tg-emoji>', # Torino
     494: '<tg-emoji emoji-id="5910997690862278694">🇮🇹</tg-emoji>', # Udinese
     504: '<tg-emoji emoji-id="5911515857191703670">🇮🇹</tg-emoji>', # Verona
-    507: '<tg-emoji emoji-id="5911176739458912845">🇮🇹</tg-emoji>', # Bari
+    508: '<tg-emoji emoji-id="5911176739458912845">🇮🇹</tg-emoji>', # Bari
     515: '<tg-emoji emoji-id="5911075708943209811">🇮🇹</tg-emoji>', # Venezia
     511: '<tg-emoji emoji-id="5911181365138690645">🇮🇹</tg-emoji>'  # Frosinone
 }
