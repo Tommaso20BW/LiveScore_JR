@@ -1,26 +1,38 @@
 name: Test Live Bari
 
 on:
-  workflow_dispatch: # Solo attivazione manuale al bisogno
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bari-bot-test
+  cancel-in-progress: true
 
 jobs:
   run-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
-    - name: Checkout del codice
-      uses: actions/checkout@v3
+      - name: Checkout del codice
+        uses: actions/checkout@v5
 
-    - name: Configura Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
+      - name: Configura Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
 
-    - name: Installa librerie
-      run: pip install requests
+      - name: Installa librerie
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
 
-    - name: Esegui Test Continuo
-      env:
-        API_KEY: ${{ secrets.API_KEY }}
-        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-        TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
-      run: python bari_bot.py
+      - name: Esegui Test Bari Bot
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+        run: python bari_bot.py
