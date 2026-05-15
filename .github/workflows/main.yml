@@ -1,7 +1,7 @@
-name: Juve Live Bot Manuale
+name: Juve Live Bot Continuo
 
 on:
-  workflow_dispatch: # Questo abilita il tasto manuale su GitHub
+  workflow_dispatch: # Attivazione manuale pulita tramite pulsante
 
 jobs:
   run-bot:
