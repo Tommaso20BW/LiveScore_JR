@@ -1,9 +1,7 @@
-name: Juve Live Bot
+name: Juve Live Bot Manuale
 
 on:
-  workflow_dispatch: # Questo attiva il "Tasto Manuale" per farlo partire quando vuoi tu
-  schedule:
-    - cron: '0 * * * *' # Controlla in automatico SOLO una volta all'ora per sicurezza (Consumo minimo)
+  workflow_dispatch: # Questo abilita il tasto manuale su GitHub
 
 jobs:
   run-bot:
