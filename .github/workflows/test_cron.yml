@@ -1,9 +1,7 @@
-name: Test Live Cina
+name: Test Live Continuo
 
 on:
-  workflow_dispatch: # <--- Questo ti sblocca il tasto manuale SUBITO!
-  schedule:
-    - cron: '*/2 * * * *'
+  workflow_dispatch: # Solo attivazione manuale al bisogno
 
 jobs:
   run-test:
@@ -20,7 +18,7 @@ jobs:
     - name: Installa librerie
       run: pip install requests
 
-    - name: Esegui Test
+    - name: Esegui Test Continuo
       env:
         API_KEY: ${{ secrets.API_KEY }}
         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
