@@ -12,7 +12,7 @@ CHAT_ID = os.getenv('TELEGRAM_TO')
 BARI_ID = 508
 
 # ==============================================================================
-# SET EMOJI CUSTOM FORMATTATE IN HTML TELEGRAM (BRANDING @AroundJuventus)
+# SET EMOJI CUSTOM FORMATTATE IN HTML TELEGRAM (BRANDING @Juventus_Reborn)
 # ==============================================================================
 E_BOLT = '<tg-emoji emoji-id="5778411071182217227">⚡️</tg-emoji>'
 E_FLAG = '<tg-emoji emoji-id="5778434989855089204">🏁</tg-emoji>'
