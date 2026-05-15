@@ -23,4 +23,4 @@ jobs:
         API_KEY: ${{ secrets.API_KEY }}
         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
-      run: python test_live_cina.py
+      run: python bari_bot.py
