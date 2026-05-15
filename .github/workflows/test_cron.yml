@@ -1,4 +1,4 @@
-name: Test Live Continuo
+name: Test Live Bari
 
 on:
   workflow_dispatch: # Solo attivazione manuale al bisogno
