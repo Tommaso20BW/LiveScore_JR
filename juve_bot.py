@@ -28,7 +28,8 @@ LEAGUE_EMOJIS = {
     135: '<tg-emoji emoji-id="5985546632219858247">🇮🇹</tg-emoji>', # Serie A
     137: '<tg-emoji emoji-id="5983047472354695060">🇮🇹</tg-emoji>', # Coppa Italia
     2:   '<tg-emoji emoji-id="6048563272855064239">🇪🇺</tg-emoji>', # Champions League
-    3:   '<tg-emoji emoji-id="5850498991984218771">🇪🇺</tg-emoji>'  # Europa League
+    3:   '<tg-emoji emoji-id="5850498991984218771">🇪🇺</tg-emoji>', # Europa League
+    667: '<tg-emoji emoji-id="5357080225463149588">🤝</tg-emoji>' # Amichevoli Club
 }
 
 # Dizionario Master delle Squadre di Serie A
@@ -55,7 +56,10 @@ TEAM_EMOJIS = {
     504: '<tg-emoji emoji-id="5911515857191703670">🇮🇹</tg-emoji>', # Verona
     508: '<tg-emoji emoji-id="5911176739458912845">🇮🇹</tg-emoji>', # Bari
     515: '<tg-emoji emoji-id="5911075708943209811">🇮🇹</tg-emoji>', # Venezia
-    511: '<tg-emoji emoji-id="5911181365138690645">🇮🇹</tg-emoji>'  # Frosinone
+    511: '<tg-emoji emoji-id="5911181365138690645">🇮🇹</tg-emoji>', # Frosinone
+    551: '<tg-emoji emoji-id="5190496525863654450">🇮🇹</tg-emoji>',  # Basilea
+    522: '<tg-emoji emoji-id="5911464631116765226">🇮🇹</tg-emoji>',  # Palermo
+    49: '<tg-emoji emoji-id="6048407545930846973">🇮🇹</tg-emoji>',  # Chelsea
 }
 
 def get_emoji(team_id):
