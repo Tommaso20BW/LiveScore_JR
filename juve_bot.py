@@ -162,7 +162,7 @@ def main():
             
             if not res.get('response') or len(res['response']) == 0:
                 print("In attesa che la partita della Juventus inizi o appaia nei feed Live...")
-                time.sleep(60)
+                time.sleep(90)
                 continue
 
             match = res['response'][0]
@@ -173,7 +173,7 @@ def main():
             
             # Timeout impostato a 45 secondi durante i rigori per la massima reattività colpo su colpo
             if status == "PEN":
-                current_sleep_time = 45   
+                current_sleep_time = 60   
             elif status in ["ET", "AET"]:
                 current_sleep_time = 140  
             else:
