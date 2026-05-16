@@ -43,7 +43,7 @@ def send_telegram(text):
         print(f"Errore invio Telegram: {e}")
 
 def main():
-    print("🚀 DEMO TOTALE AVVIATA - Controllo canale Telegram...")
+    print("🚀 DEMO CORRETTA AVVIATA - Controllo canale Telegram...")
     pausa = 3  # Secondi tra un messaggio e l'altro
 
     # 1. INIZIO PARTITA
@@ -51,17 +51,17 @@ def main():
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 2. GOL LIVE JUVENTUS (VLAHOVIC)
+    # 2. GOL LIVE JUVENTUS (VLAHOVIC) -> SI VA SULL'1-0
     msg = f"<b>GOAL {E_MIC}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-0 {AWAY_NAME} {AWAY_EMOJI}\n{E_BALL} <i>32’ D. Vlahovic</i>\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 3. GOL INTER ANNULLATO DAL VAR
+    # 3. L'INTER SEGNA MA IL VAR ANNULLA -> IL PUNTEGGIO RIMANE GIUSTAMENTE 1-0
     msg = f"<b>GOAL ANNULLATO {E_VAR}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-0 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 4. FINE PRIMO TEMPO
+    # 4. FINE PRIMO TEMPO (1-0)
     msg = f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-0 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
@@ -71,82 +71,11 @@ def main():
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 6. CAMBIO JUVENTUS (RAGGRUPPATO)
+    # 6. CAMBIO JUVENTUS
     msg = f"<b>CAMBIO JUVENTUS {E_SUB}</b>\n\n{E_UP} A. Milik\n{E_DOWN} K. Yildiz\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
     # 7. CARTELLINO ROSSO INTER
     msg = f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>68’ N. Barella</i>\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # 8. GOL LIVE INTER (PAREGGIO IN DIECI)
-    msg = f"<b>GOAL {E_MIC}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-1 {AWAY_NAME} {AWAY_EMOJI}\n{E_BALL} <i>74’ L. Martinez</i>\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # 9. FINE SECONDO TEMPO
-    msg = f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-1 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # 10. INIZIO SUPPLEMENTARI
-    msg = f"<b>INIZIO PRIMO TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-1 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # ==============================================================================
-    # SEQUENZA RIGORI COLPO SU COLPO
-    # ==============================================================================
-    print("⚽️ Inizio lotteria dei rigori nella demo...")
-    
-    # Rigore 1
-    h_pens = [E_PEN_OK]
-    a_pens = [E_PEN_OK]
-    msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # Rigore 2
-    h_pens.append(E_PEN_OK)
-    a_pens.append(E_PEN_KO)
-    msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # Rigore 3
-    h_pens.append(E_PEN_OK)
-    a_pens.append(E_PEN_OK)
-    msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # Rigore 4
-    h_pens.append(E_PEN_KO)
-    a_pens.append(E_PEN_OK)
-    msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # Rigore 5
-    h_pens.append(E_PEN_OK)
-    a_pens.append(E_PEN_KO)
-    msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
-    send_telegram(msg)
-    time.sleep(pausa)
-
-    # ==============================================================================
-    # FINE PARTITA DEFINITIVA CON TABELLINO CORSIVO
-    # ==============================================================================
-    score_string = "1 (4) - (2) 1"
-    scorers_line = f"{E_BALL} <i>32’ D. Vlahovic // 74’ L. Martinez</i>\n"
-    
-    msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{HOME_EMOJI} {HOME_NAME} {score_string} {AWAY_NAME} {AWAY_EMOJI}\n{scorers_line}\n{E_COMP} {HASHTAG}"
-    send_telegram(msg_finale)
-    
-    print("🏁 Test totale completato con successo!")
-    sys.exit(0)
-
-if __name__ == "__main__":
-    main()
+    send_
