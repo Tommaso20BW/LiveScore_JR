@@ -132,8 +132,6 @@ def main():
     params = {"team": JUVE_ID, "live": "all"}
 
     while True:
-        current_sleep_time = 90
-        
         try:
             if os.path.exists("match_state.json"):
                 with open("match_state.json", "r") as f:
@@ -167,11 +165,15 @@ def main():
             current_match_id = fixture.get('id')
             elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
             
-            # Controllo più frequente nei momenti concitati
-            if status in ["ET", "AET", "PEN"]:
-                current_sleep_time = 60
+            # ==============================================================================
+            # GESTIONE DINAMICA DEL TIMEOUT (OTTIMIZZAZIONE REATTIVITÀ E QUOTA API)
+            # ==============================================================================
+            if status in ["ET", "AET"]:
+                current_sleep_time = 140  # 140 secondi nei supplementari e intervalli correlati
+            elif status == "PEN":
+                current_sleep_time = 60   # 60 secondi durante la lotteria dei rigori
             else:
-                current_sleep_time = 90
+                current_sleep_time = 90   # 90 secondi standard nei tempi regolamentari
             
             league_id = match.get('league', {}).get('id', 0)
             e_comp = get_league_emoji(league_id)
@@ -212,7 +214,7 @@ def main():
                     "sent_failed_penalties": []
                 }
 
-            print(f"[LIVE JUVE] {home_name} {score_string} {away_name} | Stato: {status} | Minuto: {elapsed_minutes}")
+            print(f"[LIVE JUVE] {home_name} {score_string} {away_name} | Stato: {status} | Minuto: {elapsed_minutes} | Prossimo controllo tra: {current_sleep_time}s")
 
             # --------------------------------------------------------------------------
             # 1. BLOCCHI CRONACA PERIODI DI GARA
@@ -367,6 +369,7 @@ def main():
 
         except Exception as e:
             print(f"Errore ciclo live: {e}")
+            current_sleep_time = 90  # In caso di errore di rete temporaneo, usa un timeout standard sicuro
 
         time.sleep(current_sleep_time)
 
