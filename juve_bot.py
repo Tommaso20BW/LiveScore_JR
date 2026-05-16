@@ -171,7 +171,7 @@ def main():
             current_match_id = fixture.get('id')
             elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
             
-            # Timeout impostato a 45 secondi durante i rigori per la massima reattività colpo su colpo
+            # Timeout impostato a 60 secondi durante i rigori per la massima reattività colpo su colpo
             if status == "PEN":
                 current_sleep_time = 60   
             elif status in ["ET", "AET"]:
