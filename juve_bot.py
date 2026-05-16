@@ -280,7 +280,8 @@ def main():
                                 if "penalty" in detail: player_name += " (Rig.)"
                                 elif "own goal" in detail: player_name += " (Autogol)"
                                 
-                                live_scorer_line = f"{E_BALL} {minute_str}’ {player_name}\n"
+                                # Aggiunti i tag <i></i> per formattare il marcatore in corsivo anche live
+                                live_scorer_line = f"{E_BALL} <i>{minute_str}’ {player_name}</i>\n"
                                 break
                     
                     msg = f"<b>GOAL {E_MIC}</b>\n\n{home_emoji} {home_name} {g_home_int}-{g_away_int} {away_name} {away_emoji}\n{live_scorer_line}\n{e_comp} {hashtag}"
