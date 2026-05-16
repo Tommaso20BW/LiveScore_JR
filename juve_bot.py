@@ -24,6 +24,10 @@ E_UP   = '<tg-emoji emoji-id="5449683594425410231">🔼</tg-emoji>'
 E_DOWN = '<tg-emoji emoji-id="5447183459602669338">🔽</tg-emoji>'
 E_RED  = '<tg-emoji emoji-id="5778513149669940622">🟥</tg-emoji>'
 
+# Emoji specifiche per la lotteria dei rigori (Estratte dal tuo JSON)
+E_PEN_OK = '<tg-emoji emoji-id="5427009714745517609">✅</tg-emoji>'
+E_PEN_KO = '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji>'
+
 # Dizionario icone Competizioni automatiche
 LEAGUE_EMOJIS = {
     135: '<tg-emoji emoji-id="5985546632219858247">🇮🇹</tg-emoji>', # Serie A
@@ -94,7 +98,8 @@ def build_split_scorers_text(events, home_id, away_id):
     away_scorers = []
     
     for e in events:
-        if e.get('type', '').lower() == 'goal':
+        # Consideriamo solo i gol normali/rigori/autogol dei tempi regolamentari/supplementari
+        if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower():
             elapsed = e.get('time', {}).get('elapsed', '?')
             extra = e.get('time', {}).get('extra')
             minute_str = f"{elapsed}+{extra}" if extra else f"{elapsed}"
@@ -143,12 +148,14 @@ def main():
                     "goals_detected": 0, 
                     "sent_subs": [], 
                     "sent_cards": [],
-                    "sent_failed_penalties": []
+                    "sent_failed_penalties": [],
+                    "last_penalties_sequence": ""  # Per tracciare la stringa dei rigori della lotteria
                 }
 
             if "sent_subs" not in state: state["sent_subs"] = []
             if "sent_cards" not in state: state["sent_cards"] = []
             if "sent_failed_penalties" not in state: state["sent_failed_penalties"] = []
+            if "last_penalties_sequence" not in state: state["last_penalties_sequence"] = ""
 
             response = requests.get(url, headers=headers, params=params, timeout=15)
             response.raise_for_status()
@@ -169,11 +176,11 @@ def main():
             # GESTIONE DINAMICA DEL TIMEOUT (OTTIMIZZAZIONE REATTIVITÀ E QUOTA API)
             # ==============================================================================
             if status in ["ET", "AET"]:
-                current_sleep_time = 140  # 140 secondi nei supplementari e intervalli correlati
+                current_sleep_time = 140  
             elif status == "PEN":
-                current_sleep_time = 60   # 60 secondi durante la lotteria dei rigori
+                current_sleep_time = 60   
             else:
-                current_sleep_time = 90   # 90 secondi standard nei tempi regolamentari
+                current_sleep_time = 90   
             
             league_id = match.get('league', {}).get('id', 0)
             e_comp = get_league_emoji(league_id)
@@ -211,7 +218,8 @@ def main():
                     "goals_detected": 0, 
                     "sent_subs": [], 
                     "sent_cards": [],
-                    "sent_failed_penalties": []
+                    "sent_failed_penalties": [],
+                    "last_penalties_sequence": ""
                 }
 
             print(f"[LIVE JUVE] {home_name} {score_string} {away_name} | Stato: {status} | Minuto: {elapsed_minutes} | Prossimo controllo tra: {current_sleep_time}s")
@@ -249,8 +257,44 @@ def main():
                     send_telegram(msg)
                     state["sent_periods"].append("2ET_START")
 
-            # SPEGNIMENTO AUTOMATICO A FINE PARTITA CORRETTO
-            elif status in ["FT", "AET", "PEN"]:
+            # ==============================================================================
+            # CRONACA COLPO SU COLPO DELLA LOTTERIA DEI RIGORI (LIVE STATUS == "PEN")
+            # ==============================================================================
+            if status == "PEN":
+                events = match.get('events', [])
+                home_pen_icons = []
+                away_pen_icons = []
+                
+                # API-Football inserisce i rigori della lotteria finale come eventi di tipo "Card" o "Goal" 
+                # con detail "Penalty Shootout" o simili, oppure semplicemente ordinati per tempo
+                for e in events:
+                    detail = e.get('detail', '').lower()
+                    ev_type = e.get('type', '').lower()
+                    
+                    if "shootout" in detail or (ev_type == "goal" and elapsed_minutes >= 120 and "penalty" in detail):
+                        ev_team_id = e.get('team', {}).get('id')
+                        # Determiniamo se è segnato o sbagliato
+                        is_missed = "missed" in detail or "saved" in detail or ev_type == "card"
+                        icon = E_PEN_KO if is_missed else E_PEN_OK
+                        
+                        if ev_team_id == home_id:
+                            home_pen_icons.append(icon)
+                        elif ev_team_id == away_id:
+                            away_pen_icons.append(icon)
+                
+                # Creiamo una stringa di verifica per capire se c'è un nuovo rigore calciato
+                current_seq_str = "".join(home_pen_icons) + "|" + "".join(away_pen_icons)
+                
+                if current_seq_str != state["last_penalties_sequence"] and current_seq_str != "|":
+                    home_line = f"{home_emoji} " + "".join(home_pen_icons) if home_pen_icons else f"{home_emoji} "
+                    away_line = f"{away_emoji} " + "".join(away_pen_icons) if away_pen_icons else f"{away_emoji} "
+                    
+                    msg_penalties = f"<b>LOTTERIA DEI RIGORI 🔴</b>\n\n{home_line}\n{away_line}\n\n{e_comp} {hashtag}"
+                    send_telegram(msg_penalties)
+                    state["last_penalties_sequence"] = current_seq_str
+
+            # SPEGNIMENTO AUTOMATICO A FINE PARTITA
+            if status in ["FT", "AET", "PEN"]:
                 status_long = fixture.get('status', {}).get('long', '').lower()
                 is_finished = "finished" in status_long or status == "FT"
                 
@@ -260,7 +304,6 @@ def main():
                     send_telegram(msg)
                     state["sent_periods"].append("FT")
                     
-                    # Salva lo stato prima di eliminare il file (evita loop strani in scrittura)
                     with open("match_state.json", "w") as f:
                         json.dump(state, f)
                     
@@ -338,7 +381,8 @@ def main():
                             send_telegram(msg)
                             state["sent_cards"].append(card_id)
 
-                    if "penalty" in detail and ("missed" in detail or "saved" in detail):
+                    # Monitoraggio rigori sbagliati ESCLUSIVAMENTE nei tempi di gioco regolamentari/supplementari
+                    if "penalty" in detail and ("missed" in detail or "saved" in detail) and "shootout" not in detail and elapsed_minutes < 120:
                         p_name = e.get('player', {}).get('name', 'Giocatore')
                         pen_failed_id = f"pen_fail_{minute}_{p_name}".replace(" ", "_")
                         if pen_failed_id not in state["sent_failed_penalties"]:
@@ -369,7 +413,7 @@ def main():
 
         except Exception as e:
             print(f"Errore ciclo live: {e}")
-            current_sleep_time = 90  # In caso di errore di rete temporaneo, usa un timeout standard sicuro
+            current_sleep_time = 90  
 
         time.sleep(current_sleep_time)
 
