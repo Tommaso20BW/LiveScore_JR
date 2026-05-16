@@ -46,10 +46,9 @@ TEAM_EMOJIS = {
     487: '<tg-emoji emoji-id="5911295933391312208">🇮🇹</tg-emoji>', # Lazio
     867: '<tg-emoji emoji-id="5911196788366251729">🇮🇹</tg-emoji>', # Lecce
     489: '<tg-emoji emoji-id="5911391075506852997">🇮🇹</tg-emoji>', # Milan
-    492: '<tg-emoji emoji-id="5785268171153872458">🇮🇹</tg-emoji>', # Napoli
+    497: '<tg-emoji emoji-id="5911111254092551875">🇮🇹</tg-emoji>', # Roma
     523: '<tg-emoji emoji-id="5913350542666503216">🇮🇹</tg-emoji>', # Parma
     801: '<tg-emoji emoji-id="5911205468495156874">🇮🇹</tg-emoji>', # Pisa
-    497: '<tg-emoji emoji-id="5911111254092551875">🇮🇹</tg-emoji>', # Roma
     488: '<tg-emoji emoji-id="5911488085933169181">🇮🇹</tg-emoji>', # Sassuolo
     503: '<tg-emoji emoji-id="5911471790827247161">🇮🇹</tg-emoji>', # Torino
     494: '<tg-emoji emoji-id="5910997690862278694">🇮🇹</tg-emoji>', # Udinese
@@ -59,7 +58,7 @@ TEAM_EMOJIS = {
     511: '<tg-emoji emoji-id="5911181365138690645">🇮🇹</tg-emoji>', # Frosinone
     551: '<tg-emoji emoji-id="5190496525863654450">🇨🇭</tg-emoji>',  # Basilea
     522: '<tg-emoji emoji-id="5911464631116765226">🇮🇹</tg-emoji>',  # Palermo
-    49:  '<tg-emoji emoji-id="6048407545930846973">🏴󠁧󠁢󠁥󠁮󠁧󠁿</tg-emoji>', # Chelsea
+    49:  '<tg-emoji emoji-id="6048407545930846973">🏴¶󠁢󠁥󠁮󠁧󠁿</tg-emoji>', # Chelsea
 }
 
 def get_emoji(team_id):
@@ -69,6 +68,12 @@ def get_league_emoji(league_id):
     return LEAGUE_EMOJIS.get(league_id, "⚽️")
 
 def clean_name(name):
+    # Rimuove prefissi e suffissi fastidiosi inviati dall'API per avere hashtag puliti
+    annoying_words = ["AC ", "AS ", " US", " FC", "FC ", "A.C. ", "A.S. "]
+    for word in annoying_words:
+        name = name.replace(word, "")
+        name = name.replace(word.strip(), "")
+        
     return "".join(e for e in name if e.isalnum())
 
 def send_telegram(text):
