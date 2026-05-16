@@ -3,6 +3,7 @@ import requests
 import json
 import time
 import sys
+from datetime import datetime
 
 # ==============================================================================
 # CONFIGURAZIONE CHIAVI E DATI REQUISITI (DA SECRETS GITHUB)
@@ -16,7 +17,7 @@ CITY_ID = 50  # ID ufficiale del Manchester City su API-Football
 # SET EMOJI STANDARD (BRANDING @City_Fans / Sky Blue)
 # ==============================================================================
 E_BOLT = '⚡️'
-E_FLAG = '🏁'  # Cuore Sky Blue per il City
+E_FLAG = '🏁'  
 E_MIC  = '🎙'
 E_BALL = '⚽️'
 E_SUB  = '🔄'
@@ -102,7 +103,10 @@ def main():
     
     url = "https://v3.football.api-sports.io/fixtures"
     headers = {"x-apisports-key": API_KEY}
-    params = {"team": CITY_ID, "live": "all"}
+    
+    # Usiamo la data odierna per non perdere il match quando passa da Live a Terminato
+    today = datetime.now().strftime('%Y-%m-%d')
+    params = {"team": CITY_ID, "date": today}
 
     while True:
         try:
@@ -130,13 +134,20 @@ def main():
             res = response.json()
             
             if not res.get('response') or len(res['response']) == 0:
-                print("In attesa che la partita del Manchester City inizi o appaia nei feed Live...")
+                print("Nessuna partita del Manchester City trovata nel palinsesto di oggi.")
                 time.sleep(90)
                 continue
 
             match = res['response'][0]
             fixture = match.get('fixture', {})
             status = fixture.get('status', {}).get('short', 'NS')
+            
+            # Se la partita non è ancora iniziata, aspetta senza elaborare eventi live
+            if status in ["NS", "TBD", "PST"]:
+                print(f"Partita programmata ma non ancora iniziata (Stato attuale: {status}). Prossimo controllo tra 2 minuti...")
+                time.sleep(120)
+                continue
+
             current_match_id = fixture.get('id')
             elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
             
@@ -154,7 +165,6 @@ def main():
             home_id = teams.get('home', {}).get('id', 0)
             away_id = teams.get('away', {}).get('id', 0)
             
-            # Gestione nomi puliti (City forzato se ID corrisponde)
             home_name = "Man City" if home_id == CITY_ID else clean_name(teams.get('home', {}).get('name', 'Home'))
             away_name = "Man City" if away_id == CITY_ID else clean_name(teams.get('away', {}).get('name', 'Away'))
             
