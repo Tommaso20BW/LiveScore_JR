@@ -34,4 +34,4 @@ jobs:
           API_KEY: ${{ secrets.API_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
-        run: python juve_bot_static.py
+        run: python test_bot.py
