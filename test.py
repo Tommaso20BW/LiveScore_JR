@@ -21,6 +21,7 @@ E_SUB  = '<tg-emoji emoji-id="5780817872070646566">🔄</tg-emoji>'
 E_UP   = '<tg-emoji emoji-id="5449683594425410231">🔼</tg-emoji>'
 E_DOWN = '<tg-emoji emoji-id="5447183459602669338">🔽</tg-emoji>'
 E_RED  = '<tg-emoji emoji-id="5778513149669940622">🟥</tg-emoji>'
+E_VAR  = '<tg-emoji emoji-id="5780478896071777414">📺</tg-emoji>'
 E_PEN_OK = '<tg-emoji emoji-id="5427009714745517609">✅</tg-emoji>'
 E_PEN_KO = '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji>'
 
@@ -42,78 +43,93 @@ def send_telegram(text):
         print(f"Errore invio Telegram: {e}")
 
 def main():
-    print("🚀 DEMO LIVE RIGORI AVVIATA - Controllo canale Telegram...")
-    pausa = 4  # Secondi tra un messaggio e l'altro per il test velocizzato
+    print("🚀 DEMO TOTALE AVVIATA - Controllo canale Telegram...")
+    pausa = 3  # Secondi tra un messaggio e l'altro
 
     # 1. INIZIO PARTITA
     msg = f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{HOME_EMOJI} {HOME_NAME} - {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 2. GOL LIVE JUVENTUS
+    # 2. GOL LIVE JUVENTUS (VLAHOVIC)
     msg = f"<b>GOAL {E_MIC}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-0 {AWAY_NAME} {AWAY_EMOJI}\n{E_BALL} <i>32’ D. Vlahovic</i>\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 3. FINE PRIMO TEMPO
+    # 3. GOL INTER ANNULLATO DAL VAR
+    msg = f"<b>GOAL ANNULLATO {E_VAR}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-0 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
+    send_telegram(msg)
+    time.sleep(pausa)
+
+    # 4. FINE PRIMO TEMPO
     msg = f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-0 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 4. INIZIO SECONDO TEMPO
+    # 5. INIZIO SECONDO TEMPO
     msg = f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-0 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 5. GOL LIVE INTER (PAREGGIO)
+    # 6. CAMBIO JUVENTUS (RAGGRUPPATO)
+    msg = f"<b>CAMBIO JUVENTUS {E_SUB}</b>\n\n{E_UP} A. Milik\n{E_DOWN} K. Yildiz\n\n{E_COMP} {HASHTAG}"
+    send_telegram(msg)
+    time.sleep(pausa)
+
+    # 7. CARTELLINO ROSSO INTER
+    msg = f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>68’ N. Barella</i>\n\n{E_COMP} {HASHTAG}"
+    send_telegram(msg)
+    time.sleep(pausa)
+
+    # 8. GOL LIVE INTER (PAREGGIO IN DIECI)
     msg = f"<b>GOAL {E_MIC}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-1 {AWAY_NAME} {AWAY_EMOJI}\n{E_BALL} <i>74’ L. Martinez</i>\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 6. FINE SECONDO TEMPO (SI VA AI SUPPLEMENTARI)
+    # 9. FINE SECONDO TEMPO
     msg = f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-1 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # 7. SUPPLEMENTARI
+    # 10. INIZIO SUPPLEMENTARI
     msg = f"<b>INIZIO PRIMO TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{HOME_EMOJI} {HOME_NAME} 1-1 {AWAY_NAME} {AWAY_EMOJI}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
     # ==============================================================================
-    # SEQUENZA RIGORI COLPO SU COLPO (EMULA STATO "PEN")
+    # SEQUENZA RIGORI COLPO SU COLPO
     # ==============================================================================
-    print("⚽️ Inizio lotteria dei rigori...")
+    print("⚽️ Inizio lotteria dei rigori nella demo...")
     
-    # Rigore 1: Juve segna, Inter segna
+    # Rigore 1
     h_pens = [E_PEN_OK]
     a_pens = [E_PEN_OK]
     msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # Rigore 2: Juve segna, Inter sbaglia
+    # Rigore 2
     h_pens.append(E_PEN_OK)
     a_pens.append(E_PEN_KO)
     msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # Rigore 3: Juve segna, Inter segna
+    # Rigore 3
     h_pens.append(E_PEN_OK)
     a_pens.append(E_PEN_OK)
     msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # Rigore 4: Juve sbaglia, Inter segna (Tutto pari)
+    # Rigore 4
     h_pens.append(E_PEN_KO)
     a_pens.append(E_PEN_OK)
     msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
     send_telegram(msg)
     time.sleep(pausa)
 
-    # Rigore 5: Juve segna, Inter sbaglia (Juve vince la lotteria!)
+    # Rigore 5
     h_pens.append(E_PEN_OK)
     a_pens.append(E_PEN_KO)
     msg = f"{HOME_EMOJI} {''.join(h_pens)}\n{AWAY_EMOJI} {''.join(a_pens)}\n\n{E_COMP} {HASHTAG}"
@@ -121,7 +137,7 @@ def main():
     time.sleep(pausa)
 
     # ==============================================================================
-    # FINE PARTITA CON RISULTATO CUMULATIVO E MARCATORI IN CORSIVO
+    # FINE PARTITA DEFINITIVA CON TABELLINO CORSIVO
     # ==============================================================================
     score_string = "1 (4) - (2) 1"
     scorers_line = f"{E_BALL} <i>32’ D. Vlahovic // 74’ L. Martinez</i>\n"
@@ -129,7 +145,7 @@ def main():
     msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{HOME_EMOJI} {HOME_NAME} {score_string} {AWAY_NAME} {AWAY_EMOJI}\n{scorers_line}\n{E_COMP} {HASHTAG}"
     send_telegram(msg_finale)
     
-    print("🏁 Test completato. Controlla il layout finale su Telegram!")
+    print("🏁 Test totale completato con successo!")
     sys.exit(0)
 
 if __name__ == "__main__":
