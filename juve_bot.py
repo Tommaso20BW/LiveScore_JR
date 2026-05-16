@@ -280,7 +280,6 @@ def main():
                                 if "penalty" in detail: player_name += " (Rig.)"
                                 elif "own goal" in detail: player_name += " (Autogol)"
                                 
-                                # Aggiunti i tag <i></i> per formattare il marcatore in corsivo anche live
                                 live_scorer_line = f"{E_BALL} <i>{minute_str}’ {player_name}</i>\n"
                                 break
                     
@@ -306,16 +305,18 @@ def main():
                     minute = e.get('time', {}).get('elapsed', 0)
                     team_id = e.get('team', {}).get('id')
                     
-                    if ev_type == 'subst' and team_id == JUVE_ID:
+                    # Gestione cambi abilitata per tutte le squadre
+                    if ev_type == 'subst':
                         p_out = e.get('player', {}).get('name', 'Uscente')
                         p_in = e.get('assist', {}).get('name', 'Entrante')
                         sub_id = f"sub_{minute}_{p_out}_{p_in}".replace(" ", "_")
                         if sub_id not in state["sent_subs"]:
-                            if minute not in subs_by_minute:
-                                subs_by_minute[minute] = {"in": [], "out": [], "ids": []}
-                            subs_by_minute[minute]["in"].append(p_in)
-                            subs_by_minute[minute]["out"].append(p_out)
-                            subs_by_minute[minute]["ids"].append(sub_id)
+                            sub_key = f"{minute}_{team_id}"
+                            if sub_key not in subs_by_minute:
+                                subs_by_minute[sub_key] = {"minute": minute, "team_id": team_id, "in": [], "out": [], "ids": []}
+                            subs_by_minute[sub_key]["in"].append(p_in)
+                            subs_by_minute[sub_key]["out"].append(p_out)
+                            subs_by_minute[sub_key]["ids"].append(sub_id)
 
                     elif ev_type == 'card':
                         p_name = e.get('player', {}).get('name', 'Giocatore')
@@ -340,8 +341,16 @@ def main():
                             send_telegram(msg)
                             state["sent_failed_penalties"].append(pen_failed_id)
 
-                for min_key, sub_data in subs_by_minute.items():
-                    msg = f"<b>CAMBIO JUVENTUS {E_SUB}</b>\n\n{E_UP} {', '.join(sub_data['in'])}\n{E_DOWN} {', '.join(sub_data['out'])}\n\n{e_comp} {hashtag}"
+                # INVIO DEI CAMBI (STILE PULITO, SOLO EMOJI PREMIUM DEL CAMBIO)
+                for sub_key, sub_data in subs_by_minute.items():
+                    t_id = sub_data["team_id"]
+                    
+                    if t_id == JUVE_ID:
+                        team_title = "JUVENTUS"
+                    else:
+                        team_title = clean_name(home_name).upper() if t_id == home_id else clean_name(away_name).upper()
+                    
+                    msg = f"<b>CAMBIO {team_title} {E_SUB}</b>\n\n{E_UP} {', '.join(sub_data['in'])}\n{E_DOWN} {', '.join(sub_data['out'])}\n\n{e_comp} {hashtag}"
                     send_telegram(msg)
                     state["sent_subs"].extend(sub_data["ids"])
 
