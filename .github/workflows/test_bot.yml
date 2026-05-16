@@ -1,0 +1,28 @@
+name: Test Bot Telegram (Simulazione)
+
+on:
+  workflow_dispatch: # Questo abilita il bottone manuale su GitHub per far partire il test quando vuoi
+
+jobs:
+  run-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout del codice
+      uses: actions/checkout@v4
+
+    - name: Configurazione Python
+      uses: actions/setup-python@v5
+      with:
+        python-python: '3.x'
+
+    - name: Installazione Librerie Requisite
+      run: |
+        python -m pip upgrade pip
+        pip install requests
+
+    - name: Esecuzione Script di Test
+      env:
+        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+      run: python test.py # Assicurati che il file di test sul tuo GitHub si chiami esattamente così
