@@ -2,6 +2,7 @@ import os
 import requests
 import json
 import time
+import sys
 
 # ==============================================================================
 # CONFIGURAZIONE CHIAVI E DATI REQUISITI (DA SECRETS GITHUB)
@@ -58,7 +59,7 @@ TEAM_EMOJIS = {
     511: '<tg-emoji emoji-id="5911181365138690645">🇮🇹</tg-emoji>', # Frosinone
     551: '<tg-emoji emoji-id="5190496525863654450">🇨🇭</tg-emoji>',  # Basilea
     522: '<tg-emoji emoji-id="5911464631116765226">🇮🇹</tg-emoji>',  # Palermo
-    49:  '<tg-emoji emoji-id="6048407545930846973">🏴¶󠁢󠁥󠁮󠁧󠁿</tg-emoji>', # Chelsea
+    49:  '<tg-emoji emoji-id="6048407545930846973">🏴󠁧󠁢󠁥󠁮󠁧󠁿</tg-emoji>', # Chelsea
 }
 
 def get_emoji(team_id):
@@ -68,12 +69,10 @@ def get_league_emoji(league_id):
     return LEAGUE_EMOJIS.get(league_id, "⚽️")
 
 def clean_name(name):
-    # Rimuove prefissi e suffissi fastidiosi inviati dall'API per avere hashtag puliti
     annoying_words = ["AC ", "AS ", " US", " FC", "FC ", "A.C. ", "A.S. "]
     for word in annoying_words:
         name = name.replace(word, "")
         name = name.replace(word.strip(), "")
-        
     return "".join(e for e in name if e.isalnum())
 
 def send_telegram(text):
@@ -168,8 +167,9 @@ def main():
             current_match_id = fixture.get('id')
             elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
             
+            # Controllo più frequente nei momenti concitati
             if status in ["ET", "AET", "PEN"]:
-                current_sleep_time = 140
+                current_sleep_time = 60
             else:
                 current_sleep_time = 90
             
@@ -247,17 +247,26 @@ def main():
                     send_telegram(msg)
                     state["sent_periods"].append("2ET_START")
 
+            # SPEGNIMENTO AUTOMATICO A FINE PARTITA CORRETTO
             elif status in ["FT", "AET", "PEN"]:
-                is_finished = fixture.get('status', {}).get('long') == "Match Finished" or status == "FT"
+                status_long = fixture.get('status', {}).get('long', '').lower()
+                is_finished = "finished" in status_long or status == "FT"
+                
                 if is_finished and "FT" not in state["sent_periods"]:
                     scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                     msg = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_emoji} {home_name} {score_string} {away_name} {away_emoji}\n{scorers_line}\n{e_comp} {hashtag}"
                     send_telegram(msg)
                     state["sent_periods"].append("FT")
                     
+                    # Salva lo stato prima di eliminare il file (evita loop strani in scrittura)
+                    with open("match_state.json", "w") as f:
+                        json.dump(state, f)
+                    
                     if os.path.exists("match_state.json"):
                         os.remove("match_state.json")
-                    break
+                        
+                    print("🏁 Partita terminata con successo. Chiusura del processo bot in corso...")
+                    sys.exit(0)
 
             # --------------------------------------------------------------------------
             # 2. AVVISI GOL LIVE E ANNULLAMENTO VAR
@@ -305,7 +314,6 @@ def main():
                     minute = e.get('time', {}).get('elapsed', 0)
                     team_id = e.get('team', {}).get('id')
                     
-                    # Gestione cambi abilitata per tutte le squadre
                     if ev_type == 'subst':
                         p_out = e.get('player', {}).get('name', 'Uscente')
                         p_in = e.get('assist', {}).get('name', 'Entrante')
@@ -341,10 +349,9 @@ def main():
                             send_telegram(msg)
                             state["sent_failed_penalties"].append(pen_failed_id)
 
-                # INVIO DEI CAMBI (STILE PULITO, SOLO EMOJI PREMIUM DEL CAMBIO)
+                # INVIO DEI CAMBI ACCOPPATI (STILE PULITO)
                 for sub_key, sub_data in subs_by_minute.items():
                     t_id = sub_data["team_id"]
-                    
                     if t_id == JUVE_ID:
                         team_title = "JUVENTUS"
                     else:
@@ -354,6 +361,7 @@ def main():
                     send_telegram(msg)
                     state["sent_subs"].extend(sub_data["ids"])
 
+            # Salvataggio dello stato sul file JSON
             with open("match_state.json", "w") as f:
                 json.dump(state, f)
 
