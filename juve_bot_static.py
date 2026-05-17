@@ -253,22 +253,29 @@ def main():
                 print("🏁 Partita conclusa. Messaggio Full Time inviato. Spegnimento.")
                 sys.exit(0)
 
-            # 4. GOL LIVE E VAR
+            # 4. GOL LIVE E VAR (CON ORDINAMENTO CRONOLOGICO CERTIFICATO)
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
                 events, live_scorer_line = match.get('events', []), ""
                 if events:
-                    for e in reversed(events):
-                        if e.get('type', '').lower() == 'goal':
-                            el = e.get('time', {}).get('elapsed', '?')
-                            ex = e.get('time', {}).get('extra')
-                            minute_str = f"{el}+{ex}" if ex else f"{el}"
-                            p_name = e.get('player', {}).get('name', 'Giocatore')
-                            det = e.get('detail', '').lower()
-                            if "penalty" in det: p_name += " (Rig.)"
-                            elif "own goal" in det: p_name += " (Autogol)"
-                            live_scorer_line = f"{E_BALL} <i>{minute_str}’ {p_name}</i>\n"
-                            break
+                    # Filtra solo i gol reali escludendo i rigori post-partita
+                    all_goals = [e for e in events if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower()]
+                    
+                    if all_goals:
+                        # Ordina i gol per minuto cronologico crescente (gestendo elapsed + extra recupero)
+                        all_goals.sort(key=lambda x: (x.get('time', {}).get('elapsed', 0), x.get('time', {}).get('extra', 0) or 0))
+                        last_goal = all_goals[-1]  # Estrae l'effettivo ultimo gol segnato in ordine temporale
+                        
+                        el = last_goal.get('time', {}).get('elapsed', '?')
+                        ex = last_goal.get('time', {}).get('extra')
+                        minute_str = f"{el}+{ex}" if ex else f"{el}"
+                        p_name = last_goal.get('player', {}).get('name', 'Giocatore')
+                        det = last_goal.get('detail', '').lower()
+                        
+                        if "penalty" in det: p_name += " (Rig.)"
+                        elif "own goal" in det: p_name += " (Autogol)"
+                        live_scorer_line = f"{E_BALL} <i>{minute_str}’ {p_name}</i>\n"
+                        
                 msg = f"<b>GOAL {E_MIC}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n{live_scorer_line}\n{e_comp} {hashtag}"
                 send_telegram(msg)
                 state["goals_detected"] = total_goals_now
@@ -277,7 +284,7 @@ def main():
                 send_telegram(msg)
                 state["goals_detected"] = total_goals_now
 
-            # 5. EVENTI (CAMBI, CARTELLINI, RIGORI FALLITI)
+            # 5. EVENTI (CAMBI, CARTELLINI)
             events = match.get('events', [])
             if events:
                 subs_by_minute = {}
@@ -294,7 +301,8 @@ def main():
                             subs_by_minute[sub_key]["ids"].append(sub_id)
                     elif ev_type == 'card' and "red" in detail:
                         p_name = e.get('player', {}).get('name', 'Giocatore')
-                        card_id = f"card_{minute}_{p_name}_{detail}".replace(" ", "_")
+                        # ID univoco basato solo su minuto e giocatore per bloccare i duplicati dei doppi gialli
+                        card_id = f"card_{minute}_{p_name}".replace(" ", "_")
                         if card_id not in state["sent_cards"]:
                             send_telegram(f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>{minute}’ {p_name}</i>\n\n{e_comp} {hashtag}")
                             state["sent_cards"].append(card_id)
