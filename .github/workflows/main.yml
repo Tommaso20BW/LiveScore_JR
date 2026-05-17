@@ -36,7 +36,7 @@ jobs:
           TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
           CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
           CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
-        run: python juve_bot_static.py
+        run: python juve_bot.py
 
       - name: 🔄 Salva i token Canva aggiornati su GitHub
         run: |
