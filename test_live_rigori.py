@@ -100,93 +100,120 @@ def get_canva_image(access_token):
     return None
 
 # ==============================================================================
-# SIMULATORE DI EVENTI CON LOTTERIA DEI RIGORI
+# SIMULATORE DI UNA PARTITA COMPLETA FINO AI RIGORI (9 STEP)
 # ==============================================================================
-def genera_finta_api_rigori(step):
-    """Genera la sequenza di eventi: Fine 90° -> Fine 120° -> Rigori in tempo reale -> FT"""
+def genera_finta_api_partita_completa(step):
     finta_risposta = {
         "response": [{
-            "fixture": {"status": {"short": "2H", "long": "Second Half", "elapsed": 90}},
-            "league": {"id": 137}, # Coppa Italia (Prevede i rigori)
+            "fixture": {"status": {"short": "1H", "long": "First Half", "elapsed": 0}},
+            "league": {"id": 137}, # Coppa Italia
             "teams": {
                 "home": {"id": 496, "name": "Juventus"},
                 "away": {"id": 505, "name": "Inter"}
             },
-            "goals": {"home": 1, "away": 1},
+            "goals": {"home": 0, "away": 0},
             "score": {"penalty": {"home": None, "away": None}},
             "events": []
         }]
     }
     match = finta_risposta["response"][0]
     
-    if step == 0:  # Fine 90 minuti regolamentari (1-1)
-        match["fixture"]["status"]["short"] = "2H"
+    if step == 0:  # Fischio d'inizio
+        match["fixture"]["status"]["short"] = "1H"
+        match["fixture"]["status"]["elapsed"] = 1
         
-    elif step == 1:  # Fine Tempi Supplementari (1-1)
+    elif step == 1:  # Gol dell'Inter (0-1)
+        match["fixture"]["status"]["short"] = "1H"
+        match["fixture"]["status"]["elapsed"] = 30
+        match["goals"]["away"] = 1
+        match["events"].append({
+            "type": "Goal", "detail": "Normal Goal", "team": {"id": 505},
+            "time": {"elapsed": 30, "extra": None}, "player": {"name": "L. Martinez"}
+        })
+        
+    elif step == 2:  # Fine Primo Tempo (0-1)
+        match["fixture"]["status"]["short"] = "HT"
+        match["fixture"]["status"]["elapsed"] = 45
+        match["goals"]["away"] = 1
+        
+    elif step == 3:  # Gol del Pareggio della Juve (1-1)
+        match["fixture"]["status"]["short"] = "2H"
+        match["fixture"]["status"]["elapsed"] = 65
+        match["goals"]["home"] = 1
+        match["goals"]["away"] = 1
+        match["events"].extend([
+            {"type": "Goal", "detail": "Normal Goal", "team": {"id": 505}, "time": {"elapsed": 30}, "player": {"name": "L. Martinez"}},
+            {"type": "Goal", "detail": "Normal Goal", "team": {"id": 496}, "time": {"elapsed": 65}, "player": {"name": "D. Vlahović"}}
+        ])
+        
+    elif step == 4:  # Fine 90' Regolamentari (1-1) -> Si va ai supplementari
+        match["fixture"]["status"]["short"] = "ET"
+        match["fixture"]["status"]["elapsed"] = 90
+        match["goals"]["home"] = 1
+        match["goals"]["away"] = 1
+        
+    elif step == 5:  # Fine 120' Supplementari (1-1) -> Si va ai rigori
         match["fixture"]["status"]["short"] = "ET"
         match["fixture"]["status"]["elapsed"] = 120
+        match["goals"]["home"] = 1
+        match["goals"]["away"] = 1
         
-    elif step == 2:  # Inizio Rigori - Primi due rigori calciati
+    elif step == 6:  # Lotteria Rigori - Round 1 (Juve segna, Inter segna)
         match["fixture"]["status"]["short"] = "PEN"
         match["fixture"]["status"]["elapsed"] = 120
+        match["goals"]["home"] = 1
+        match["goals"]["away"] = 1
         match["events"].extend([
-            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}}, # Juve segna
-            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 505}}  # Inter segna
+            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}},
+            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 505}}
         ])
         
-    elif step == 3:  # Oltranza Rigori - L'Inter sbaglia un rigore
+    elif step == 7:  # Lotteria Rigori - Round 2 (Juve segna, Inter SBLAGLIA ❌)
         match["fixture"]["status"]["short"] = "PEN"
         match["fixture"]["status"]["elapsed"] = 120
-        match["events"].extend([
-            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}}, # Juve segna
-            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 505}}, # Inter segna
-            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}}, # Juve segna
-            {"type": "Goal", "detail": "Missed Penalty Shootout", "team": {"id": 505}} # Inter sbaglia! ❌
-        ])
-        
-    elif step == 4:  # Ultimo rigore decisivo segnato dalla Juve
-        match["fixture"]["status"]["short"] = "PEN"
-        match["fixture"]["status"]["elapsed"] = 120
+        match["goals"]["home"] = 1
+        match["goals"]["away"] = 1
         match["events"].extend([
             {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}},
             {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 505}},
             {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}},
-            {"type": "Goal", "detail": "Missed Penalty Shootout", "team": {"id": 505}},
-            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}}  # Juve segna il rigore decisivo!
+            {"type": "Goal", "detail": "Missed Penalty Shootout", "team": {"id": 505}} # Inter fallisce!
         ])
         
-    elif step == 5:  # Fischio Finale Assoluto (La Juve vince ai rigori)
+    elif step == 8:  # Fine Totale della partita (La Juve segna l'ultimo e vince!)
         match["fixture"]["status"]["short"] = "PEN"
         match["fixture"]["status"]["long"] = "Match Finished"
         match["fixture"]["status"]["elapsed"] = 120
-        match["score"]["penalty"]["home"] = 4
+        match["goals"]["home"] = 1
+        match["goals"]["away"] = 1
+        match["score"]["penalty"]["home"] = 3
         match["score"]["penalty"]["away"] = 1
         match["events"].extend([
             {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}},
             {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 505}},
             {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}},
             {"type": "Goal", "detail": "Missed Penalty Shootout", "team": {"id": 505}},
-            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}}
+            {"type": "Goal", "detail": "Penalty Shootout", "team": {"id": 496}} # Rigore della vittoria
         ])
         
     return finta_risposta
 
 # ==============================================================================
-# CICLO PRINCIPALE DEL TEST
+# CICLO PRINCIPALE
 # ==============================================================================
 def main():
-    print("🚀 AVVIO SIMULATORE CALCI DI RIGORE...")
+    print("🚀 AVVIO SIMULATORE COMPLETO: MATCH DI 120 MINUTI + RIGORI...")
     if os.path.exists("match_state.json"): os.remove("match_state.json")
     
-    # Eseguiamo i 6 step della lotteria distanziati da 8 secondi
-    for step in range(6):
-        print(f"\n--- 🔄 SIMULAZIONE STEP RIGORI {step} ---")
-        res = genera_finta_api_rigori(step)
+    # Giriamo per i 9 step totali distanziati da 8 secondi per goderci la sfilata su Telegram
+    for step in range(9):
+        print(f"\n--- 🔄 SIMULAZIONE STEP COMPLETO {step} ---")
+        res = genera_finta_api_partita_completa(step)
         
         if os.path.exists("match_state.json"):
             with open("match_state.json", "r") as f: state = json.load(f)
         else:
-            state = {"live_match_id": 8888, "sent_periods": [], "goals_detected": 0, "sent_subs": [], "sent_cards": [], "penalties_count": 0}
+            state = {"live_match_id": 7777, "sent_periods": [], "goals_detected": 0, "sent_subs": [], "sent_cards": [], "penalties_count": 0}
 
         match = res['response'][0]
         fixture = match.get('fixture', {})
@@ -203,43 +230,15 @@ def main():
         p_home, p_away = penalties.get('home'), penalties.get('away')
         score_string = f"{g_home_int} ({p_home}) - ({p_away}) {g_away_int}" if p_home is not None else f"{g_home_int}-{g_away_int}"
 
-        # 1. Cronaca Periodi (Supplementari / Fine 90)
-        if status in ["ET", "AET", "PEN"] and "2H_END" not in state["sent_periods"]:
-            send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n🇮🇹 {hashtag}")
+        # 1. Periodi Regolamentari e Supplementari
+        if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
+            send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n🇮🇹 {hashtag}")
+            state["sent_periods"].append("1H")
+        elif status == "HT" and "HT" not in state["sent_periods"]:
+            send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n🇮🇹 {hashtag}")
+            state["sent_periods"].append("HT")
+        elif status == "ET" and elapsed_minutes == 90 and "2H_END" not in state["sent_periods"]:
+            send_telegram(f"<b>FINE TEMPI REGOLAMENTARI {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\nSI VA AI SUPPLEMENTARI! ⏳\n\n🇮🇹 {hashtag}")
             state["sent_periods"].append("2H_END")
-
-        # 2. Lotteria dei Rigori in Tempo Reale
-        if status == "PEN" and "finished" not in status_long:
-            events = match.get('events', [])
-            home_pen_icons, away_pen_icons = [], []
-            for e in events:
-                detail, ev_type = e.get('detail', '').lower(), e.get('type', '').lower()
-                if "shootout" in detail or (ev_type == "goal" and elapsed_minutes >= 120 and "penalty" in detail):
-                    icon = E_PEN_KO if ("missed" in detail or "saved" in detail or ev_type == "card") else E_PEN_OK
-                    if e.get('team', {}).get('id') == 496: home_pen_icons.append(icon)
-                    else: away_pen_icons.append(icon)
-                    
-            total_kicks = len(home_pen_icons) + len(away_pen_icons)
-            if total_kicks > state["penalties_count"]:
-                msg_pen = f"<b>LOTTERIA DEI RIGORI 🎯</b>\n\n{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n🇮🇹 {hashtag}"
-                send_telegram(msg_pen)
-                state["penalties_count"] = total_kicks
-
-        # 3. Fine Partita Assoluta dopo i Rigori -> SCATTA CANVA
-        if "finished" in status_long or (status == "PEN" and p_home is not None):
-            print("🏁 Rilevata fine totale dei rigori! Scarico da Canva...")
-            msg_finale = f"<b>JUVENTUS VINCE AI RIGORI! 🏆🏆</b>\n\n{home_name} {score_string} {away_name}\n\n🇮🇹 {hashtag}"
-            
-            token = get_valid_token()
-            foto = get_canva_image(token)
-            send_telegram_post_with_photo(msg_finale, photo_bytes=foto)
-            
-            if os.path.exists("match_state.json"): os.remove("match_state.json")
-            print("🏁 Test Rigori completato con successo!")
-            sys.exit(0)
-
-        with open("match_state.json", "w") as f: json.dump(state, f)
-        time.sleep(8)
-
-if __name__ == "__main__":
-    main()
+        elif status == "ET" and elapsed_minutes == 120 and "ET_END" not in state["sent_periods"]:
+            send_telegram(
