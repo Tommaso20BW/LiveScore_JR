@@ -235,6 +235,31 @@ def build_split_scorers_text(events, home_id, away_id):
         return f"{E_BALL} <i>" + ", ".join(away_scorers) + "</i>\n"
     return ""
 
+def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=None):
+    """Formatta i nomi delle squadre e il punteggio applicando il grassetto a chi è in vantaggio."""
+    c_home_name = home_name
+    c_away_name = away_name
+    g_home_str = str(g_home)
+    g_away_str = str(g_away)
+
+    if g_home > g_away:
+        c_home_name = f"<b>{home_name}</b>"
+        g_home_str = f"<b>{g_home}</b>"
+    elif g_away > g_home:
+        c_away_name = f"<b>{away_name}</b>"
+        g_away_str = f"<b>{g_away}</b>"
+
+    if p_home is not None and p_away is not None:
+        # Gestione dei calci di rigore se presenti nel punteggio stringa
+        if p_home > p_away:
+            return f"{c_home_name} <b>{g_home_str} ({p_home})</b> - ({p_away}) {g_away_str} {c_away_name}"
+        elif p_away > p_home:
+            return f"{c_home_name} {g_home_str} ({p_home}) - <b>({p_away}) {g_away_str}</b> {c_away_name}"
+        else:
+            return f"{c_home_name} {g_home_str} ({p_home}) - ({p_away}) {g_away_str} {c_away_name}"
+    else:
+        return f"{c_home_name} {g_home_str}-{g_away_str} {c_away_name}"
+
 def main():
     print("BOT LIVE AVVIATO - Recupero ID Partita...")
     
@@ -338,6 +363,9 @@ def main():
             
             print(f"[LIVE] {home_name} {score_string} {away_name} | Stato: {status} | Minuto: {elapsed_minutes} | Prossimo controllo tra {current_sleep_time}s")
 
+            # Stringa accoppiata squadra+risultato formattata con vantaggio dinamico per la cronaca periodi
+            match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int)
+
             # 1. CRONACA PERIODI
             if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
                 msg = f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}"
@@ -345,17 +373,34 @@ def main():
                 state["sent_periods"].append("1H")
 
             elif status == "HT" and "HT" not in state["sent_periods"]:
-                msg = f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}"
+                msg = f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{match_status_line}\n\n{e_comp} {hashtag}"
                 send_telegram(msg)
                 state["sent_periods"].append("HT")
 
             elif status == "2H" and "2H" not in state["sent_periods"]:
-                msg = f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}"
+                # Caso in cui inizia il secondo tempo regolare
+                msg = f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{match_status_line}\n\n{e_comp} {hashtag}"
                 send_telegram(msg)
                 state["sent_periods"].append("2H")
 
-            elif status in ["ET", "AET", "PEN"] and "2H_END" not in state["sent_periods"]:
-                msg = f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}"
+            elif status == "ET" and elapsed_minutes <= 105 and "1ET_START" not in state["sent_periods"]:
+                msg = f"<b>INIZIO PRIMO TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{match_status_line}\n\n{e_comp} {hashtag}"
+                send_telegram(msg)
+                state["sent_periods"].append("1ET_START")
+
+            elif status == "ET" and elapsed_minutes > 105 and "1ET_END" not in state["sent_periods"]:
+                msg = f"<b>FINE PRIMO TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{match_status_line}\n\n{e_comp} {hashtag}"
+                send_telegram(msg)
+                state["sent_periods"].append("1ET_END")
+
+            elif status == "ET" and "2ET_START" not in state["sent_periods"] and elapsed_minutes > 105:
+                # Nota: Gestito sequenzialmente in base all'avanzamento dei minuti live di API-Sports
+                msg = f"<b>INIZIO SECONDO TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{match_status_line}\n\n{e_comp} {hashtag}"
+                send_telegram(msg)
+                state["sent_periods"].append("2ET_START")
+
+            elif status in ["AET", "PEN"] and "2H_END" not in state["sent_periods"]:
+                msg = f"<b>FINE SECONDO TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{match_status_line}\n\n{e_comp} {hashtag}"
                 send_telegram(msg)
                 state["sent_periods"].append("2H_END")
 
@@ -380,16 +425,17 @@ def main():
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
                 print("🏁 FISCHIO FINALE RILEVATO! Avvio processo scaricamento grafica Canva...")
                 
-                # Generazione testo per il post finale
+                # Generazione testo per il post finale con evidenza del vincitore complessivo
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
-                msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_name} {score_string} {away_name}\n{scorers_line}\n{e_comp} {hashtag}"
+                final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
+                msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{final_status_line}\n{scorers_line}\n{e_comp} {hashtag}"
                 
                 # Gestione Canva
                 canva_token = get_valid_token()
                 foto_canva = get_canva_image(canva_token)
                 
                 # Invia il post completo con foto (o testo come ripiego se fallisce)
-                send_telegram_post_with_photo(msg_finale, photo_bytes=foto_canva)
+                send_telegram_with_photo(msg_finale, photo_bytes=foto_canva)
                 
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
@@ -400,6 +446,11 @@ def main():
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
                 events, live_scorer_line = match.get('events', []), ""
+                current_home_name = home_name
+                current_away_name = away_name
+                g_home_str = str(g_home_int)
+                g_away_str = str(g_away_int)
+                
                 if events:
                     all_goals = [e for e in events if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower()]
                     if all_goals:
@@ -411,12 +462,21 @@ def main():
                         minute_str = f"{el}+{ex}" if ex else f"{el}"
                         p_name = last_goal.get('player', {}).get('name', 'Giocatore')
                         det = last_goal.get('detail', '').lower()
+                        event_team_id = last_goal.get('team', {}).get('id')
+                        
+                        if event_team_id == home_id:
+                            current_home_name = f"<b>{home_name}</b>"
+                            g_home_str = f"<b>{g_home_int}</b>"
+                        elif event_team_id == away_id:
+                            current_away_name = f"<b>{away_name}</b>"
+                            g_away_str = f"<b>{g_away_int}</b>"
                         
                         if "penalty" in det: p_name += " (Rig.)"
                         elif "own goal" in det: p_name += " (Autogol)"
                         live_scorer_line = f"{E_BALL} <i>{minute_str}’ {p_name}</i>\n"
                         
-                msg = f"<b>GOAL {E_MIC}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n{live_scorer_line}\n{e_comp} {hashtag}"
+                live_score_string = f"{g_home_str}-{g_away_str}"
+                msg = f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {live_score_string} {current_away_name}\n{live_scorer_line}\n{e_comp} {hashtag}"
                 send_telegram(msg)
                 state["goals_detected"] = total_goals_now
             elif total_goals_now < state["goals_detected"]:
