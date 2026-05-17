@@ -100,10 +100,10 @@ def get_canva_image(access_token):
     return None
 
 # ==============================================================================
-# FUNZIONE DI SUPPORTO PER IL VANTAGGIO IN GRASSETTO
+# FUNZIONE DI SUPPORTO PER IL VANTAGGIO IN GRASSETTO (SOLO CRONACA PERIODI E FINALE)
 # ==============================================================================
 def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=None):
-    """Formatta i nomi delle squadre e il punteggio applicando il grassetto a chi è in vantaggio."""
+    """Formatta applicando il grassetto solo a chi si trova in quel momento in vantaggio."""
     c_home_name = home_name
     c_away_name = away_name
     g_home_str = str(g_home)
@@ -168,6 +168,7 @@ def genera_finta_api_partita_completa(step):
         match["fixture"]["status"]["elapsed"] = 65
         match["goals"]["home"] = 1
         match["goals"]["away"] = 1
+        # Nel dizionario simuliamo entrambi i gol accaduti finora
         match["events"].extend([
             {"type": "Goal", "detail": "Normal Goal", "team": {"id": 505}, "time": {"elapsed": 30}, "player": {"name": "L. Martinez"}},
             {"type": "Goal", "detail": "Normal Goal", "team": {"id": 496}, "time": {"elapsed": 65}, "player": {"name": "D. Vlahović"}}
@@ -255,7 +256,7 @@ def main():
         penalties = match.get('score', {}).get('penalty', {})
         p_home, p_away = penalties.get('home'), penalties.get('away')
 
-        # Calcolo stringa accoppiata e dinamica per la cronaca periodi
+        # Controllo periodi standard (segue la logica del vantaggio se c'è, altrimenti testo standard)
         match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int)
 
         if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
@@ -271,20 +272,32 @@ def main():
             send_telegram(f"<b>FINE TEMPI SUPPLEMENTARI {E_FLAG}</b>\n\n{match_status_line}\n\nSI DECIDE TUTTO AI RIGORI! 🎯\n\n🇮🇹 {hashtag}")
             state["sent_periods"].append("ET_END")
 
+        # Gestione GOAL LIVE (Adesso mette IN BOLD la squadra marcatrice anche in caso di pareggio)
         total_goals_now = g_home_int + g_away_int
         if status in ["1H", "2H", "ET"] and total_goals_now > state["goals_detected"]:
-            marcatore = "30’ L. Martinez" if g_away_int > g_home_int else "65’ D. Vlahović"
-            
-            # Grassetto dinamico specifico per il post del GOAL LIVE
+            events = match.get('events', [])
             current_home_name, current_away_name = home_name, away_name
             g_home_str, g_away_str = str(g_home_int), str(g_away_int)
-            if g_home_int > g_away_int:
-                current_home_name = f"<b>{home_name}</b>"
-                g_home_str = f"<b>{g_home_int}</b>"
-            elif g_away_int > g_home_int:
-                current_away_name = f"<b>{away_name}</b>"
-                g_away_str = f"<b>{g_away_int}</b>"
-                
+            marcatore = ""
+
+            if events:
+                # Estraiamo l'ultimo gol accaduto in ordine cronologico nel dizionario eventi
+                all_goals = [e for e in events if e.get('type', '').lower() == 'goal']
+                if all_goals:
+                    last_goal = all_goals[-1]
+                    team_id_scorer = last_goal.get('team', {}).get('id')
+                    el = last_goal.get('time', {}).get('elapsed', '?')
+                    p_name = last_goal.get('player', {}).get('name', 'Giocatore')
+                    marcatore = f"{el}’ {p_name}"
+
+                    # Applica il grassetto alla squadra che ha segnato l'evento, senza basarsi sul punteggio maggiore
+                    if team_id_scorer == 496: # ID Juve
+                        current_home_name = f"<b>{home_name}</b>"
+                        g_home_str = f"<b>{g_home_int}</b>"
+                    else:
+                        current_away_name = f"<b>{away_name}</b>"
+                        g_away_str = f"<b>{g_away_int}</b>"
+
             send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} <i>{marcatore}</i>\n\n🇮🇹 {hashtag}")
             state["goals_detected"] = total_goals_now
 
@@ -306,7 +319,6 @@ def main():
 
         if "finished" in status_long or (status == "PEN" and p_home is not None):
             print("🏁 FINE TOTALE! Vittoria ai rigori. Avvio Canva...")
-            # Grassetto dinamico applicato ai rigori finali (con p_home e p_away)
             final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
             msg_finale = f"<b>JUVENTUS VINCE AI RIGORI! 🏆⚪️⚫️</b>\n\n{final_status_line}\n\n⚽️ <i>30’ L. Martinez // 65’ D. Vlahović</i>\n\n🇮🇹 {hashtag}"
             
