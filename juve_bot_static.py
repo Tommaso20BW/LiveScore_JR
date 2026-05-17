@@ -168,13 +168,22 @@ def main():
             g_home_int = goals_home if goals_home is not None else 0
             g_away_int = goals_away if goals_away is not None else 0
 
-            # Se non è iniziata, aggiorna rapido ogni 30s. Quando inizia passa a 60s.
+            # ------------------------------------------------------------------
+            # CONFIGURAZIONE DELLE ATTESE (Frequenza richieste alle API)
+            # ------------------------------------------------------------------
             if status in ["NS", "TBD"] and g_home_int == 0 and g_away_int == 0 and elapsed_minutes == 0:
+                # Prima dell'inizio: 30 secondi
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] In attesa del fischio d'inizio (Stato: {status}). Controllo tra 30s...")
                 time.sleep(30)
                 continue
                 
-            current_sleep_time = 30 if status == "PEN" else (45 if status in ["ET", "AET"] else 60)
+            if status == "PEN":
+                current_sleep_time = 60       # Calci di rigore: 60 secondi
+            elif status in ["ET", "AET"]:
+                current_sleep_time = 140      # Tempi supplementari: 140 secondi
+            else:
+                current_sleep_time = 90       # Tempi regolamentari (1H, HT, 2H): 90 secondi
+            # ------------------------------------------------------------------
             
             league_id = match.get('league', {}).get('id', 0)
             e_comp = get_league_emoji(league_id)
@@ -194,7 +203,7 @@ def main():
             a_short = "Juve" if away_id == JUVE_ID else away_name.replace(" ", "")
             hashtag = f"#{h_short}{a_short}"
             
-            print(f"[LIVE] {home_name} {score_string} {away_name} | Stato: {status} | Minuto: {elapsed_minutes}")
+            print(f"[LIVE] {home_name} {score_string} {away_name} | Stato: {status} | Minuto: {elapsed_minutes} | Prossimo controllo tra {current_sleep_time}s")
 
             # 1. CRONACA PERIODI
             if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
