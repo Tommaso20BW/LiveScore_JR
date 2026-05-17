@@ -16,14 +16,13 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - name: Controlla il codice della repository
+      - name: Checkout del codice
         uses: actions/checkout@v5
 
       - name: Configura Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-          cache: 'pip'
 
       - name: Installa librerie
         run: |
