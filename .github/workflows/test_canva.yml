@@ -1,0 +1,38 @@
+name: 🧪 TEST AUTOMATICO CANVA + LIVE
+
+on:
+  workflow_dispatch: # Ti permette di farlo partire a mano con il tasto
+
+permissions:
+  contents: write # Permesso obbligatorio per salvare canva_tokens.json
+
+jobs:
+  run-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v5
+
+      - name: Configura Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Installa librerie
+        run: pip install requests
+
+      - name: Esegui simulazione partita
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+          CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
+          CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
+        run: python test_live_simula.py
+
+      - name: 🔄 Salva token aggiornati se scaduti durante il test
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add canva_tokens.json
+          git commit -m "🔄 Aggiornamento automatico Token Canva (Da Test) [Skip CI]" || echo "Nessun cambio nei token"
+          git push
