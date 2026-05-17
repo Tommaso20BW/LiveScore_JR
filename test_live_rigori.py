@@ -241,4 +241,48 @@ def main():
             send_telegram(f"<b>FINE TEMPI REGOLAMENTARI {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\nSI VA AI SUPPLEMENTARI! ⏳\n\n🇮🇹 {hashtag}")
             state["sent_periods"].append("2H_END")
         elif status == "ET" and elapsed_minutes == 120 and "ET_END" not in state["sent_periods"]:
-            send_telegram(
+            send_telegram(f"<b>FINE TEMPI SUPPLEMENTARI {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\nSI DECIDE TUTTO AI RIGORI! 🎯\n\n🇮🇹 {hashtag}")
+            state["sent_periods"].append("ET_END")
+
+        # 2. Gol nei tempi regolamentari
+        total_goals_now = g_home_int + g_away_int
+        if status in ["1H", "2H", "ET"] and total_goals_now > state["goals_detected"]:
+            marcatore = "30’ L. Martinez" if g_away_int > g_home_int else "65’ D. Vlahović"
+            send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n{E_BALL} <i>{marcatore}</i>\n\n🇮🇹 {hashtag}")
+            state["goals_detected"] = total_goals_now
+
+        # 3. Lotteria dei Rigori (Passo dopo passo)
+        if status == "PEN" and "finished" not in status_long:
+            events = match.get('events', [])
+            home_pen_icons, away_pen_icons = [], []
+            for e in events:
+                detail, ev_type = e.get('detail', '').lower(), e.get('type', '').lower()
+                if "shootout" in detail or (ev_type == "goal" and elapsed_minutes >= 120 and "penalty" in detail):
+                    icon = E_PEN_KO if ("missed" in detail or "saved" in detail) else E_PEN_OK
+                    if e.get('team', {}).get('id') == 496: home_pen_icons.append(icon)
+                    else: away_pen_icons.append(icon)
+                    
+            total_kicks = len(home_pen_icons) + len(away_pen_icons)
+            if total_kicks > state["penalties_count"]:
+                msg_pen = f"<b>LOTTERIA DEI RIGORI 🎯</b>\n\n{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n🇮🇹 {hashtag}"
+                send_telegram(msg_pen)
+                state["penalties_count"] = total_kicks
+
+        # 4. Fischio Finale post-rigori -> SCATTA IL TRIPLICE FISCHIO + CANVA IMAGE
+        if "finished" in status_long or (status == "PEN" and p_home is not None):
+            print("🏁 FINE TOTALE! Vittoria ai rigori. Avvio Canva...")
+            msg_finale = f"<b>JUVENTUS VINCE AI RIGORI! 🏆⚪️⚫️</b>\n\n{home_name} {score_string} {away_name}\n\n⚽️ <i>30’ L. Martinez // 65’ D. Vlahović</i>\n\n🇮🇹 {hashtag}"
+            
+            token = get_valid_token()
+            foto = get_canva_image(token)
+            send_telegram_post_with_photo(msg_finale, photo_bytes=foto)
+            
+            if os.path.exists("match_state.json"): os.remove("match_state.json")
+            print("🏁 Test Partita Completa + Rigori completato!")
+            sys.exit(0)
+
+        with open("match_state.json", "w") as f: json.dump(state, f)
+        time.sleep(8)
+
+if __name__ == "__main__":
+    main()
