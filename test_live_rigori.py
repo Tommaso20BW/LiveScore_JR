@@ -100,6 +100,33 @@ def get_canva_image(access_token):
     return None
 
 # ==============================================================================
+# FUNZIONE DI SUPPORTO PER IL VANTAGGIO IN GRASSETTO
+# ==============================================================================
+def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=None):
+    """Formatta i nomi delle squadre e il punteggio applicando il grassetto a chi è in vantaggio."""
+    c_home_name = home_name
+    c_away_name = away_name
+    g_home_str = str(g_home)
+    g_away_str = str(g_away)
+
+    if g_home > g_away:
+        c_home_name = f"<b>{home_name}</b>"
+        g_home_str = f"<b>{g_home}</b>"
+    elif g_away > g_home:
+        c_away_name = f"<b>{away_name}</b>"
+        g_away_str = f"<b>{g_away}</b>"
+
+    if p_home is not None and p_away is not None:
+        if p_home > p_away:
+            return f"{c_home_name} <b>{g_home_str} ({p_home})</b> - ({p_away}) {g_away_str} {c_away_name}"
+        elif p_away > p_home:
+            return f"{c_home_name} {g_home_str} ({p_home}) - <b>({p_away}) {g_away_str}</b> {c_away_name}"
+        else:
+            return f"{c_home_name} {g_home_str} ({p_home}) - ({p_away}) {g_away_str} {c_away_name}"
+    else:
+        return f"{c_home_name} {g_home_str}-{g_away_str} {c_away_name}"
+
+# ==============================================================================
 # SIMULATORE DI UNA PARTITA COMPLETA FINO AI RIGORI (9 STEP)
 # ==============================================================================
 def genera_finta_api_partita_completa(step):
@@ -227,25 +254,38 @@ def main():
         
         penalties = match.get('score', {}).get('penalty', {})
         p_home, p_away = penalties.get('home'), penalties.get('away')
-        score_string = f"{g_home_int} ({p_home}) - ({p_away}) {g_away_int}" if p_home is not None else f"{g_home_int}-{g_away_int}"
+
+        # Calcolo stringa accoppiata e dinamica per la cronaca periodi
+        match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int)
 
         if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
             send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n🇮🇹 {hashtag}")
             state["sent_periods"].append("1H")
         elif status == "HT" and "HT" not in state["sent_periods"]:
-            send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n🇮🇹 {hashtag}")
+            send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{match_status_line}\n\n🇮🇹 {hashtag}")
             state["sent_periods"].append("HT")
         elif status == "ET" and elapsed_minutes == 90 and "2H_END" not in state["sent_periods"]:
-            send_telegram(f"<b>FINE TEMPI REGOLAMENTARI {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\nSI VA AI SUPPLEMENTARI! ⏳\n\n🇮🇹 {hashtag}")
+            send_telegram(f"<b>FINE TEMPI REGOLAMENTARI {E_FLAG}</b>\n\n{match_status_line}\n\nSI VA AI SUPPLEMENTARI! ⏳\n\n🇮🇹 {hashtag}")
             state["sent_periods"].append("2H_END")
         elif status == "ET" and elapsed_minutes == 120 and "ET_END" not in state["sent_periods"]:
-            send_telegram(f"<b>FINE TEMPI SUPPLEMENTARI {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\nSI DECIDE TUTTO AI RIGORI! 🎯\n\n🇮🇹 {hashtag}")
+            send_telegram(f"<b>FINE TEMPI SUPPLEMENTARI {E_FLAG}</b>\n\n{match_status_line}\n\nSI DECIDE TUTTO AI RIGORI! 🎯\n\n🇮🇹 {hashtag}")
             state["sent_periods"].append("ET_END")
 
         total_goals_now = g_home_int + g_away_int
         if status in ["1H", "2H", "ET"] and total_goals_now > state["goals_detected"]:
             marcatore = "30’ L. Martinez" if g_away_int > g_home_int else "65’ D. Vlahović"
-            send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n{E_BALL} <i>{marcatore}</i>\n\n🇮🇹 {hashtag}")
+            
+            # Grassetto dinamico specifico per il post del GOAL LIVE
+            current_home_name, current_away_name = home_name, away_name
+            g_home_str, g_away_str = str(g_home_int), str(g_away_int)
+            if g_home_int > g_away_int:
+                current_home_name = f"<b>{home_name}</b>"
+                g_home_str = f"<b>{g_home_int}</b>"
+            elif g_away_int > g_home_int:
+                current_away_name = f"<b>{away_name}</b>"
+                g_away_str = f"<b>{g_away_int}</b>"
+                
+            send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} <i>{marcatore}</i>\n\n🇮🇹 {hashtag}")
             state["goals_detected"] = total_goals_now
 
         if status == "PEN" and "finished" not in status_long:
@@ -266,7 +306,9 @@ def main():
 
         if "finished" in status_long or (status == "PEN" and p_home is not None):
             print("🏁 FINE TOTALE! Vittoria ai rigori. Avvio Canva...")
-            msg_finale = f"<b>JUVENTUS VINCE AI RIGORI! 🏆⚪️⚫️</b>\n\n{home_name} {score_string} {away_name}\n\n⚽️ <i>30’ L. Martinez // 65’ D. Vlahović</i>\n\n🇮🇹 {hashtag}"
+            # Grassetto dinamico applicato ai rigori finali (con p_home e p_away)
+            final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
+            msg_finale = f"<b>JUVENTUS VINCE AI RIGORI! 🏆⚪️⚫️</b>\n\n{final_status_line}\n\n⚽️ <i>30’ L. Martinez // 65’ D. Vlahović</i>\n\n🇮🇹 {hashtag}"
             
             token = get_valid_token()
             foto = get_canva_image(token)
