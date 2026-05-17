@@ -106,11 +106,10 @@ def main():
     today_date = datetime.now().strftime('%Y-%m-%d')
     
     # --------------------------------------------------------------------------
-    # TROVA L'ID DELLA PARTITA (Cerca prima tra le LIVE, poi nel palinsesto odierno)
+    # TROVA L'ID DELLA PARTITA
     # --------------------------------------------------------------------------
     match_id = None
     
-    # Tentativo 1: Cerca nelle partite attualmente LIVE
     try:
         live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
         if live_res.get('response'):
@@ -122,7 +121,6 @@ def main():
     except Exception as e:
         print(f"Nota: Controllo live rapido fallito, procedo con data odierna ({e})")
 
-    # Tentativo 2: Se non è live, cercala tramite la data di oggi
     if not match_id:
         try:
             date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
@@ -136,7 +134,6 @@ def main():
             print(f"Errore critico nel recupero della partita per data: {e}")
             sys.exit(1)
 
-    # Da adesso in poi interroghiamo SOLO questo ID preciso (Niente cache, cattura il FT!)
     params = {"id": match_id}
 
     while True:
@@ -169,23 +166,26 @@ def main():
             g_away_int = goals_away if goals_away is not None else 0
 
             # ------------------------------------------------------------------
-            # CONFIGURAZIONE DELLE ATTESE (Frequenza richieste alle API)
+            # CONFIGURAZIONE DINAMICA DELLE ATTESE
             # ------------------------------------------------------------------
             if status in ["NS", "TBD"] and g_home_int == 0 and g_away_int == 0 and elapsed_minutes == 0:
-                # Prima dell'inizio: 30 secondi
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] In attesa del fischio d'inizio (Stato: {status}). Controllo tra 30s...")
                 time.sleep(30)
                 continue
                 
+            league_id = match.get('league', {}).get('id', 0)
+
             if status == "PEN":
                 current_sleep_time = 60       # Calci di rigore: 60 secondi
             elif status in ["ET", "AET"]:
                 current_sleep_time = 140      # Tempi supplementari: 140 secondi
+            elif status == "HT":
+                current_sleep_time = 120      # Intervallo (HT): 120 secondi per tutti
             else:
-                current_sleep_time = 90       # Tempi regolamentari (1H, HT, 2H): 90 secondi
+                # Tempi di gioco regolamentari (1H e 2H)
+                current_sleep_time = 70 if league_id == 135 else 90
             # ------------------------------------------------------------------
             
-            league_id = match.get('league', {}).get('id', 0)
             e_comp = get_league_emoji(league_id)
             
             teams = match.get('teams', {})
@@ -242,7 +242,7 @@ def main():
                     send_telegram(msg_pen)
                     state["penalties_count"] = total_kicks
 
-            # 3. FINE PARTITA (FT / AET / PEN) - CATTURA SICURA
+            # 3. FINE PARTITA (FT / AET / PEN)
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
@@ -258,13 +258,10 @@ def main():
             if total_goals_now > state["goals_detected"]:
                 events, live_scorer_line = match.get('events', []), ""
                 if events:
-                    # Filtra solo i gol reali escludendo i rigori post-partita
                     all_goals = [e for e in events if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower()]
-                    
                     if all_goals:
-                        # Ordina i gol per minuto cronologico crescente (gestendo elapsed + extra recupero)
                         all_goals.sort(key=lambda x: (x.get('time', {}).get('elapsed', 0), x.get('time', {}).get('extra', 0) or 0))
-                        last_goal = all_goals[-1]  # Estrae l'effettivo ultimo gol segnato in ordine temporale
+                        last_goal = all_goals[-1]
                         
                         el = last_goal.get('time', {}).get('elapsed', '?')
                         ex = last_goal.get('time', {}).get('extra')
@@ -301,7 +298,6 @@ def main():
                             subs_by_minute[sub_key]["ids"].append(sub_id)
                     elif ev_type == 'card' and "red" in detail:
                         p_name = e.get('player', {}).get('name', 'Giocatore')
-                        # ID univoco basato solo su minuto e giocatore per bloccare i duplicati dei doppi gialli
                         card_id = f"card_{minute}_{p_name}".replace(" ", "_")
                         if card_id not in state["sent_cards"]:
                             send_telegram(f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>{minute}’ {p_name}</i>\n\n{e_comp} {hashtag}")
