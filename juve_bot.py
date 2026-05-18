@@ -108,7 +108,6 @@ def update_github_secret(secret_name, new_value):
         "X-GitHub-Api-Version": "2022-11-28"
     }
 
-    # 1. Recupera la chiave pubblica della repository (richiesta da GitHub per criptare)
     pk_url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/public-key"
     try:
         res_pk = requests.get(pk_url, headers=headers, timeout=10)
@@ -120,13 +119,11 @@ def update_github_secret(secret_name, new_value):
         key_id = pk_data["key_id"]
         public_key_b64 = pk_data["key"]
 
-        # 2. Cripta il nuovo valore del secret usando NaCl
         public_key = public.PublicKey(public_key_b64.encode("utf-8"), encoding.Base64Encoder)
         sealed_box = public.SealedBox(public_key)
         encrypted_value = sealed_box.encrypt(new_value.encode("utf-8"))
         encrypted_b64 = base64.b64encode(encrypted_value).decode("utf-8")
 
-        # 3. Invia il valore criptato a GitHub per aggiornare il Secret
         secret_url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/{secret_name}"
         payload = {
             "encrypted_value": encrypted_b64,
@@ -148,7 +145,7 @@ def update_github_secret(secret_name, new_value):
 # FUNZIONI INTEGRATE CANVA API
 # ==============================================================================
 def get_valid_token():
-    """Genera un Access Token e aggiorna il Refresh Token se Canva ne fornisce uno nuovo."""
+    """Genera un Access Token e aggiorna il Refresh Token se Canva ne fornece uno nuovo."""
     if not CANVA_REFRESH_TOKEN:
         print("❌ Errore: CANVA_REFRESH_TOKEN non trovato.")
         return None
@@ -168,7 +165,6 @@ def get_valid_token():
             new_tokens = res.json()
             print("✅ Access Token generato con successo!")
             
-            # Se Canva restituisce un NUOVO refresh_token, lo salviamo subito nei Secrets di GitHub
             if "refresh_token" in new_tokens and new_tokens["refresh_token"] != CANVA_REFRESH_TOKEN:
                 print("🔄 Canva ha emesso un nuovo Refresh Token. Aggiorno GitHub Secrets...")
                 update_github_secret("CANVA_REFRESH_TOKEN", new_tokens["refresh_token"])
@@ -278,9 +274,9 @@ def main():
         print("❌ Errore critico: Impossibile convalidare o ruotare il token Canva. Arresto forzato del bot.")
         sys.exit(1)
         
-    print("✅ Token Canva validato con successo! Procedo al recupero del match...")
+    print("✅ Token Canva validato con successo! Procedo al recupero forzato del match...")
 
-    # [FASE 2]: RECUPERO ID PARTITA
+    # [FASE 2]: RECUPERO ID PARTITA (CORAZZATO PER AVVIO MANUALE)
     url = "https://v3.football.api-sports.io/fixtures"
     if not API_KEY:
         print("Errore: API_KEY mancante.")
@@ -290,30 +286,45 @@ def main():
     today_date = datetime.now().strftime('%Y-%m-%d')
     match_id = None
     
+    # 1. Controlliamo prima se c'è una partita già LIVE
     try:
         live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
         if live_res.get('response'):
             for f in live_res['response']:
                 if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
                     match_id = f['fixture']['id']
-                    print(f"🔥 Juve trovata LIVE! Aggancio ID Fixture: {match_id}")
+                    print(f"🔥 Match trovato già LIVE! Aggancio ID: {match_id}")
                     break
     except Exception as e:
         print(f"Nota: Controllo live rapido fallito ({e})")
 
+    # 2. Se non è live, cerchiamo tra i match programmati per oggi
     if not match_id:
         try:
             date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
             if date_res.get('response') and len(date_res['response']) > 0:
                 match_id = date_res['response'][0]['fixture']['id']
-                print(f"📅 Partita trovata. ID Fixture bloccato: {match_id}")
-            else:
-                print(f"❌ Nessuna partita trovata per oggi ({today_date}). Bot spento.")
-                sys.exit(0)
+                print(f"📅 Match trovato nel palinsesto di oggi! ID: {match_id}")
         except Exception as e:
-            print(f"Errore critico recupero partita: {e}")
+            print(f"Nota: Controllo data odierna fallito ({e})")
+
+    # 3. FORZATURA TOTAL-LIVE: Se l'API fa i capricci, prendiamo il prossimo match in assoluto senza spegnerci
+    if not match_id:
+        try:
+            print("⚠️ Nessun match trovato per la data esatta di oggi. Recupero la prossima partita in calendario...")
+            next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
+            if next_res.get('response') and len(next_res['response']) > 0:
+                match_data = next_res['response'][0]
+                match_id = match_data['fixture']['id']
+                print(f"📌 Forzatura riuscita! Agganciato il prossimo match utile. ID: {match_id} ({match_data['fixture']['date']})")
+            else:
+                print("❌ Errore critico: L'API non restituisce nessuna partita nel palinsesto. Spengo.")
+                sys.exit(1)
+        except Exception as e:
+            print(f"❌ Errore critico nel recupero del palinsesto: {e}")
             sys.exit(1)
 
+    print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di attesa live...")
     params = {"id": match_id}
 
     # [FASE 3]: CICLO EVENTI IN LIVE REALE
@@ -345,6 +356,7 @@ def main():
             g_home_int = goals_home if goals_home is not None else 0
             g_away_int = goals_away if goals_away is not None else 0
 
+            # Resta in attesa (ciclo leggero di 30s) finché la partita non inizia effettivamente sul campo
             if status in ["NS", "TBD"] and g_home_int == 0 and g_away_int == 0 and elapsed_minutes == 0:
                 time.sleep(30)
                 continue
@@ -405,7 +417,7 @@ def main():
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_name} {score_string} {away_name}\n{scorers_line}\n{e_comp} {hashtag}"
                 
-                # Sicurezza: rigeneriamo il token se sono passate ore dall'avvio del bot
+                # Sicurezza: rigeneriamo l'access token se sono passate ore dall'avvio del bot
                 canva_token_fresco = get_valid_token()
                 if not canva_token_fresco:
                     print("⚠️ Rinnovo finale fallito, tento l'uso del token iniziale...")
@@ -441,7 +453,7 @@ def main():
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
 
-            # 5. CARTELINI ROSSI E CAMBI
+            # 5. CARTELLINI ROSSI E CAMBI
             events = match.get('events', [])
             if events:
                 subs_by_minute = {}
