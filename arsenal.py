@@ -35,7 +35,7 @@ E_BOLT = '⚡️'
 E_FLAG = '🏁'
 E_MIC = '🎙'
 E_BALL = '⚽️'
-E_GUN = '🔴'      # Cambiato o integrabile con un'emoji iconica del club
+E_GUN = '🔴'
 E_SUB = '🔄'
 E_UP = '🔼'
 E_DOWN = '🔽'
@@ -230,12 +230,48 @@ def main():
         print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
         return
 
-    # 3. CONTROLLO PARTITA (Solo se non siamo in modalità Keep-Alive)
+    # 3. CONTROLLO O AUTO-ATTIVAZIONE PARTITA
     if not os.path.exists("match_state.json"):
-        print("Stato del match non trovato. Nessuna partita attiva in coda.")
-        return
+        print("⚠️ Stato del match non trovato. Tento il recupero automatico del match di oggi...")
+        if not API_KEY:
+            print("❌ Errore: API_KEY mancante. Impossibile cercare il match.")
+            return
+        
+        # Cerchiamo i match di oggi per l'Arsenal (ID 42)
+        oggi = datetime.now().strftime('%Y-%m-%d')
+        url_today = f"https://v3.football.api-sports.io/fixtures?team={MY_TEAM_ID}&date={oggi}"
+        headers = {"x-apisports-key": API_KEY}
+        
+        try:
+            res_today = requests.get(url_today, headers=headers, timeout=15)
+            if res_today.status_code == 200:
+                fixtures = res_today.json().get("response", [])
+                if fixtures:
+                    match_id = fixtures[0].get("fixture", {}).get("id")
+                    state = {
+                        "live_match_id": match_id,
+                        "goals_detected": 0,
+                        "sent_periods": [],
+                        "penalties_count": 0
+                    }
+                    print(f"✅ Match trovato! ID: {match_id}. Creo il file di stato.")
+                    with open("match_state.json", "w") as f:
+                        json.dump(state, f)
+                else:
+                    print("❌ Nessun match trovato per l'Arsenal in data odierna.")
+                    return
+            else:
+                print(f"❌ Errore API ricerca oggi: {res_today.text}")
+                return
+        except Exception as e:
+            print(f"❌ Errore connessione ricerca iniziale: {e}")
+            return
+    else:
+        # Se il file esiste già, lo legge normalmente
+        with open("match_state.json", "r") as f: 
+            state = json.load(f)
 
-    with open("match_state.json", "r") as f: state = json.load(f)
+    # 4. MONITORAGGIO EFFETTIVO DEL MATCH
     match_id = state.get("live_match_id")
     if not match_id:
         print("Errore: live_match_id assente nel file di stato.")
