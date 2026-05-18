@@ -1,42 +1,3 @@
-Agisci come un esperto sviluppatore Python. Di seguito ti fornisco uno script originariamente configurato per seguire i match live della Juventus tramite API-Football (API-Sports) e inviare aggiornamenti su Telegram con grafiche generate dinamicamente tramite Canva. 
-
-Il mio obiettivo è fare un refactoring completo dello script per convertirlo per l'ARSENAL FC.
-
-Per favore, applica le seguenti modifiche strutturali, di branding e di logica:
-
-1. CONFIGURAZIONE ID SQUADRA:
-   - Sostituisci JUVE_ID = 496 con l'ID ufficiale dell'Arsenal su API-Football, che è 42.
-   - Rinomina la variabile globale JUVE_ID in ARSENAL_ID e aggiorna tutti i controlli condizionali nel codice in cui veniva verificato l'ID della squadra.
-
-2. LOGO E GRAFICA (CANVA):
-   - Mantieni la struttura di CANVA_DESIGN_ID e PAGINA_TARGET come variabili globali, ma aggiungi un commento per ricordare che dovranno puntare ai nuovi template grafici dell'Arsenal.
-
-3. BRANDING, EMOJI E HASHTAG SYSTEM:
-   - Cambia il commento sul set di emoji standard per riflettere il nuovo brand (es. @Arsenal_Live o Gunners Community) al posto di @Juventus_Reborn.
-   - Aggiorna il dizionario LEAGUE_EMOJIS per mappare correttamente le competizioni inglesi ed europee con le relative bandiere:
-     * 39: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' (Premier League)
-     * 45: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' (FA Cup)
-     * 48: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' (EFL Cup / Carabao Cup)
-     * 2:  '🇪🇺' (Champions League)
-     * 3:  '🇪🇺' (Europa League)
-     * 667: '🤝' (Amichevoli Club)
-   - Nella logica di generazione dell'hashtag finale, adatta il calcolo di `h_short` e `a_short`: se l'id corrisponde ad ARSENAL_ID, il nome abbreviato deve essere "Arsenal" (o "Gunners"). Di conseguenza l'hashtag dovrà combinarsi (es. #ArsenalChelsea o #LiverpoolArsenal).
-
-4. LOGICA DI PULIZIA NOMI (clean_name):
-   - Ottimizza la funzione `clean_name` se necessario, assicurandoti che gestisca bene i nomi delle squadre inglesi nel feed delle API (es. rimuovendo suffissi/prefissi ridondanti come "FC", "AFC", ecc., per mantenere i post puliti).
-
-5. LOGICA DEI MESSAGGI LIVE (CAMBI E FINE PARTITA):
-   - Nella gestione dei cambi (all'interno del ciclo `while True`), modifica il controllo `sub_data["team_id"] == JUVE_ID` in `sub_data["team_id"] == ARSENAL_ID`.
-   - Di conseguenza, la variabile `team_title` deve stampare "ARSENAL" in maiuscolo quando la sostituzione è dei Gunners.
-   - Assicurati che la stringa `home_name = "Juventus" se...` diventi `home_name = "Arsenal" se...` (e lo stesso per `away_name`).
-
-6. REQUISITI TECNICI DA MANTENERE IDENTICI:
-   - Non toccare la logica di crittografia asimmetrica con PyNaCl (nacl.public.SealedBox) per l'aggiornamento automatico del `CANVA_REFRESH_TOKEN` sui Secrets di GitHub.
-   - Mantieni inalterata la gestione dello stato del match tramite il file locale `match_state.json`.
-   - Preserva la logica dei cicli di sleep dinamici basati sullo stato del match (HT, FT, PEN, ecc.).
-
-Ecco il codice sorgente completo da convertire:
-
 import os
 import requests
 import json
@@ -44,6 +5,7 @@ import time
 import sys
 import base64
 from datetime import datetime
+
 # Usiamo NaCl (Libsodium) per criptare il secret come richiesto dalle API di GitHub
 try:
     from nacl import encoding, public
@@ -60,14 +22,14 @@ CLIENT_ID = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET = os.getenv('CANVA_CLIENT_SECRET')
 CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 GH_PAT = os.getenv('GH_PAT')                 # Il tuo Personal Access Token di GitHub
-GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY') # Es: "tuo-utente/tuo-repo" (fornito nativamente da GH)
+GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY') # Fornito nativamente da GH
 
-JUVE_ID = 496
-CANVA_DESIGN_ID = "DAHI3ytu6yQ"
-PAGINA_TARGET = 11
+ARSENAL_ID = 42
+CANVA_DESIGN_ID = "DAHI3ytu6yQ"  # Cambialo con l'ID del design Arsenal su Canva
+PAGINA_TARGET = 11               # Cambiala con la pagina del template Arsenal
 
 # ==============================================================================
-# SET EMOJI STANDARD (BRANDING @Juventus_Reborn)
+# SET EMOJI STANDARD (BRANDING ARSENAL)
 # ==============================================================================
 E_BOLT = '⚡️'
 E_FLAG = '🏁'
@@ -81,18 +43,19 @@ E_PEN_OK = '✅'
 E_PEN_KO = '❌'
 
 LEAGUE_EMOJIS = {
-    135: '🇮🇹', # Serie A
-    137: '🇮🇹', # Coppa Italia
-    2:   '🇪🇺', # Champions League
-    3:   '🇪🇺', # Europa League
-    667: '🤝'  # Amichevoli Club
+    39: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',  # Premier League
+    45: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',  # FA Cup
+    48: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',  # EFL Cup
+    2:   '🇪🇺',  # Champions League
+    3:   '🇪🇺',  # Europa League
+    667: '🤝'   # Amichevoli Club
 }
 
 def get_league_emoji(league_id):
     return LEAGUE_EMOJIS.get(league_id, "⚽️")
 
 def clean_name(name):
-    annoying_words = ["AC ", "AS ", " US", " FC", "FC ", "A.C. ", "A.S. "]
+    annoying_words = ["AC ", "AS ", " US", " FC", "FC ", "A.C. ", "A.S. ", "AFC ", " AFC"]
     for word in annoying_words:
         name = name.replace(word, "")
         name = name.replace(word.strip(), "")
@@ -146,9 +109,8 @@ def update_github_secret(secret_name, new_value):
         "X-GitHub-Api-Version": "2022-11-28"
     }
 
-    # 1. Recupera la chiave pubblica della repository (richiesta da GitHub per criptare)
-    pk_url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/public-key"
     try:
+        pk_url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/public-key"
         res_pk = requests.get(pk_url, headers=headers, timeout=10)
         if res_pk.status_code != 200:
             print(f"❌ Impossibile ottenere la public key di GitHub: {res_pk.text}")
@@ -158,13 +120,11 @@ def update_github_secret(secret_name, new_value):
         key_id = pk_data["key_id"]
         public_key_b64 = pk_data["key"]
 
-        # 2. Cripta il nuovo valore del secret usando NaCl
         public_key = public.PublicKey(public_key_b64.encode("utf-8"), encoding.Base64Encoder)
         sealed_box = public.SealedBox(public_key)
         encrypted_value = sealed_box.encrypt(new_value.encode("utf-8"))
         encrypted_b64 = base64.b64encode(encrypted_value).decode("utf-8")
 
-        # 3. Invia il valore criptato a GitHub per aggiornare il Secret
         secret_url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/{secret_name}"
         payload = {
             "encrypted_value": encrypted_b64,
@@ -173,7 +133,7 @@ def update_github_secret(secret_name, new_value):
         
         res_secret = requests.put(secret_url, headers=headers, json=payload, timeout=10)
         if res_secret.status_code in [201, 204]:
-            print(f"✅ Secret '{secret_name}' aggiornato con successo su GitHub per i prossimi match!")
+            print(f"✅ Secret '{secret_name}' aggiornato con successo su GitHub!")
             return True
         else:
             print(f"❌ Errore durante l'aggiornamento del secret su GitHub: {res_secret.text}")
@@ -186,7 +146,6 @@ def update_github_secret(secret_name, new_value):
 # FUNZIONI INTEGRATE CANVA API
 # ==============================================================================
 def get_valid_token():
-    """Genera un Access Token e aggiorna il Refresh Token se Canva ne fornisce uno nuovo."""
     if not CANVA_REFRESH_TOKEN:
         print("❌ Errore: CANVA_REFRESH_TOKEN non trovato.")
         return None
@@ -206,7 +165,6 @@ def get_valid_token():
             new_tokens = res.json()
             print("✅ Access Token generato con successo!")
             
-            # Se Canva restituisce un NUOVO refresh_token, lo salviamo subito nei Secrets di GitHub
             if "refresh_token" in new_tokens and new_tokens["refresh_token"] != CANVA_REFRESH_TOKEN:
                 print("🔄 Canva ha emesso un nuovo Refresh Token. Aggiorno GitHub Secrets...")
                 update_github_secret("CANVA_REFRESH_TOKEN", new_tokens["refresh_token"])
@@ -305,7 +263,7 @@ def build_split_scorers_text(events, home_id, away_id):
     return ""
 
 def main():
-    print("BOT LIVE AVVIATO - Recupero ID Partita...")
+    print("BOT LIVE AVVIATO - Recupero ID Partita (Arsenal)...")
     url = "https://v3.football.api-sports.io/fixtures"
     if not API_KEY:
         print("Errore: API_KEY mancante.")
@@ -319,16 +277,16 @@ def main():
         live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
         if live_res.get('response'):
             for f in live_res['response']:
-                if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
+                if f['teams']['home']['id'] == ARSENAL_ID or f['teams']['away']['id'] == ARSENAL_ID:
                     match_id = f['fixture']['id']
-                    print(f"🔥 Juve trovata LIVE! Aggancio ID Fixture: {match_id}")
+                    print(f"🔥 Arsenal trovato LIVE! Aggancio ID Fixture: {match_id}")
                     break
     except Exception as e:
         print(f"Nota: Controllo live rapido fallito ({e})")
 
     if not match_id:
         try:
-            date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
+            date_res = requests.get(f"{url}?team={ARSENAL_ID}&date={today_date}", headers=headers, timeout=10).json()
             if date_res.get('response') and len(date_res['response']) > 0:
                 match_id = date_res['response'][0]['fixture']['id']
                 print(f"📅 Partita trovata. ID Fixture bloccato: {match_id}")
@@ -374,21 +332,21 @@ def main():
                 continue
                 
             league_id = match.get('league', {}).get('id', 0)
-            current_sleep_time = 60 if status == "PEN" else (140 if status in ["ET", "AET"] else (120 if status == "HT" else (70 if league_id == 135 else 90)))
+            current_sleep_time = 60 if status == "PEN" else (140 if status in ["ET", "AET"] else (120 if status == "HT" else 75))
             
             e_comp = get_league_emoji(league_id)
             teams = match.get('teams', {})
             home_id, away_id = teams.get('home', {}).get('id', 0), teams.get('away', {}).get('id', 0)
             
-            home_name = "Juventus" if home_id == JUVE_ID else clean_name(teams.get('home', {}).get('name', 'Home'))
-            away_name = "Juventus" if away_id == JUVE_ID else clean_name(teams.get('away', {}).get('name', 'Away'))
+            home_name = "Arsenal" if home_id == ARSENAL_ID else clean_name(teams.get('home', {}).get('name', 'Home'))
+            away_name = "Arsenal" if away_id == ARSENAL_ID else clean_name(teams.get('away', {}).get('name', 'Away'))
             
             penalties = match.get('score', {}).get('penalty', {})
             p_home, p_away = penalties.get('home'), penalties.get('away')
             score_string = f"{g_home_int} ({p_home}) - ({p_away}) {g_away_int}" if p_home is not None else f"{g_home_int}-{g_away_int}"
             
-            h_short = "Juve" if home_id == JUVE_ID else home_name.replace(" ", "")
-            a_short = "Juve" if away_id == JUVE_ID else away_name.replace(" ", "")
+            h_short = "Arsenal" if home_id == ARSENAL_ID else home_name.replace(" ", "")
+            a_short = "Arsenal" if away_id == ARSENAL_ID else away_name.replace(" ", "")
             hashtag = f"#{h_short}{a_short}"
             
             print(f"[LIVE] {home_name} {score_string} {away_name} | Minuto: {elapsed_minutes}")
@@ -422,7 +380,7 @@ def main():
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 3. FINE PARTITA -> SCATTA IL DOWNLOAD DA CANVA E POTENZIALE AGGIORNAMENTO SECRET
+            # 3. FINE PARTITA
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
                 print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva...")
@@ -484,7 +442,7 @@ def main():
                             state["sent_cards"].append(card_id)
 
                 for sub_key, sub_data in subs_by_minute.items():
-                    team_title = "JUVENTUS" if sub_data["team_id"] == JUVE_ID else (home_name.upper() if sub_data["team_id"] == home_id else away_name.upper())
+                    team_title = "ARSENAL" if sub_data["team_id"] == ARSENAL_ID else (home_name.upper() if sub_data["team_id"] == home_id else away_name.upper())
                     send_telegram(f"<b>CAMBIO {team_title} {E_SUB}</b>\n\n{E_UP} {', '.join(sub_data['in'])}\n{E_DOWN} {', '.join(sub_data['out'])}\n\n{e_comp} {hashtag}")
                     state["sent_subs"].extend(sub_data["ids"])
 
