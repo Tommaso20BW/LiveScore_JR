@@ -36,12 +36,7 @@ jobs:
           TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
           CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
           CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
+          CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: python test.py
-
-      - name: 🔄 Salva i token Canva aggiornati su GitHub
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add canva_tokens.json
-          git commit -m "🔄 Aggiornamento automatico Token Canva [Skip CI]" || echo "Nessun cambio nei token"
-          git push
