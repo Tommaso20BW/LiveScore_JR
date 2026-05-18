@@ -19,7 +19,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
-API_KEY = os.getenv('FOOTBALL_API_KEY')
+API_KEY = os.getenv('API_KEY')
 CLIENT_ID = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET = os.getenv('CANVA_CLIENT_SECRET')
 GH_PAT = os.getenv('GH_PAT')
