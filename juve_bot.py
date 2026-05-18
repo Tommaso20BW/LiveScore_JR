@@ -263,18 +263,10 @@ def build_split_scorers_text(events, home_id, away_id):
     return ""
 
 # ==============================================================================
-# FUNZIONE PRINCIPALE
+# LOGICA DI GESTIONE E CICLO DEL MATCH LIVE
 # ==============================================================================
-def main():
-    print("BOT LIVE AVVIATO - Controllo preliminare del token Canva...")
-    
-    # [FASE 1]: CONTROLLO IMMEDIATO DEL TOKEN CANVA (PRIMA COSA IN ASSOLUTO)
-    canva_token = get_valid_token()
-    if not canva_token:
-        print("❌ Errore critico: Impossibile convalidare o ruotare il token Canva. Arresto forzato del bot.")
-        sys.exit(1)
-        
-    print("✅ Token Canva validato con successo! Procedo al recupero forzato del match...")
+def avvia_ciclo_partita(canva_token):
+    print("✅ Procedo al recupero forzato del match...")
 
     # [FASE 2]: RECUPERO ID PARTITA (CORAZZATO PER AVVIO MANUALE)
     url = "https://v3.football.api-sports.io/fixtures"
@@ -318,7 +310,7 @@ def main():
                 match_id = match_data['fixture']['id']
                 print(f"📌 Forzatura riuscita! Agganciato il prossimo match utile. ID: {match_id} ({match_data['fixture']['date']})")
             else:
-                print("❌ Errore critico: L'API non restituisce nessuna partita nel palinsesto. Spengo.")
+                print("❌ Errore critical: L'API non restituisce nessuna partita nel palinsesto. Spengo.")
                 sys.exit(1)
         except Exception as e:
             print(f"❌ Errore critico nel recupero del palinsesto: {e}")
@@ -485,6 +477,28 @@ def main():
             print(f"Errore ciclo live: {e}")
             current_sleep_time = 30
         time.sleep(current_sleep_time)
+
+# ==============================================================================
+# FUNZIONE PRINCIPALE (GESTIONE BIVIO AUTOMAZIONE E KEEP-ALIVE)
+# ==============================================================================
+def main():
+    print("🚀 Avvio Live Score Bot: elaborazione eventi in corso...")
+    
+    # 1. Eseguiamo SEMPRE il controllo e il rinnovo del Token Canva
+    shared_access_token = get_valid_token()
+
+    # 2. SE SEI IL KEEP-ALIVE, FERMATI QUI!
+    if os.getenv('ONLY_REFRESH_TOKEN') == "true":
+        print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
+        return
+
+    # 3. CONTROLLO PARTITA (Tutto il resto del codice si attiva solo se non è Keep-Alive)
+    if not os.path.exists("match_state.json"):
+        print("❌ Errore: Nessun match_state.json trovato...")
+        return
+        
+    # Avvia la sequenza di recupero dati e ciclo continuo degli eventi live
+    avvia_ciclo_partita(shared_access_token)
 
 if __name__ == "__main__":
     main()
