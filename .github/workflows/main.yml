@@ -1,5 +1,8 @@
 name: Juventus Live Score
 
+# Legge il nome registrato da Python. Inizialmente mostra il fallback di caricamento.
+run-name: ${{ env.DYNAMIC_RUN_NAME || 'Recupero info partita...' }}
+
 on:
   workflow_dispatch:
 
@@ -19,6 +22,7 @@ jobs:
       - name: Checkout del codice
         uses: actions/checkout@v5
 
+      # Configurato subito per permettere a Python di sovrascrivere tempestivamente il run-name
       - name: Configura Python
         uses: actions/setup-python@v6
         with:
@@ -39,4 +43,6 @@ jobs:
           CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
           GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          # Mantiene traccia di un eventuale trigger automatico per solo refresh token
+          ONLY_REFRESH_TOKEN: ${{ env.ONLY_REFRESH_TOKEN }} 
         run: python juve_bot.py
