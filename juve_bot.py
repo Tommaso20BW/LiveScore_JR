@@ -101,19 +101,19 @@ def send_telegram(text):
 
 def send_telegram_post_with_photo(text, photo_bytes):
     if not photo_bytes:
-        print("⚠️ Immagine Canva mancante. Invio solo testo")
+        print("⚠️ Immagine Canva mancante. Invio solo testo...")
         send_telegram(text)
         return
-    print("📤 Invio il post con grafica Canva su Telegram")
+    print("📤 Spedisco il post con grafica Canva su Telegram...")
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     payload = {"chat_id": CHAT_ID, "caption": text, "parse_mode": "HTML"}
     files = {"photo": ("matchday.png", photo_bytes)}
     try:
         res = requests.post(url, data=payload, files=files, timeout=25)
         if res.status_code == 200:
-            print("🏁 Grafica finale pubblicata con successo su Telegram")
+            print("🏁 Grafica finale pubblicata con successo su Telegram!")
         else:
-            print(f"❌ Errore foto Telegram: {res.text}. Invio solo testo")
+            print(f"❌ Errore foto Telegram: {res.text}. Invio solo testo...")
             send_telegram(text)
     except Exception as e:
         print(f"Errore invio foto: {e}")
@@ -163,7 +163,7 @@ def get_valid_token():
     }
     
     try:
-        print("🔄 Richiesta di un nuovo Access Token a Canva")
+        print("🔄 Richiesta di un nuovo Access Token a Canva...")
         res = requests.post(url, data=payload, timeout=15)
         if res.status_code == 200:
             new_tokens = res.json()
@@ -171,7 +171,7 @@ def get_valid_token():
             new_refresh_token = new_tokens.get("refresh_token", refresh_token)
             
             if new_refresh_token != refresh_token:
-                print("🔄 Canva ha generato un nuovo Refresh Token. Lo aggiorno su GitHub")
+                print("🔄 Canva ha generato un nuovo Refresh Token. Lo aggiorno su GitHub...")
                 update_github_secret("CANVA_REFRESH_TOKEN", new_refresh_token)
             
             return new_access_token
@@ -219,20 +219,26 @@ def fetch_live_match(match_id):
 # PIPELINE MACRO PRESA DATI E CICLO REALE
 # ==============================================================================
 def main():
-    print("🚀 Avvio Live Score Bot: elaborazione eventi in corso")
+    print("🚀 Avvio Live Score Bot: elaborazione eventi in corso...")
     
+    # 1. Eseguiamo SEMPRE il controllo e il rinnovo del Token Canva
+    shared_access_token = get_valid_token()
+
+    # 2. SE SEI IL KEEP-ALIVE, FERMATI QUI!
+    if os.getenv('ONLY_REFRESH_TOKEN') == "true":
+        print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
+        return
+
+    # 3. CONTROLLO PARTITA (Solo se non siamo in modalità Keep-Alive)
     if not os.path.exists("match_state.json"):
-        print("❌ Errore: Nessuna partita trovata")
+        print("Stato del match non trovato. Nessuna partita attiva in coda.")
         return
 
     with open("match_state.json", "r") as f: state = json.load(f)
     match_id = state.get("live_match_id")
     if not match_id:
-        print("❌ Errore: ID partita assente")
+        print("Errore: live_match_id assente nel file di stato.")
         return
-
-    # Eseguiamo il controllo e l'aggiornamento sicuro del Token Canva prima di fare qualsiasi cosa
-    shared_access_token = get_valid_token()
 
     match = fetch_live_match(match_id)
     if not match:
@@ -326,7 +332,7 @@ def main():
 
     # 4. FINE MATCH FINALE (Canva + Resoconto Marcatori Totali)
     if "finished" in status_long or status in ["FT", "AET"] or (status == "PEN" and p_home is not None):
-        print("🏁 Fine della partita rilevata. Preparazione riepilogo finale")
+        print("🏁 Fine della partita rilevata. Preparazione riepilogo finale...")
         
         # Estrazione marcatori ordinati per tabellino finale sotto la foto
         events = match.get('events', [])
@@ -365,14 +371,14 @@ def main():
                     title_prefix = f"<b>FINE PARTITA 🏁</b>"
 
         final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
-        msg_finale = f"{title_prefix}\n\n{final_status_line}\n{scorers_line}\n\n🇮🇹 {hashtag}"
+        msg_finale = f"{title_prefix}\n\n{final_status_line}{scorers_line}\n\n🇮🇹 {hashtag}"
         
         # Export e pubblicazione con grafica Canva usando il token gestito prima
         foto = get_canva_image(shared_access_token)
         send_telegram_post_with_photo(msg_finale, photo_bytes=foto)
         
         if os.path.exists("match_state.json"): os.remove("match_state.json")
-        print("🏁 Flusso terminato con successo")
+        print("🏁 Flusso terminato con successo. File di stato rimosso.")
         return
 
     # Salvataggio dello stato per l'esecuzione successiva
