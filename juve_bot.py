@@ -3,7 +3,16 @@ import requests
 import json
 import time
 import sys
+import base64
 from datetime import datetime
+
+# Importiamo la libreria di crittografia richiesta da GitHub per aggiornare i Secrets
+try:
+    from nacl import public
+except ImportError:
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pynacl"])
+    from nacl import public
 
 # ==============================================================================
 # CONFIGURAZIONE (Secret di GitHub)
@@ -13,12 +22,13 @@ CHAT_ID = os.getenv('TELEGRAM_TO')
 API_KEY = os.getenv('FOOTBALL_API_KEY')
 CLIENT_ID = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET = os.getenv('CANVA_CLIENT_SECRET')
+GH_PAT = os.getenv('GH_PAT')
+REPO_NAME = os.getenv('GITHUB_REPOSITORY') 
 
 # Configurazione Canva e ID Squadra
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 MY_TEAM_ID = 496  # ID Juventus su API-Football
-TOKEN_FILE = "canva_tokens.json"
 
 # Emoji Branding @Juventus_Reborn
 E_BOLT = '⚡️'
@@ -31,6 +41,49 @@ E_DOWN = '🔽'
 E_RED = '🟥'
 E_PEN_OK = '✅'
 E_PEN_KO = '❌'
+
+# ==============================================================================
+# FUNZIONI DI AGGIORNAMENTO SICURO NEI GITHUB SECRETS
+# ==============================================================================
+def update_github_secret(secret_name, new_value):
+    """Aggiorna in modo sicuro un Secret direttamente su GitHub senza salvare file locali."""
+    if not GH_PAT or not REPO_NAME:
+        print("⚠️ GitHub PAT o nome Repository mancanti in env. Impossibile aggiornare il Secret.")
+        return False
+
+    headers = {"Authorization": f"token {GH_PAT}", "Accept": "application/vnd.github.v3+json"}
+    
+    try:
+        # 1. Recupera la chiave pubblica del repository
+        url_key = f"https://api.github.com/repos/{REPO_NAME}/actions/secrets/public-key"
+        res_key = requests.get(url_key, headers=headers)
+        if res_key.status_code != 200:
+            print(f"❌ Errore recupero chiave pubblica GitHub: {res_key.text}")
+            return False
+        
+        key_data = res_key.json()
+        key_id = key_data['key_id']
+        public_key_b64 = key_data['key']
+
+        # 2. Cripta il valore del token
+        public_key = public.PublicKey(base64.b64decode(public_key_b64))
+        box = public.SealedBox(public_key)
+        encrypted_value = base64.b64encode(box.encrypt(new_value.encode('utf-8'))).decode('utf-8')
+
+        # 3. Invia il Secret aggiornato a GitHub
+        url_secret = f"https://api.github.com/repos/{REPO_NAME}/actions/secrets/{secret_name}"
+        data = {"encrypted_value": encrypted_value, "key_id": key_id}
+        res_secret = requests.put(url_secret, headers=headers, json=data)
+        
+        if res_secret.status_code in [201, 204]:
+            print(f"🔒 Secret {secret_name} aggiornato con successo su GitHub!")
+            return True
+        else:
+            print(f"❌ Errore salvataggio Secret su GitHub: {res_secret.text}")
+            return False
+    except Exception as e:
+        print(f"❌ Errore durante l'aggiornamento del Secret: {e}")
+        return False
 
 # ==============================================================================
 # FUNZIONI DI SUPPORTO E UTILITY
@@ -91,24 +144,43 @@ def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=
         return f"{c_home_name} {g_home_str}-{g_away_str} {c_away_name}"
 
 # ==============================================================================
-# INTEGRAZIONE CANVA API v1
+# INTEGRAZIONE CANVA API v1 (Senza file locali, usa e aggiorna i Secrets)
 # ==============================================================================
 def get_valid_token():
-    if not os.path.exists(TOKEN_FILE): return None
-    with open(TOKEN_FILE, "r") as f: tokens = json.load(f)
-    if tokens.get("expires_at", 0) - time.time() < 300:
-        url = "https://api.canva.com/rest/v1/oauth/token"
-        payload = {"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"], "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET}
-        try:
-            res = requests.post(url, data=payload, timeout=15)
-            if res.status_code == 200:
-                new_tokens = res.json()
-                tokens["access_token"] = new_tokens["access_token"]
-                tokens["refresh_token"] = new_tokens.get("refresh_token", tokens["refresh_token"])
-                tokens["expires_at"] = int(time.time()) + new_tokens["expires_in"]
-                with open(TOKEN_FILE, "w") as f: json.dump(tokens, f, indent=2)
-        except: return None
-    return tokens["access_token"]
+    """Recupera il refresh token dai Secrets, ne chiede uno nuovo e aggiorna GitHub."""
+    refresh_token = os.getenv('CANVA_REFRESH_TOKEN')
+    
+    if not refresh_token:
+        print("❌ Errore: CANVA_REFRESH_TOKEN non presente nelle variabili d'ambiente.")
+        return None
+
+    url = "https://api.canva.com/rest/v1/oauth/token"
+    payload = {
+        "grant_type": "refresh_token", 
+        "refresh_token": refresh_token, 
+        "client_id": CLIENT_ID, 
+        "client_secret": CLIENT_SECRET
+    }
+    
+    try:
+        print("🔄 Richiesta di un nuovo Access Token a Canva...")
+        res = requests.post(url, data=payload, timeout=15)
+        if res.status_code == 200:
+            new_tokens = res.json()
+            new_access_token = new_tokens["access_token"]
+            new_refresh_token = new_tokens.get("refresh_token", refresh_token)
+            
+            if new_refresh_token != refresh_token:
+                print("🔄 Canva ha generato un nuovo Refresh Token. Lo aggiorno su GitHub...")
+                update_github_secret("CANVA_REFRESH_TOKEN", new_refresh_token)
+            
+            return new_access_token
+        else:
+            print(f"❌ Errore rigenerazione token Canva: {res.text}")
+            return None
+    except Exception as e: 
+        print(f"❌ Errore connessione OAuth Canva: {e}")
+        return None
 
 def get_canva_image(access_token):
     if not access_token: return None
@@ -158,6 +230,9 @@ def main():
     if not match_id:
         print("❌ Errore: live_match_id assente nel file di stato.")
         return
+
+    # Eseguiamo il controllo e l'aggiornamento sicuro del Token Canva prima di fare qualsiasi cosa
+    shared_access_token = get_valid_token()
 
     match = fetch_live_match(match_id)
     if not match:
@@ -292,9 +367,8 @@ def main():
         final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
         msg_finale = f"{title_prefix}\n\n{final_status_line}\n{scorers_line}\n\n🇮🇹 {hashtag}"
         
-        # Export e pubblicazione con grafica Canva
-        token = get_valid_token()
-        foto = get_canva_image(token)
+        # Export e pubblicazione con grafica Canva usando il token gestito prima
+        foto = get_canva_image(shared_access_token)
         send_telegram_post_with_photo(msg_finale, photo_bytes=foto)
         
         if os.path.exists("match_state.json"): os.remove("match_state.json")
