@@ -2,7 +2,6 @@ name: Canva Token Keep-Alive
 
 on:
   schedule:
-    # Si avvia ogni lunedì alle 09:00 UTC (10:00 o 11:00 in Italia)
     - cron: '0 9 * * 1'
 
 permissions:
@@ -33,7 +32,6 @@ jobs:
 
       - name: Esegui script per rinnovo Token
         env:
-          # Passiamo solo quello che serve a Canva e GitHub per aggiornarsi
           CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
           CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
           CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
