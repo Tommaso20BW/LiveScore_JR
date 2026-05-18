@@ -50,7 +50,6 @@ def clean_team_name(name, for_hashtag=False):
     if not name:
         return "Team"
     
-    # Se stiamo creando l'hashtag, applichiamo le eccezioni per le squadre di Manchester
     if for_hashtag:
         name_lower = name.lower()
         if "manchester city" in name_lower:
@@ -58,24 +57,16 @@ def clean_team_name(name, for_hashtag=False):
         if "manchester united" in name_lower:
             return "ManUnited"
 
-    # Lista delle sigle standard da rimuovere
     stopwords = ["fc", "f.c.", "ac", "a.c.", "asd", "a.s.d.", "calcio", "spa", "s.p.a.", "sc", "s.c."]
-    
-    # Dividiamo il nome in parole, rimuovendo spazi extra
     words = name.split()
-    
-    # Filtriamo via le stopwords
     cleaned_words = [w for w in words if w.lower() not in stopwords]
     
-    # Se il filtro svuota tutto per errore, riprendiamo il nome originale
     if not cleaned_words:
         cleaned_words = words
         
     if for_hashtag:
-        # Per l'hashtag uniamo tutto senza spazi
         return "".join(cleaned_words).replace(" ", "")
     else:
-        # Per il testo normale uniamo le parole con uno spazio pulito
         return " ".join(cleaned_words)
 
 # ==============================================================================
@@ -212,6 +203,25 @@ def get_canva_image(access_token):
     except Exception as e: print(f"Errore Canva: {e}")
     return None
 
+# ==============================================================================
+# FUNZIONI INTERROGAZIONE API-FOOTBALL
+# ==============================================================================
+def get_current_live_match_id():
+    """Cerca se c'è una partita in diretta per la squadra impostata (MY_TEAM_ID)"""
+    if not API_KEY: return None
+    url = f"https://v3.football.api-sports.io/fixtures?team={MY_TEAM_ID}&live=all"
+    headers = {"x-apisports-key": API_KEY}
+    try:
+        res = requests.get(url, headers=headers, timeout=15)
+        if res.status_code == 200:
+            data = res.json()
+            if data.get("response"):
+                # Restituisce l'ID della prima partita in diretta trovata
+                return data["response"][0].get("fixture", {}).get("id")
+    except Exception as e:
+        print(f"Errore ricerca match live: {e}")
+    return None
+
 def fetch_live_match(match_id):
     if not API_KEY: return None
     url = f"https://v3.football.api-sports.io/fixtures?id={match_id}"
@@ -235,8 +245,29 @@ def main():
         print("🔒 Modalità Keep-Alive terminata.")
         return
 
-    if not os.path.exists("match_state.json"): return
-    with open("match_state.json", "r") as f: state = json.load(f)
+    # Controlliamo se esiste già una partita monitorata in corso
+    if not os.path.exists("match_state.json"):
+        print("🔍 Nessun file di stato trovato. Controllo se la squadra sta giocando...")
+        live_id = get_current_live_match_id()
+        if live_id:
+            print(f"🎯 Partita in diretta trovata! ID: {live_id}. Inizializzo lo stato.")
+            state = {
+                "live_match_id": live_id,
+                "goals_detected": 0,
+                "sent_periods": [],
+                "sent_subs": [],
+                "sent_cards": [],
+                "penalties_count": 0
+            }
+            with open("match_state.json", "w") as f:
+                json.dump(state, f)
+        else:
+            print("😴 Nessuna partita in diretta al momento per questa squadra.")
+            return
+    else:
+        with open("match_state.json", "r") as f: 
+            state = json.load(f)
+
     match_id = state.get("live_match_id")
     if not match_id: return
 
@@ -281,9 +312,10 @@ def main():
 
     match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int)
 
-    # Inizializzazioni nello stato se assenti
+    # Inizializzazioni di sicurezza nello stato
     if "sent_subs" not in state: state["sent_subs"] = []
     if "sent_cards" not in state: state["sent_cards"] = []
+    if "sent_periods" not in state: state["sent_periods"] = []
 
     # ==============================================================================
     # 1. GESTIONE PERIODI DI GIOCO
