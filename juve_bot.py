@@ -88,6 +88,17 @@ def update_github_secret(secret_name, new_value):
 # ==============================================================================
 # FUNZIONI DI SUPPORTO E UTILITY
 # ==============================================================================
+def set_github_run_name(text):
+    """Invia a GitHub Actions il nome dinamico da mostrare nella dashboard del workflow."""
+    github_env = os.getenv('GITHUB_ENV')
+    if github_env:
+        try:
+            with open(github_env, "a") as f:
+                f.write(f"DYNAMIC_RUN_NAME={text}\n")
+            print(f"🔄 Titolo del Run inviato a GitHub: {text}")
+        except Exception as e:
+            print(f"⚠️ Impossibile aggiornare GITHUB_ENV: {e}")
+
 def send_telegram(text):
     if not BOT_TOKEN or not CHAT_ID:
         print("❌ Errore: TELEGRAM_TOKEN o TELEGRAM_TO non configurati.")
@@ -224,24 +235,28 @@ def main():
     # 1. Eseguiamo SEMPRE il controllo e il rinnovo del Token Canva
     shared_access_token = get_valid_token()
 
-    # 2. SE SEI IL KEEP-ALIVE, FERMATI QUI!
+    # 2. SE SEI IL KEEP-ALIVE, ASSEGNA IL NOME E FERMATI QUI!
     if os.getenv('ONLY_REFRESH_TOKEN') == "true":
+        set_github_run_name("🔄 Canva Token Refresh (Keep-Alive)")
         print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
         return
 
-    # 3. CONTROLLO PARTITA (Solo se non siamo in modalità Keep-Alive)
+    # 3. CONTROLLO PARTITA (Nessun file di stato trovato)
     if not os.path.exists("match_state.json"):
+        set_github_run_name("⚠️ Bot avviato - Nessuna partita attiva")
         print("Stato del match non trovato. Nessuna partita attiva in coda.")
         return
 
     with open("match_state.json", "r") as f: state = json.load(f)
     match_id = state.get("live_match_id")
     if not match_id:
+        set_github_run_name("⚠️ Bot avviato - ID Match mancante")
         print("Errore: live_match_id assente nel file di stato.")
         return
 
     match = fetch_live_match(match_id)
     if not match:
+        set_github_run_name("⚠️ Bot avviato - Errore API Football")
         print("⚠️ Impossibile ricevere dati aggiornati dall'API. Riprovo al prossimo cron.")
         return
 
@@ -253,6 +268,10 @@ def main():
     t_home = match.get('teams', {}).get('home', {})
     t_away = match.get('teams', {}).get('away', {})
     home_name, away_name = t_home.get('name', 'Home'), t_away.get('name', 'Away')
+    
+    # 🌟 IMPOSTA IL TITOLO SU GITHUB CON IL NOME DELLA PARTITA 🌟
+    set_github_run_name(f"Live: {home_name} - {away_name}")
+
     home_id, away_id = t_home.get('id'), t_away.get('id')
     hashtag = f"#{home_name.replace(' ', '')}{away_name.replace(' ', '')}"
     
