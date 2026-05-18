@@ -43,13 +43,12 @@ E_PEN_OK = '✅'
 E_PEN_KO = '❌'
 
 LEAGUE_EMOJIS = {
-    135: '🇮🇹', # Serie A
-    137: '🇮🇹', # Coppa Italia
-    547: '🇮🇹', # Supercoppa Italiana
-    2:   '🇪🇺', # Champions League
-    3:   '🇪🇺', # Europa League
-    848: '🇪🇺', # Conference League
-    667: '🤝'  # Amichevoli Club
+    135: '🇮🇹',   # Serie A
+    137: '🇮🇹',   # Coppa Italia
+    138: '🇮🇹🏆', # Supercoppa Italiana
+    2:   '🇪🇺',   # Champions League
+    3:   '🇪🇺',   # Europa League
+    667: '🤝'    # Amichevoli Club
 }
 
 def get_league_emoji(league_id):
@@ -268,62 +267,58 @@ def build_split_scorers_text(events, home_id, away_id):
 # LOGICA DI GESTIONE E CICLO DEL MATCH LIVE
 # ==============================================================================
 def avvia_ciclo_partita(canva_token):
-    print("✅ Procedo al recupero forzato del match...")
+    print("✅ Procedo al recupero del match...")
 
-    # [FASE 2]: RECUPERO ID PARTITA (CORAZZATO PER AVVIO MANUALE)
-    url = "https://v3.football.api-sports.io/fixtures"
     if not API_KEY:
         print("Errore: API_KEY mancante.")
         return
         
     headers = {"x-apisports-key": API_KEY}
-    today_date = datetime.now().strftime('%Y-%m-%d')
+    url = "https://v3.football.api-sports.io/fixtures"
     match_id = None
-    
-    # 1. Controlliamo prima se c'è una partita già LIVE
-    try:
-        live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
-        if live_res.get('response'):
-            for f in live_res['response']:
-                if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
-                    match_id = f['fixture']['id']
-                    print(f"🔥 Match trovato già LIVE! Aggancio ID: {match_id}")
-                    break
-    except Exception as e:
-        print(f"Nota: Controllo live rapido fallito ({e})")
 
-    # 2. Se non è live, cerchiamo tra i match programmati per oggi
-    if not match_id:
+    # [FASE 2]: RECUPERO ID PARTITA (CICLO CONTINUO FINCHÉ NON TROVA UN MATCH)
+    while not match_id:
+        today_date = datetime.now().strftime('%Y-%m-%d')
+        print(f"🔄 [Controllo Palinsesto] Cerco partita della Juventus ({today_date})...")
+        
         try:
-            date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
-            if date_res.get('response') and len(date_res['response']) > 0:
-                match_id = date_res['response'][0]['fixture']['id']
-                print(f"📅 Match trovato nel palinsesto di oggi! ID: {match_id}")
-        except Exception as e:
-            print(f"Nota: Controllo data odierna fallito ({e})")
+            # 1. Controlliamo prima se c'è una partita già LIVE
+            live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
+            if live_res.get('response'):
+                for f in live_res['response']:
+                    if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
+                        match_id = f['fixture']['id']
+                        print(f"🔥 Match trovato già LIVE! Aggancio ID: {match_id}")
+                        break
+            
+            # 2. Se non è live, cerchiamo tra i match programmati per oggi
+            if not match_id:
+                date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
+                if date_res.get('response') and len(date_res['response']) > 0:
+                    match_id = date_res['response'][0]['fixture']['id']
+                    print(f"📅 Match trovato nel palinsesto di oggi! ID: {match_id}")
 
-    # 3. FORZATURA TOTAL-LIVE: Se l'API fa i capricci, prendiamo il prossimo match in assoluto senza spegnerci
-    if not match_id:
-        try:
-            print("⚠️ Nessun match trovato per la data esatta di oggi. Recupero la prossima partita in calendario...")
-            next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
-            if next_res.get('response') and len(next_res['response']) > 0:
-                match_data = next_res['response'][0]
-                match_id = match_data['fixture']['id']
-                print(f"📌 Forzatura riuscita! Agganciato il prossimo match utile. ID: {match_id} ({match_data['fixture']['date']})")
-            else:
-                msg_errore = "⚠️ <b>Live Score Bot</b>\nNessuna partita della Juventus trovata nel palinsesto odierno o futuro su API-Sports. Verifica i dettagli del piano o il calendario."
-                print(f"❌ {msg_errore.replace('<b>', '').replace('</b>', '')}")
-                send_telegram(msg_errore)
-                sys.exit(0) # Usciamo con 0 per non far fallire il workflow su GitHub
-        except Exception as e:
-            print(f"❌ Errore critico nel recupero del palinsesto: {e}")
-            sys.exit(1)
+            # 3. Se l'API fa i capricci o non rileva l'oggi, proviamo a prendere il prossimo match in assoluto
+            if not match_id:
+                next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
+                if next_res.get('response') and len(next_res['response']) > 0:
+                    match_data = next_res['response'][0]
+                    match_id = match_data['fixture']['id']
+                    print(f"📌 Agganciato il prossimo match in calendario. ID: {match_id} ({match_data['fixture']['date']})")
 
-    print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di attesa live...")
+        except Exception as e:
+            print(f"⚠️ Errore temporaneo nel recupero dei dati dall'API: {e}")
+
+        # Se dopo tutti i tentativi match_id è ancora None, l'API è vuota. Aspettiamo 30 secondi e ricominciamo.
+        if not match_id:
+            print("❌ Nessun match trovato nel palinsesto. Rinvio richiesta tra 30 secondi...")
+            time.sleep(30)
+
+    print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di monitoraggio eventi...")
     params = {"id": match_id}
 
-    # [FASE 3]: CICLO EVENTI IN LIVE REALE
+    # [FASE 3]: CICLO EVENTI IN LIVE REALE (SI SPEGNE SOLO A FINE PARTITA)
     while True:
         try:
             if os.path.exists("match_state.json"):
@@ -352,8 +347,9 @@ def avvia_ciclo_partita(canva_token):
             g_home_int = goals_home if goals_home is not None else 0
             g_away_int = goals_away if goals_away is not None else 0
 
-            # Resta in attesa (ciclo leggero di 30s) finché la partita non inizia effettivamente sul campo
+            # Resta in attesa finché la partita non inizia effettivamente sul campo
             if status in ["NS", "TBD"] and g_home_int == 0 and g_away_int == 0 and elapsed_minutes == 0:
+                print(f"💤 Match ID {match_id} non ancora iniziato (Stato: {status}). Controllo tra 30 secondi...")
                 time.sleep(30)
                 continue
                 
@@ -406,14 +402,13 @@ def avvia_ciclo_partita(canva_token):
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 3. FISCHIO FINALE -> GENERAZIONE GRAFICA E INVIO
+            # 3. FISCHIO FINALE -> GENERAZIONE GRAFICA E INVIO (UNICA USCITA DEL BOT)
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
                 print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva per l'export...")
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_name} {score_string} {away_name}\n{scorers_line}\n{e_comp} {hashtag}"
                 
-                # Sicurezza: rigeneriamo l'access token se sono passate ore dall'avvio del bot
                 canva_token_fresco = get_valid_token()
                 if not canva_token_fresco:
                     print("⚠️ Rinnovo finale fallito, tento l'uso del token iniziale...")
@@ -424,6 +419,8 @@ def avvia_ciclo_partita(canva_token):
                 
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
+                
+                print("🏁 Messaggio di fine inviato con successo. Spegnimento del bot.")
                 sys.exit(0)
 
             # 4. GOL E UPDATE VAR
@@ -492,14 +489,11 @@ def main():
     shared_access_token = get_valid_token()
 
     # 2. SE SEI IL KEEP-ALIVE, FERMATI QUI!
-    # Convertiamo in stringa e puliamo gli spazi per evitare bug di interpretazione da GitHub Actions
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
         print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
         return
 
     # 3. AVVIO PARTITA
-    # Rimosso il blocco bloccante che cercava 'match_state.json' prima del tempo.
-    # Il file verrà inizializzato automaticamente dentro 'avvia_ciclo_partita' se non esiste.
     avvia_ciclo_partita(shared_access_token)
 
 if __name__ == "__main__":
