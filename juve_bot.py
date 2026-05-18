@@ -249,7 +249,6 @@ def main():
     t_away = match.get('teams', {}).get('away', {})
     home_name, away_name = t_home.get('name', 'Home'), t_away.get('name', 'Away')
     home_id, away_id = t_home.get('id'), t_away.get('id')
-    hashtag = f"#Jve{home_name.replace(' ', '') if home_id != MY_TEAM_ID else away_name.replace(' ', '')}" # Fallback generico o pulito
     hashtag = f"#Juve{away_name.replace(' ', '')}" if home_id == MY_TEAM_ID else f"#Juve{home_name.replace(' ', '')}"
     
     g_home_int = match.get('goals', {}).get('home') or 0
@@ -323,7 +322,7 @@ def main():
         state["goals_detected"] = total_goals_now
 
     # --------------------------------------------------------------------------
-    # 3.3 GESTIONE CAMBI MULTIPLI LIVE (Raggruppati per minuto)
+    # 3.3 GESTIONE CAMBI MULTIPLI LIVE
     # --------------------------------------------------------------------------
     if status in ["1H", "2H", "ET"]:
         events = match.get('events', [])
@@ -394,7 +393,7 @@ def main():
             state["penalties_count"] = total_kicks
 
     # --------------------------------------------------------------------------
-    # 3.5 FINE MATCH FINALE (Canva + Resoconto)
+    # 3.5 FINE MATCH FINALE (Canva + Resoconto) - CONFIGURAZIONE UNIFORME
     # --------------------------------------------------------------------------
     if "finished" in status_long or status in ["FT", "AET"] or (status == "PEN" and p_home is not None):
         print("🏁 Fine della partita rilevata. Preparazione riepilogo finale...")
@@ -417,21 +416,13 @@ def main():
 
         scorers_line = ""
         if home_scorers or away_scorers:
-            scorers_line = f"\n⚽️ <i>{', '.join(home_scorers)} // {', '.join(away_scorers)}</i>"
+            all_scorers = []
+            if home_scorers: all_scorers.append(", ".join(home_scorers))
+            if away_scorers: all_scorers.append(", ".join(away_scorers))
+            scorers_line = f"\n⚽️ <i>{' // '.join(all_scorers)}</i>"
 
-        title_prefix = "<b>PARTITA TERMINATA! 🏁</b>"
-        if MY_TEAM_ID in [home_id, away_id]:
-            is_home = (MY_TEAM_ID == home_id)
-            if p_home is not None and p_away is not None:
-                if (p_home > p_away and is_home) or (p_away > p_home and not is_home):
-                    title_prefix = f"<b>{home_name.upper()} VINCE AI RIGORI! 🏆⚪️⚫️</b>"
-            else:
-                if (g_home_int > g_away_int and is_home) or (g_away_int > g_home_int and not is_home):
-                    title_prefix = f"<b>VITTORIA BIANCONERA! 🔥⚪️⚫️</b>"
-                elif g_home_int == g_away_int:
-                    title_prefix = f"<b>PAREGGIO ALLA FINE! 🤝</b>"
-                else:
-                    title_prefix = f"<b>FINE PARTITA 🏁</b>"
+        # Il titolo è sempre fisso per qualsiasi tipo di risultato
+        title_prefix = "<b>FINE PARTITA 🏁</b>"
 
         final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
         msg_finale = f"{title_prefix}\n\n{final_status_line}{scorers_line}\n\n🇮🇹 {hashtag}"
