@@ -45,8 +45,10 @@ E_PEN_KO = '❌'
 LEAGUE_EMOJIS = {
     135: '🇮🇹', # Serie A
     137: '🇮🇹', # Coppa Italia
+    547: '🇮🇹', # Supercoppa Italiana
     2:   '🇪🇺', # Champions League
     3:   '🇪🇺', # Europa League
+    848: '🇪🇺', # Conference League
     667: '🤝'  # Amichevoli Club
 }
 
@@ -145,7 +147,7 @@ def update_github_secret(secret_name, new_value):
 # FUNZIONI INTEGRATE CANVA API
 # ==============================================================================
 def get_valid_token():
-    """Genera un Access Token e aggiorna il Refresh Token se Canva ne fornece uno nuovo."""
+    """Genera un Access Token e aggiorna il Refresh Token se Canva ne fornisce uno nuovo."""
     if not CANVA_REFRESH_TOKEN:
         print("❌ Errore: CANVA_REFRESH_TOKEN non trovato.")
         return None
@@ -488,16 +490,14 @@ def main():
     shared_access_token = get_valid_token()
 
     # 2. SE SEI IL KEEP-ALIVE, FERMATI QUI!
-    if os.getenv('ONLY_REFRESH_TOKEN') == "true":
+    # Convertiamo in stringa e puliamo gli spazi per evitare bug di interpretazione da GitHub Actions
+    if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
         print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
         return
 
-    # 3. CONTROLLO PARTITA (Tutto il resto del codice si attiva solo se non è Keep-Alive)
-    if not os.path.exists("match_state.json"):
-        print("❌ Errore: Nessun match_state.json trovato...")
-        return
-        
-    # Avvia la sequenza di recupero dati e ciclo continuo degli eventi live
+    # 3. AVVIO PARTITA
+    # Rimosso il blocco bloccante che cercava 'match_state.json' prima del tempo.
+    # Il file verrà inizializzato automaticamente dentro 'avvia_ciclo_partita' se non esiste.
     avvia_ciclo_partita(shared_access_token)
 
 if __name__ == "__main__":
