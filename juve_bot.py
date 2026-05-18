@@ -143,6 +143,7 @@ def send_telegram_post_with_photo(text, photo_bytes):
         send_telegram(text)
 
 def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=None):
+    # Logica aggiornata: sia il nome della squadra sia il rispettivo punteggio vanno in bold fissi se > dell'avversario
     c_home_name = home_name
     c_away_name = away_name
     g_home_str = str(g_home)
@@ -363,12 +364,15 @@ def main():
                 time_str = f"{el}+{extra}" if extra else f"{el}"
                 p_name = last_goal.get('player', {}).get('name', 'Giocatore')
                 marcatore = f"{time_str}’ {p_name}"
+                
+                # Chi ha segnato va sempre in bold fisso (squadra + rispettivo punteggio)
                 if team_id_scorer == home_id:
                     current_home_name = f"<b>{home_name}</b>"
                     g_home_str = f"<b>{g_home_int}</b>"
                 elif team_id_scorer == away_id:
                     current_away_name = f"<b>{away_name}</b>"
                     g_away_str = f"<b>{g_away_int}</b>"
+                    
         send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} <i>{marcatore}</i>\n\n{compet_emoji} {hashtag}")
         state["goals_detected"] = total_goals_now
 
