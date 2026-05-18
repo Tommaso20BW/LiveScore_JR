@@ -1,6 +1,5 @@
 name: Juventus Live Score
 
-# Legge il nome registrato da Python. Inizialmente mostra il fallback di caricamento.
 run-name: ${{ env.DYNAMIC_RUN_NAME || 'Recupero info partita...' }}
 
 on:
@@ -22,7 +21,6 @@ jobs:
       - name: Checkout del codice
         uses: actions/checkout@v5
 
-      # Configurato subito per permettere a Python di sovrascrivere tempestivamente il run-name
       - name: Configura Python
         uses: actions/setup-python@v6
         with:
