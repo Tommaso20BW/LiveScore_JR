@@ -15,7 +15,7 @@ except ImportError:
     from nacl import public
 
 # ==============================================================================
-# CONFIGURAZIONE (Secret di GitHub / Variabili d'Ambiente)
+# CONFIGURAZIONE (Secret di GitHub)
 # ==============================================================================
 BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
@@ -28,14 +28,13 @@ REPO_NAME = os.getenv('GITHUB_REPOSITORY')
 # Configurazione Canva e ID Squadra
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
-MY_TEAM_ID = 42  # ID Arsenal su API-Football
+MY_TEAM_ID = 42  # ID Arsenal su API-Football (Standard ID: 42)
 
-# Emoji Branding Arsenal
+# Emoji Branding @Arsenal_Reborn / Gunners Style
 E_BOLT = '⚡️'
 E_FLAG = '🏁'
 E_MIC = '🎙'
 E_BALL = '⚽️'
-E_GUN = '🔴'      
 E_SUB = '🔄'
 E_UP = '🔼'
 E_DOWN = '🔽'
@@ -118,6 +117,7 @@ def send_telegram_post_with_photo(text, photo_bytes):
         send_telegram(text)
 
 def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=None):
+    """Formatta i periodi parziali e finali mettendo in bold chi è in vantaggio."""
     c_home_name = home_name
     c_away_name = away_name
     g_home_str = str(g_home)
@@ -198,40 +198,6 @@ def get_canva_image(access_token):
 # ==============================================================================
 # LOGICA REFRESH DATI API FOOTBALL
 # ==============================================================================
-def search_today_match():
-    if not API_KEY:
-        print("❌ API_KEY mancante.")
-        return None
-        
-    url = "https://v3.football.api-sports.io/fixtures"
-    headers = {"x-apisports-key": API_KEY}
-    today_date = datetime.now().strftime('%Y-%m-%d')
-    params = {"team": MY_TEAM_ID, "date": today_date}
-    
-    try:
-        print(f"🔍 Controllo palinsesto API per l'Arsenal in data {today_date}...")
-        res = requests.get(url, headers=headers, params=params, timeout=15)
-        if res.status_code == 200:
-            fixtures = res.json().get("response", [])
-            if not fixtures:
-                print("ℹ️ Nessun match programmato per l'Arsenal oggi.")
-                return None
-                
-            match = fixtures[0]
-            match_id = match.get('fixture', {}).get('id')
-            status = match.get('fixture', {}).get('status', {}).get('short', 'NS')
-            print(f"✅ Match trovato! ID: {match_id} | Stato attuale: {status}")
-            
-            return {
-                "live_match_id": match_id, 
-                "sent_periods": [], 
-                "goals_detected": 0, 
-                "penalties_count": 0
-            }
-    except Exception as e:
-        print(f"❌ Errore durante la ricerca della partita: {e}")
-    return None
-
 def fetch_live_match(match_id):
     if not API_KEY: return None
     url = f"https://v3.football.api-sports.io/fixtures?id={match_id}"
@@ -245,182 +211,242 @@ def fetch_live_match(match_id):
     return None
 
 # ==============================================================================
-# LOOP DI ESECUZIONE CONTINUA (MANUALE)
+# PIPELINE MACRO PRESA DATI E CICLO REALE
 # ==============================================================================
 def main():
-    print("🚀 Avvio Live Score Bot (Arsenal) in modalità CONTINUA/MANUALE...")
+    print("🚀 Avvio Live Score Bot (Arsenal Edition): elaborazione eventi...")
     
-    # 1. Recupero token Canva unico all'avvio (valido 2 ore, copre la partita)
+    # 1. Controllo e il rinnovo del Token Canva
     shared_access_token = get_valid_token()
-    if not shared_access_token:
-        print("❌ Impossibile avviare il bot senza token Canva valido.")
+
+    # 2. Modalità Keep-Alive
+    if os.getenv('ONLY_REFRESH_TOKEN') == "true":
+        print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
         return
 
-    # 2. Ricerca del match di oggi
-    state = search_today_match()
-    if not state:
-        print("🛑 Esecuzione interrotta: nessuna partita in palinsesto oggi.")
+    # 3. CONTROLLO PARTITA
+    if not os.path.exists("match_state.json"):
+        print("Stato del match non trovato. Nessuna partita attiva in coda.")
         return
 
-    match_id = state["live_match_id"]
+    with open("match_state.json", "r") as f: state = json.load(f)
+    match_id = state.get("live_match_id")
+    if not match_id:
+        print("Errore: live_match_id assente nel file di stato.")
+        return
+
+    match = fetch_live_match(match_id)
+    if not match:
+        print("⚠️ Impossibile ricevere dati aggiornati dall'API. Riprovo al prossimo cron.")
+        return
+
+    fixture = match.get('fixture', {})
+    status = fixture.get('status', {}).get('short', 'NS')
+    status_long = fixture.get('status', {}).get('long', '').lower()
+    elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
     
-    # Allineamento iniziale dei gol per evitare spam se avviato a partita in corso
-    match_init = fetch_live_match(match_id)
-    if match_init:
-        g_home_init = match_init.get('goals', {}).get('home') or 0
-        g_away_init = match_init.get('goals', {}).get('away') or 0
-        state["goals_detected"] = g_home_init + g_away_init
-        print(f"📊 Allineamento iniziale completato. Gol già rilevati: {state['goals_detected']}")
+    t_home = match.get('teams', {}).get('home', {})
+    t_away = match.get('teams', {}).get('away', {})
+    home_name, away_name = t_home.get('name', 'Home'), t_away.get('name', 'Away')
+    home_id, away_id = t_home.get('id'), t_away.get('id')
+    
+    # Generazione Hashtag Dinamico in stile Arsenal (#COYG o #ArsenalAvversario)
+    hashtag = f"#Arsenal{away_name.replace(' ', '')}" if home_id == MY_TEAM_ID else f"#Arsenal{home_name.replace(' ', '')}"
+    hashtag += " #COYG" # Come On You Gunners!
+    
+    g_home_int = match.get('goals', {}).get('home') or 0
+    g_away_int = match.get('goals', {}).get('away') or 0
+    
+    penalties = match.get('score', {}).get('penalty', {})
+    p_home, p_away = penalties.get('home'), penalties.get('away')
 
-    # 3. Inizio del ciclo di monitoraggio live
-    print("⏳ Entro nel loop di controllo live (30s di intervallo)...")
-    while True:
-        try:
-            match = fetch_live_match(match_id)
-            if not match:
-                print("⚠️ Impossibile ricevere dati aggiornati dall'API. Riprovo al prossimo ciclo.")
-                time.sleep(30)
-                continue
+    match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int)
 
-            fixture = match.get('fixture', {})
-            status = fixture.get('status', {}).get('short', 'NS')
-            status_long = fixture.get('status', {}).get('long', '').lower()
-            elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
-            
-            t_home = match.get('teams', {}).get('home', {})
-            t_away = match.get('teams', {}).get('away', {})
-            home_name, away_name = t_home.get('name', 'Home'), t_away.get('name', 'Away')
-            home_id, away_id = t_home.get('id'), t_away.get('id')
-            hashtag = f"#{home_name.replace(' ', '')}{away_name.replace(' ', '')} #COYG"
-            
-            g_home_int = match.get('goals', {}).get('home') or 0
-            g_away_int = match.get('goals', {}).get('away') or 0
-            
-            penalties = match.get('score', {}).get('penalty', {})
-            p_home, p_away = penalties.get('home'), penalties.get('away')
-
-            match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int)
-
-            # 3.1 GESTIONE PERIODI DI GIOCO
-            if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
-                send_telegram(f"<b>KICK-OFF {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n🔴 {hashtag}")
-                state["sent_periods"].append("1H")
-                
-            elif status == "HT" and "HT" not in state["sent_periods"]:
-                send_telegram(f"<b>HALF-TIME {E_FLAG}</b>\n\n{match_status_line}\n\n🔴 {hashtag}")
-                state["sent_periods"].append("HT")
-                
-            elif status == "ET" and elapsed_minutes == 90 and "2H_END" not in state["sent_periods"]:
-                send_telegram(f"<b>FULL-TIME (REGULAR TIME) {E_FLAG}</b>\n\n{match_status_line}\n\nEXTRA-TIME! ⏳\n\n🔴 {hashtag}")
-                state["sent_periods"].append("2H_END")
-                
-            elif status == "ET" and elapsed_minutes == 120 and "ET_END" not in state["sent_periods"]:
-                send_telegram(f"<b>END OF EXTRA-TIME {E_FLAG}</b>\n\n{match_status_line}\n\nGOAL SHOOTOUT! 🎯\n\n🔴 {hashtag}")
-                state["sent_periods"].append("ET_END")
-
-            # 3.2 GESTIONE EVENTO GOAL LIVE
-            total_goals_now = g_home_int + g_away_int
-            if status in ["1H", "2H", "ET"] and total_goals_now > state["goals_detected"]:
-                events = match.get('events', [])
-                current_home_name, current_away_name = home_name, away_name
-                g_home_str, g_away_str = str(g_home_int), str(g_away_int)
-                marcatore = ""
-
-                if events:
-                    all_goals = [e for e in events if e.get('type', '').lower() == 'goal']
-                    if all_goals:
-                        last_goal = all_goals[-1]
-                        team_id_scorer = last_goal.get('team', {}).get('id')
-                        el = last_goal.get('time', {}).get('elapsed', '?')
-                        extra = last_goal.get('time', {}).get('extra')
-                        time_str = f"{el}+{extra}" if extra else f"{el}"
-                        p_name = last_goal.get('player', {}).get('name', 'Player')
-                        marcatore = f"{time_str}’ {p_name}"
-
-                        if team_id_scorer == home_id:
-                            current_home_name = f"<b>{home_name}</b>"
-                            g_home_str = f"<b>{g_home_int}</b>"
-                        elif team_id_scorer == away_id:
-                            current_away_name = f"<b>{away_name}</b>"
-                            g_away_str = f"<b>{g_away_int}</b>"
-
-                send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} <i>{marcatore}</i>\n\n🔴 {hashtag}")
-                state["goals_detected"] = total_goals_now
-
-            # 3.3 CRONACA LOTTERIA DEI RIGORI LIVE
-            if status == "PEN" and "finished" not in status_long:
-                events = match.get('events', [])
-                home_pen_icons, away_pen_icons = [], []
-                for e in events:
-                    detail = e.get('detail', '').lower()
-                    ev_type = e.get('type', '').lower()
-                    if "shootout" in detail or (ev_type == "goal" and elapsed_minutes >= 120 and "penalty" in detail):
-                        icon = E_PEN_KO if ("missed" in detail or "saved" in detail) else E_PEN_OK
-                        if e.get('team', {}).get('id') == home_id: home_pen_icons.append(icon)
-                        else: away_pen_icons.append(icon)
-                        
-                total_kicks = len(home_pen_icons) + len(away_pen_icons)
-                if total_kicks > state.get("penalties_count", 0):
-                    msg_pen = f"<b>PENALTY SHOOTOUT 🎯</b>\n\n{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n🔴 {hashtag}"
-                    send_telegram(msg_pen)
-                    state["penalties_count"] = total_kicks
-
-            # 3.4 FINE MATCH FINALE (Condizione d'uscita dal Loop)
-            if "finished" in status_long or status in ["FT", "AET"]:
-                print("🏁 Fine della partita rilevata. Preparazione riepilogo finale...")
-                
-                events = match.get('events', [])
-                home_scorers, away_scorers = [], []
-                for e in events:
-                    detail_lower = e.get('detail', '').lower()
-                    elapsed = e.get('time', {}).get('elapsed', 0)
-                    
-                    # Filtriamo tenendo solo i goal dei tempi regolamentari/supplementari (esclusi rigori finali)
-                    if e.get('type', '').lower() == 'goal' and "shootout" not in detail_lower and elapsed <= 120:
-                        ex = e.get('time', {}).get('extra')
-                        t_str = f"{elapsed}+{ex}" if ex else f"{elapsed}"
-                        p_name = e.get('player', {}).get('name', 'Player')
-                        
-                        if detail_lower == "own goal": p_name += " (AG)"
-                        elif detail_lower == "penalty": p_name += " (R)"
-                        
-                        scorer_entry = f"{t_str}’ {p_name}"
-                        if e.get('team', {}).get('id') == home_id: home_scorers.append(scorer_entry)
-                        else: away_scorers.append(scorer_entry)
-
-                scorers_line = ""
-                if home_scorers or away_scorers:
-                    scorers_line = f"\n⚽️ <i>{', '.join(home_scorers)} // {', '.join(away_scorers)}</i>"
-
-                title_prefix = "<b>FULL-TIME! 🏁</b>"
-                if MY_TEAM_ID in [home_id, away_id]:
-                    is_home = (MY_TEAM_ID == home_id)
-                    if p_home is not None and p_away is not None:
-                        if (p_home > p_away and is_home) or (p_away > p_home and not is_home):
-                            title_prefix = f"<b>{home_name.upper()} WIN ON PENALTIES! 🏆🔴⚪️</b>"
-                    else:
-                        if (g_home_int > g_away_int and is_home) or (g_away_int > g_home_int and not is_home):
-                            title_prefix = f"<b>GUNNERS WIN! 🔥🔴⚪️</b>"
-                        elif g_home_int == g_away_int:
-                            title_prefix = f"<b>POINTS SHARED! 🤝</b>"
-                        else:
-                            title_prefix = f"<b>FULL-TIME 🏁</b>"
-
-                final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
-                msg_finale = f"{title_prefix}\n\n{final_status_line}{scorers_line}\n\n🔴 {hashtag}"
-                
-                foto = get_canva_image(shared_access_token)
-                send_telegram_post_with_photo(msg_finale, photo_bytes=foto)
-                
-                break # Rompe il loop while True e termina lo script con successo
-
-        except Exception as e:
-            print(f"❌ Errore nel loop live: {e}")
-            
-        # Pausa di 30 secondi prima del prossimo controllo API
-        time.sleep(30)
+    # --------------------------------------------------------------------------
+    # 3.1 GESTIONE PERIODI DI GIOCO
+    # --------------------------------------------------------------------------
+    if status == "1H" and "1H" not in state["sent_periods"]:
+        send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n🔴⚪️ {hashtag}")
+        state["sent_periods"].append("1H")
         
-    print("👋 Processo completato. Il bot si è spento regolarmente.")
+    elif status == "HT" and "HT" not in state["sent_periods"]:
+        send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{match_status_line}\n\n🔴⚪️ {hashtag}")
+        state["sent_periods"].append("HT")
+        
+    elif status == "2H" and "2H_START" not in state["sent_periods"]:
+        send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{match_status_line}\n\n🔴⚪️ {hashtag}")
+        state["sent_periods"].append("2H_START")
+        
+    elif status == "ET" and elapsed_minutes == 90 and "2H_END" not in state["sent_periods"]:
+        send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{match_status_line}\n\n🔴⚪️ {hashtag}")
+        state["sent_periods"].append("2H_END")
+        
+    elif status == "ET" and elapsed_minutes > 90 and "ET_START" not in state["sent_periods"]:
+        send_telegram(f"<b>INIZIO PRIMO TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{match_status_line}\n\n🔴⚪️ {hashtag}")
+        state["sent_periods"].append("ET_START")
+        
+    elif status == "ET" and elapsed_minutes == 120 and "ET_END" not in state["sent_periods"]:
+        send_telegram(f"<b>FINE SECONDO TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{match_status_line}\n\n🔴⚪️ {hashtag}")
+        state["sent_periods"].append("ET_END")
+
+    # --------------------------------------------------------------------------
+    # 3.2 GESTIONE EVENTO GOAL LIVE
+    # --------------------------------------------------------------------------
+    total_goals_now = g_home_int + g_away_int
+    if status in ["1H", "2H", "ET"] and total_goals_now > state["goals_detected"]:
+        events = match.get('events', [])
+        current_home_name, current_away_name = home_name, away_name
+        g_home_str, g_away_str = str(g_home_int), str(g_away_int)
+        marcatore = ""
+
+        if events:
+            all_goals = [e for e in events if e.get('type', '').lower() == 'goal']
+            if all_goals:
+                last_goal = all_goals[-1]
+                team_id_scorer = last_goal.get('team', {}).get('id')
+                el = last_goal.get('time', {}).get('elapsed', '?')
+                extra = last_goal.get('time', {}).get('extra')
+                time_str = f"{el}+{extra}" if extra else f"{el}"
+                p_name = last_goal.get('player', {}).get('name', 'Giocatore')
+                
+                if last_goal.get('detail', '').lower() == "own goal": p_name += " (AG)"
+                elif last_goal.get('detail', '').lower() == "penalty": p_name += " (R)"
+                
+                marcatore = f"{time_str}’ {p_name}"
+
+                if team_id_scorer == home_id:
+                    current_home_name = f"<b>{home_name}</b>"
+                    g_home_str = f"<b>{g_home_int}</b>"
+                elif team_id_scorer == away_id:
+                    current_away_name = f"<b>{away_name}</b>"
+                    g_away_str = f"<b>{g_away_int}</b>"
+
+        send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} <i>{marcatore}</i>\n\n🔴⚪️ {hashtag}")
+        state["goals_detected"] = total_goals_now
+
+    # --------------------------------------------------------------------------
+    # 3.3 GESTIONE CAMBI MULTIPLI LIVE (Raggruppati per minuto)
+    # --------------------------------------------------------------------------
+    if status in ["1H", "2H", "ET"]:
+        events = match.get('events', [])
+        grouped_subs = {}
+        
+        for e in events:
+            if e.get('type', '').lower() == 'subst':
+                elapsed = e.get('time', {}).get('elapsed', 0)
+                extra = e.get('time', {}).get('extra')
+                time_str = f"{elapsed}+{extra}" if extra else f"{elapsed}"
+                
+                team_id_event = e.get('team', {}).get('id')
+                team_name = e.get('team', {}).get('name', 'Squadra').upper()
+                
+                player_in = e.get('player', {}).get('name', 'Giocatore In')
+                player_out = e.get('assist', {}).get('name', 'Giocatore Out')
+                player_in_id = e.get('player', {}).get('id', 0)
+                
+                sub_unique_id = f"sub_{team_id_event}_{time_str}_{player_in_id}"
+                
+                if sub_unique_id not in state.get("sent_substitutions", []):
+                    key = (team_id_event, team_name, time_str)
+                    if key not in grouped_subs:
+                        grouped_subs[key] = {"in": [], "out": [], "ids": []}
+                    
+                    grouped_subs[key]["in"].append(player_in)
+                    grouped_subs[key]["out"].append(player_out)
+                    grouped_subs[key]["ids"].append(sub_unique_id)
+
+        for (team_id_event, team_name, time_str), sub_data in grouped_subs.items():
+            if team_id_event == MY_TEAM_ID:
+                title_team = f"<b>CAMBIO {team_name}</b>"
+            else:
+                title_team = f"CAMBIO {team_name}"
+                
+            str_in = ", ".join(sub_data["in"])
+            str_out = ", ".join(sub_data["out"])
+            
+            msg_sub = (
+                f"{title_team} {E_SUB}\n\n"
+                f"{E_UP} <i>{str_in}</i>\n"
+                f"{E_DOWN} <i>{str_out}</i>\n\n"
+                f"🔴⚪️ {hashtag}"
+            )
+            
+            send_telegram(msg_sub)
+            if "sent_substitutions" not in state: state["sent_substitutions"] = []
+            state["sent_substitutions"].extend(sub_data["ids"])
+
+    # --------------------------------------------------------------------------
+    # 3.4 CRONACA LOTTERIA DEI RIGORI LIVE
+    # --------------------------------------------------------------------------
+    if status == "PEN" and "finished" not in status_long:
+        events = match.get('events', [])
+        home_pen_icons, away_pen_icons = [], []
+        for e in events:
+            detail = e.get('detail', '').lower()
+            ev_type = e.get('type', '').lower()
+            if "shootout" in detail or (ev_type == "goal" and elapsed_minutes >= 120 and "penalty" in detail):
+                icon = E_PEN_KO if ("missed" in detail or "saved" in detail) else E_PEN_OK
+                if e.get('team', {}).get('id') == home_id: home_pen_icons.append(icon)
+                else: away_pen_icons.append(icon)
+                
+        total_kicks = len(home_pen_icons) + len(away_pen_icons)
+        if total_kicks > state.get("penalties_count", 0):
+            msg_pen = f"<b>RIGORI 🎯</b>\n\n{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n🔴⚪️ {hashtag}"
+            send_telegram(msg_pen)
+            state["penalties_count"] = total_kicks
+
+    # --------------------------------------------------------------------------
+    # 3.5 FINE MATCH FINALE (Canva + Resoconto)
+    # --------------------------------------------------------------------------
+    if "finished" in status_long or status in ["FT", "AET"] or (status == "PEN" and p_home is not None):
+        print("🏁 Fine della partita rilevata. Preparazione riepilogo finale...")
+        
+        events = match.get('events', [])
+        home_scorers, away_scorers = [], []
+        for e in events:
+            if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower():
+                el = e.get('time', {}).get('elapsed', '?')
+                ex = e.get('time', {}).get('extra')
+                t_str = f"{el}+{ex}" if ex else f"{el}"
+                p_name = e.get('player', {}).get('name', 'Giocatore')
+                
+                if e.get('detail', '').lower() == "own goal": p_name += " (AG)"
+                elif e.get('detail', '').lower() == "penalty": p_name += " (R)"
+                
+                scorer_entry = f"{t_str}’ {p_name}"
+                if e.get('team', {}).get('id') == home_id: home_scorers.append(scorer_entry)
+                else: away_scorers.append(scorer_entry)
+
+        scorers_line = ""
+        if home_scorers or away_scorers:
+            scorers_line = f"\n⚽️ <i>{', '.join(home_scorers)} // {', '.join(away_scorers)}</i>"
+
+        title_prefix = "<b>PARTITA TERMINATA! 🏁</b>"
+        if MY_TEAM_ID in [home_id, away_id]:
+            is_home = (MY_TEAM_ID == home_id)
+            if p_home is not None and p_away is not None:
+                if (p_home > p_away and is_home) or (p_away > p_home and not is_home):
+                    title_prefix = f"<b>{home_name.upper()} VINCE AI RIGORI! 🏆🔴⚪️</b>"
+            else:
+                if (g_home_int > g_away_int and is_home) or (g_away_int > g_home_int and not is_home):
+                    title_prefix = f"<b>VITTORIA GUNNERS! 🔥🔴⚪️</b>"
+                elif g_home_int == g_away_int:
+                    title_prefix = f"<b>PAREGGIO ALLA FINE! 🤝</b>"
+                else:
+                    title_prefix = f"<b>FINE PARTITA 🏁</b>"
+
+        final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
+        msg_finale = f"{title_prefix}\n\n{final_status_line}{scorers_line}\n\n🔴⚪️ {hashtag}"
+        
+        foto = get_canva_image(shared_access_token)
+        send_telegram_post_with_photo(msg_finale, photo_bytes=foto)
+        
+        if os.path.exists("match_state.json"): os.remove("match_state.json")
+        print("🏁 Flusso terminato con successo. File di stato rimosso.")
+        return
+
+    # Salvataggio dello stato aggiornato per il ciclo successivo
+    with open("match_state.json", "w") as f: json.dump(state, f)
 
 if __name__ == "__main__":
     main()
