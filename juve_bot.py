@@ -44,6 +44,41 @@ E_PEN_OK = '✅'
 E_PEN_KO = '❌'
 
 # ==============================================================================
+# FUNZIONE DI PULIZIA NOMI SQUADRE E HASHTAG SPECIALI
+# ==============================================================================
+def clean_team_name(name, for_hashtag=False):
+    if not name:
+        return "Team"
+    
+    # Se stiamo creando l'hashtag, gestiamo le eccezioni per Manchester City e United
+    if for_hashtag:
+        name_lower = name.lower()
+        if "manchester city" in name_lower:
+            return "ManCity"
+        if "manchester united" in name_lower:
+            return "ManUnited"
+
+    # Lista delle sigle standard da rimuovere
+    stopwords = ["fc", "f.c.", "ac", "a.c.", "asd", "a.s.d.", "calcio", "spa", "s.p.a.", "sc", "s.c."]
+    
+    # Dividiamo il nome in parole, rimuovendo spazi extra
+    words = name.split()
+    
+    # Filtriamo via le stopwords
+    cleaned_words = [w for w in words if w.lower() not in stopwords]
+    
+    # Se il filtro svuota tutto per errore, riprendiamo il nome originale
+    if not cleaned_words:
+        cleaned_words = words
+        
+    if for_hashtag:
+        # Per l'hashtag uniamo tutto senza spazi
+        return "".join(cleaned_words).replace(" ", "")
+    else:
+        # Per il testo normale uniamo le parole con uno spazio pulito (es. Manchester United)
+        return " ".join(cleaned_words)
+
+# ==============================================================================
 # FUNZIONI DI AGGIORNAMENTO SICURO NEI GITHUB SECRETS
 # ==============================================================================
 def update_github_secret(secret_name, new_value):
@@ -164,7 +199,7 @@ def get_canva_image(access_token):
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     try:
         res = requests.post("https://api.canva.com/rest/v1/exports", headers=headers, json={"design_id": CANVA_DESIGN_ID, "format": {"type": "png", "pages": [PAGINA_TARGET]}}, timeout=15)
-        if res.status_code not in [200, 201]: return None
+        if res.status_code not in [201, 200]: return None
         job_id = res.json().get("id") or res.json().get("job", {}).get("id")
         for i in range(20):
             time.sleep(3)
@@ -215,9 +250,14 @@ def main():
     
     t_home = match.get('teams', {}).get('home', {})
     t_away = match.get('teams', {}).get('away', {})
-    home_name, away_name = t_home.get('name', 'Home'), t_away.get('name', 'Away')
+    
+    # --- ACQUISIZIONE E PULIZIA DEI NOMI PER IL TESTO ---
+    home_name = clean_team_name(t_home.get('name', 'Home'))
+    away_name = clean_team_name(t_away.get('name', 'Away'))
     home_id, away_id = t_home.get('id'), t_away.get('id')
-    hashtag = f"#{home_name.replace(' ', '')}{away_name.replace(' ', '')}"
+    
+    # --- GENERAZIONE HASHTAG SPECIALI ---
+    hashtag = f"#{clean_team_name(t_home.get('name'), for_hashtag=True)}{clean_team_name(t_away.get('name'), for_hashtag=True)}"
     
     g_home_int = match.get('goals', {}).get('home') or 0
     g_away_int = match.get('goals', {}).get('away') or 0
@@ -289,7 +329,7 @@ def main():
         state["goals_detected"] = total_goals_now
 
     # ==============================================================================
-    # 3. GESTIONE CAMBI (TITOLO DINAMICO SENZA MINUTI)
+    # 3. GESTIONE CAMBI
     # ==============================================================================
     events = match.get('events', [])
     new_subs = []
@@ -305,7 +345,8 @@ def main():
         for sub_event, sub_id in new_subs:
             t_id = sub_event.get('team', {}).get('id')
             if t_id not in subs_by_team:
-                subs_by_team[t_id] = {"name": sub_event.get('team', {}).get('name'), "in": [], "out": [], "ids": []}
+                cleaned_t_name = clean_team_name(sub_event.get('team', {}).get('name'))
+                subs_by_team[t_id] = {"name": cleaned_t_name, "in": [], "out": [], "ids": []}
             
             p_in = sub_event.get('assist', {}).get('name', 'Giocatore')
             p_out = sub_event.get('player', {}).get('name', 'Giocatore')
@@ -321,13 +362,13 @@ def main():
             state["sent_subs"].extend(data["ids"])
 
     # ==============================================================================
-    # 4. GESTIONE CARTELLINI ROSSI (EMOJI 🔚 VICINO AL GIOCATORE)
+    # 4. GESTIONE CARTELLINI ROSSI
     # ==============================================================================
     for e in events:
         if e.get('type', '').lower() == 'card' and e.get('detail', '').lower() in ['red card', 'second yellow card']:
             card_id = f"{e.get('time', {}).get('elapsed')}_{e.get('player', {}).get('id')}"
             if card_id not in state["sent_cards"]:
-                t_name = e.get('team', {}).get('name', 'Squadra')
+                t_name = clean_team_name(e.get('team', {}).get('name', 'Squadra'))
                 p_name = e.get('player', {}).get('name', 'Giocatore')
                 el = e.get('time', {}).get('elapsed', '?')
                 extra = e.get('time', {}).get('extra')
@@ -375,8 +416,12 @@ def main():
                 else: away_scorers.append(scorer_entry)
 
         scorers_line = ""
-        if home_scorers or away_scorers:
+        if home_scorers and away_scorers:
             scorers_line = f"\n⚽️ <i>{', '.join(home_scorers)} // {', '.join(away_scorers)}</i>"
+        elif home_scorers:
+            scorers_line = f"\n⚽️ <i>{', '.join(home_scorers)}</i>"
+        elif away_scorers:
+            scorers_line = f"\n⚽️ <i>{', '.join(away_scorers)}</i>"
 
         title_prefix = "<b>FINE PARTITA 🏁</b>"
         final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
