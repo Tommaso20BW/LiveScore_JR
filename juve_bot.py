@@ -219,7 +219,7 @@ def fetch_live_match(match_id):
 # PIPELINE MACRO PRESA DATI E CICLO REALE
 # ==============================================================================
 def main():
-    print("🚀 AVVIO BOT REALE LIVE MATCH CON GRASSETTO DINAMICO SUI GOAL...")
+    print("🚀 Avvio Live Score Bot: elaborazione eventi in corso...")
     
     if not os.path.exists("match_state.json"):
         print("❌ Errore: Nessun match_state.json trovato. Esegui prima lo script di aggancio match.")
