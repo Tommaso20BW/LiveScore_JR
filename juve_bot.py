@@ -353,24 +353,57 @@ def main():
                     grouped_subs[key]["ids"].append(sub_unique_id)
 
         for (team_id_event, team_name, time_str), sub_data in grouped_subs.items():
-            if team_id_event == MY_TEAM_ID:
-                title_team = f"<b>CAMBIO {team_name}</b>"
-            else:
-                title_team = f"CAMBIO {team_name}"
+            # UNIFORMATO: Titolo sempre in grassetto per qualsiasi squadra
+            title_team = f"<b>CAMBIO {team_name} {E_SUB}</b>"
                 
-            str_in = ", ".join(sub_data["in"])
-            str_out = ", ".join(sub_data["out"])
+            # UNIFORMATO: Nomi dei giocatori sempre in corsivo
+            str_in = ", ".join([f"<i>{name}</i>" for name in sub_data["in"]])
+            str_out = ", ".join([f"<i>{name}</i>" for name in sub_data["out"]])
             
             msg_sub = (
-                f"{title_team} {E_SUB}\n\n"
-                f"{E_UP} <i>{str_in}</i>\n"
-                f"{E_DOWN} <i>{str_out}</i>\n\n"
+                f"{title_team}\n\n"
+                f"{E_UP} {str_in}\n"
+                f"{E_DOWN} {str_out}\n\n"
                 f"🇮🇹 {hashtag}"
             )
             
             send_telegram(msg_sub)
             if "sent_substitutions" not in state: state["sent_substitutions"] = []
             state["sent_substitutions"].extend(sub_data["ids"])
+
+    # --------------------------------------------------------------------------
+    # 3.3.2 GESTIONE CARTELLINI ROSSI LIVE
+    # --------------------------------------------------------------------------
+    if status in ["1H", "2H", "ET"]:
+        events = match.get('events', [])
+        for e in events:
+            if e.get('type', '').lower() == 'card' and ("red card" in e.get('detail', '').lower() or "second yellow" in e.get('detail', '').lower()):
+                elapsed = e.get('time', {}).get('elapsed', 0)
+                extra = e.get('time', {}).get('extra')
+                time_str = f"{elapsed}+{extra}" if extra else f"{elapsed}"
+                
+                team_id_event = e.get('team', {}).get('id')
+                team_name = e.get('team', {}).get('name', 'Squadra').upper()
+                player_name = e.get('player', {}).get('name', 'Giocatore')
+                player_id = e.get('player', {}).get('id', 0)
+                
+                card_unique_id = f"red_{team_id_event}_{time_str}_{player_id}"
+                
+                if "sent_cards" not in state: state["sent_cards"] = []
+                
+                if card_unique_id not in state["sent_cards"]:
+                    # UNIFORMATO: Titolo sempre in grassetto per qualsiasi squadra
+                    title_card = f"<b>CARTELLINO ROSSO {team_name} {E_RED}</b>"
+                        
+                    # UNIFORMATO: Nome del giocatore sempre in corsivo
+                    msg_card = (
+                        f"{title_card}\n\n"
+                        f"🔚 {time_str}’ <i>{player_name}</i>\n\n"
+                        f"🇮🇹 {hashtag}"
+                    )
+                    
+                    send_telegram(msg_card)
+                    state["sent_cards"].append(card_unique_id)
 
     # --------------------------------------------------------------------------
     # 3.4 CRONACA LOTTERIA DEI RIGORI LIVE
@@ -388,12 +421,13 @@ def main():
                 
         total_kicks = len(home_pen_icons) + len(away_pen_icons)
         if total_kicks > state.get("penalties_count", 0):
+            # UNIFORMATO: Titolo sempre in grassetto
             msg_pen = f"<b>RIGORI 🎯</b>\n\n{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n🇮🇹 {hashtag}"
             send_telegram(msg_pen)
             state["penalties_count"] = total_kicks
 
     # --------------------------------------------------------------------------
-    # 3.5 FINE MATCH FINALE (Canva + Resoconto) - CONFIGURAZIONE UNIFORME
+    # 3.5 FINE MATCH FINALE (Canva + Resoconto)
     # --------------------------------------------------------------------------
     if "finished" in status_long or status in ["FT", "AET"] or (status == "PEN" and p_home is not None):
         print("🏁 Fine della partita rilevata. Preparazione riepilogo finale...")
@@ -419,9 +453,10 @@ def main():
             all_scorers = []
             if home_scorers: all_scorers.append(", ".join(home_scorers))
             if away_scorers: all_scorers.append(", ".join(away_scorers))
+            # UNIFORMATO: Marcatori uniti da // e scritti tutti in corsivo
             scorers_line = f"\n⚽️ <i>{' // '.join(all_scorers)}</i>"
 
-        # Il titolo è sempre fisso per qualsiasi tipo di risultato
+        # UNIFORMATO: Titolo sempre fisso in grassetto per qualsiasi risultato
         title_prefix = "<b>FINE PARTITA 🏁</b>"
 
         final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
