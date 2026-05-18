@@ -35,7 +35,7 @@ E_BOLT = '⚡️'
 E_FLAG = '🏁'
 E_MIC = '🎙'
 E_BALL = '⚽️'
-E_GUN = '🔴'      # Cambiato o integrabile con un'emoji iconica del club
+E_GUN = '🔴'      
 E_SUB = '🔄'
 E_UP = '🔼'
 E_DOWN = '🔽'
@@ -204,6 +204,44 @@ def get_canva_image(access_token):
 # ==============================================================================
 # LOGICA REFRESH DATI API FOOTBALL
 # ==============================================================================
+def search_today_match():
+    """Cerca se l'Arsenal ha una partita programmata oggi e crea lo stato iniziale."""
+    if not API_KEY:
+        print("❌ API_KEY mancante.")
+        return None
+        
+    url = "https://v3.football.api-sports.io/fixtures"
+    headers = {"x-apisports-key": API_KEY}
+    today_date = datetime.now().strftime('%Y-%m-%d')
+    params = {"team": MY_TEAM_ID, "date": today_date}
+    
+    try:
+        print(f"🔍 Controllo palinsesto API per l'Arsenal in data {today_date}...")
+        res = requests.get(url, headers=headers, params=params, timeout=15)
+        if res.status_code == 200:
+            fixtures = res.json().get("response", [])
+            if not fixtures:
+                print("ℹ️ Nessun match programmato per l'Arsenal oggi.")
+                return None
+                
+            match = fixtures[0]
+            match_id = match.get('fixture', {}).get('id')
+            status = match.get('fixture', {}).get('status', {}).get('short', 'NS')
+            print(f"✅ Match trovato! ID: {match_id} | Stato attuale: {status}")
+            
+            return {
+                "live_match_id": match_id, 
+                "sent_periods": [], 
+                "goals_detected": 0, 
+                "sent_subs": [], 
+                "sent_cards": [],
+                "sent_failed_penalties": [],
+                "penalties_count": 0
+            }
+    except Exception as e:
+        print(f"❌ Errore durante la ricerca della partita: {e}")
+    return None
+
 def fetch_live_match(match_id):
     if not API_KEY: return None
     url = f"https://v3.football.api-sports.io/fixtures?id={match_id}"
@@ -230,12 +268,29 @@ def main():
         print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
         return
 
-    # 3. CONTROLLO PARTITA (Solo se non siamo in modalità Keep-Alive)
+    # 3. CONTROLLO O CREAZIONE AUTOMATICA PARTITA
     if not os.path.exists("match_state.json"):
-        print("Stato del match non trovato. Nessuna partita attiva in coda.")
-        return
+        initial_state = search_today_match()
+        if not initial_state:
+            print("🛑 Esecuzione interrotta: nessuna partita in palinsesto oggi.")
+            return
+            
+        # Controlliamo se è ancora "NS" (Non iniziata) per fermarci in tempo
+        check_match = fetch_live_match(initial_state["live_match_id"])
+        if check_match:
+            status_init = check_match.get('fixture', {}).get('status', {}).get('short', 'NS')
+            if status_init == "NS":
+                print("⏳ Match trovato ma non ancora iniziato. In attesa del fischio d'inizio.")
+                return
+        
+        # Se è in corso o iniziata, creiamo il file di stato
+        state = initial_state
+        with open("match_state.json", "w") as f:
+            json.dump(state, f)
+    else:
+        with open("match_state.json", "r") as f: 
+            state = json.load(f)
 
-    with open("match_state.json", "r") as f: state = json.load(f)
     match_id = state.get("live_match_id")
     if not match_id:
         print("Errore: live_match_id assente nel file di stato.")
@@ -263,7 +318,6 @@ def main():
     penalties = match.get('score', {}).get('penalty', {})
     p_home, p_away = penalties.get('home'), penalties.get('away')
 
-    # Linea di stato standard con grassetto condizionale al vantaggio (per periodi)
     match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int)
 
     # 1. GESTIONE PERIODI DI GIOCO
@@ -283,7 +337,7 @@ def main():
         send_telegram(f"<b>END OF EXTRA-TIME {E_FLAG}</b>\n\n{match_status_line}\n\nGOAL SHOOTOUT! 🎯\n\n🔴 {hashtag}")
         state["sent_periods"].append("ET_END")
 
-    # 2. GESTIONE EVENTO GOAL LIVE (Bold fisso a chi segna)
+    # 2. GESTIONE EVENTO GOAL LIVE
     total_goals_now = g_home_int + g_away_int
     if status in ["1H", "2H", "ET"] and total_goals_now > state["goals_detected"]:
         events = match.get('events', [])
@@ -302,7 +356,6 @@ def main():
                 p_name = last_goal.get('player', {}).get('name', 'Player')
                 marcatore = f"{time_str}’ {p_name}"
 
-                # Applica il grassetto alla squadra marcatrice dell'evento, anche in caso di pareggio
                 if team_id_scorer == home_id:
                     current_home_name = f"<b>{home_name}</b>"
                     g_home_str = f"<b>{g_home_int}</b>"
@@ -335,7 +388,6 @@ def main():
     if "finished" in status_long or status in ["FT", "AET"] or (status == "PEN" and p_home is not None):
         print("🏁 Fine della partita rilevata. Preparazione riepilogo finale...")
         
-        # Estrazione marcatori ordinati per tabellino finale sotto la foto
         events = match.get('events', [])
         home_scorers, away_scorers = [], []
         for e in events:
@@ -356,7 +408,6 @@ def main():
         if home_scorers or away_scorers:
             scorers_line = f"\n⚽️ <i>{', '.join(home_scorers)} // {', '.join(away_scorers)}</i>"
 
-        # Titolo personalizzato dinamico a seconda del risultato dei Gunners
         title_prefix = "<b>FULL-TIME! 🏁</b>"
         if MY_TEAM_ID in [home_id, away_id]:
             is_home = (MY_TEAM_ID == home_id)
@@ -374,7 +425,6 @@ def main():
         final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
         msg_finale = f"{title_prefix}\n\n{final_status_line}{scorers_line}\n\n🔴 {hashtag}"
         
-        # Export e pubblicazione con grafica Canva usando il token gestito prima
         foto = get_canva_image(shared_access_token)
         send_telegram_post_with_photo(msg_finale, photo_bytes=foto)
         
