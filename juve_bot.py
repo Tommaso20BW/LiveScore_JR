@@ -45,7 +45,7 @@ E_PEN_KO = '❌'
 LEAGUE_EMOJIS = {
     135: '🇮🇹',   # Serie A
     137: '🇮🇹',   # Coppa Italia
-    138: '🇮🇹🏆', # Supercoppa Italiana
+    547: '🇮🇹',   # Supercoppa Italiana
     2:   '🇪🇺',   # Champions League
     3:   '🇪🇺',   # Europa League
     667: '🤝'    # Amichevoli Club
