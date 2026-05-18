@@ -3,7 +3,6 @@ name: Canva Token Keep-Alive
 on:
   schedule:
     - cron: '0 9 * * 1'
-  workflow_dispatch:
 
 permissions:
   contents: write
