@@ -133,7 +133,7 @@ def update_github_secret(secret_name, new_value):
         
         res_secret = requests.put(secret_url, headers=headers, json=payload, timeout=10)
         if res_secret.status_code in [201, 204]:
-            print(f"✅ Secret '{secret_name}' aggiornato con successo su GitHub per i primi match!")
+            print(f"✅ Secret '{secret_name}' aggiornato con successo su GitHub per i prossimi match!")
             return True
         else:
             print(f"❌ Errore durante l'aggiornamento del secret su GitHub: {res_secret.text}")
@@ -266,7 +266,7 @@ def build_split_scorers_text(events, home_id, away_id):
 # ==============================================================================
 # LOGICA DI GESTIONE E CICLO DEL MATCH LIVE
 # ==============================================================================
-def avvia_ciclo_partita(canva_token):
+def avvia_ciclo_partita():
     print("✅ Procedo al recupero del match...")
 
     if not API_KEY:
@@ -431,13 +431,14 @@ def avvia_ciclo_partita(canva_token):
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{punteggio_finale}\n{scorers_line}\n{e_comp} {hashtag}"
                 
+                # OTTIDIZZAZIONE: Genera il token Canva solo ora al fischio finale
                 canva_token_fresco = get_valid_token()
-                if not canva_token_fresco:
-                    print("⚠️ Rinnovo finale fallito, tento l'uso del token iniziale...")
-                    canva_token_fresco = canva_token
-
-                foto_canva = get_canva_image(canva_token_fresco)
-                send_telegram_with_photo(msg_finale, photo_bytes=foto_canva)
+                if canva_token_fresco:
+                    foto_canva = get_canva_image(canva_token_fresco)
+                    send_telegram_with_photo(msg_finale, photo_bytes=foto_canva)
+                else:
+                    print("❌ Impossibile generare un token Canva valido al fischio finale. Invio solo testo.")
+                    send_telegram(msg_finale)
                 
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
@@ -523,16 +524,15 @@ def avvia_ciclo_partita(canva_token):
 def main():
     print("🚀 Avvio Live Score Bot: elaborazione eventi in corso...")
     
-    # 1. Eseguiamo SEMPRE il controllo e il rinnovo del Token Canva
-    shared_access_token = get_valid_token()
-
-    # 2. SE SEI IL KEEP-ALIVE, FERMATI QUI!
+    # 1. SE SEI IL KEEP-ALIVE, esegui il rinnovo ed esci subito
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
-        print("🔒 Modalità Keep-Alive: Token aggiornato correttamente. Termino l'esecuzione.")
+        print("🔒 Modalità Keep-Alive: Rinnovo il token...")
+        get_valid_token()
+        print("🔒 Token aggiornato correttamente. Termino l'esecuzione.")
         return
 
-    # 3. AVVIO PARTITA
-    avvia_ciclo_partita(shared_access_token)
+    # 2. AVVIO PARTITA (senza chiedere il token Canva adesso)
+    avvia_ciclo_partita()
 
 if __name__ == "__main__":
     main()
