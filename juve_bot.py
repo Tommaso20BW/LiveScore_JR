@@ -312,8 +312,10 @@ def avvia_ciclo_partita(canva_token):
                 match_id = match_data['fixture']['id']
                 print(f"📌 Forzatura riuscita! Agganciato il prossimo match utile. ID: {match_id} ({match_data['fixture']['date']})")
             else:
-                print("❌ Errore critical: L'API non restituisce nessuna partita nel palinsesto. Spengo.")
-                sys.exit(1)
+                msg_errore = "⚠️ <b>Live Score Bot</b>\nNessuna partita della Juventus trovata nel palinsesto odierno o futuro su API-Sports. Verifica i dettagli del piano o il calendario."
+                print(f"❌ {msg_errore.replace('<b>', '').replace('</b>', '')}")
+                send_telegram(msg_errore)
+                sys.exit(0) # Usciamo con 0 per non far fallire il workflow su GitHub
         except Exception as e:
             print(f"❌ Errore critico nel recupero del palinsesto: {e}")
             sys.exit(1)
