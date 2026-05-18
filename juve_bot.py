@@ -13,12 +13,12 @@ BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
 CLIENT_ID = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET = os.getenv('CANVA_CLIENT_SECRET')
+CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')  # Gestito in memoria RAM
 JUVE_ID = 496
 
 # Configurazione del tuo design specifico Canva
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
-TOKEN_FILE = "canva_tokens.json"
 
 # ==============================================================================
 # SET EMOJI STANDARD (BRANDING @Juventus_Reborn)
@@ -95,46 +95,35 @@ def send_telegram_with_photo(text, photo_bytes):
         send_telegram(text)
 
 # ==============================================================================
-# FUNZIONI INTEGRATE CANVA API
+# FUNZIONI INTEGRATE CANVA API (SENZA SALVATAGGIO SU DISCO)
 # ==============================================================================
 def get_valid_token():
-    """Recupera il token dal file JSON e lo rinnova automaticamente se scaduto."""
-    if not os.path.exists(TOKEN_FILE):
-        print(f"❌ Errore: Manca il file {TOKEN_FILE} nella repository.")
+    """Genera un Access Token usa-e-getta nella RAM usando il Refresh Token dei Secrets."""
+    if not CANVA_REFRESH_TOKEN:
+        print("❌ Errore: CANVA_REFRESH_TOKEN non trovato nelle variabili d'ambiente.")
         return None
 
-    with open(TOKEN_FILE, "r") as f:
-        tokens = json.load(f)
-
-    if tokens.get("expires_at", 0) - time.time() < 300:
-        print("🔄 Token Canva scaduto. Tento il rinnovo automatico tramite Refresh Token...")
-        url = "https://api.canva.com/rest/v1/oauth/token"
-        payload = {
-            "grant_type": "refresh_token",
-            "refresh_token": tokens["refresh_token"],
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET
-        }
-        
-        try:
-            res = requests.post(url, data=payload, timeout=15)
-            if res.status_code == 200:
-                new_tokens = res.json()
-                tokens["access_token"] = new_tokens["access_token"]
-                tokens["refresh_token"] = new_tokens.get("refresh_token", tokens["refresh_token"])
-                tokens["expires_at"] = int(time.time()) + new_tokens["expires_in"]
-                
-                with open(TOKEN_FILE, "w") as f:
-                    json.dump(tokens, f, indent=2)
-                print("✅ Token rinnovato con successo dal Bot!")
-            else:
-                print(f"❌ Errore nel rinnovo automatico: {res.text}")
-                return None
-        except Exception as e:
-            print(f"Errore connessione rinnovo token Canva: {e}")
+    print("🔄 Richiesta di un Access Token temporaneo a Canva tramite Refresh Token...")
+    url = "https://api.canva.com/rest/v1/oauth/token"
+    payload = {
+        "grant_type": "refresh_token",
+        "refresh_token": CANVA_REFRESH_TOKEN,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET
+    }
+    
+    try:
+        res = requests.post(url, data=payload, timeout=15)
+        if res.status_code == 200:
+            new_tokens = res.json()
+            print("✅ Access Token generato con successo e caricato in memoria!")
+            return new_tokens["access_token"]
+        else:
+            print(f"❌ Errore nel recupero del token Canva: {res.text}")
             return None
-
-    return tokens["access_token"]
+    except Exception as e:
+        print(f"Errore connessione Canva OAuth: {e}")
+        return None
 
 def get_canva_image(access_token):
     """Avvia il Job di esportazione su Canva e scarica il file PNG risultante."""
@@ -384,12 +373,12 @@ def main():
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_name} {score_string} {away_name}\n{scorers_line}\n{e_comp} {hashtag}"
                 
-                # Gestione Canva
+                # Flusso Canva completamente in RAM (Senza file JSON esterni)
                 canva_token = get_valid_token()
                 foto_canva = get_canva_image(canva_token)
                 
-                # Invia il post completo con foto (o testo come ripiego se fallisce)
-                send_telegram_post_with_photo(msg_finale, photo_bytes=foto_canva)
+                # Invia il post completo con foto (Corretto bug sul nome funzione)
+                send_telegram_with_photo(msg_finale, photo_bytes=foto_canva)
                 
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
