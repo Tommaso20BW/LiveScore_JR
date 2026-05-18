@@ -1,12 +1,20 @@
 name: Juventus Live Score
 
-run-name: ${{ env.DYNAMIC_RUN_NAME || 'Recupero info partita...' }}
+# Usiamo il contesto globale dell'execution per aggiornare il nome
+run-name: ${{ inputs.custom_run_name || 'Recupero info partita...' }}
 
 on:
   workflow_dispatch:
+    inputs:
+      # Un input "invisibile" che serve a GitHub per ricevere il nome da Python
+      custom_run_name:
+        description: 'Non modificare, gestito automaticamente dal bot'
+        required: false
+        default: ''
 
 permissions:
   contents: write
+  actions: write # Necessario per permettere allo script di rinominare il run corrente
 
 concurrency:
   group: juve-live-bot
@@ -21,6 +29,7 @@ jobs:
       - name: Checkout del codice
         uses: actions/checkout@v5
 
+      # Configurato subito per permettere a Python di sovrascrivere tempestivamente il run-name
       - name: Configura Python
         uses: actions/setup-python@v6
         with:
@@ -41,6 +50,8 @@ jobs:
           CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
           GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          # Passiamo il token di sistema che serve a Python per fare la chiamata API a GitHub
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Mantiene traccia di un eventuale trigger automatico per solo refresh token
-          ONLY_REFRESH_TOKEN: ${{ env.ONLY_REFRESH_TOKEN }} 
+          ONLY_REFRESH_TOKEN: ${{ github.event.inputs.ONLY_REFRESH_TOKEN }} 
         run: python juve_bot.py
