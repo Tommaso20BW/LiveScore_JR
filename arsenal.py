@@ -14,18 +14,16 @@ CHAT_ID = os.getenv('TELEGRAM_TO')
 CLIENT_ID = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET = os.getenv('CANVA_CLIENT_SECRET')
 
-# ID API-Football per l'Arsenal (Invece di 496 della Juve)
-ARSENAL_ID = 42
-MY_TEAM_ID = ARSENAL_ID
+# ID Squadra forzato numerico pulito
+MY_TEAM_ID = 42
 
-# Configurazione del tuo design specifico Canva per l'Arsenal
-# (Modifica CANVA_DESIGN_ID e PAGINA_TARGET se usi un template/pagina differenti)
+# Configurazione Canva
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 TOKEN_FILE = "canva_tokens.json"
 
 # ==============================================================================
-# SET EMOJI STANDARD (BRANDING ARSENAL / GUNNERS)
+# SET EMOJI STANDARD
 # ==============================================================================
 E_BOLT = '⚡️'
 E_FLAG = '🏁'
@@ -62,9 +60,8 @@ def clean_team_name(name, for_hashtag=False):
         return " ".join(cleaned_words)
 
 def get_league_emoji(league_id):
-    # ID 39 = Premier League, ID 2 = Champions League, ID 3 = Europa League
     if league_id in [2, 3, 848]: return "🇪🇺"
-    if league_id in [39, 45, 48]: return "🏴󠁧󠁢󠁥󠁮󠁧󠁿"  # Emoji UK per Premier League/FA Cup/EFL Cup
+    if league_id in [39, 45, 48]: return "🏴"  
     return "⚽️"
 
 # ==============================================================================
@@ -82,7 +79,6 @@ def send_telegram(text):
     except Exception as e: print(f"Errore invio Telegram: {e}")
 
 def send_telegram_with_photo(text, photo_bytes):
-    """Invia il post completo di Fine Partita (Foto Canva + Testo) su Telegram."""
     if not photo_bytes:
         print("⚠️ Immagine Canva mancante o in timeout. Ripiego sull'invio del solo testo...")
         send_telegram(text)
@@ -105,10 +101,9 @@ def send_telegram_with_photo(text, photo_bytes):
         send_telegram(text)
 
 # ==============================================================================
-# FUNZIONI INTEGRATE CANVA API (RIPRISTINATE ORIGINALI)
+# FUNZIONI INTEGRATE CANVA API
 # ==============================================================================
 def get_valid_token():
-    """Recupera il token dal file JSON e lo rinnova automaticamente se scaduto."""
     if not os.path.exists(TOKEN_FILE):
         print(f"❌ Errore: Manca il file {TOKEN_FILE} nella repository.")
         return None
@@ -117,7 +112,7 @@ def get_valid_token():
         tokens = json.load(f)
 
     if tokens.get("expires_at", 0) - time.time() < 300:
-        print("🔄 Token Canva scaduto. Tento il rinnovo automatico tramite Refresh Token...")
+        print("🔄 Token Canva scaduto. Tento il rinnovo automatico...")
         url = "https://api.canva.com/rest/v1/oauth/token"
         payload = {
             "grant_type": "refresh_token",
@@ -147,7 +142,6 @@ def get_valid_token():
     return tokens["access_token"]
 
 def get_canva_image(access_token):
-    """Avvia il Job di esportazione su Canva e scarica il file PNG risultante."""
     if not access_token:
         return None
 
@@ -183,18 +177,12 @@ def get_canva_image(access_token):
             check_res = requests.get(status_url, headers=headers, timeout=15)
             if check_res.status_code == 200:
                 status_data = check_res.json()
-                
                 status_corrente = status_data.get("status") or status_data.get("job", {}).get("status")
                 print(f"    [Controllo {i+1}/40] Stato Canva: {status_corrente}")
                 
                 if status_corrente == "success":
                     urls_list = status_data.get("urls") or status_data.get("job", {}).get("urls")
-                    download_url = None
-                    
-                    if urls_list and len(urls_list) > 0:
-                        download_url = urls_list[0]
-                    else:
-                        download_url = status_data.get("url") or status_data.get("job", {}).get("url")
+                    download_url = urls_list[0] if urls_list else (status_data.get("url") or status_data.get("job", {}).get("url"))
                     
                     if download_url:
                         print("📥 Download file PNG da Canva completato.")
@@ -214,7 +202,7 @@ def get_canva_image(access_token):
     return None
 
 # ==============================================================================
-# FORMATTAZIONE DINAMICA DEL TESTO (LOGICA OPTA / DRY)
+# FORMATTAZIONE DINAMICA DEL TESTO
 # ==============================================================================
 def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=None):
     c_home_name = home_name
@@ -286,16 +274,22 @@ def main():
 
     if not os.path.exists("match_state.json"):
         print("🔍 Nessun file di stato trovato. Controllo il calendario di oggi...")
-        headers = {"x-apisports-key": API_KEY}
-        today_date = datetime.now().strftime('%Y-%m-%d')
-        url_today = f"https://v3.football.api-sports.io/fixtures?team={MY_TEAM_ID}&date={today_date}"
+        
+        # Gestione dizionario esplicito per bloccare i bug di parsing della stringa URL
+        headers = {"x-apisports-key": str(API_KEY).strip()}
+        url_today = "https://v3.football.api-sports.io/fixtures"
+        params_today = {
+            "team": int(MY_TEAM_ID),
+            "date": "2026-05-18"
+        }
         
         match_id = None
         try:
-            res = requests.get(url_today, headers=headers, timeout=15)
+            # Usiamo params= invece della stringa formattata manuale per evitare errori di caratteri invisibili
+            res = requests.get(url_today, headers=headers, params=params_today, timeout=15)
             if res.status_code == 200:
                 data = res.json()
-                if data.get("response"):
+                if data.get("response") and len(data["response"]) > 0:
                     fixture_data = data["response"][0]
                     match_id = fixture_data.get("fixture", {}).get("id")
                     status_short = fixture_data.get("fixture", {}).get("status", {}).get("short")
@@ -358,7 +352,7 @@ def main():
     penalties = match.get('score', {}).get('penalty', {})
     p_home, p_away = penalties.get('home'), penalties.get('away')
 
-    match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int)
+    match_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
 
     if "sent_subs" not in state: state["sent_subs"] = []
     if "sent_cards" not in state: state["sent_cards"] = []
@@ -458,18 +452,16 @@ def main():
             send_telegram(f"<b>RIGORI 🎯</b>\n\n{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
             state["penalties_count"] = total_kicks
 
-    # 6. FISCHIO FINALE (PROCESSO ESPORTAZIONE CANVA E CHIUSURA)
+    # 6. FISCHIO FINALE
     if "finished" in status_long or status in ["FT", "AET"] or (status == "PEN" and p_home is not None):
         print("🏁 FISCHIO FINALE RILEVATO! Avvio processo scaricamento grafica Canva...")
         
         scorers_line = build_split_scorers_text(events, home_id, away_id)
-        msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_name} {match_status_line} {away_name}\n{scorers_line}\n{e_comp} {hashtag}"
+        msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{match_status_line}\n{scorers_line}\n\n{e_comp} {hashtag}"
         
-        # Gestione Canva originale
         canva_token = get_valid_token()
         foto_canva = get_canva_image(canva_token)
         
-        # Invia il post completo con foto (o testo come ripiego se fallisce)
         send_telegram_with_photo(msg_finale, photo_bytes=foto_canva)
         
         if os.path.exists("match_state.json"): 
