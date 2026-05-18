@@ -50,7 +50,7 @@ def clean_team_name(name, for_hashtag=False):
     if not name:
         return "Team"
     
-    # Se stiamo creando l'hashtag, gestiamo le eccezioni per Manchester City e United
+    # Se stiamo creando l'hashtag, applichiamo le eccezioni per le squadre di Manchester
     if for_hashtag:
         name_lower = name.lower()
         if "manchester city" in name_lower:
@@ -75,7 +75,7 @@ def clean_team_name(name, for_hashtag=False):
         # Per l'hashtag uniamo tutto senza spazi
         return "".join(cleaned_words).replace(" ", "")
     else:
-        # Per il testo normale uniamo le parole con uno spazio pulito (es. Manchester United)
+        # Per il testo normale uniamo le parole con uno spazio pulito
         return " ".join(cleaned_words)
 
 # ==============================================================================
@@ -248,6 +248,20 @@ def main():
     status_long = fixture.get('status', {}).get('long', '').lower()
     elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
     
+    # --- RILEVAMENTO DELLA COMPETIZIONE TRAMITE ID PRECISI ---
+    league_data = match.get('league', {})
+    league_id = league_data.get('id')
+    league_name_lower = league_data.get('name', '').lower()
+    
+    if league_id in [2, 3, 848]:
+        compet_emoji = "🇪🇺"
+    elif league_id == 10 or "friendly" in league_name_lower or "amichevole" in league_name_lower:
+        compet_emoji = "🤝"
+    elif league_id in [135, 137, 547]:
+        compet_emoji = "🇮🇹"
+    else:
+        compet_emoji = "🇮🇹" # Fallback sicuro
+    
     t_home = match.get('teams', {}).get('home', {})
     t_away = match.get('teams', {}).get('away', {})
     
@@ -275,22 +289,22 @@ def main():
     # 1. GESTIONE PERIODI DI GIOCO
     # ==============================================================================
     if status == "1H" and "1H" not in state["sent_periods"]:
-        send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{compet_emoji} {hashtag}")
         state["sent_periods"].append("1H")
     elif status == "HT" and "HT" not in state["sent_periods"]:
-        send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{match_status_line}\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{match_status_line}\n\n{compet_emoji} {hashtag}")
         state["sent_periods"].append("HT")
     elif status == "2H" and "2H" not in state["sent_periods"]:
-        send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{match_status_line}\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{match_status_line}\n\n{compet_emoji} {hashtag}")
         state["sent_periods"].append("2H")
     elif status == "ET" and elapsed_minutes == 90 and "2H_END" not in state["sent_periods"]:
-        send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{match_status_line}\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{match_status_line}\n\n{compet_emoji} {hashtag}")
         state["sent_periods"].append("2H_END")
     elif status == "ET" and elapsed_minutes == 91 and "ET1_START" not in state["sent_periods"]:
-        send_telegram(f"<b>INIZIO PRIMO TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{match_status_line}\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>INIZIO PRIMO TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{match_status_line}\n\n{compet_emoji} {hashtag}")
         state["sent_periods"].append("ET1_START")
     elif status == "ET" and elapsed_minutes == 120 and "ET_END" not in state["sent_periods"]:
-        send_telegram(f"<b>FINE SECONDO TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{match_status_line}\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>FINE SECONDO TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{match_status_line}\n\n{compet_emoji} {hashtag}")
         state["sent_periods"].append("ET_END")
 
     # ==============================================================================
@@ -298,12 +312,10 @@ def main():
     # ==============================================================================
     total_goals_now = g_home_int + g_away_int
     
-    # Caso GOL ANNULLATO (Il contatore gol decrementa)
     if total_goals_now < state["goals_detected"]:
-        send_telegram(f"<b>GOAL ANNULLATO {E_PEN_KO}</b>\n\n{match_status_line}\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>GOAL ANNULLATO {E_PEN_KO}</b>\n\n{match_status_line}\n\n{compet_emoji} {hashtag}")
         state["goals_detected"] = total_goals_now
 
-    # Caso GOL SEGNATO
     elif status in ["1H", "2H", "ET"] and total_goals_now > state["goals_detected"]:
         events = match.get('events', [])
         current_home_name, current_away_name = home_name, away_name
@@ -325,7 +337,7 @@ def main():
                 elif team_id_scorer == away_id:
                     current_away_name = f"<b>{away_name}</b>"
                     g_away_str = f"<b>{g_away_int}</b>"
-        send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} <i>{marcatore}</i>\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} <i>{marcatore}</i>\n\n{compet_emoji} {hashtag}")
         state["goals_detected"] = total_goals_now
 
     # ==============================================================================
@@ -357,7 +369,7 @@ def main():
 
         for t_id, data in subs_by_team.items():
             team_upper = data['name'].upper()
-            msg_sub = f"<b>CAMBIO {team_upper} {E_SUB}</b>\n\n{E_UP} <i>{', '.join(data['in'])}</i>\n{E_DOWN} <i>{', '.join(data['out'])}</i>\n\n🇮🇹 {hashtag}"
+            msg_sub = f"<b>CAMBIO {team_upper} {E_SUB}</b>\n\n{E_UP} <i>{', '.join(data['in'])}</i>\n{E_DOWN} <i>{', '.join(data['out'])}</i>\n\n{compet_emoji} {hashtag}"
             send_telegram(msg_sub)
             state["sent_subs"].extend(data["ids"])
 
@@ -374,7 +386,7 @@ def main():
                 extra = e.get('time', {}).get('extra')
                 time_str = f"{el}+{extra}" if extra else f"{el}"
                 
-                msg_card = f"<b>CARTELLINO ROSSO {t_name.upper()} {E_RED}</b>\n\n{E_END} <i>{time_str}’ {p_name}</i>\n\n🇮🇹 {hashtag}"
+                msg_card = f"<b>CARTELLINO ROSSO {t_name.upper()} {E_RED}</b>\n\n{E_END} <i>{time_str}’ {p_name}</i>\n\n{compet_emoji} {hashtag}"
                 send_telegram(msg_card)
                 state["sent_cards"].append(card_id)
 
@@ -393,7 +405,7 @@ def main():
                 
         total_kicks = len(home_pen_icons) + len(away_pen_icons)
         if total_kicks > state.get("penalties_count", 0):
-            msg_pen = f"<b>RIGORI 🎯</b>\n\n{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n🇮🇹 {hashtag}"
+            msg_pen = f"<b>RIGORI 🎯</b>\n\n{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{compet_emoji} {hashtag}"
             send_telegram(msg_pen)
             state["penalties_count"] = total_kicks
 
@@ -425,7 +437,7 @@ def main():
 
         title_prefix = "<b>FINE PARTITA 🏁</b>"
         final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
-        msg_finale = f"{title_prefix}\n\n{final_status_line}{scorers_line}\n\n🇮🇹 {hashtag}"
+        msg_finale = f"{title_prefix}\n\n{final_status_line}{scorers_line}\n\n{compet_emoji} {hashtag}"
         
         foto = get_canva_image(shared_access_token)
         send_telegram_post_with_photo(msg_finale, photo_bytes=foto)
