@@ -5,6 +5,7 @@ import time
 import sys
 import base64
 from datetime import datetime
+
 # Usiamo NaCl (Libsodium) per criptare il secret come richiesto dalle API di GitHub
 try:
     from nacl import encoding, public
@@ -21,7 +22,7 @@ CLIENT_ID = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET = os.getenv('CANVA_CLIENT_SECRET')
 CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 GH_PAT = os.getenv('GH_PAT')                 # Il tuo Personal Access Token di GitHub
-GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY') # Es: "tuo-utente/tuo-repo" (fornito nativamente da GH)
+GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY') # Es: "tuo-utente/tuo-repo"
 
 JUVE_ID = 496
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
@@ -265,8 +266,21 @@ def build_split_scorers_text(events, home_id, away_id):
         return f"{E_BALL} <i>" + ", ".join(away_scorers) + "</i>\n"
     return ""
 
+# ==============================================================================
+# FUNZIONE PRINCIPALE
+# ==============================================================================
 def main():
-    print("BOT LIVE AVVIATO - Recupero ID Partita...")
+    print("BOT LIVE AVVIATO - Controllo preliminare del token Canva...")
+    
+    # [FASE 1]: CONTROLLO IMMEDIATO DEL TOKEN CANVA (PRIMA COSA IN ASSOLUTO)
+    canva_token = get_valid_token()
+    if not canva_token:
+        print("❌ Errore critico: Impossibile convalidare o ruotare il token Canva. Arresto forzato del bot.")
+        sys.exit(1)
+        
+    print("✅ Token Canva validato con successo! Procedo al recupero del match...")
+
+    # [FASE 2]: RECUPERO ID PARTITA
     url = "https://v3.football.api-sports.io/fixtures"
     if not API_KEY:
         print("Errore: API_KEY mancante.")
@@ -302,6 +316,7 @@ def main():
 
     params = {"id": match_id}
 
+    # [FASE 3]: CICLO EVENTI IN LIVE REALE
     while True:
         try:
             if os.path.exists("match_state.json"):
@@ -368,7 +383,7 @@ def main():
                 send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
 
-            # 2. RIGORI
+            # 2. RIGORI AD OLTRANZA
             if status == "PEN":
                 events = match.get('events', [])
                 home_pen_icons, away_pen_icons = [], []
@@ -383,23 +398,27 @@ def main():
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 3. FINE PARTITA -> SCATTA IL DOWNLOAD DA CANVA E POTENZIALE AGGIORNAMENTO SECRET
+            # 3. FISCHIO FINALE -> GENERAZIONE GRAFICA E INVIO
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
-                print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva...")
+                print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva per l'export...")
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_name} {score_string} {away_name}\n{scorers_line}\n{e_comp} {hashtag}"
                 
-                canva_token = get_valid_token()
-                foto_canva = get_canva_image(canva_token)
-                
+                # Sicurezza: rigeneriamo il token se sono passate ore dall'avvio del bot
+                canva_token_fresco = get_valid_token()
+                if not canva_token_fresco:
+                    print("⚠️ Rinnovo finale fallito, tento l'uso del token iniziale...")
+                    canva_token_fresco = canva_token
+
+                foto_canva = get_canva_image(canva_token_fresco)
                 send_telegram_with_photo(msg_finale, photo_bytes=foto_canva)
                 
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
                 sys.exit(0)
 
-            # 4. GOL LIVE E VAR
+            # 4. GOL E UPDATE VAR
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
                 events, live_scorer_line = match.get('events', []), ""
@@ -422,7 +441,7 @@ def main():
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
 
-            # 5. EVENTI (CAMBI, CARTELLINI)
+            # 5. CARTELINI ROSSI E CAMBI
             events = match.get('events', [])
             if events:
                 subs_by_minute = {}
