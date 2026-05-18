@@ -133,7 +133,7 @@ def update_github_secret(secret_name, new_value):
         
         res_secret = requests.put(secret_url, headers=headers, json=payload, timeout=10)
         if res_secret.status_code in [201, 204]:
-            print(f"✅ Secret '{secret_name}' aggiornato con successo su GitHub per i prossimi match!")
+            print(f"✅ Secret '{secret_name}' aggiornato con successo su GitHub per i primi match!")
             return True
         else:
             print(f"❌ Errore durante l'aggiornamento del secret su GitHub: {res_secret.text}")
@@ -299,7 +299,7 @@ def avvia_ciclo_partita(canva_token):
                     match_id = date_res['response'][0]['fixture']['id']
                     print(f"📅 Match trovato nel palinsesto di oggi! ID: {match_id}")
 
-            # 3. Se l'API fa i capricci o non rileva l'oggi, proviamo a prendere il prossimo match in assoluto
+            # 3. Se l'API non rileva l'oggi, proviamo a prendere il prossimo match in assoluto
             if not match_id:
                 next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
                 if next_res.get('response') and len(next_res['response']) > 0:
@@ -373,18 +373,25 @@ def avvia_ciclo_partita(canva_token):
             
             print(f"[LIVE] {home_name} {score_string} {away_name} | Minuto: {elapsed_minutes}")
 
-            # 1. CRONACA PERIODI
+            # 1. CRONACA PERIODI (Grassetto condizionale per i tempi intermedi)
+            if g_home_int > g_away_int:
+                punteggio_periodo = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
+            elif g_away_int > g_home_int:
+                punteggio_periodo = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
+            else:
+                punteggio_periodo = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
+
             if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
             elif status == "HT" and "HT" not in state["sent_periods"]:
-                send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
+                send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
             elif status == "2H" and "2H" not in state["sent_periods"]:
-                send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
+                send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
             elif status in ["ET", "AET", "PEN"] and "2H_END" not in state["sent_periods"]:
-                send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
+                send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
 
             # 2. RIGORI AD OLTRANZA
@@ -407,7 +414,22 @@ def avvia_ciclo_partita(canva_token):
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
                 print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva per l'export...")
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
-                msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_name} {score_string} {away_name}\n{scorers_line}\n{e_comp} {hashtag}"
+                
+                # Controllo del vincitore per il fischio finale (tiene conto dei rigori se presenti)
+                if p_home is not None:
+                    if int(p_home) > int(p_away):
+                        punteggio_finale = f"<b>{home_name} {g_home_int} ({p_home})</b>-({p_away}) {g_away_int} {away_name}"
+                    else:
+                        punteggio_finale = f"{home_name} {g_home_int} ({p_home})-<b>({p_away}) {g_away_int} {away_name}</b>"
+                else:
+                    if g_home_int > g_away_int:
+                        punteggio_finale = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
+                    elif g_away_int > g_home_int:
+                        punteggio_finale = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
+                    else:
+                        punteggio_finale = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
+
+                msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{punteggio_finale}\n{scorers_line}\n{e_comp} {hashtag}"
                 
                 canva_token_fresco = get_valid_token()
                 if not canva_token_fresco:
@@ -427,6 +449,7 @@ def avvia_ciclo_partita(canva_token):
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
                 events, live_scorer_line = match.get('events', []), ""
+                
                 if events:
                     all_goals = [e for e in events if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower()]
                     if all_goals:
@@ -436,11 +459,26 @@ def avvia_ciclo_partita(canva_token):
                         minute_str = f"{el}+{ex}" if ex else f"{el}"
                         p_name = last_goal.get('player', {}).get('name', 'Giocatore')
                         det = last_goal.get('detail', '').lower()
+                        
                         if "penalty" in det: p_name += " (Rig.)"
                         elif "own goal" in det: p_name += " (Autogol)"
                         live_scorer_line = f"{E_BALL} <i>{minute_str}’ {p_name}</i>\n"
+                
+                # Controllo chi è in vantaggio al momento del gol per il grassetto condizionale
+                if g_home_int > g_away_int:
+                    punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
+                elif g_away_int > g_home_int:
+                    punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
+                else:
+                    scoring_team_id = last_goal.get('team', {}).get('id') if events and all_goals else None
+                    if scoring_team_id == home_id:
+                        punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
+                    elif scoring_team_id == away_id:
+                        punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
+                    else:
+                        punteggio_match = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
                         
-                send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n{live_scorer_line}\n{e_comp} {hashtag}")
+                send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{punteggio_match}\n{live_scorer_line}\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
             elif total_goals_now < state["goals_detected"]:
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
