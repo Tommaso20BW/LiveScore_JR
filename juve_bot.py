@@ -3,7 +3,13 @@ import requests
 import json
 import time
 import sys
+import base64
 from datetime import datetime
+# Usiamo NaCl (Libsodium) per criptare il secret come richiesto dalle API di GitHub
+try:
+    from nacl import encoding, public
+except ImportError:
+    print("⚠️ Errore: La libreria 'pynacl' non è installata. Necessaria per aggiornare i Secrets di GitHub.")
 
 # ==============================================================================
 # CONFIGURAZIONE CHIAVI E DATI REQUISITI (DA SECRETS GITHUB)
@@ -13,10 +19,11 @@ BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
 CLIENT_ID = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET = os.getenv('CANVA_CLIENT_SECRET')
-CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')  # Gestito in memoria RAM
-JUVE_ID = 496
+CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
+GH_PAT = os.getenv('GH_PAT')                 # Il tuo Personal Access Token di GitHub
+GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY') # Es: "tuo-utente/tuo-repo" (fornito nativamente da GH)
 
-# Configurazione del tuo design specifico Canva
+JUVE_ID = 496
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 
@@ -58,23 +65,16 @@ def send_telegram(text):
         return
         
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": text,
-        "parse_mode": "HTML"
-    }
+    payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}
     try:
         response = requests.post(url, json=payload, timeout=10)
-        if response.status_code != 200:
-            print(f"Telegram API Error (Status {response.status_code}): {response.text}")
         response.raise_for_status()
     except Exception as e:
         print(f"Errore invio Telegram: {e}")
 
 def send_telegram_with_photo(text, photo_bytes):
-    """Invia il post completo di Fine Partita (Foto Canva + Testo) su Telegram."""
     if not photo_bytes:
-        print("⚠️ Immagine Canva mancante o in timeout. Ripiego sull'invio del solo testo...")
+        print("⚠️ Immagine Canva mancante. Invio il solo testo...")
         send_telegram(text)
         return
 
@@ -86,24 +86,73 @@ def send_telegram_with_photo(text, photo_bytes):
     try:
         res = requests.post(url, data=payload, files=files, timeout=25)
         if res.status_code == 200:
-            print("🏁 Grafica fine partita pubblicata con successo su Telegram!")
+            print("🏁 Grafica fine partita pubblicata!")
         else:
-            print(f"❌ Errore invio foto Telegram: {res.text}. Provo invio solo testo...")
             send_telegram(text)
     except Exception as e:
-        print(f"Errore durante l'invio della foto a Telegram: {e}")
         send_telegram(text)
 
 # ==============================================================================
-# FUNZIONI INTEGRATE CANVA API (SENZA SALVATAGGIO SU DISCO)
+# FUNZIONE AGGIORNAMENTO SECRET GITHUB
+# ==============================================================================
+def update_github_secret(secret_name, new_value):
+    """Aggiorna programmaticamente un secret nella repository GitHub corrente."""
+    if not GH_PAT or not GITHUB_REPOSITORY:
+        print("⚠️ Impossibile aggiornare il secret: GH_PAT o GITHUB_REPOSITORY non presenti nell'ambiente.")
+        return False
+
+    headers = {
+        "Authorization": f"Bearer {GH_PAT}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+    }
+
+    # 1. Recupera la chiave pubblica della repository (richiesta da GitHub per criptare)
+    pk_url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/public-key"
+    try:
+        res_pk = requests.get(pk_url, headers=headers, timeout=10)
+        if res_pk.status_code != 200:
+            print(f"❌ Impossibile ottenere la public key di GitHub: {res_pk.text}")
+            return False
+        
+        pk_data = res_pk.json()
+        key_id = pk_data["key_id"]
+        public_key_b64 = pk_data["key"]
+
+        # 2. Cripta il nuovo valore del secret usando NaCl
+        public_key = public.PublicKey(public_key_b64.encode("utf-8"), encoding.Base64Encoder)
+        sealed_box = public.SealedBox(public_key)
+        encrypted_value = sealed_box.encrypt(new_value.encode("utf-8"))
+        encrypted_b64 = base64.b64encode(encrypted_value).decode("utf-8")
+
+        # 3. Invia il valore criptato a GitHub per aggiornare il Secret
+        secret_url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/{secret_name}"
+        payload = {
+            "encrypted_value": encrypted_b64,
+            "key_id": key_id
+        }
+        
+        res_secret = requests.put(secret_url, headers=headers, json=payload, timeout=10)
+        if res_secret.status_code in [201, 204]:
+            print(f"✅ Secret '{secret_name}' aggiornato con successo su GitHub per i prossimi match!")
+            return True
+        else:
+            print(f"❌ Errore durante l'aggiornamento del secret su GitHub: {res_secret.text}")
+            return False
+    except Exception as e:
+        print(f"❌ Eccezione durante l'aggiornamento del secret GitHub: {e}")
+        return False
+
+# ==============================================================================
+# FUNZIONI INTEGRATE CANVA API
 # ==============================================================================
 def get_valid_token():
-    """Genera un Access Token usa-e-getta nella RAM usando il Refresh Token dei Secrets."""
+    """Genera un Access Token e aggiorna il Refresh Token se Canva ne fornisce uno nuovo."""
     if not CANVA_REFRESH_TOKEN:
-        print("❌ Errore: CANVA_REFRESH_TOKEN non trovato nelle variabili d'ambiente.")
+        print("❌ Errore: CANVA_REFRESH_TOKEN non trovato.")
         return None
 
-    print("🔄 Richiesta di un Access Token temporaneo a Canva tramite Refresh Token...")
+    print("🔄 Richiesta di un Access Token temporaneo a Canva...")
     url = "https://api.canva.com/rest/v1/oauth/token"
     payload = {
         "grant_type": "refresh_token",
@@ -116,7 +165,13 @@ def get_valid_token():
         res = requests.post(url, data=payload, timeout=15)
         if res.status_code == 200:
             new_tokens = res.json()
-            print("✅ Access Token generato con successo e caricato in memoria!")
+            print("✅ Access Token generato con successo!")
+            
+            # Se Canva restituisce un NUOVO refresh_token, lo salviamo subito nei Secrets di GitHub
+            if "refresh_token" in new_tokens and new_tokens["refresh_token"] != CANVA_REFRESH_TOKEN:
+                print("🔄 Canva ha emesso un nuovo Refresh Token. Aggiorno GitHub Secrets...")
+                update_github_secret("CANVA_REFRESH_TOKEN", new_tokens["refresh_token"])
+                
             return new_tokens["access_token"]
         else:
             print(f"❌ Errore nel recupero del token Canva: {res.text}")
@@ -126,7 +181,6 @@ def get_valid_token():
         return None
 
 def get_canva_image(access_token):
-    """Avvia il Job di esportazione su Canva e scarica il file PNG risultante."""
     if not access_token:
         return None
 
@@ -152,7 +206,6 @@ def get_canva_image(access_token):
         job_id = job_data.get("id") or job_data.get("job", {}).get("id")
         
         if not job_id:
-            print(f"❌ Impossibile trovare il Job ID nella risposta di Canva.")
             return None
         
         status_url = f"https://api.canva.com/rest/v1/exports/{job_id}"
@@ -162,32 +215,22 @@ def get_canva_image(access_token):
             check_res = requests.get(status_url, headers=headers, timeout=15)
             if check_res.status_code == 200:
                 status_data = check_res.json()
-                
                 status_corrente = status_data.get("status") or status_data.get("job", {}).get("status")
                 print(f"   [Controllo {i+1}/40] Stato Canva: {status_corrente}")
                 
                 if status_corrente == "success":
                     urls_list = status_data.get("urls") or status_data.get("job", {}).get("urls")
-                    download_url = None
-                    
-                    if urls_list and len(urls_list) > 0:
-                        download_url = urls_list[0]
-                    else:
-                        download_url = status_data.get("url") or status_data.get("job", {}).get("url")
+                    download_url = urls_list[0] if urls_list else (status_data.get("url") or status_data.get("job", {}).get("url"))
                     
                     if download_url:
-                        print("📥 Download file PNG da Canva completato.")
+                        print("📥 Download file PNG completato.")
                         img_res = requests.get(download_url, timeout=20)
                         return img_res.content
-                    else:
-                        print(f"❌ Stato 'success' ma nessun URL trovato nel JSON.")
-                        return None
                         
                 elif status_corrente == "failed":
-                    print(f"❌ Il rendering di Canva è fallito.")
                     return None
                     
-        print("❌ Timeout: Canva ha impiegato troppo tempo per generare l'immagine.")
+        print("❌ Timeout Canva.")
     except Exception as e:
         print(f"❌ Errore durante il recupero da Canva: {e}")
     return None
@@ -196,8 +239,7 @@ def get_canva_image(access_token):
 
 def build_split_scorers_text(events, home_id, away_id):
     if not events: return ""
-    home_scorers = []
-    away_scorers = []
+    home_scorers, away_scorers = [], []
     
     for e in events:
         if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower():
@@ -212,7 +254,6 @@ def build_split_scorers_text(events, home_id, away_id):
             elif "own goal" in detail: player_name += " (Autogol)"
             
             scorer_entry = f"{minute_str}’ {player_name}"
-            
             if event_team_id == home_id: home_scorers.append(scorer_entry)
             elif event_team_id == away_id: away_scorers.append(scorer_entry)
                 
@@ -226,7 +267,6 @@ def build_split_scorers_text(events, home_id, away_id):
 
 def main():
     print("BOT LIVE AVVIATO - Recupero ID Partita...")
-    
     url = "https://v3.football.api-sports.io/fixtures"
     if not API_KEY:
         print("Errore: API_KEY mancante.")
@@ -234,7 +274,6 @@ def main():
         
     headers = {"x-apisports-key": API_KEY}
     today_date = datetime.now().strftime('%Y-%m-%d')
-    
     match_id = None
     
     try:
@@ -246,19 +285,19 @@ def main():
                     print(f"🔥 Juve trovata LIVE! Aggancio ID Fixture: {match_id}")
                     break
     except Exception as e:
-        print(f"Nota: Controllo live rapido fallito, procedo con data odierna ({e})")
+        print(f"Nota: Controllo live rapido fallito ({e})")
 
     if not match_id:
         try:
             date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
             if date_res.get('response') and len(date_res['response']) > 0:
                 match_id = date_res['response'][0]['fixture']['id']
-                print(f"📅 Partita trovata nel palinsesto di oggi. ID Fixture bloccato: {match_id}")
+                print(f"📅 Partita trovata. ID Fixture bloccato: {match_id}")
             else:
-                print(f"❌ Nessuna partita della Juventus trovata per oggi ({today_date}). Bot spento.")
+                print(f"❌ Nessuna partita trovata per oggi ({today_date}). Bot spento.")
                 sys.exit(0)
         except Exception as e:
-            print(f"Errore critico nel recupero della partita per data: {e}")
+            print(f"Errore critico recupero partita: {e}")
             sys.exit(1)
 
     params = {"id": match_id}
@@ -278,7 +317,6 @@ def main():
             res = response.json()
             
             if not res.get('response') or len(res['response']) == 0:
-                print("Dati partita temporaneamente non disponibili...")
                 time.sleep(30)
                 continue
 
@@ -293,26 +331,15 @@ def main():
             g_away_int = goals_away if goals_away is not None else 0
 
             if status in ["NS", "TBD"] and g_home_int == 0 and g_away_int == 0 and elapsed_minutes == 0:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] In attesa del fischio d'inizio (Stato: {status}). Controllo tra 30s...")
                 time.sleep(30)
                 continue
                 
             league_id = match.get('league', {}).get('id', 0)
-
-            if status == "PEN":
-                current_sleep_time = 60
-            elif status in ["ET", "AET"]:
-                current_sleep_time = 140
-            elif status == "HT":
-                current_sleep_time = 120
-            else:
-                current_sleep_time = 70 if league_id == 135 else 90
+            current_sleep_time = 60 if status == "PEN" else (140 if status in ["ET", "AET"] else (120 if status == "HT" else (70 if league_id == 135 else 90)))
             
             e_comp = get_league_emoji(league_id)
-            
             teams = match.get('teams', {})
-            home_id = teams.get('home', {}).get('id', 0)
-            away_id = teams.get('away', {}).get('id', 0)
+            home_id, away_id = teams.get('home', {}).get('id', 0), teams.get('away', {}).get('id', 0)
             
             home_name = "Juventus" if home_id == JUVE_ID else clean_name(teams.get('home', {}).get('name', 'Home'))
             away_name = "Juventus" if away_id == JUVE_ID else clean_name(teams.get('away', {}).get('name', 'Away'))
@@ -325,30 +352,23 @@ def main():
             a_short = "Juve" if away_id == JUVE_ID else away_name.replace(" ", "")
             hashtag = f"#{h_short}{a_short}"
             
-            print(f"[LIVE] {home_name} {score_string} {away_name} | Stato: {status} | Minuto: {elapsed_minutes} | Prossimo controllo tra {current_sleep_time}s")
+            print(f"[LIVE] {home_name} {score_string} {away_name} | Minuto: {elapsed_minutes}")
 
             # 1. CRONACA PERIODI
             if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
-                msg = f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}"
-                send_telegram(msg)
+                send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
-
             elif status == "HT" and "HT" not in state["sent_periods"]:
-                msg = f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}"
-                send_telegram(msg)
+                send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-
             elif status == "2H" and "2H" not in state["sent_periods"]:
-                msg = f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}"
-                send_telegram(msg)
+                send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
-
             elif status in ["ET", "AET", "PEN"] and "2H_END" not in state["sent_periods"]:
-                msg = f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}"
-                send_telegram(msg)
+                send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
 
-            # 2. LOTTERIA RIGORI
+            # 2. RIGORI
             if status == "PEN":
                 events = match.get('events', [])
                 home_pen_icons, away_pen_icons = [], []
@@ -360,29 +380,23 @@ def main():
                         else: away_pen_icons.append(icon)
                 total_kicks = len(home_pen_icons) + len(away_pen_icons)
                 if total_kicks > state["penalties_count"]:
-                    msg_pen = f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}"
-                    send_telegram(msg_pen)
+                    send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 3. FINE PARTITA (FT / AET / PEN) -> SCATTA IL DOWNLOAD DA CANVA + POST FOTO
+            # 3. FINE PARTITA -> SCATTA IL DOWNLOAD DA CANVA E POTENZIALE AGGIORNAMENTO SECRET
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
-                print("🏁 FISCHIO FINALE RILEVATO! Avvio processo scaricamento grafica Canva...")
-                
-                # Generazione testo per il post finale
+                print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva...")
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{home_name} {score_string} {away_name}\n{scorers_line}\n{e_comp} {hashtag}"
                 
-                # Flusso Canva completamente in RAM (Senza file JSON esterni)
                 canva_token = get_valid_token()
                 foto_canva = get_canva_image(canva_token)
                 
-                # Invia il post completo con foto (Corretto bug sul nome funzione)
                 send_telegram_with_photo(msg_finale, photo_bytes=foto_canva)
                 
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
-                print("🏁 Ciclo completato con successo. Spegnimento automatico del bot.")
                 sys.exit(0)
 
             # 4. GOL LIVE E VAR
@@ -394,23 +408,18 @@ def main():
                     if all_goals:
                         all_goals.sort(key=lambda x: (x.get('time', {}).get('elapsed', 0), x.get('time', {}).get('extra', 0) or 0))
                         last_goal = all_goals[-1]
-                        
-                        el = last_goal.get('time', {}).get('elapsed', '?')
-                        ex = last_goal.get('time', {}).get('extra')
+                        el, ex = last_goal.get('time', {}).get('elapsed', '?'), last_goal.get('time', {}).get('extra')
                         minute_str = f"{el}+{ex}" if ex else f"{el}"
                         p_name = last_goal.get('player', {}).get('name', 'Giocatore')
                         det = last_goal.get('detail', '').lower()
-                        
                         if "penalty" in det: p_name += " (Rig.)"
                         elif "own goal" in det: p_name += " (Autogol)"
                         live_scorer_line = f"{E_BALL} <i>{minute_str}’ {p_name}</i>\n"
                         
-                msg = f"<b>GOAL {E_MIC}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n{live_scorer_line}\n{e_comp} {hashtag}"
-                send_telegram(msg)
+                send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n{live_scorer_line}\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
             elif total_goals_now < state["goals_detected"]:
-                msg = f"<b>GOAL ANNULLATO 📺</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}"
-                send_telegram(msg)
+                send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
 
             # 5. EVENTI (CAMBI, CARTELLINI)
