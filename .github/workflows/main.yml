@@ -31,7 +31,7 @@ jobs:
 
       - name: Avvia Juventus Live Score e Invio Grafica
         env:
-          FOOTBALL_API_KEY: ${{ secrets.API_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
           CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
