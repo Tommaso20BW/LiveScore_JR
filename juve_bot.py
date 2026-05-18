@@ -117,12 +117,22 @@ def send_telegram_post_with_photo(text, photo_bytes):
         send_telegram(text)
 
 def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=None):
-    """Formatta i periodi parziali e finali mettendo in bold chi è in vantaggio."""
+    """Formatta i periodi parziali e finali mettendo in bold chi è in vantaggio (o chi vince ai rigori)."""
     c_home_name = home_name
     c_away_name = away_name
     g_home_str = str(g_home)
     g_away_str = str(g_away)
 
+    # Se ci sono i rigori, il grassetto va unicamente a chi vince la lotteria dal dischetto
+    if p_home is not None and p_away is not None:
+        if p_home > p_away:
+            return f"<b>{home_name}</b> <b>{g_home_str} ({p_home})</b> - ({p_away}) {g_away_str} {away_name}"
+        elif p_away > p_home:
+            return f"{home_name} {g_home_str} ({p_home}) - <b>({p_away}) {g_away_str}</b> <b>{away_name}</b>"
+        else:
+            return f"{home_name} {g_home_str} ({p_home}) - ({p_away}) {g_away_str} {away_name}"
+            
+    # Gestione normale nei 90/120 minuti regolamentari
     if g_home > g_away:
         c_home_name = f"<b>{home_name}</b>"
         g_home_str = f"<b>{g_home}</b>"
@@ -130,15 +140,7 @@ def format_match_text(home_name, away_name, g_home, g_away, p_home=None, p_away=
         c_away_name = f"<b>{away_name}</b>"
         g_away_str = f"<b>{g_away}</b>"
 
-    if p_home is not None and p_away is not None:
-        if p_home > p_away:
-            return f"{c_home_name} <b>{g_home_str} ({p_home})</b> - ({p_away}) {g_away_str} {c_away_name}"
-        elif p_away > p_home:
-            return f"{c_home_name} {g_home_str} ({p_home}) - <b>({p_away}) {g_away_str}</b> {c_away_name}"
-        else:
-            return f"{c_home_name} {g_home_str} ({p_home}) - ({p_away}) {g_away_str} {c_away_name}"
-    else:
-        return f"{c_home_name} {g_home_str}-{g_away_str} {c_away_name}"
+    return f"{c_home_name} {g_home_str}-{g_away_str} {c_away_name}"
 
 # ==============================================================================
 # INTEGRAZIONE CANVA API v1
@@ -309,7 +311,7 @@ def main():
                 if last_goal.get('detail', '').lower() == "own goal": p_name += " (AG)"
                 elif last_goal.get('detail', '').lower() == "penalty": p_name += " (R)"
                 
-                marcatore = f"{time_str}’ {p_name}"
+                marcatore = f"{time_str}’ <i>{p_name}</i>"
 
                 if team_id_scorer == home_id:
                     current_home_name = f"<b>{home_name}</b>"
@@ -318,7 +320,7 @@ def main():
                     current_away_name = f"<b>{away_name}</b>"
                     g_away_str = f"<b>{g_away_int}</b>"
 
-        send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} <i>{marcatore}</i>\n\n🇮🇹 {hashtag}")
+        send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{current_home_name} {g_home_str}-{g_away_str} {current_away_name}\n{E_BALL} {marcatore}\n\n🇮🇹 {hashtag}")
         state["goals_detected"] = total_goals_now
 
     # --------------------------------------------------------------------------
@@ -459,6 +461,7 @@ def main():
         # UNIFORMATO: Titolo sempre fisso in grassetto per qualsiasi risultato
         title_prefix = "<b>FINE PARTITA 🏁</b>"
 
+        # Formatta il testo del risultato applicando il grassetto ESCLUSIVAMENTE a chi vince (anche ai rigori)
         final_status_line = format_match_text(home_name, away_name, g_home_int, g_away_int, p_home, p_away)
         msg_finale = f"{title_prefix}\n\n{final_status_line}{scorers_line}\n\n🇮🇹 {hashtag}"
         
