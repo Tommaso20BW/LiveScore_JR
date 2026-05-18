@@ -205,29 +205,50 @@ def get_canva_image(access_token):
 # LOGICA REFRESH DATI API FOOTBALL
 # ==============================================================================
 def search_today_match():
-    """Cerca se l'Arsenal ha una partita programmata oggi e crea lo stato iniziale."""
+    """Cerca il prossimo match dell'Arsenal senza farsi bloccare dai limiti rigidi delle date."""
     if not API_KEY:
         print("❌ API_KEY mancante.")
         return None
         
     url = "https://v3.football.api-sports.io/fixtures"
     headers = {"x-apisports-key": API_KEY}
-    today_date = datetime.now().strftime('%Y-%m-%d')
-    params = {"team": MY_TEAM_ID, "date": today_date}
+    
+    # Interroghiamo i prossimi 3 match programmati/in corso dell'Arsenal
+    params = {"team": MY_TEAM_ID, "next": 3}
     
     try:
-        print(f"🔍 Controllo palinsesto API per l'Arsenal in data {today_date}...")
+        print(f"🔍 Controllo i prossimi match in palinsesto per l'Arsenal...")
         res = requests.get(url, headers=headers, params=params, timeout=15)
         if res.status_code == 200:
             fixtures = res.json().get("response", [])
             if not fixtures:
-                print("ℹ️ Nessun match programmato per l'Arsenal oggi.")
+                print("ℹ️ Nessun match trovato nel palinsesto dell'Arsenal.")
                 return None
                 
-            match = fixtures[0]
-            match_id = match.get('fixture', {}).get('id')
-            status = match.get('fixture', {}).get('status', {}).get('short', 'NS')
-            print(f"✅ Match trovato! ID: {match_id} | Stato attuale: {status}")
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            match_da_attivare = None
+
+            for match in fixtures:
+                match_date = match.get('fixture', {}).get('date', '') 
+                status_short = match.get('fixture', {}).get('status', {}).get('short', 'NS')
+                
+                # Se è LIVE, lo agganciamo immediatamente a prescindere dal giorno preciso
+                if status_short in ["1H", "2H", "HT", "ET", "PEN"]:
+                    match_da_attivare = match
+                    break
+                
+                # Altrimenti verifichiamo se la data del match è quella di oggi
+                if today_str in match_date:
+                    match_da_attivare = match
+                    break
+
+            if not match_da_attivare:
+                print(f"ℹ️ Trovati match futuri, ma nessuno programmato per oggi ({today_str}).")
+                return None
+
+            match_id = match_da_attivare.get('fixture', {}).get('id')
+            status = match_da_attivare.get('fixture', {}).get('status', {}).get('short', 'NS')
+            print(f"✅ Match rilevato! ID: {match_id} | Stato attuale: {status}")
             
             return {
                 "live_match_id": match_id, 
@@ -258,9 +279,9 @@ def fetch_live_match(match_id):
 # PIPELINE MACRO PRESA DATI E CICLO REALE
 # ==============================================================================
 def main():
-    print("🚀 Avvio Live Score Bot (Arsenal version): elaborazione eventi...")
+    print("🚀 Avvio Live Score Bot (Arsenal version): elaborazione events...")
     
-    # 1. Eseguiamo SEMPRE il controllo e il rinnovo del Token Canva
+    # 1. Controllo e rinnovo del Token Canva
     shared_access_token = get_valid_token()
 
     # 2. SE SEI IL KEEP-ALIVE, FERMATI QUI!
@@ -272,10 +293,10 @@ def main():
     if not os.path.exists("match_state.json"):
         initial_state = search_today_match()
         if not initial_state:
-            print("🛑 Esecuzione interrotta: nessuna partita in palinsesto oggi.")
+            print("🛑 Esecuzione interrotta: nessuna partita attiva da tracciare.")
             return
             
-        # Controlliamo se è ancora "NS" (Non iniziata) per fermarci in tempo
+        # Controlliamo se è "NS" (Non iniziata) per addormentare lo script fino al kick-off
         check_match = fetch_live_match(initial_state["live_match_id"])
         if check_match:
             status_init = check_match.get('fixture', {}).get('status', {}).get('short', 'NS')
@@ -283,7 +304,6 @@ def main():
                 print("⏳ Match trovato ma non ancora iniziato. In attesa del fischio d'inizio.")
                 return
         
-        # Se è in corso o iniziata, creiamo il file di stato
         state = initial_state
         with open("match_state.json", "w") as f:
             json.dump(state, f)
