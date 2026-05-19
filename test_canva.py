@@ -6,7 +6,7 @@ from nacl import encoding, public
 from PIL import Image
 
 # ==============================================================================
-# CONFIGURAZIONE STRUTTURATA PER GITHUB SECRETS
+# CONFIGURAZIONE STRUTTURATA PER GITHUB SECRETS E CANVA
 # ==============================================================================
 CLIENT_ID = os.environ.get("CANVA_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CANVA_CLIENT_SECRET")
@@ -73,7 +73,7 @@ def get_valid_token():
         print("❌ Errore: CANVA_REFRESH_TOKEN non trovato nelle variabili d'ambiente.")
         return None
 
-    print("🔄 Richiesta di un Access Token temporaneo a Canva...")
+    print("🔄 Request di un Access Token temporaneo a Canva...")
     url = "https://api.canva.com/rest/v1/oauth/token"
     payload = {
         "grant_type": "refresh_token",
@@ -88,7 +88,6 @@ def get_valid_token():
             dati = res.json()
             print("✅ Access Token generato con successo!")
             
-            # Se Canva ha ruotato il token, lo script lo invia a GitHub
             if "refresh_token" in dati:
                 nuovo_token = dati["refresh_token"]
                 update_github_secret("CANVA_REFRESH_TOKEN", nuovo_token)
@@ -102,171 +101,139 @@ def get_valid_token():
         return None
 
 # ==============================================================================
-# RECUPERO ASSET DA CANVA STANDARD (CON SFONDO NERO #000000 ESPORTATO)
+# RECUPERO ASSET DA CANVA STANDARD
 # ==============================================================================
 def get_canva_image(access_token):
-    """Avvia l'esportazione su Canva e scarica la pagina con layout standard"""
-    if not access_token:
-        return None
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
+    """Avvia l'esportazione su Canva e scarica la pagina dei loghi"""
+    if not access_token: return None
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     
     start_url = "https://api.canva.com/rest/v1/exports"
     payload = {
         "design_id": CANVA_DESIGN_ID,
-        "format": {
-            "type": "png", 
-            "pages": [PAGINA_TARGET]
-        }
+        "format": {"type": "png", "pages": [PAGINA_TARGET]}
     }
 
     try:
-        print("🎨 Richiesta generazione asset grafici a Canva...")
+        print("🎨 Richiesta generazione loghi a Canva...")
         response = requests.post(start_url, headers=headers, json=payload, timeout=15)
-        if response.status_code not in [200, 201]:
-            print(f"❌ Errore avvio export Canva: {response.text}")
-            return None
+        if response.status_code not in [200, 201]: return None
         
         job_id = response.json().get("id") or response.json().get("job", {}).get("id")
-        if not job_id:
-            return None
-        
+        if not job_id: return None
         status_url = f"https://api.canva.com/rest/v1/exports/{job_id}"
         
-        print("⏳ Attesa del rendering su Canva...")
-        for i in range(20):
+        for _ in range(20):
             time.sleep(3)
             check_res = requests.get(status_url, headers=headers, timeout=15)
             if check_res.status_code == 200:
                 status_data = check_res.json()
                 status_corrente = status_data.get("status") or status_data.get("job", {}).get("status")
-                print(f"   [Controllo {i+1}/20] Stato rendering: {status_corrente}")
                 
                 if status_corrente == "success":
                     urls_list = status_data.get("urls") or status_data.get("job", {}).get("urls")
                     download_url = urls_list[0] if urls_list else (status_data.get("url") or status_data.get("job", {}).get("url"))
-                    
                     if download_url:
-                        print("📥 Download del livello completato.")
-                        img_res = requests.get(download_url, timeout=20)
-                        return img_res.content
-                        
-                elif status_corrente == "failed":
-                    print("❌ Il rendering su Canva è fallito. Controlla il progetto.")
-                    return None
-                    
-        print("❌ Timeout durante l'attesa del file da Canva.")
+                        print("📥 Download loghi superiore completato.")
+                        return requests.get(download_url, timeout=20).content
+                elif status_corrente == "failed": return None
     except Exception as e:
-        print(f"❌ Errore durante il recupero da Canva: {e}")
+        print(f"❌ Errore recupero Canva: {e}")
     return None
 
 # ==============================================================================
-# CORE: FILTRI EVENTO E SOVRAPPOSIZIONE CON CHROMA KEY MORBIDO (ANTI-ALIASING)
+# CORE: COMPOSIZIONE A 3 LIVELLI (BACKGROUND -> GIOCATORE -> CANVA LOGHI)
 # ==============================================================================
 def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
     print(f"\n⚡ Analisi evento: Gol di {cognome_giocatore} per {squadra_segno}")
     
-    # 1. Filtro Squadra: Gestisce solo i gol della Juventus
     if squadra_segno.lower() != "juventus":
         print("➡️ Gol avversario. Il bot ignora l'evento.")
         return False
 
     nome_marcatore = cognome_giocatore.lower().strip()
     sfondo_path = f"assets/esultanze/{nome_marcatore}.png"
+    bg_struttura_path = "assets/esultanze/background.png"  # Percorso aggiornato dentro esultanze
 
-    # 2. Filtro File Locale: Verifica se abbiamo la foto del giocatore a catalogo
+    # Verifica la presenza di entrambi i file locali necessari
     if not os.path.exists(sfondo_path):
-        print(f"➡️ File '{sfondo_path}' non trovato. Giocatore assente, salto l'invio senza crash.")
-        return False
-
-    print(f"📸 Sfondo trovato per {cognome_giocatore}. Recupero lo strato grafico da Canva...")
-    
-    # 3. Connessione API Canva
-    token = get_valid_token()
-    if not token:
-        print("❌ Processo interrotto: Token Canva non recuperabile.")
+        print(f"➡️ File '{sfondo_path}' non trovato. Salto.")
         return False
         
-    foto_canva_bytes = get_canva_image(token)
-    if not foto_canva_bytes:
-        print("❌ Processo interrotto: Immagine Canva vuota.")
+    if not os.path.exists(bg_struttura_path):
+        print(f"❌ Errore: Manca lo sfondo base '{bg_struttura_path}' nella cartella assets/esultanze/.")
         return False
 
-    # Salvataggio temporaneo dello strato dei loghi scaricato
+    print(f"📸 Asset locali pronti per {cognome_giocatore}. Chiamo Canva per i loghi...")
+    
+    token = get_valid_token()
+    foto_canva_bytes = get_canva_image(token)
+    if not foto_canva_bytes: return False
+
     canva_temp_path = "assets/canva_temp.png"
-    os.makedirs("assets", exist_ok=True)
     with open(canva_temp_path, "wb") as f:
         f.write(foto_canva_bytes)
 
-    # 4. Elaborazione Grafica Avanzata con Pillow
     try:
-        print("🎨 Isolamento professionale dello sfondo nero con anti-aliasing...")
-        sfondo_giocatore = Image.open(sfondo_path).convert("RGBA")
+        print("🎨 Composizione avanzata dei 3 livelli in corso...")
+        
+        # 1. LIVELLO BASSO (Base): Carichiamo background.png
+        immagine_finale = Image.open(bg_struttura_path).convert("RGBA")
+        base_size = immagine_finale.size
+
+        # 2. LIVELLO INTERMEDIO: Foto esultanza giocatore sopra il background
+        foto_giocatore = Image.open(sfondo_path).convert("RGBA")
+        if foto_giocatore.size != base_size:
+            foto_giocatore = foto_giocatore.resize(base_size, Image.Resampling.LANCZOS)
+            
+        immagine_finale.paste(foto_giocatore, (0, 0), foto_giocatore)
+
+        # 3. LIVELLO ALTO (Top): Scarichiamo i loghi da Canva, rimuovendo lo sfondo nero
         strato_loghi = Image.open(canva_temp_path).convert("RGBA")
+        if strato_loghi.size != base_size:
+            strato_loghi = strato_loghi.resize(base_size, Image.Resampling.LANCZOS)
 
-        # Autoresize protettivo dello strato Canva se differisce dalle esultanze
-        if sfondo_giocatore.size != strato_loghi.size:
-            strato_loghi = strato_loghi.resize(sfondo_giocatore.size, Image.Resampling.LANCZOS)
-
-        # Trasformiamo lo strato in formato RGBA per manipolare i singoli canali
+        # Algoritmo Chroma Key progressivo per eliminare lo sfondo nero (#000000) di Canva
         dati_pixel = strato_loghi.getdata()
         nuovi_pixel = []
         
-        # SOGLIE DI TOLLERANZA CHROMA KEY
-        soglia_nero = 45   # Sotto questa luminosità, il pixel diventa trasparente al 100%
-        soglia_pieno = 80  # Sopra questa luminosità, il pixel resta visibile al 100%
+        soglia_nero = 45   
+        soglia_pieno = 80  
 
         for pixel in dati_pixel:
             r, g, b, a = pixel
-            
-            # Calcoliamo la luminosità media del pixel (da 0 a 255)
             luminosita = (r + g + b) // 3
             
             if luminosita <= soglia_nero:
-                # Sfondo nero puro o scurissimo -> Trasparenza totale
-                nuovi_pixel.append((0, 0, 0, 0))
+                nuovi_pixel.append((0, 0, 0, 0)) # Sfondo trasparente
             elif luminosita >= soglia_pieno:
-                # Pixel chiaro (scritte, loghi, scudetti) -> Mantieni inalterato
-                nuovi_pixel.append((r, g, b, a))
+                nuovi_pixel.append((r, g, b, a)) # Elemento grafico originale
             else:
-                # ZONA DI SFUMATURA (Bordi dei loghi): Calcoliamo un'Alpha graduale
-                # Evita i bordi seghettati o gli aloni neri spessi
+                # Anti-aliasing morbido per evitare bordi seghettati o aloni neri sporchi
                 fattore = (luminosita - soglia_nero) / (soglia_pieno - soglia_nero)
                 nuovo_alpha = int(a * fattore)
                 nuovi_pixel.append((r, g, b, nuovo_alpha))
                 
-        # Applichiamo la maschera pixel per pixel
         strato_loghi.putdata(nuovi_pixel)
 
-        # Incolliamo la grafica sopra la foto del giocatore usando il nuovo canale Alpha
-        sfondo_giocatore.paste(strato_loghi, (0, 0), strato_loghi)
+        # Incolliamo lo strato dei loghi pulito sopra l'unione (background + giocatore)
+        immagine_finale.paste(strato_loghi, (0, 0), strato_loghi)
 
-        # Esportazione in JPG ad alta qualità pulendo il canale alpha per salvare il file finale
+        # Esportazione finale in formato JPEG
         output_finale = f"assets/OUTPUT_{nome_marcatore}.jpg"
-        sfondo_giocatore.convert("RGB").save(output_finale, "JPEG", quality=95)
+        immagine_finale.convert("RGB").save(output_finale, "JPEG", quality=95)
         
-        print(f"✅ COMBINAZIONE RIUSCITA! Grafica ad alta definizione generata in: {output_finale}")
-        
-        # Pulizia del file temporaneo
-        if os.path.exists(canva_temp_path):
-            os.remove(canva_temp_path)
+        print(f"✅ COMBINAZIONE RIUSCITA! Grafica finale generata in: {output_finale}")
+        if os.path.exists(canva_temp_path): os.remove(canva_temp_path)
         return True
 
     except Exception as e:
-        print(f"❌ Errore durante la manipolazione dell'immagine con Pillow: {e}")
+        print(f"❌ Errore durante l'elaborazione Pillow: {e}")
         return False
 
-# ==============================================================================
-# FUNZIONE MAIN: SIMULAZIONE WORKFLOW
-# ==============================================================================
 def main():
-    print("=== START BOT TEST WORKFLOW ===")
+    print("=== START BOT 3-LEVEL TEST ===")
     os.makedirs("assets/esultanze", exist_ok=True)
-    
-    # Esegue il flusso reale cercando assets/esultanze/vlahovic.png
     genera_immagine_gol_test(squadra_segno="Juventus", cognome_giocatore="Vlahovic")
 
 if __name__ == "__main__":
