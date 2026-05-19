@@ -33,6 +33,8 @@ jobs:
         CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
         CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
         CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
+        GITHUB_PAT: ${{ secrets.GH_PAT }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
       run: python test_canva.py
 
     # 5. Salva l'immagine creata come "Artefatto" scaricabile da GitHub
