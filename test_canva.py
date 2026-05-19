@@ -4,12 +4,12 @@ import time
 from PIL import Image
 
 # ==============================================================================
-# CONFIGURAZIONE COMPLETA PER IL TEST OFFLINE LOCALMENTE
+# CONFIGURAZIONE STRUTTURATA PER GITHUB SECRETS
 # ==============================================================================
-# Incolla qui le tue chiavi reali per testare il funzionamento delle API Canva
-CLIENT_ID = "IL_TUO_CANVA_CLIENT_ID"
-CLIENT_SECRET = "IL_TUO_CANVA_CLIENT_SECRET"
-CANVA_REFRESH_TOKEN = "IL_TUO_CANVA_REFRESH_TOKEN"
+# GitHub leggerà queste variabili direttamente dai tuoi Secrets impostati sulla repository
+CLIENT_ID = os.environ.get("CANVA_CLIENT_ID")
+CLIENT_SECRET = os.environ.get("CANVA_CLIENT_SECRET")
+CANVA_REFRESH_TOKEN = os.environ.get("CANVA_REFRESH_TOKEN")
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
@@ -19,8 +19,8 @@ PAGINA_TARGET = 11
 # ==============================================================================
 def get_valid_token():
     """Genera un Access Token temporaneo usando il Refresh Token"""
-    if not CANVA_REFRESH_TOKEN or CANVA_REFRESH_TOKEN == "IL_TUO_CANVA_REFRESH_TOKEN":
-        print("❌ Errore: CANVA_REFRESH_TOKEN non configurato correttamente.")
+    if not CANVA_REFRESH_TOKEN:
+        print("❌ Errore: CANVA_REFRESH_TOKEN non trovato nei GitHub Secrets.")
         return None
 
     print("🔄 Richiesta di un Access Token temporaneo a Canva...")
@@ -106,23 +106,19 @@ def get_canva_image(access_token):
 def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
     print(f"\n⚡ Elaborazione evento: Gol di {cognome_giocatore} ({squadra_segno})")
     
-    # REGOLA 1: Se non ha segnato la Juventus, non fa nulla
     if squadra_segno.lower() != "juventus":
         print("➡️ Gol avversario. Il sistema ignora l'evento.")
         return False
 
-    # Standardizziamo il nome del file esultanza locale
     nome_marcatore = cognome_giocatore.lower().strip()
     sfondo_path = f"assets/esultanze/{nome_marcatore}.png"
 
-    # REGOLA 2: Se il giocatore è assente nell'elenco foto, non fa nulla
     if not os.path.exists(sfondo_path):
         print(f"➡️ File '{sfondo_path}' non trovato. Giocatore assente nell'elenco foto, salto l'invio.")
         return False
 
     print(f"📸 Sfondo trovato per {cognome_giocatore}. Procedo al recupero dei loghi da Canva...")
     
-    # 1. Recuperiamo l'immagine trasparente aggiornata da Canva
     token = get_valid_token()
     if not token:
         print("❌ Impossibile procedere: Token Canva non valido.")
@@ -133,34 +129,26 @@ def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
         print("❌ Impossibile procedere: Immagine Canva non scaricata.")
         return False
 
-    # Salviamo temporaneamente la sovrapposizione scaricata da Canva
     canva_temp_path = "assets/canva_temp.png"
-    os.makedirs("assets", exist_ok=True)
     with open(canva_temp_path, "wb") as f:
         f.write(foto_canva_bytes)
 
-    # 2. Avviamo la sovrapposizione 1:1 con Pillow
     try:
         print("🎨 Sovrapposizione livelli in corso (Formato 1:1)...")
         sfondo_giocatore = Image.open(sfondo_path).convert("RGBA")
         strato_loghi = Image.open(canva_temp_path).convert("RGBA")
 
-        # Controllo di sicurezza sulle dimensioni delle due foto
         if sfondo_giocatore.size != strato_loghi.size:
             print(f"⚠️ Nota: Dimensioni diverse. Giocatore: {sfondo_giocatore.size} | Canva: {strato_loghi.size}")
-            print("Adatto lo strato di Canva alle dimensioni dello sfondo del giocatore...")
             strato_loghi = strato_loghi.resize(sfondo_giocatore.size, Image.Resampling.LANCZOS)
 
-        # Incolliamo combaciando perfettamente sul punto (0, 0)
         sfondo_giocatore.paste(strato_loghi, (0, 0), strato_loghi)
 
-        # Salviamo l'output finale in locale
         output_finale = f"assets/OUTPUT_{nome_marcatore}.jpg"
         sfondo_giocatore.convert("RGB").save(output_finale, "JPEG", quality=95)
         
-        print(f"✅ GRAFICA GENERATA CON SUCCESSO! Controlla il file: {output_finale}")
+        print(f"✅ GRAFICA GENERATA CON SUCCESSO! Salvata in: {output_finale}")
         
-        # Pulizia del file temporaneo scaricato da Canva
         if os.path.exists(canva_temp_path):
             os.remove(canva_temp_path)
         return True
@@ -170,21 +158,16 @@ def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
         return False
 
 # ==============================================================================
-# FUNZIONE MAIN PER SIMULARE I VARI SCENARI DI TEST OFFLINE
+# FUNZIONE MAIN
 # ==============================================================================
 def main():
-    print("=== AVVIO SIMULAZIONE DI TEST OFFLINE ===")
+    print("=== AVVIO TEST DEL BOT SU GITHUB ACTIONS ===")
     
-    # Assicuriamoci che la cartella degli asset esista per il test
-    os.makedirs("assets/esultanze", exist_ok=True)
-    
-    # --- CASO 1: Segna la squadra avversaria (Deve bloccarsi subito) ---
+    # Caso 1 & 2: Test dei blocchi automatici
     genera_immagine_gol_test(squadra_segno="Inter", cognome_giocatore="Martinez")
+    genera_immagine_gol_test(squadra_segno="Juventus", cognome_giocatore="Inesistente")
     
-    # --- CASO 2: Segna la Juve ma il giocatore è assente (Deve bloccarsi subito) ---
-    genera_immagine_gol_test(squadra_segno="Juventus", cognome_giocatore="GiocatoreInesistente")
-    
-    # --- CASO 3: Segna la Juve e il giocatore ESISTE (Esegue il flusso completo su Canva) ---
+    # Caso 3: Test reale (funzionerà se hai caricato la foto vlahovic.png nel repository)
     genera_immagine_gol_test(squadra_segno="Juventus", cognome_giocatore="Vlahovic")
 
 if __name__ == "__main__":
