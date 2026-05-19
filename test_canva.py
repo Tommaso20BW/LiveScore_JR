@@ -12,7 +12,7 @@ CLIENT_SECRET = os.environ.get("CANVA_CLIENT_SECRET")
 CANVA_REFRESH_TOKEN = os.environ.get("CANVA_REFRESH_TOKEN")
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
-PAGINA_TARGET = 11
+PAGINA_TARGET = 40
 
 # ==============================================================================
 # AUTOMAZIONE CANVA API
