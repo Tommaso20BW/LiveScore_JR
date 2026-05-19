@@ -13,7 +13,7 @@ CLIENT_SECRET = os.environ.get("CANVA_CLIENT_SECRET")
 CANVA_REFRESH_TOKEN = os.environ.get("CANVA_REFRESH_TOKEN")
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
-PAGINA_TARGET = 40
+PAGINA_TARGET = 11
 
 # ==============================================================================
 # AUTOMAZIONE E AGGIORNAMENTO AUTOMATICO SECRETS GITHUB
@@ -115,8 +115,6 @@ def get_canva_image(access_token):
     }
     
     start_url = "https://api.canva.com/rest/v1/exports"
-    
-    # AGGIORNATO: Inserito 'images_as_transparent_background' nel payload di Canva
     payload = {
         "design_id": CANVA_DESIGN_ID,
         "format": {
@@ -183,34 +181,3 @@ def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
     # 2. Filtro File Locale: Verifica se abbiamo la foto del giocatore a catalogo
     if not os.path.exists(sfondo_path):
         print(f"➡️ File '{sfondo_path}' non trovato. Giocatore assente, salto l'invio senza crash.")
-        return False
-
-    print(f"📸 Sfondo trovato per {cognome_giocatore}. Recupero lo strato grafico da Canva...")
-    
-    # 3. Connessione API Canva
-    token = get_valid_token()
-    if not token:
-        print("❌ Processo interrotto: Token Canva non recuperabile.")
-        return False
-        
-    foto_canva_bytes = get_canva_image(token)
-    if not foto_canva_bytes:
-        print("❌ Processo interrotto: Immagine Canva vuota.")
-        return False
-
-    # Salvataggio temporaneo dello strato dei loghi scaricato
-    canva_temp_path = "assets/canva_temp.png"
-    os.makedirs("assets", exist_ok=True)
-    with open(canva_temp_path, "wb") as f:
-        f.write(foto_canva_bytes)
-
-    # 4. Elaborazione Grafica con Pillow
-    try:
-        print("🎨 Unione livelli in corso (Formato 1:1 con trasparenza)...")
-        # .convert("RGBA") garantisce il corretto isolamento del canale Alpha (trasparenza)
-        sfondo_giocatore = Image.open(sfondo_path).convert("RGBA")
-        strato_loghi = Image.open(canva_temp_path).convert("RGBA")
-
-        # Autoresize protettivo dello strato Canva se differisce dalle esultanze
-        if sfondo_giocatore.size != strato_loghi.size:
-            print(f"⚠️ Dimensioni differenti. Adatto Canva {strato_
