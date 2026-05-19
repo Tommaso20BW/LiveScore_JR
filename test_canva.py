@@ -102,7 +102,7 @@ def get_valid_token():
         return None
 
 # ==============================================================================
-# RECUPERO ASSET DA CANVA STANDARD
+# RECUPERO ASSET DA CANVA STANDARD (CON SFONDO NERO #000000 ESPORTATO)
 # ==============================================================================
 def get_canva_image(access_token):
     """Avvia l'esportazione su Canva e scarica la pagina con layout standard"""
@@ -164,7 +164,7 @@ def get_canva_image(access_token):
     return None
 
 # ==============================================================================
-# CORE: FILTRI EVENTO E SOVRAPPOSIZIONE CON RIMOZIONE SFONDO NERO VIA PILLOW
+# CORE: FILTRI EVENTO E SOVRAPPOSIZIONE CON CHROMA KEY MORBIDO (ANTI-ALIASING)
 # ==============================================================================
 def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
     print(f"\n⚡ Analisi evento: Gol di {cognome_giocatore} per {squadra_segno}")
@@ -201,9 +201,9 @@ def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
     with open(canva_temp_path, "wb") as f:
         f.write(foto_canva_bytes)
 
-    # 4. Elaborazione Grafica con Pillow
+    # 4. Elaborazione Grafica Avanzata con Pillow
     try:
-        print("🎨 Isolamento sfondo nero e unione livelli in corso...")
+        print("🎨 Isolamento professionale dello sfondo nero con anti-aliasing...")
         sfondo_giocatore = Image.open(sfondo_path).convert("RGBA")
         strato_loghi = Image.open(canva_temp_path).convert("RGBA")
 
@@ -211,30 +211,44 @@ def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
         if sfondo_giocatore.size != strato_loghi.size:
             strato_loghi = strato_loghi.resize(sfondo_giocatore.size, Image.Resampling.LANCZOS)
 
-        # 🛠️ CHIAVE DI VOLTA: Rilevamento pixel neri ed eliminazione dello sfondo
+        # Trasformiamo lo strato in formato RGBA per manipolare i singoli canali
         dati_pixel = strato_loghi.getdata()
         nuovi_pixel = []
         
+        # SOGLIE DI TOLLERANZA CHROMA KEY
+        soglia_nero = 45   # Sotto questa luminosità, il pixel diventa trasparente al 100%
+        soglia_pieno = 80  # Sopra questa luminosità, il pixel resta visibile al 100%
+
         for pixel in dati_pixel:
-            # Se il pixel è nero o quasi nero (valori RGB inferiori a 25)
-            if pixel[0] < 25 and pixel[1] < 25 and pixel[2] < 25:
-                # Lo impostiamo come trasparente (Alpha channel = 0)
+            r, g, b, a = pixel
+            
+            # Calcoliamo la luminosità media del pixel (da 0 a 255)
+            luminosita = (r + g + b) // 3
+            
+            if luminosita <= soglia_nero:
+                # Sfondo nero puro o scurissimo -> Trasparenza totale
                 nuovi_pixel.append((0, 0, 0, 0))
+            elif luminosita >= soglia_pieno:
+                # Pixel chiaro (scritte, loghi, scudetti) -> Mantieni inalterato
+                nuovi_pixel.append((r, g, b, a))
             else:
-                # Teniamo le scritte e i loghi (oro, gialli o bianchi)
-                nuovi_pixel.append(pixel)
+                # ZONA DI SFUMATURA (Bordi dei loghi): Calcoliamo un'Alpha graduale
+                # Evita i bordi seghettati o gli aloni neri spessi
+                fattore = (luminosita - soglia_nero) / (soglia_pieno - soglia_nero)
+                nuovo_alpha = int(a * fattore)
+                nuovi_pixel.append((r, g, b, nuovo_alpha))
                 
-        # Scriviamo i nuovi dati con trasparenza artificiale sul livello Canva
+        # Applichiamo la maschera pixel per pixel
         strato_loghi.putdata(nuovi_pixel)
 
-        # Incolliamo la grafica pulita sopra la foto del giocatore
+        # Incolliamo la grafica sopra la foto del giocatore usando il nuovo canale Alpha
         sfondo_giocatore.paste(strato_loghi, (0, 0), strato_loghi)
 
-        # Esportazione in JPG ad alta qualità pulendo il canale alpha per il salvataggio
+        # Esportazione in JPG ad alta qualità pulendo il canale alpha per salvare il file finale
         output_finale = f"assets/OUTPUT_{nome_marcatore}.jpg"
         sfondo_giocatore.convert("RGB").save(output_finale, "JPEG", quality=95)
         
-        print(f"✅ COMBINAZIONE RIUSCITA! Grafica generata in: {output_finale}")
+        print(f"✅ COMBINAZIONE RIUSCITA! Grafica ad alta definizione generata in: {output_finale}")
         
         # Pulizia del file temporaneo
         if os.path.exists(canva_temp_path):
