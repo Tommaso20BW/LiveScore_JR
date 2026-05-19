@@ -105,7 +105,7 @@ def get_valid_token():
 # RECUPERO GRAFICA TRASPARENTE DA CANVA
 # ==============================================================================
 def get_canva_image(access_token):
-    """Avvia l'esportazione su Canva e scarica l'immagine preservando la trasparenza"""
+    """Avvia l'esportazione su Canva e scarica l'immagine forzando lo sfondo trasparente"""
     if not access_token:
         return None
 
@@ -115,16 +115,19 @@ def get_canva_image(access_token):
     }
     
     start_url = "https://api.canva.com/rest/v1/exports"
+    
+    # AGGIORNATO: Inserito 'images_as_transparent_background' nel payload di Canva
     payload = {
         "design_id": CANVA_DESIGN_ID,
         "format": {
             "type": "png", 
             "pages": [PAGINA_TARGET]
-        }
+        },
+        "images_as_transparent_background": True
     }
 
     try:
-        print("🎨 Richiesta generazione asset grafici a Canva...")
+        print("🎨 Richiesta generazione asset grafici (Trasparente) a Canva...")
         response = requests.post(start_url, headers=headers, json=payload, timeout=15)
         if response.status_code not in [200, 201]:
             print(f"❌ Errore avvio export Canva: {response.text}")
@@ -210,44 +213,4 @@ def genera_immagine_gol_test(squadra_segno, cognome_giocatore):
 
         # Autoresize protettivo dello strato Canva se differisce dalle esultanze
         if sfondo_giocatore.size != strato_loghi.size:
-            print(f"⚠️ Dimensioni differenti. Adatto Canva {strato_loghi.size} a Sfondo {sfondo_giocatore.size}...")
-            strato_loghi = strato_loghi.resize(sfondo_giocatore.size, Image.Resampling.LANCZOS)
-
-        # Il terzo argomento 'strato_loghi' fa da maschera di trasparenza, evitando l'effetto "sfondo coprente"
-        sfondo_giocatore.paste(strato_loghi, (0, 0), strato_loghi)
-
-        # Esportazione in JPG ad alta qualità pulendo il canale alpha per il salvataggio finalizzato
-        output_finale = f"assets/OUTPUT_{nome_marcatore}.jpg"
-        sfondo_giocatore.convert("RGB").save(output_finale, "JPEG", quality=95)
-        
-        print(f"✅ COMBINAZIONE RIUSCITA! Grafica generata in: {output_finale}")
-        
-        # Pulizia del file temporaneo
-        if os.path.exists(canva_temp_path):
-            os.remove(canva_temp_path)
-        return True
-
-    except Exception as e:
-        print(f"❌ Errore durante la manipolazione dell'immagine con Pillow: {e}")
-        return False
-
-# ==============================================================================
-# FUNZIONE MAIN: SIMULAZIONE MULTI-SCENARIO
-# ==============================================================================
-def main():
-    print("=== START BOT TEST WORKFLOW ===")
-    
-    # Assicura la presenza della struttura minima prima di avviare il test delle funzioni
-    os.makedirs("assets/esultanze", exist_ok=True)
-    
-    # TEST 1: Filtro squadra attiva (Deve bloccarsi subito)
-    genera_immagine_gol_test(squadra_segno="Inter", cognome_giocatore="Martinez")
-    
-    # TEST 2: Filtro file assente (Deve bloccarsi dopo il controllo locale)
-    genera_immagine_gol_test(squadra_segno="Juventus", cognome_giocatore="Inesistente")
-    
-    # TEST 3: Flusso completo (Se assets/esultanze/vlahovic.png esiste, scarica, sovrappone e aggiorna GitHub)
-    genera_immagine_gol_test(squadra_segno="Juventus", cognome_giocatore="Vlahovic")
-
-if __name__ == "__main__":
-    main()
+            print(f"⚠️ Dimensioni differenti. Adatto Canva {strato_
