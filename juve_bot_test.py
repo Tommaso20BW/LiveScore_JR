@@ -235,11 +235,18 @@ def get_canva_image(access_token):
     return None
 
 # ==============================================================================
-# FUNZIONE GENERAZIONE SCREENSHOT STATISTICHE DA TEMPLATE HTML
+# FUNZIONE SCREENSHOT STATISTICHE DA TEMPLATE HTML (CON LOGICA RESILIENTE)
 # ==============================================================================
 def invia_statistiche_match(match_id, score_string, logo_home, logo_away, tipo_periodo, hashtag, e_comp):
-    print(f"⏳ Attendo 2 minutes prima di inviare le statistiche di fine {tipo_periodo}...")
-    time.sleep(120)
+    # Controlliamo se il file di stato esiste. Se NON esiste, significa che il bot è appena stato acceso!
+    bot_appena_acceso = not os.path.exists("match_state.json")
+
+    if bot_appena_acceso:
+        print(f"⚡ Bot acceso direttamente in fase di cambio periodo. Salto l'attesa per recuperare subito le statistiche di fine {tipo_periodo}!")
+    else:
+        print(f"⏳ Attendo 2 minuti prima di inviare le statistiche di fine {tipo_periodo}...")
+        time.sleep(120)
+
     print(f"📊 Recupero statistiche da API-Football per il match ID {match_id}...")
     
     headers = {"x-apisports-key": API_KEY}
@@ -464,6 +471,7 @@ def avvia_ciclo_partita():
             elif status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
+                # Aggiorniamo lo stato PRIMA dello screenshot così 'bot_appena_acceso' lavora correttamente
                 with open("match_state.json", "w") as f: json.dump(state, f)
                 invia_statistiche_match(match_id, f"{g_home_int}-{g_away_int}", logo_home, logo_away, "primo tempo", hashtag, e_comp)
             elif status == "2H" and "2H" not in state["sent_periods"]:
