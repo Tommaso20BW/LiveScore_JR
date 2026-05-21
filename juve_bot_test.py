@@ -284,10 +284,23 @@ def invia_statistiche_match(match_id, score_string, logo_home, logo_away, tipo_p
         with open("temp_render.html", "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        print("📸 Generazione screenshot HTML in corso...")
-        hti = Html2Image(browser='chrome', custom_flags=['--headless', '--no-sandbox', '--disable-gpu'])
-        # Specifichiamo la dimensione esatta della card per non catturare spazio vuoto
-        hti.screenshot(html_file='temp_render.html', save_as='stats.png', size=(540, 600))
+          print("📸 Generazione screenshot HTML in corso...")
+        # Forziamo i flag ottimali per far girare Chrome senza interfaccia grafica su GitHub Actions
+        flags = [
+            '--headless', 
+            '--no-sandbox', 
+            '--disable-gpu', 
+            '--disable-dev-shm-usage', 
+            '--hide-scrollbars'
+        ]
+        
+        hti = Html2Image(
+            browser='chrome', 
+            custom_flags=flags
+        )
+        
+        # Specifichiamo la dimensione esatta della card
+        hti.screenshot(html_file='temp_render.html', save_as='stats.png', size=(500, 650))
 
         if os.path.exists("stats.png"):
             with open("stats.png", "rb") as img_file:
