@@ -1,8 +1,7 @@
 import os
 import requests
-import sys
 import time
-import base64
+from playwright.sync_api import sync_playwright
 
 # ==============================================================================
 # CONFIGURAZIONE TEST
@@ -18,19 +17,12 @@ HOME_GOALS = 2
 AWAY_GOALS = 0
 
 JUVE_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
+API_LOGO_URL = "https://media.api-sports.io/football/teams/{}.png"
 
 # Parametri dinamici
 COMPETIZIONE = "SERIE A"
 ROUND = "MATCHDAY TEST"
 MOMENTO = "FINE PRIMO TEMPO" 
-
-def _logo_to_base64(url):
-    """Converte l'URL di un logo in stringa base64 per l'HTML."""
-    try:
-        r = requests.get(url, timeout=8)
-        b64 = base64.b64encode(r.content).decode()
-        return f"data:image/png;base64,{b64}"
-    except: return ""
 
 def send_telegram_photo(png_path):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
@@ -40,9 +32,9 @@ def send_telegram_photo(png_path):
     print("✅ Inviato su Telegram!")
 
 def genera_html():
-    # Logica loghi: Forza logo Juventus se il nome contiene "Juventus"
-    h_logo = _logo_to_base64(JUVE_LOGO_URL) if "juventus" in HOME_NAME.lower() else _logo_to_base64(f"https://media.api-sports.io/football/teams/{HOME_ID}.png")
-    a_logo = _logo_to_base64(JUVE_LOGO_URL) if "juventus" in AWAY_NAME.lower() else _logo_to_base64(f"https://media.api-sports.io/football/teams/{AWAY_ID}.png")
+    # Logica loghi: Forza logo Wikipedia per la Juve, dinamico per l'avversario
+    h_logo = JUVE_LOGO_URL if "juventus" in HOME_NAME.lower() else API_LOGO_URL.format(HOME_ID)
+    a_logo = JUVE_LOGO_URL if "juventus" in AWAY_NAME.lower() else API_LOGO_URL.format(AWAY_ID)
 
     stats_data = [
         ("Possesso palla", "58%", "42%", 58),
@@ -99,9 +91,9 @@ def genera_html():
     <div class="league-row">{COMPETIZIONE} &nbsp;·&nbsp; {ROUND}</div>
     <div class="badge">{MOMENTO}</div>
     <div class="teams-row">
-      <div class="team"><img src="{h_logo}" class="logo"><div class="team-name">{HOME_NAME}</div></div>
+      <div class="team"><img src="{h_logo}" class="logo" crossorigin="anonymous"><div class="team-name">{HOME_NAME}</div></div>
       <div class="score">{HOME_GOALS} – {AWAY_GOALS}</div>
-      <div class="team"><img src="{a_logo}" class="logo"><div class="team-name">{AWAY_NAME}</div></div>
+      <div class="team"><img src="{a_logo}" class="logo" crossorigin="anonymous"><div class="team-name">{AWAY_NAME}</div></div>
     </div>
   </div>
   <div class="stats-body">
@@ -116,12 +108,12 @@ def main():
     path = "/tmp/test.html"
     with open(path, "w", encoding="utf-8") as f: f.write(genera_html())
     
-    from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        # Aggiunti argomenti per permettere il caricamento di risorse esterne/cross-origin
+        browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
         page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
         page.goto(f"file://{path}")
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(3000) # Aumentato leggermente per caricamento immagini esterne
         page.query_selector(".card").screenshot(path="/tmp/test.png", omit_background=True)
         browser.close()
         
