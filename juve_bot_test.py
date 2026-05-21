@@ -800,7 +800,7 @@ def avvia_ciclo_partita():
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 3. FISCHIO FINALE -> STATS IMAGE + GENERAZIONE GRAFICA CANVA (UNICA USCITA DEL BOT)
+            # 3. FISCHIO FINALE -> GENERAZIONE GRAFICA CANVA + STATS IMAGE (UNICA USCITA DEL BOT)
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
                 print("🏁 FISCHIO FINALE RILEVATO!")
@@ -822,19 +822,7 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{punteggio_finale}\n{scorers_line}\n{e_comp} {hashtag}"
 
-                # STEP 1: Invia subito le stats di fine partita
-                print("📊 Invio stats di fine partita (subito)...")
-                moment_ft = "AET" if status == "AET" else ("PEN" if status == "PEN" else "FT")
-                send_stats_image(
-                    match_id, home_id, away_id,
-                    home_name, away_name, g_home_int, g_away_int,
-                    moment_ft,
-                    match.get('league', {}).get('name', ''),
-                    match.get('league', {}).get('round', ''),
-                    delay_seconds=0
-                )
-
-                # STEP 2: Aspetta 2 minuti, poi invia il messaggio testo + Canva
+                # STEP 1: Aspetta 2 minuti e invia subito prima la grafica Canva fine partita
                 print("⏳ Attendo 120s prima di inviare la grafica Canva...")
                 time.sleep(120)
 
@@ -846,11 +834,26 @@ def avvia_ciclo_partita():
                 else:
                     print("❌ Impossibile generare un token Canva valido al fischio finale. Invio solo testo.")
                     send_telegram(msg_finale)
+
+                # STEP 2: Invia le stats di fine partita subito dopo la pubblicazione di Canva
+                print("📊 Invio card statistiche fine partita...")
+                moment_ft = "AET" if status == "AET" else ("PEN" if status == "PEN" else "FT")
+                send_stats_image(
+                    match_id, home_id, away_id,
+                    home_name, away_name, g_home_int, g_away_int,
+                    moment_ft,
+                    match.get('league', {}).get('name', ''),
+                    match.get('league', {}).get('round', ''),
+                    delay_seconds=0
+                )
                 
+                # Piccola attesa di sicurezza per permettere al thread di Playwright di agganciare il processo prima della chiusura principale
+                time.sleep(5)
+
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
                 
-                print("🏁 Messaggio di fine inviato con successo. Spegnimento del bot.")
+                print("🏁 Tutti i messaggi di fine partita inviati con successo. Spegnimento del bot.")
                 sys.exit(0)
 
             # 4. GOL E UPDATE VAR
