@@ -6,6 +6,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: juve-live-bot
+  cancel-in-progress: false
+
 jobs:
   run-live:
     runs-on: ubuntu-latest
@@ -20,13 +24,14 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Installa dipendenze
+      - name: Installa librerie e Playwright
         run: |
           python -m pip install --upgrade pip
           pip install requests pynacl playwright
           playwright install chromium
+          playwright install-deps
 
-      - name: Avvia Bot
+      - name: Avvia Juventus Live Score e Invio Grafica
         env:
           API_KEY: ${{ secrets.API_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -36,4 +41,5 @@ jobs:
           CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
           GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          ONLY_REFRESH_TOKEN: ${{ env.ONLY_REFRESH_TOKEN }} 
         run: python juve_bot_test.py
