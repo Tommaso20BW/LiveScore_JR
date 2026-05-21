@@ -3,11 +3,12 @@ import requests
 from playwright.sync_api import sync_playwright
 
 # ==============================================================================
-# CONFIGURAZIONE TEST
+# CONFIGURAZIONE (Aggiorna con i tuoi dati reali)
 # ==============================================================================
 BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
 
+# Esempio parametri match
 HOME_ID = 496  
 AWAY_ID = 505
 HOME_NAME = "Juventus"
@@ -15,12 +16,10 @@ AWAY_NAME = "Inter"
 HOME_GOALS = 2
 AWAY_GOALS = 0
 
-# Parametri dinamici
-COMPETIZIONE = "SERIE A"
-ROUND = "MATCHDAY TEST"
-MOMENTO_CODICE = "HT"  # Opzioni: "HT" (Primo Tempo), "2H" (Secondo Tempo), "FT" (Fine Partita)
+# Configurazione del momento (Cambia questo valore per il test: "HT", "2H", "FT")
+MOMENTO_CODICE = "HT" 
 
-# Configurazione messaggi basata sul momento
+# Mappatura messaggi
 MOMENTI_CONFIG = {
     "HT": {"titolo": "📊 **STATS PRIMO TEMPO**", "badge": "FINE PRIMO TEMPO"},
     "2H": {"titolo": "📊 **STATS SECONDO TEMPO**", "badge": "FINE SECONDO TEMPO"},
@@ -93,7 +92,7 @@ def genera_html(momento):
 <body>
 <div class="card">
   <div class="header">
-    <div class="league-row">{COMPETIZIONE} &nbsp;·&nbsp; {ROUND}</div>
+    <div class="league-row">SERIE A &nbsp;·&nbsp; MATCHDAY TEST</div>
     <div class="badge">{badge_label}</div>
     <div class="teams-row">
       <div class="team"><img src="{h_logo}" class="logo" crossorigin="anonymous"><div class="team-name">{HOME_NAME}</div></div>
@@ -114,6 +113,7 @@ def main():
     with open(path, "w", encoding="utf-8") as f: f.write(genera_html(MOMENTO_CODICE))
     
     with sync_playwright() as p:
+        # Args necessari per caricare loghi esterni senza blocchi
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
         page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
         page.goto(f"file://{path}")
