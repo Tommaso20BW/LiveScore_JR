@@ -242,9 +242,9 @@ def invia_statistiche_match(match_id, score_string, logo_home, logo_away, tipo_p
     bot_appena_acceso = not os.path.exists("match_state.json")
 
     if bot_appena_acceso:
-        print(f"⚡ Bot acceso direttamente in fase di cambio periodo. Salto l'attesa per recuperare subito le statistiche di fine {tipo_periodo}!")
+        print(f"⚡ Bot acceso direttamente in fase di cambio periodo o a match in corso. Salto l'attesa per recuperare subito le statistiche di fine {tipo_periodo}!")
     else:
-        print(f"⏳ Attendo 2 minuti prima di inviare le statistiche di fine {tipo_periodo}...")
+        print(f"⏳ Attendo 2 minutes prima di inviare le statistiche di fine {tipo_periodo}...")
         time.sleep(120)
 
     print(f"📊 Recupero statistiche da API-Football per il match ID {match_id}...")
@@ -366,7 +366,7 @@ def avvia_ciclo_partita():
     # RECUPERO ID PARTITA
     while not match_id:
         today_date = datetime.now().strftime('%Y-%m-%d')
-        print(f"🔄 [Controllo Palinsesto] Cerco partita della Juventus ({today_date})...")
+        print(f"🔄 [Controllo Palinsesto] Cerco partita del team {JUVE_ID} ({today_date})...")
         
         try:
             live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
@@ -400,7 +400,38 @@ def avvia_ciclo_partita():
     print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di monitoraggio eventi...")
     params = {"id": match_id}
 
-    # CICLO EVENTI LIVE REAL-TIME
+    # --- FORZATURA STATISTICHE AD AVVIO IN CORSA ---
+    # Se partiamo a partita in corso e non abbiamo memoria precedente, mandiamo subito le statistiche attuali
+    if not os.path.exists("match_state.json"):
+        try:
+            boot_res = requests.get(url, headers=headers, params=params, timeout=15).json()
+            if boot_res.get('response') and len(boot_res['response']) > 0:
+                m_boot = boot_res['response'][0]
+                status_boot = m_boot.get('fixture', {}).get('status', {}).get('short', 'NS')
+                
+                # Se la partita è già iniziata (1H, HT, 2H, ET, ecc.) forziamo la grafica istantanea delle stats correnti
+                if status_boot not in ["NS", "TBD", "FT", "AET", "PEN"]:
+                    print("⚡ Rilevato avvio a partita in corso! Genero e invio subito le statistiche correnti...")
+                    g_h = m_boot.get('goals', {}).get('home', 0)
+                    g_a = m_boot.get('goals', {}).get('away', 0)
+                    l_h = m_boot.get('teams', {}).get('home', {}).get('logo', '')
+                    l_a = m_boot.get('teams', {}).get('away', {}).get('logo', '')
+                    
+                    # Generiamo l'hashtag al volo
+                    h_n = "Team" if m_boot['teams']['home']['id'] == JUVE_ID else clean_name(m_boot['teams']['home']['name'])
+                    a_n = "Team" if m_boot['teams']['away']['id'] == JUVE_ID else clean_name(m_boot['teams']['away']['name'])
+                    h_s = "Team" if m_boot['teams']['home']['id'] == JUVE_ID else h_n.replace(" ", "")
+                    a_s = "Team" if m_boot['teams']['away']['id'] == JUVE_ID else a_n.replace(" ", "")
+                    hash_boot = f"#{h_s}{a_s}"
+                    e_c = get_league_emoji(m_boot.get('league', {}).get('id', 0))
+                    
+                    # Chiamiamo l'invio immediato (senza attese)
+                    invia_statistiche_match(match_id, f"{g_h}-{g_a}", l_h, l_a, "live corrente", hash_boot, e_c)
+        except Exception as e:
+            print(f"⚠️ Impossibile forzare le statistiche di avvio: {e}")
+    # -----------------------------------------------
+
+    # CICLO EVENTI LIVE REAL-TIME STANDARD
     while True:
         try:
             if os.path.exists("match_state.json"):
@@ -441,8 +472,8 @@ def avvia_ciclo_partita():
             teams = match.get('teams', {})
             home_id, away_id = teams.get('home', {}).get('id', 0), teams.get('away', {}).get('id', 0)
             
-            home_name = "Juventus" if home_id == JUVE_ID else clean_name(teams.get('home', {}).get('name', 'Home'))
-            away_name = "Juventus" if away_id == JUVE_ID else clean_name(teams.get('away', {}).get('name', 'Away'))
+            home_name = "Team" if home_id == JUVE_ID else clean_name(teams.get('home', {}).get('name', 'Home'))
+            away_name = "Team" if away_id == JUVE_ID else clean_name(teams.get('away', {}).get('name', 'Away'))
             
             logo_home = teams.get('home', {}).get('logo', '')
             logo_away = teams.get('away', {}).get('logo', '')
@@ -451,8 +482,8 @@ def avvia_ciclo_partita():
             p_home, p_away = penalties.get('home'), penalties.get('away')
             score_string = f"{g_home_int} ({p_home}) - ({p_away}) {g_away_int}" if p_home is not None else f"{g_home_int}-{g_away_int}"
             
-            h_short = "Juve" if home_id == JUVE_ID else home_name.replace(" ", "")
-            a_short = "Juve" if away_id == JUVE_ID else away_name.replace(" ", "")
+            h_short = "Team" if home_id == JUVE_ID else home_name.replace(" ", "")
+            a_short = "Team" if away_id == JUVE_ID else away_name.replace(" ", "")
             hashtag = f"#{h_short}{a_short}"
             
             print(f"[LIVE] {home_name} {score_string} {away_name} | Minuto: {elapsed_minutes}")
@@ -471,7 +502,6 @@ def avvia_ciclo_partita():
             elif status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-                # Aggiorniamo lo stato PRIMA dello screenshot così 'bot_appena_acceso' lavora correttamente
                 with open("match_state.json", "w") as f: json.dump(state, f)
                 invia_statistiche_match(match_id, f"{g_home_int}-{g_away_int}", logo_home, logo_away, "primo tempo", hashtag, e_comp)
             elif status == "2H" and "2H" not in state["sent_periods"]:
@@ -595,7 +625,7 @@ def avvia_ciclo_partita():
                             state["sent_cards"].append(card_id)
 
                 for sub_key, sub_data in subs_by_minute.items():
-                    team_title = "JUVENTUS" if sub_data["team_id"] == JUVE_ID else (home_name.upper() if sub_data["team_id"] == home_id else away_name.upper())
+                    team_title = "TEAM" if sub_data["team_id"] == JUVE_ID else (home_name.upper() if sub_data["team_id"] == home_id else away_name.upper())
                     send_telegram(f"<b>CAMBIO {team_title} {E_SUB}</b>\n\n{E_UP} {', '.join(sub_data['in'])}\n{E_DOWN} {', '.join(sub_data['out'])}\n\n{e_comp} {hashtag}")
                     state["sent_subs"].extend(sub_data["ids"])
 
