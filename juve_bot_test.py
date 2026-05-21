@@ -31,7 +31,7 @@ PAGINA_TARGET = 11
 
 # Branding & Emoji
 E_BOLT, E_FLAG, E_MIC, E_BALL, E_SUB, E_UP, E_DOWN, E_RED = '⚡️', '🏁', '🎙', '⚽️', '🔄', '🔼', '🔽', '🟥'
-E_PEN_OK, E_PEN_KO = '✅', '❌'
+E_END = '🔚'
 
 LEAGUE_EMOJIS = {135: '🇮🇹', 137: '🇮🇹', 547: '🇮🇹', 2: '🇪🇺', 3: '🇪🇺', 667: '🤝'}
 JUVE_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
@@ -73,7 +73,7 @@ def build_split_scorers_text(events, home_id, away_id):
     return ""
 
 # ==============================================================================
-# GENERAZIONE STATS (CORRETTA)
+# GENERAZIONE STATS (SISTEMATA PER IL COLORE BLU)
 # ==============================================================================
 def _p_s(v):
     try: return float(str(v or 0).replace("%","").replace(",","."))
@@ -95,7 +95,7 @@ def send_stats_image(fixture_id, home_id, away_id, h_n, a_n, h_g, a_g, moment, l
             
             lbl = {"HT": "FINE PRIMO TEMPO", "FT": "FINE PARTITA"}.get(moment, "LIVE")
             
-            # USO DI DOPPIE GRAFFE {{ }} PER IL CSS - SINGOLE { } PER LE VARIABILI PYTHON
+            # USO DI DOPPIE GRAFFE {{ }} PER EVITARE IL PROBLEMA DEL COLORE BLU
             html = f"""
             <!DOCTYPE html><html><head><meta charset="utf-8">
             <style>
@@ -123,7 +123,6 @@ def send_stats_image(fixture_id, home_id, away_id, h_n, a_n, h_g, a_g, moment, l
                     <div style="flex:1"><img src="{a_l}" class="logo"><div>{a_n}</div></div>
                 </div></div>
             """
-            
             for lab, key, unit in [("Possesso palla", "Ball Possession", "%"), ("Tiri in porta", "Shots on Goal", ""), ("xG", "expected_goals", ""), ("Corner", "Corner Kicks", ""), ("Falli", "Fouls", "")]:
                 hv, av = _p_s(h_st.get(key)), _p_s(a_st.get(key))
                 hp = (hv / (hv+av)*100) if (hv+av)>0 else 50
@@ -141,12 +140,12 @@ def send_stats_image(fixture_id, home_id, away_id, h_n, a_n, h_g, a_g, moment, l
                 browser.close()
             with open("/tmp/stats.png", "rb") as f:
                 requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data={"chat_id": CHAT_ID}, files={"photo": f})
-        except Exception as e: print(f"Err Stats: {e}")
+        except: pass
 
     threading.Thread(target=_run, daemon=True).start()
 
 # ==============================================================================
-# CANVA & GITHUB (SISTEMATE)
+# CANVA & GITHUB
 # ==============================================================================
 def update_github_secret(name, value):
     if not GH_PAT or not GITHUB_REPOSITORY: return
@@ -252,7 +251,9 @@ def avvia_ciclo_partita():
                 elif et == 'card' and 'red' in e['detail'].lower():
                     cid = f"red_{mi}_{e['player']['id']}"
                     if cid not in state["sent_cards"]:
-                        send_telegram(f"<b>ROSSO {E_RED}</b>\n\n🟥 {e['player']['name']} ({mi}')\n\n{e_comp} {hashtag}")
+                        # NUOVO FORMATO RICHIESTO PER CARTELLINO ROSSO
+                        t_card = "JUVENTUS" if e['team']['id'] == JUVE_ID else clean_name(e['team']['name']).upper()
+                        send_telegram(f"<b>CARTELLINO ROSSO {t_card} {E_RED}</b>\n\n{E_END} <i>{mi}' {e['player']['name']}</i>\n\n{e_comp} {hashtag}")
                         state["sent_cards"].append(cid)
             
             for m_sub, data in subs_by_min.items():
