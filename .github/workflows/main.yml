@@ -42,4 +42,4 @@ jobs:
           GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           ONLY_REFRESH_TOKEN: ${{ env.ONLY_REFRESH_TOKEN }} 
-        run: python juve_bot.py
+        run: python juvebot2.py
