@@ -1,6 +1,5 @@
 import os
 import requests
-import time
 from playwright.sync_api import sync_playwright
 
 # ==============================================================================
@@ -16,25 +15,33 @@ AWAY_NAME = "Inter"
 HOME_GOALS = 2
 AWAY_GOALS = 0
 
-JUVE_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
-API_LOGO_URL = "https://media.api-sports.io/football/teams/{}.png"
-
 # Parametri dinamici
 COMPETIZIONE = "SERIE A"
 ROUND = "MATCHDAY TEST"
-MOMENTO = "FINE PRIMO TEMPO" 
+MOMENTO_CODICE = "HT"  # Opzioni: "HT" (Primo Tempo), "2H" (Secondo Tempo), "FT" (Fine Partita)
 
-def send_telegram_photo(png_path):
+# Configurazione messaggi basata sul momento
+MOMENTI_CONFIG = {
+    "HT": {"titolo": "📊 **STATS PRIMO TEMPO**", "badge": "FINE PRIMO TEMPO"},
+    "2H": {"titolo": "📊 **STATS SECONDO TEMPO**", "badge": "FINE SECONDO TEMPO"},
+    "FT": {"titolo": "📊 **STATS FINE PARTITA**", "badge": "FINE PARTITA"}
+}
+
+JUVE_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
+API_LOGO_URL = "https://media.api-sports.io/football/teams/{}.png"
+
+def send_telegram_photo(png_path, momento):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+    caption = f"{MOMENTI_CONFIG[momento]['titolo']}\n\n🇮🇹 #JuveInter"
     with open(png_path, "rb") as f:
-        requests.post(url, data={"chat_id": CHAT_ID, "caption": "📊 Stats Analitiche 3.0x #JuveInter"}, 
+        requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "Markdown"}, 
                       files={"photo": ("stats.png", f, "image/png")})
     print("✅ Inviato su Telegram!")
 
-def genera_html():
-    # Logica loghi: Forza logo Wikipedia per la Juve, dinamico per l'avversario
+def genera_html(momento):
     h_logo = JUVE_LOGO_URL if "juventus" in HOME_NAME.lower() else API_LOGO_URL.format(HOME_ID)
     a_logo = JUVE_LOGO_URL if "juventus" in AWAY_NAME.lower() else API_LOGO_URL.format(AWAY_ID)
+    badge_label = MOMENTI_CONFIG[momento]['badge']
 
     stats_data = [
         ("Possesso palla", "58%", "42%", 58),
@@ -50,13 +57,11 @@ def genera_html():
         ("Espulsi", "0", "0", 50)
     ]
     
-    rows_html = ""
-    for label, h, a, hp in stats_data:
-        rows_html += f'''<div class="stat-row">
+    rows_html = "".join([f'''<div class="stat-row">
           <div class="val home-val">{h}</div>
           <div class="stat-mid"><div class="stat-label">{label}</div><div class="bar-track"><div style="background:#4f9cf9;width:{hp}%;height:8px;border-radius:4px 0 0 4px"></div><div style="background:#f05252;width:{100-hp}%;height:8px;border-radius:0 4px 4px 0"></div></div></div>
           <div class="val away-val">{a}</div>
-        </div>'''
+        </div>''' for label, h, a, hp in stats_data])
 
     return f"""<!DOCTYPE html>
 <html>
@@ -89,7 +94,7 @@ def genera_html():
 <div class="card">
   <div class="header">
     <div class="league-row">{COMPETIZIONE} &nbsp;·&nbsp; {ROUND}</div>
-    <div class="badge">{MOMENTO}</div>
+    <div class="badge">{badge_label}</div>
     <div class="teams-row">
       <div class="team"><img src="{h_logo}" class="logo" crossorigin="anonymous"><div class="team-name">{HOME_NAME}</div></div>
       <div class="score">{HOME_GOALS} – {AWAY_GOALS}</div>
@@ -106,18 +111,17 @@ def genera_html():
 
 def main():
     path = "/tmp/test.html"
-    with open(path, "w", encoding="utf-8") as f: f.write(genera_html())
+    with open(path, "w", encoding="utf-8") as f: f.write(genera_html(MOMENTO_CODICE))
     
     with sync_playwright() as p:
-        # Aggiunti argomenti per permettere il caricamento di risorse esterne/cross-origin
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
         page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
         page.goto(f"file://{path}")
-        page.wait_for_timeout(3000) # Aumentato leggermente per caricamento immagini esterne
+        page.wait_for_timeout(3000)
         page.query_selector(".card").screenshot(path="/tmp/test.png", omit_background=True)
         browser.close()
         
-    send_telegram_photo("/tmp/test.png")
+    send_telegram_photo("/tmp/test.png", MOMENTO_CODICE)
 
 if __name__ == "__main__":
     main()
