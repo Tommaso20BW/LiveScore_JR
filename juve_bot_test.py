@@ -4,13 +4,8 @@ import json
 import time
 import sys
 import base64
+from playwright.sync_api import sync_playwright
 from datetime import datetime
-
-# Nuova libreria per renderizzare il template HTML in immagine
-try:
-    from playwright.sync_api import sync_playwright
-except ImportError:
-    print("⚠️ Errore: La libreria 'playwright' non è installata.")
 
 # Usiamo NaCl (Libsodium) per criptare il secret come richiesto dalle API di GitHub
 try:
@@ -30,7 +25,7 @@ CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 GH_PAT = os.getenv('GH_PAT')                 # Il tuo Personal Access Token di GitHub
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY') # Es: "tuo-utente/tuo-repo"
 
-JUVE_ID = 161
+JUVE_ID = 496
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 
@@ -82,111 +77,23 @@ def send_telegram(text):
 
 def send_telegram_with_photo(text, photo_bytes):
     if not photo_bytes:
-        print("⚠️ Immagine mancante. Invio il solo testo...")
+        print("⚠️ Immagine Canva mancante. Invio il solo testo...")
         send_telegram(text)
         return
 
-    print("📤 Spedisco il post con grafica su Telegram...")
+    print("📤 Spedisco il post con grafica Canva su Telegram...")
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     payload = {"chat_id": CHAT_ID, "caption": text, "parse_mode": "HTML"}
-    files = {"photo": ("photo.png", photo_bytes)}
+    files = {"photo": ("matchday.png", photo_bytes)}
     
     try:
         res = requests.post(url, data=payload, files=files, timeout=25)
         if res.status_code == 200:
-            print("🏁 Grafica pubblicata!")
+            print("🏁 Grafica fine partita pubblicata!")
         else:
             send_telegram(text)
     except Exception as e:
         send_telegram(text)
-
-# ==============================================================================
-# FUNZIONE RECUPERO E RENDER STATISTICHE
-# ==============================================================================
-def get_and_send_stats(match_id, match_data, caption_text):
-    print("📊 Recupero statistiche da API-Football...")
-    headers = {"x-apisports-key": API_KEY}
-    url_stats = f"https://v3.football.api-sports.io/fixtures/statistics?fixture={match_id}"
-    
-    try:
-        res = requests.get(url_stats, headers=headers, timeout=15).json()
-        stats_list = res.get('response', [])
-    except Exception as e:
-        print(f"❌ Errore recupero stats: {e}")
-        return
-
-    # Dati squadre, loghi e score
-    teams = match_data.get('teams', {})
-    goals = match_data.get('goals', {})
-    home_logo = teams.get('home', {}).get('logo', '')
-    away_logo = teams.get('away', {}).get('logo', '')
-    g_home = goals.get('home') if goals.get('home') is not None else 0
-    g_away = goals.get('away') if goals.get('away') is not None else 0
-    score_str = f"{g_home}-{g_away}"
-
-    # Costruiamo l'HTML delle statistiche per il container
-    stats_html = ""
-    if len(stats_list) >= 2:
-        home_stats = {s['type']: s['value'] for s in stats_list[0].get('statistics', [])}
-        away_stats = {s['type']: s['value'] for s in stats_list[1].get('statistics', [])}
-        
-        all_types = list(home_stats.keys())
-        for stype in all_types:
-            val_h = home_stats.get(stype)
-            val_a = away_stats.get(stype)
-            
-            val_h = 0 if val_h is None else val_h
-            val_a = 0 if val_a is None else val_a
-            
-            try:
-                num_h = int(str(val_h).replace('%',''))
-                num_a = int(str(val_a).replace('%',''))
-                total = num_h + num_a
-                pct_h = (num_h / total * 100) if total > 0 else 50
-                pct_a = (num_a / total * 100) if total > 0 else 50
-            except:
-                pct_h, pct_a = 50, 50
-
-            stats_html += f'''
-            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 10px; color: white;">
-                <div style="width: 15%; text-align: left; font-weight: bold;">{val_h}</div>
-                <div style="width: 70%; text-align: center; color: #aaa; text-transform: uppercase;">{stype}</div>
-                <div style="width: 15%; text-align: right; font-weight: bold;">{val_a}</div>
-            </div>
-            <div class="bar-container" style="display: flex; height: 4px; background: #263238; margin-bottom: 15px; border-radius: 2px; overflow: hidden; grid-column: span 3;">
-                <div class="bar-l" style="width: {pct_h}%; background: #e11d48; height: 100%;"></div>
-                <div class="bar-r" style="width: {pct_a}%; background: #fff; height: 100%;"></div>
-            </div>
-            '''
-
-    print("🎨 Generazione immagine template.html con Playwright...")
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        try:
-            with open("template.html", "r", encoding="utf-8") as f:
-                html_content = f.read()
-            
-            page.set_content(html_content)
-            
-            # Inietta i dati nel DOM del template
-            page.evaluate(f"""
-                document.getElementById('logo-l').src = '{home_logo}';
-                document.getElementById('logo-r').src = '{away_logo}';
-                document.getElementById('score').innerText = '{score_str}';
-                document.getElementById('stats-container').innerHTML = `{stats_html}`;
-            """)
-
-            # Salva screenshot limitato alla grandezza della card
-            element = page.locator('.stat-card')
-            screenshot_bytes = element.screenshot(type="png")
-            
-            send_telegram_with_photo(caption_text, screenshot_bytes)
-            print("✅ Grafica statistiche inviata con successo!")
-        except Exception as e:
-            print(f"❌ Errore rendering stats: {e}")
-        finally:
-            browser.close()
 
 # ==============================================================================
 # FUNZIONE AGGIORNAMENTO SECRET GITHUB
@@ -377,6 +284,7 @@ def avvia_ciclo_partita():
         print(f"🔄 [Controllo Palinsesto] Cerco partita della Juventus ({today_date})...")
         
         try:
+            # 1. Controlliamo prima se c'è una partita già LIVE
             live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
             if live_res.get('response'):
                 for f in live_res['response']:
@@ -385,12 +293,14 @@ def avvia_ciclo_partita():
                         print(f"🔥 Match trovato già LIVE! Aggancio ID: {match_id}")
                         break
             
+            # 2. Se non è live, cerchiamo tra i match programmati per oggi
             if not match_id:
                 date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
                 if date_res.get('response') and len(date_res['response']) > 0:
                     match_id = date_res['response'][0]['fixture']['id']
                     print(f"📅 Match trovato nel palinsesto di oggi! ID: {match_id}")
 
+            # 3. Se l'API non rileva l'oggi, proviamo a prendere il prossimo match in assoluto
             if not match_id:
                 next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
                 if next_res.get('response') and len(next_res['response']) > 0:
@@ -401,6 +311,7 @@ def avvia_ciclo_partita():
         except Exception as e:
             print(f"⚠️ Errore temporaneo nel recupero dei dati dall'API: {e}")
 
+        # Se dopo tutti i tentativi match_id è ancora None, l'API è vuota. Aspettiamo 30 secondi e ricominciamo.
         if not match_id:
             print("❌ Nessun match trovato nel palinsesto. Rinvio richiesta tra 30 secondi...")
             time.sleep(30)
@@ -408,7 +319,7 @@ def avvia_ciclo_partita():
     print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di monitoraggio eventi...")
     params = {"id": match_id}
 
-    # [FASE 3]: CICLO EVENTI IN LIVE REALE
+    # [FASE 3]: CICLO EVENTI IN LIVE REALE (SI SPEGNE SOLO A FINE PARTITA)
     while True:
         try:
             if os.path.exists("match_state.json"):
@@ -437,6 +348,7 @@ def avvia_ciclo_partita():
             g_home_int = goals_home if goals_home is not None else 0
             g_away_int = goals_away if goals_away is not None else 0
 
+            # Resta in attesa finché la partita non inizia effettivamente sul campo
             if status in ["NS", "TBD"] and g_home_int == 0 and g_away_int == 0 and elapsed_minutes == 0:
                 print(f"💤 Match ID {match_id} non ancora iniziato (Stato: {status}). Controllo tra 30 secondi...")
                 time.sleep(30)
@@ -462,7 +374,7 @@ def avvia_ciclo_partita():
             
             print(f"[LIVE] {home_name} {score_string} {away_name} | Minuto: {elapsed_minutes}")
 
-            # 1. CRONACA PERIODI E INVIO STATISTICHE
+            # 1. CRONACA PERIODI (Grassetto condizionale per i tempi intermedi)
             if g_home_int > g_away_int:
                 punteggio_periodo = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
             elif g_away_int > g_home_int:
@@ -473,22 +385,14 @@ def avvia_ciclo_partita():
             if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
-                
             elif status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-                with open("match_state.json", "w") as f: json.dump(state, f)
-                
-                # --- STATS PRIMO TEMPO ---
-                print("⏳ Attesa 2 minuti per invio statistiche Primo Tempo...")
                 time.sleep(120)
-                caption_stats = f"📊 <b>Statistiche Primo Tempo</b>\n\n{e_comp} {hashtag}"
-                get_and_send_stats(match_id, match, caption_stats)
-                
+                genera_e_invia_stats(match_id)
             elif status == "2H" and "2H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
-                
             elif status in ["ET", "AET", "PEN"] and "2H_END" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
@@ -508,12 +412,13 @@ def avvia_ciclo_partita():
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 3. FISCHIO FINALE E STATS FINALI
+            # 3. FISCHIO FINALE -> GENERAZIONE GRAFICA E INVIO (UNICA USCITA DEL BOT)
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
                 print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva per l'export...")
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 
+                # Controllo del vincitore per il fischio finale (tiene conto dei rigori se presenti)
                 if p_home is not None:
                     if int(p_home) > int(p_away):
                         punteggio_finale = f"<b>{home_name} {g_home_int} ({p_home})</b>-({p_away}) {g_away_int} {away_name}"
@@ -529,6 +434,7 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{punteggio_finale}\n{scorers_line}\n{e_comp} {hashtag}"
                 
+                # OTTIDIZZAZIONE: Genera il token Canva solo ora al fischio finale
                 canva_token_fresco = get_valid_token()
                 if canva_token_fresco:
                     foto_canva = get_canva_image(canva_token_fresco)
@@ -537,16 +443,12 @@ def avvia_ciclo_partita():
                     print("❌ Impossibile generare un token Canva valido al fischio finale. Invio solo testo.")
                     send_telegram(msg_finale)
                 
-                # --- STATS FINALI ---
-                print("⏳ Attesa 2 minuti per invio statistiche Finali...")
-                time.sleep(120)
-                caption_stats = f"📊 <b>Statistiche Finali</b>\n\n{e_comp} {hashtag}"
-                get_and_send_stats(match_id, match, caption_stats)
-
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
                 
                 print("🏁 Messaggio di fine inviato con successo. Spegnimento del bot.")
+                time.sleep(120)
+                genera_e_invia_stats(match_id)
                 sys.exit(0)
 
             # 4. GOL E UPDATE VAR
@@ -568,6 +470,7 @@ def avvia_ciclo_partita():
                         elif "own goal" in det: p_name += " (Autogol)"
                         live_scorer_line = f"{E_BALL} <i>{minute_str}’ {p_name}</i>\n"
                 
+                # Controllo chi è in vantaggio al momento del gol per il grassetto condizionale
                 if g_home_int > g_away_int:
                     punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
                 elif g_away_int > g_home_int:
@@ -623,15 +526,57 @@ def avvia_ciclo_partita():
 # ==============================================================================
 # FUNZIONE PRINCIPALE (GESTIONE BIVIO AUTOMAZIONE E KEEP-ALIVE)
 # ==============================================================================
+
+def genera_e_invia_stats(match_id):
+    print(f"📊 Generazione statistiche match {match_id}...")
+    headers = {"x-apisports-key": API_KEY}
+    try:
+        stat_res = requests.get(f"https://v3.football.api-sports.io/fixtures/statistics?fixture={match_id}", headers=headers).json()
+        fix_res = requests.get(f"https://v3.football.api-sports.io/fixtures?id={match_id}", headers=headers).json()
+        if not stat_res.get('response') or not fix_res.get('response'): return
+        
+        data = fix_res['response'][0]
+        stats = stat_res['response']
+        with open("template.html", "r") as f: html = f.read()
+        
+        html = html.replace('id="logo-l" src=""', f'src="{data["teams"]["home"]["logo"]}"')
+        html = html.replace('id="logo-r" src=""', f'src="{data["teams"]["away"]["logo"]}"')
+        html = html.replace('0-0', f'{data["goals"]["home"]} - {data["goals"]["away"]}')
+        
+        grid_html = ""
+        h_stats = {s['type']: s['value'] for s in stats[0]['statistics']}
+        a_stats = {s['type']: s['value'] for s in stats[1]['statistics']}
+        for s_type in ["Shots on Goal", "Total Shots", "Ball Possession", "Passes %"]:
+            v_h = str(h_stats.get(s_type, 0) or 0).replace('%', '')
+            v_a = str(a_stats.get(s_type, 0) or 0).replace('%', '')
+            tot = float(v_h) + float(v_a)
+            w_h = (float(v_h)/tot*100) if tot > 0 else 50
+            grid_html += f'<div class="label">{v_h}</div><div class="label">{s_type}</div><div class="label">{v_a}</div>'
+            grid_html += f'<div class="bar-container"><div class="bar-l" style="width:{w_h}%"></div><div class="bar-r" style="width:{100-w_h}%"></div></div>'
+        
+        html = html.replace('<div class="stats-grid" id="stats-container"></div>', f'<div class="stats-grid">{grid_html}</div>')
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+            page.set_content(html)
+            page.locator(".stat-card").screenshot(path="stats.png")
+            browser.close()
+        
+        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data={"chat_id": CHAT_ID, "caption": "📊 Statistiche incontro"}, files={"photo": open("stats.png", "rb")})
+    except Exception as e:
+        print(f"Errore nella generazione statistiche: {e}")
+
 def main():
     print("🚀 Avvio Live Score Bot: elaborazione eventi in corso...")
     
+    # 1. SE SEI IL KEEP-ALIVE, esegui il rinnovo ed esci subito
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
         print("🔒 Modalità Keep-Alive: Rinnovo il token...")
         get_valid_token()
         print("🔒 Token aggiornato correttamente. Termino l'esecuzione.")
         return
 
+    # 2. AVVIO PARTITA (senza chiedere il token Canva adesso)
     avvia_ciclo_partita()
 
 if __name__ == "__main__":
