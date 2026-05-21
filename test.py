@@ -2,6 +2,7 @@ import os
 import requests
 import sys
 import time
+import base64
 
 # ==============================================================================
 # CONFIGURAZIONE TEST
@@ -16,10 +17,20 @@ AWAY_NAME = "Inter"
 HOME_GOALS = 2
 AWAY_GOALS = 0
 
-# Parametri dinamici per il badge e la competizione
+JUVE_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
+
+# Parametri dinamici
 COMPETIZIONE = "SERIE A"
 ROUND = "MATCHDAY TEST"
 MOMENTO = "FINE PRIMO TEMPO" 
+
+def _logo_to_base64(url):
+    """Converte l'URL di un logo in stringa base64 per l'HTML."""
+    try:
+        r = requests.get(url, timeout=8)
+        b64 = base64.b64encode(r.content).decode()
+        return f"data:image/png;base64,{b64}"
+    except: return ""
 
 def send_telegram_photo(png_path):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
@@ -29,6 +40,10 @@ def send_telegram_photo(png_path):
     print("✅ Inviato su Telegram!")
 
 def genera_html():
+    # Logica loghi: Forza logo Juventus se il nome contiene "Juventus"
+    h_logo = _logo_to_base64(JUVE_LOGO_URL) if "juventus" in HOME_NAME.lower() else _logo_to_base64(f"https://media.api-sports.io/football/teams/{HOME_ID}.png")
+    a_logo = _logo_to_base64(JUVE_LOGO_URL) if "juventus" in AWAY_NAME.lower() else _logo_to_base64(f"https://media.api-sports.io/football/teams/{AWAY_ID}.png")
+
     stats_data = [
         ("Possesso palla", "58%", "42%", 58),
         ("Tiri totali", "16", "9", 64),
@@ -61,16 +76,12 @@ def genera_html():
   body {{ width: 540px; background: #0b0f1e; font-family: 'Barlow', sans-serif; }}
   .card {{ width: 540px; background: #0b0f1e; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }}
   .header {{ background: #0d1528; padding: 25px 28px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
-  
-  /* Nuovi elementi Header */
   .league-row {{ text-align: center; font-size: 11px; letter-spacing: 1.5px; color: #4a5470; text-transform: uppercase; margin-bottom: 12px; }}
   .badge {{ display: block; width: fit-content; margin: 0 auto 14px; background: #f0b429; color: #0b0f1e; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 4px 14px; border-radius: 20px; text-transform: uppercase; }}
-  
   .teams-row {{ display: flex; align-items: center; justify-content: space-between; }}
   .logo {{ width: 65px; height: 65px; object-fit: contain; display: block; margin: 0 auto 10px; }}
   .team-name {{ color: #ffffff; font-weight: 700; font-size: 15px; text-align: center; }}
   .score {{ color: #ffffff; font-family: 'Barlow Condensed'; font-size: 60px; font-weight: 900; margin: 0 15px; }}
-  
   .stats-body {{ padding: 20px 28px; }}
   .stats-title {{ color: #6070a0; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 2px; text-align: center; }}
   .stat-row {{ display: flex; align-items: center; padding: 8px 0; }}
@@ -88,9 +99,9 @@ def genera_html():
     <div class="league-row">{COMPETIZIONE} &nbsp;·&nbsp; {ROUND}</div>
     <div class="badge">{MOMENTO}</div>
     <div class="teams-row">
-      <div class="team"><img src="https://media.api-sports.io/football/teams/{HOME_ID}.png" class="logo"><div class="team-name">{HOME_NAME}</div></div>
+      <div class="team"><img src="{h_logo}" class="logo"><div class="team-name">{HOME_NAME}</div></div>
       <div class="score">{HOME_GOALS} – {AWAY_GOALS}</div>
-      <div class="team"><img src="https://media.api-sports.io/football/teams/{AWAY_ID}.png" class="logo"><div class="team-name">{AWAY_NAME}</div></div>
+      <div class="team"><img src="{a_logo}" class="logo"><div class="team-name">{AWAY_NAME}</div></div>
     </div>
   </div>
   <div class="stats-body">
@@ -108,7 +119,6 @@ def main():
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        # Altezza 1050px per contenere tutto comodamente
         page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
         page.goto(f"file://{path}")
         page.wait_for_timeout(2500)
