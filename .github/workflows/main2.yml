@@ -1,43 +1,27 @@
-name: Juventus Live Score Test
-
+name: Test Statistiche Bot
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-concurrency:
-  group: juve-live-bot
-  cancel-in-progress: false
+  workflow_dispatch: # Ti permette di avviarlo manualmente dalla tab "Actions"
 
 jobs:
-  run-live:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-
     steps:
-      - name: Checkout del codice
-        uses: actions/checkout@v5
-
-      - name: Configura Python
-        uses: actions/setup-python@v6
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
-
-      - name: Installa librerie
+          python-version: '3.9'
+          
+      - name: Installa dipendenze
         run: |
-          python -m pip install --upgrade pip
           pip install requests pynacl playwright
           playwright install chromium
-
-      - name: Avvia Juventus Live Score
+          
+      - name: Esegui Bot Simulato
         env:
           API_KEY: ${{ secrets.API_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
-          CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
-          CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
-          CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
-          GH_PAT: ${{ secrets.GH_PAT }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python juve_bot_test.py
+          # Aggiungi qui gli altri secret se servono al bot
+        run: python simulator_bot.py
