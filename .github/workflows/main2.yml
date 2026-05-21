@@ -27,7 +27,7 @@ jobs:
       - name: Installa dipendenze di sistema e font
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget curl unzip libxi6 libgconf-2-4 libnss3 fonts-inter
+          sudo apt-get install -y wget curl unzip libxi6 libnss3 fonts-inter
 
       - name: Installa librerie
         run: |
