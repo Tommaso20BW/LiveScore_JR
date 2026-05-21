@@ -18,7 +18,7 @@ CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 GH_PAT = os.getenv('GH_PAT')
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
 
-JUVE_ID = 2939
+JUVE_ID = 2939 # ID corretto per la Juventus
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 
@@ -55,48 +55,42 @@ def get_canva_image(token):
 def avvia_ciclo_partita():
     headers = {"x-apisports-key": API_KEY}
     match_id = None
-    # Ciclo ricerca match
     while not match_id:
         res = requests.get(f"https://v3.football.api-sports.io/fixtures?team={JUVE_ID}&next=1", headers=headers).json()
         if res.get('response'): match_id = res['response'][0]['fixture']['id']
         time.sleep(30)
-
+    
+    # Stato persistente
+    state = {"sent_stats": [], "goals_detected": 0, "sent_subs": [], "sent_cards": [], "penalties_count": 0}
+    
     while True:
         try:
-            # Stato salvato per stats e logica
-            if os.path.exists("match_state.json"):
-                with open("match_state.json", "r") as f: state = json.load(f)
-            else:
-                state = {"sent_stats": [], "goals_detected": 0, "sent_subs": [], "sent_cards": [], "penalties_count": 0}
-
             match = requests.get(f"https://v3.football.api-sports.io/fixtures?id={match_id}", headers=headers).json()['response'][0]
             status = match['fixture']['status']['short']
+            print(f"🔄 Monitoraggio {status} - ID: {match_id}")
 
-            # 1. LANCIO STATISTICHE (Stats Manager)
-            if status in ["HT", "FT", "PEN"]:
-                if f"sent_stats_{status}" not in state.get("sent_stats", []):
-                    subprocess.Popen(["python", "stats_manager.py", str(match_id), API_KEY, BOT_TOKEN, CHAT_ID, status])
-                    state.setdefault("sent_stats", []).append(f"sent_stats_{status}")
-                    with open("match_state.json", "w") as f: json.dump(state, f)
+            # 1. LANCIO AUTOMATICO STATS
+            if status in ["HT", "FT", "PEN"] and f"sent_stats_{status}" not in state["sent_stats"]:
+                print(f"📊 Lancio stats_manager.py per {status}")
+                subprocess.Popen(["python", "stats_manager.py", str(match_id), API_KEY, BOT_TOKEN, CHAT_ID, status])
+                state["sent_stats"].append(f"sent_stats_{status}")
 
-            # 2. LOGICA EVENTI (GOL, CARTELLINI, ECC.)
+            # 2. LOGICA EVENTI (TUA LOGICA ORIGINALE)
             for e in match.get('events', []):
                 # Esempio Gol:
                 if e['type'] == 'Goal' and e['time']['elapsed'] not in state.get("sent_goals", []):
                     send_telegram(f"⚽️ {e['player']['name']} - {e['detail']}")
                     state.setdefault("sent_goals", []).append(e['time']['elapsed'])
-                    with open("match_state.json", "w") as f: json.dump(state, f)
 
             # 3. FINE PARTITA
             if status in ["FT", "AET", "PEN"]:
                 img = get_canva_image(get_valid_token())
                 send_telegram_with_photo("🏁 Partita finita", img)
-                if os.path.exists("match_state.json"): os.remove("match_state.json")
                 sys.exit(0)
-
+            
             time.sleep(60)
         except Exception as e:
-            print(f"Errore: {e}")
+            print(f"Errore ciclo: {e}")
             time.sleep(60)
 
 if __name__ == "__main__":
