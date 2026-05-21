@@ -4,7 +4,7 @@ import sys
 import time
 
 # ==============================================================================
-# CONFIGURAZIONE
+# CONFIGURAZIONE TEST
 # ==============================================================================
 BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
@@ -16,6 +16,11 @@ AWAY_NAME = "Inter"
 HOME_GOALS = 2
 AWAY_GOALS = 0
 
+# Parametri dinamici per il badge e la competizione
+COMPETIZIONE = "SERIE A"
+ROUND = "MATCHDAY TEST"
+MOMENTO = "FINE PRIMO TEMPO" 
+
 def send_telegram_photo(png_path):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     with open(png_path, "rb") as f:
@@ -24,7 +29,6 @@ def send_telegram_photo(png_path):
     print("✅ Inviato su Telegram!")
 
 def genera_html():
-    # ELENCO COMPLETO DELLE 11 STATISTICHE
     stats_data = [
         ("Possesso palla", "58%", "42%", 58),
         ("Tiri totali", "16", "9", 64),
@@ -43,7 +47,7 @@ def genera_html():
     for label, h, a, hp in stats_data:
         rows_html += f'''<div class="stat-row">
           <div class="val home-val">{h}</div>
-          <div class="stat-mid">{label}<div class="bar-track"><div style="background:#4f9cf9;width:{hp}%;height:8px;border-radius:4px 0 0 4px"></div><div style="background:#f05252;width:{100-hp}%;height:8px;border-radius:0 4px 4px 0"></div></div></div>
+          <div class="stat-mid"><div class="stat-label">{label}</div><div class="bar-track"><div style="background:#4f9cf9;width:{hp}%;height:8px;border-radius:4px 0 0 4px"></div><div style="background:#f05252;width:{100-hp}%;height:8px;border-radius:0 4px 4px 0"></div></div></div>
           <div class="val away-val">{a}</div>
         </div>'''
 
@@ -54,13 +58,19 @@ def genera_html():
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Barlow+Condensed:wght@700;900&display=swap');
   * {{ margin:0; padding:0; box-sizing:border-box; }}
-  body {{ width: 540px; background: #0b0f1e; font-family: 'Barlow', sans-serif; margin:0; padding:0; }}
+  body {{ width: 540px; background: #0b0f1e; font-family: 'Barlow', sans-serif; }}
   .card {{ width: 540px; background: #0b0f1e; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }}
   .header {{ background: #0d1528; padding: 25px 28px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
+  
+  /* Nuovi elementi Header */
+  .league-row {{ text-align: center; font-size: 11px; letter-spacing: 1.5px; color: #4a5470; text-transform: uppercase; margin-bottom: 12px; }}
+  .badge {{ display: block; width: fit-content; margin: 0 auto 14px; background: #f0b429; color: #0b0f1e; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 4px 14px; border-radius: 20px; text-transform: uppercase; }}
+  
   .teams-row {{ display: flex; align-items: center; justify-content: space-between; }}
   .logo {{ width: 65px; height: 65px; object-fit: contain; display: block; margin: 0 auto 10px; }}
   .team-name {{ color: #ffffff; font-weight: 700; font-size: 15px; text-align: center; }}
-  .score {{ color: #ffffff; font-family: 'Barlow Condensed'; font-size: 60px; font-weight: 900; }}
+  .score {{ color: #ffffff; font-family: 'Barlow Condensed'; font-size: 60px; font-weight: 900; margin: 0 15px; }}
+  
   .stats-body {{ padding: 20px 28px; }}
   .stats-title {{ color: #6070a0; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 2px; text-align: center; }}
   .stat-row {{ display: flex; align-items: center; padding: 8px 0; }}
@@ -68,12 +78,15 @@ def genera_html():
   .home-val {{ text-align: left; }}
   .away-val {{ text-align: right; }}
   .stat-mid {{ flex: 1; padding: 0 15px; text-align: center; color: #a0aacc; font-size: 12px; font-weight: 600; }}
-  .bar-track {{ display: flex; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); margin-top: 6px; }}
+  .stat-label {{ margin-bottom: 5px; }}
+  .bar-track {{ display: flex; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); }}
 </style>
 </head>
 <body>
 <div class="card">
   <div class="header">
+    <div class="league-row">{COMPETIZIONE} &nbsp;·&nbsp; {ROUND}</div>
+    <div class="badge">{MOMENTO}</div>
     <div class="teams-row">
       <div class="team"><img src="https://media.api-sports.io/football/teams/{HOME_ID}.png" class="logo"><div class="team-name">{HOME_NAME}</div></div>
       <div class="score">{HOME_GOALS} – {AWAY_GOALS}</div>
@@ -95,7 +108,7 @@ def main():
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        # MODIFICA: Altezza 1050px per contenere le 11 righe e scala 3.0
+        # Altezza 1050px per contenere tutto comodamente
         page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
         page.goto(f"file://{path}")
         page.wait_for_timeout(2500)
