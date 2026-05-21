@@ -27,7 +27,9 @@ jobs:
       - name: Installa librerie
         run: |
           python -m pip install --upgrade pip
-          pip install requests pynacl
+          pip install requests pynacl playwright
+          playwright install chromium
+          playwright install-deps
 
       - name: Avvia Juventus Live Score e Invio Grafica
         env:
