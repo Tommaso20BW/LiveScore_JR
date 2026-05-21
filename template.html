@@ -1,26 +1,110 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+    <meta charset="UTF-8">
     <style>
-        body { background: #0b1318; color: white; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
-        .stat-card { width: 500px; background: #151e24; border-radius: 20px; padding: 30px; }
-        .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .logo-box { width: 70px; height: 70px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .logo-box img { width: 70%; height: 70%; object-fit: contain; }
-        .stats-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 15px 20px; align-items: center; }
-        .bar-container { grid-column: span 3; height: 4px; background: #263238; border-radius: 2px; display: flex; overflow: hidden; }
-        .bar-l { background: #e11d48; height: 100%; } .bar-r { background: #fff; height: 100%; }
-        .label { text-align: center; font-size: 12px; color: #888; text-transform: uppercase; }
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            width: 500px;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .stat-container {
+            margin-bottom: 20px;
+        }
+        .stat-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-name {
+            color: #aaa;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .bar-container {
+            display: flex;
+            height: 10px;
+            background-color: #222;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .bar-left {
+            background-color: #e11d48; /* Rosso Juve/Brand */
+            width: 50%;
+            transition: width 0.5s;
+        }
+        .bar-right {
+            background-color: #ffffff; /* Bianco Avversario */
+            width: 50%;
+            transition: width 0.5s;
+            margin-left: auto;
+        }
     </style>
 </head>
 <body>
-    <div class="stat-card">
-        <div class="match-header">
-            <div class="logo-box"><img id="logo-l" src=""></div>
-            <div id="score" style="font-size:30px; font-weight:900;">0-0</div>
-            <div class="logo-box"><img id="logo-r" src=""></div>
+
+    <div class="header" id="risultato">0 - 0</div>
+
+    <div class="stat-container">
+        <div class="stat-labels">
+            <span id="j-sog">0</span>
+            <span class="stat-name">Shots on Goal</span>
+            <span id="a-sog">0</span>
         </div>
-        <div class="stats-grid" id="stats-container"></div>
+        <div class="bar-container">
+            <div id="bar-l-sog" class="bar-left"></div>
+            <div id="bar-r-sog" class="bar-right"></div>
+        </div>
     </div>
+
+    <div class="stat-container">
+        <div class="stat-labels">
+            <span id="j-ts">0</span>
+            <span class="stat-name">Total Shots</span>
+            <span id="a-ts">0</span>
+        </div>
+        <div class="bar-container">
+            <div id="bar-l-ts" class="bar-left" style="width: 50%;"></div>
+            <div id="bar-r-ts" class="bar-right" style="width: 50%;"></div>
+        </div>
+    </div>
+
+    <div class="stat-container">
+        <div class="stat-labels">
+            <span id="j-pos">50</span>
+            <span class="stat-name">Ball Possession</span>
+            <span id="a-pos">50</span>
+        </div>
+        <div class="bar-container">
+            <div id="bar-l-pos" class="bar-left" style="width: 50%;"></div>
+            <div id="bar-r-pos" class="bar-right" style="width: 50%;"></div>
+        </div>
+    </div>
+
+    <div class="stat-container">
+        <div class="stat-labels">
+            <span id="j-pas">80</span>
+            <span class="stat-name">Passes %</span>
+            <span id="a-pas">80</span>
+        </div>
+        <div class="bar-container">
+            <div id="bar-l-pas" class="bar-left" style="width: 50%;"></div>
+            <div id="bar-r-pas" class="bar-right" style="width: 50%;"></div>
+        </div>
+    </div>
+
 </body>
 </html>
