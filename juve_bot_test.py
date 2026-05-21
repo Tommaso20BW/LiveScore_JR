@@ -25,7 +25,7 @@ CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 GH_PAT = os.getenv('GH_PAT')                 # Il tuo Personal Access Token di GitHub
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY') # Es: "tuo-utente/tuo-repo"
 
-JUVE_ID = 1144
+JUVE_ID = 496
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 
@@ -235,10 +235,10 @@ def get_canva_image(access_token):
     return None
 
 # ==============================================================================
-# NUOVA FUNZIONE: GENERAZIONE SCREENSHOT STATISTICHE DA TEMPLATE HTML
+# FUNZIONE GENERAZIONE SCREENSHOT STATISTICHE DA TEMPLATE HTML
 # ==============================================================================
 def invia_statistiche_match(match_id, score_string, logo_home, logo_away, tipo_periodo, hashtag, e_comp):
-    print(f"⏳ Attendo 2 minuti prima di inviare le statistiche di fine {tipo_periodo}...")
+    print(f"⏳ Attendo 2 minutes prima di inviare le statistiche di fine {tipo_periodo}...")
     time.sleep(120)
     print(f"📊 Recupero statistiche da API-Football per il match ID {match_id}...")
     
@@ -275,7 +275,7 @@ def invia_statistiche_match(match_id, score_string, logo_home, logo_away, tipo_p
         with open("template.html", "r", encoding="utf-8") as f:
             html_content = f.read()
 
-        # Iniettiamo i dati dentro il tag script dedicato (che configureremo sotto)
+        # Iniettiamo i dati dentro il tag script dedicato
         marker = "/* INJECT_DATA_HERE */"
         injection = f"const matchData = {json.dumps(payload_js)};"
         html_content = html_content.replace(marker, injection)
@@ -284,8 +284,7 @@ def invia_statistiche_match(match_id, score_string, logo_home, logo_away, tipo_p
         with open("temp_render.html", "w", encoding="utf-8") as f:
             f.write(html_content)
 
-          print("📸 Generazione screenshot HTML in corso...")
-        # Forziamo i flag ottimali per far girare Chrome senza interfaccia grafica su GitHub Actions
+        print("📸 Generazione screenshot HTML in corso...")
         flags = [
             '--headless', 
             '--no-sandbox', 
@@ -294,12 +293,7 @@ def invia_statistiche_match(match_id, score_string, logo_home, logo_away, tipo_p
             '--hide-scrollbars'
         ]
         
-        hti = Html2Image(
-            browser='chrome', 
-            custom_flags=flags
-        )
-        
-        # Specifichiamo la dimensione esatta della card
+        hti = Html2Image(browser='chrome', custom_flags=flags)
         hti.screenshot(html_file='temp_render.html', save_as='stats.png', size=(500, 650))
 
         if os.path.exists("stats.png"):
@@ -362,7 +356,7 @@ def avvia_ciclo_partita():
     url = "https://v3.football.api-sports.io/fixtures"
     match_id = None
 
-    # [FASE 2]: RECUPERO ID PARTITA (CICLO CONTINUO FINCHÉ NON TROVA UN MATCH)
+    # RECUPERO ID PARTITA
     while not match_id:
         today_date = datetime.now().strftime('%Y-%m-%d')
         print(f"🔄 [Controllo Palinsesto] Cerco partita della Juventus ({today_date})...")
@@ -399,7 +393,7 @@ def avvia_ciclo_partita():
     print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di monitoraggio eventi...")
     params = {"id": match_id}
 
-    # [FASE 3]: CICLO EVENTI IN LIVE REALE (SI SPEGNE SOLO A FINE PARTITA)
+    # CICLO EVENTI LIVE REAL-TIME
     while True:
         try:
             if os.path.exists("match_state.json"):
@@ -470,7 +464,6 @@ def avvia_ciclo_partita():
             elif status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-                # Update dello stato per evitare loop prima del thread/sleep delle statistiche
                 with open("match_state.json", "w") as f: json.dump(state, f)
                 invia_statistiche_match(match_id, f"{g_home_int}-{g_away_int}", logo_home, logo_away, "primo tempo", hashtag, e_comp)
             elif status == "2H" and "2H" not in state["sent_periods"]:
@@ -495,10 +488,10 @@ def avvia_ciclo_partita():
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 3. FISCHIO FINALE -> GENERAZIONE GRAFICA E INVIO
+            # 3. FISCHIO FINALE (INVIO CANVA + STATS HTML E SPEGNIMENTO)
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
-                print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva per l'export...")
+                print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva...")
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 
                 if p_home is not None:
@@ -521,19 +514,19 @@ def avvia_ciclo_partita():
                     foto_canva = get_canva_image(canva_token_fresco)
                     send_telegram_with_photo(msg_finale, photo_bytes=foto_canva)
                 else:
-                    print("❌ Impossibile generare un token Canva valido al fischio finale. Invio solo testo.")
+                    print("❌ Token Canva non disponibile. Invio solo testo.")
                     send_telegram(msg_finale)
                 
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
                 
-                # Invio statistiche finali ritardate (il bot si chiude all'interno di questa chiamata dopo i 2 minuti)
+                # Invio finale statistiche ritardate
                 invia_statistiche_match(match_id, score_string if p_home is None else f"{g_home_int} ({p_home}) - ({p_away}) {g_away_int}", logo_home, logo_away, "partita", hashtag, e_comp)
                 
-                print("🏁 Messaggio di fine e statistiche inviati con successo. Spegnimento del bot.")
+                print("🏁 Messaggio finale e statistiche pubblicati. Spegnimento completo.")
                 sys.exit(0)
 
-            # 4. GOL E UPDATE VAR
+            # 4. GOL E VALUTAZIONI VAR
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
                 events, live_scorer_line = match.get('events', []), ""
@@ -571,7 +564,7 @@ def avvia_ciclo_partita():
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
 
-            # 5. CARTELLINI ROSSI E CAMBI
+            # 5. CARTELLINI ROSSI E CAMBI SOLA ANDATA
             events = match.get('events', [])
             if events:
                 subs_by_minute = {}
