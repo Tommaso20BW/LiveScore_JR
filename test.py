@@ -3,12 +3,11 @@ import requests
 from playwright.sync_api import sync_playwright
 
 # ==============================================================================
-# CONFIGURAZIONE (Aggiorna con i tuoi dati reali)
+# CONFIGURAZIONE
 # ==============================================================================
 BOT_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_TO')
 
-# Esempio parametri match
 HOME_ID = 496  
 AWAY_ID = 505
 HOME_NAME = "Juventus"
@@ -16,14 +15,13 @@ AWAY_NAME = "Inter"
 HOME_GOALS = 2
 AWAY_GOALS = 0
 
-# Configurazione del momento (Cambia questo valore per il test: "HT", "2H", "FT")
 MOMENTO_CODICE = "HT" 
 
-# Mappatura messaggi
+# Mappatura messaggi con tag HTML <b> per il grassetto
 MOMENTI_CONFIG = {
-    "HT": {"titolo": "📊 **STATS PRIMO TEMPO**", "badge": "FINE PRIMO TEMPO"},
-    "2H": {"titolo": "📊 **STATS SECONDO TEMPO**", "badge": "FINE SECONDO TEMPO"},
-    "FT": {"titolo": "📊 **STATS FINE PARTITA**", "badge": "FINE PARTITA"}
+    "HT": {"titolo": "📊 <b>STATS PRIMO TEMPO</b>", "badge": "FINE PRIMO TEMPO"},
+    "2H": {"titolo": "📊 <b>STATS SECONDO TEMPO</b>", "badge": "FINE SECONDO TEMPO"},
+    "FT": {"titolo": "📊 <b>STATS FINE PARTITA</b>", "badge": "FINE PARTITA"}
 }
 
 JUVE_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
@@ -31,11 +29,12 @@ API_LOGO_URL = "https://media.api-sports.io/football/teams/{}.png"
 
 def send_telegram_photo(png_path, momento):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+    # Usiamo parse_mode="HTML" invece di Markdown
     caption = f"{MOMENTI_CONFIG[momento]['titolo']}\n\n🇮🇹 #JuveInter"
     with open(png_path, "rb") as f:
-        requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "Markdown"}, 
+        requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"}, 
                       files={"photo": ("stats.png", f, "image/png")})
-    print("✅ Inviato su Telegram!")
+    print("✅ Inviato su Telegram in formato HTML!")
 
 def genera_html(momento):
     h_logo = JUVE_LOGO_URL if "juventus" in HOME_NAME.lower() else API_LOGO_URL.format(HOME_ID)
@@ -113,7 +112,6 @@ def main():
     with open(path, "w", encoding="utf-8") as f: f.write(genera_html(MOMENTO_CODICE))
     
     with sync_playwright() as p:
-        # Args necessari per caricare loghi esterni senza blocchi
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
         page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
         page.goto(f"file://{path}")
