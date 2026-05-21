@@ -7,7 +7,10 @@
         .match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .logo-box { width: 70px; height: 70px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .logo-box img { width: 70%; height: 70%; object-fit: contain; }
-        .stats-grid { display: block; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 120px 1fr; gap: 15px; align-items: center; margin-top: 20px;}
+        .stat-row { display: contents; }
+        .val { font-weight: bold; font-size: 14px; }
+        .label { text-align: center; font-size: 11px; color: #888; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -17,7 +20,14 @@
             <div id="score" style="font-size:30px; font-weight:900;">0-0</div>
             <div class="logo-box"><img id="logo-r" src=""></div>
         </div>
-        <div class="stats-grid" id="stats-container"></div>
+        <div class="stats-grid" id="stats-container">
+            <div class="stat-row"><div class="val" id="val-home-poss" style="text-align:right;">0%</div><div class="label">Possesso</div><div class="val" id="val-away-poss" style="text-align:left;">0%</div></div>
+            <div class="stat-row"><div class="val" id="val-home-tiri" style="text-align:right;">0</div><div class="label">Tiri Totali</div><div class="val" id="val-away-tiri" style="text-align:left;">0</div></div>
+            <div class="stat-row"><div class="val" id="val-home-porta" style="text-align:right;">0</div><div class="label">Tiri in Porta</div><div class="val" id="val-away-porta" style="text-align:left;">0</div></div>
+            <div class="stat-row"><div class="val" id="val-home-xg" style="text-align:right;">0.0</div><div class="label">xG</div><div class="val" id="val-away-xg" style="text-align:left;">0.0</div></div>
+            <div class="stat-row"><div class="val" id="val-home-pass" style="text-align:right;">0</div><div class="label">Passaggi</div><div class="val" id="val-away-pass" style="text-align:left;">0</div></div>
+            <div class="stat-row"><div class="val" id="val-home-corner" style="text-align:right;">0</div><div class="label">Corner</div><div class="val" id="val-away-corner" style="text-align:left;">0</div></div>
+        </div>
     </div>
 </body>
 </html>
