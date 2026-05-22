@@ -53,7 +53,8 @@ LEAGUE_EMOJIS = {
     547: '🇮🇹',   # Supercoppa Italiana
     2:   '🇪🇺',   # Champions League
     3:   '🇪🇺',   # Europa League
-    667: '🤝'    # Amichevoli Club
+    848: '🇪🇺',   # Conference League
+    667: '🤝'   # Amichevoli Club
 }
 
 MOMENTI_CONFIG = {
