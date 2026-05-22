@@ -33,7 +33,7 @@ def send_telegram_photo(png_path, momento):
     with open(png_path, "rb") as f:
         requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"}, 
                       files={"photo": ("stats.png", f, "image/png")})
-    print("✅ Inviato su Telegram in formato HTML con texture applicata!")
+    print("✅ Inviato su Telegram in formato HTML 1620x1980 con texture applicata!")
 
 def genera_html(momento):
     h_logo = JUVE_LOGO_URL if "juventus" in HOME_NAME.lower() else API_LOGO_URL.format(HOME_ID)
@@ -77,43 +77,52 @@ def genera_html(momento):
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{
-  width: 540px;
+  width: 1620px;
+  height: 1980px;
   background:
-    radial-gradient(circle at top left, #1e3a8a 0%, transparent 35%),
-    radial-gradient(circle at bottom right, #7c3aed 0%, transparent 35%),
+    radial-gradient(circle at top left, #1e3a8a 0%, transparent 40%),
+    radial-gradient(circle at bottom right, #7c3aed 0%, transparent 40%),
     #060816;
   font-family: 'Inter', sans-serif;
-  padding: 20px;
+  padding: 60px;
+  overflow: hidden;
 }}
 .card {{
-  width: 500px;
+  width: 1500px; /* 1620px totali - 120px di padding laterale del body */
+  height: 1860px; /* 1980px totali - 120px di padding verticale del body */
   margin: 0 auto;
   background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(10,14,28,0.96));
-  border-radius: 32px;
+  border-radius: 70px;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+  border: 3px solid rgba(255,255,255,0.08);
+  box-shadow: 0 50px 100px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.04);
+  display: flex;
+  flex-direction: column;
 }}
-.header {{ position: relative; padding: 34px 32px 30px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
-.league-row {{ text-align: center; color: #7c8cb5; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }}
-.badge {{ width: fit-content; margin: 0 auto 22px; padding: 7px 18px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 10px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; }}
-.teams-row {{ display: flex; align-items: center; justify-content: space-between; }}
-.team {{ width: 120px; }}
-.logo {{ width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 14px; }}
-.team-name {{ text-align: center; color: white; font-weight: 800; font-size: 16px; }}
+.header {{ 
+  position: relative; 
+  padding: 90px 80px 70px; 
+  border-bottom: 3px solid rgba(255,255,255,0.06); 
+}}
+.league-row {{ text-align: center; color: #7c8cb5; font-size: 30px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 40px; }}
+.badge {{ width: fit-content; margin: 0 auto 50px; padding: 16px 42px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 24px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }}
+.teams-row {{ display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }}
+.team {{ width: 350px; text-align: center; }}
+.logo {{ width: 190px; height: 190px; object-fit: contain; display: block; margin: 0 auto 30px; }}
+.team-name {{ color: white; font-weight: 800; font-size: 42px; }}
 .score-wrap {{ text-align: center; }}
-.score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 82px; line-height: 0.9; font-weight: 900; color: white; letter-spacing: -2px; }}
-.match-status {{ margin-top: 10px; color: #8fa1c7; font-size: 12px; font-weight: 600; text-transform: uppercase; }}
-.stats-body {{ padding: 30px 28px 34px; }}
-.stats-title {{ text-align: center; color: #91a4d0; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }}
-.stat-row {{ padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }}
+.score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 210px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
+.match-status {{ margin-top: 25px; color: #8fa1c7; font-size: 28px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
+.stats-body {{ padding: 70px 80px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }}
+.stats-title {{ text-align: center; color: #91a4d0; font-size: 28px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; }}
+.stat-row {{ padding: 22px 0; border-bottom: 2px solid rgba(255,255,255,0.05); }}
 .stat-row:last-child {{ border-bottom: none; }}
-.stat-top {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }}
-.val {{ width: 52px; color: white; font-weight: 900; font-size: 22px; font-family: 'Barlow Condensed', sans-serif; }}
+.stat-top {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }}
+.val {{ width: 120px; color: white; font-weight: 900; font-size: 54px; font-family: 'Barlow Condensed', sans-serif; }}
 .home-val {{ text-align: left; }}
 .away-val {{ text-align: right; }}
-.stat-label {{ color: #b4c0df; font-size: 13px; font-weight: 700; }}
-.bar-track {{ position: relative; height: 12px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }}
+.stat-label {{ color: #b4c0df; font-size: 34px; font-weight: 700; }}
+.bar-track {{ position: relative; height: 26px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }}
 .bar-home, .bar-away {{ position: absolute; top: 0; height: 100%; }}
 .bar-home {{ left: 0; background: linear-gradient(90deg, #60a5fa, #2563eb); }}
 .bar-away {{ right: 0; background: linear-gradient(90deg, #ef4444, #dc2626); }}
@@ -146,37 +155,40 @@ def main():
     with open(path_html, "w", encoding="utf-8") as f: 
         f.write(genera_html(MOMENTO_CODICE))
     
-    print("📸 Rendering con Playwright...")
+    print("📸 Rendering con Playwright (Risoluzione 1620x1980)...")
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
-        page = browser.new_page(viewport={"width": 540, "height": 1350}, device_scale_factor=3.0)
+        # Viewport impostato esattamente sulle dimensioni totali desiderate
+        page = browser.new_page(viewport={"width": 1620, "height": 1980}, device_scale_factor=1.0)
         page.goto(f"file://{path_html}")
         page.wait_for_timeout(3000)
-        page.query_selector(".card").screenshot(path=path_raw_png, omit_background=True)
+        
+        # Scattiamo lo screenshot all'intera pagina (body) per preservare le proporzioni 1620x1980 incluse le sfumature esterne
+        page.screenshot(path=path_raw_png, omit_background=False)
         browser.close()
         
     # ==============================================================================
-    # SOVRAPPOSIZIONE TEXTURE CON PILLOW
+    # SOVRAPPOSIZIONE TEXTURE AD ALTA RISOLUZIONE CON PILLOW
     # ==============================================================================
     if os.path.exists("texture.PNG"):
         try:
-            print("🎨 Applicazione della grana di texture.PNG in corso...")
+            print("🎨 Applicazione della grana di texture.PNG (1620x1980) in corso...")
             base_img = Image.open(path_raw_png).convert("RGBA")
             texture_img = Image.open("texture.PNG").convert("RGBA")
             
-            # Adatta perfettamente la texture alle dimensioni esatte del ritaglio della card
+            # Ridimensiona al pixel la texture per coprire l'intera area 1620x1980
             texture_img = texture_img.resize(base_img.size, Image.Resampling.LANCZOS)
             
-            # Unione dei due livelli mantenendo le trasparenze dei bordi arrotondati della card
+            # Fonde i due livelli ad alta definizione
             final_img = Image.alpha_composite(base_img, texture_img)
             final_img.save(path_final_png, "PNG")
             
             send_telegram_photo(path_final_png, MOMENTO_CODICE)
         except Exception as e:
-            print(f"⚠️ Errore durante la sovrapposizione: {e}. Invio l'immagine senza grana.")
+            print(f"⚠️ Errore durante la sovrapposizione: {e}. Invio senza grana.")
             send_telegram_photo(path_raw_png, MOMENTO_CODICE)
     else:
-        print("⚠️ File 'texture.PNG' non trovato. Invio l'immagine base.")
+        print("⚠️ File 'texture.PNG' non trovato. Invio l'immagine base ad alta definizione.")
         send_telegram_photo(path_raw_png, MOMENTO_CODICE)
 
 if __name__ == "__main__":
