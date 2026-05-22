@@ -56,9 +56,9 @@ LEAGUE_EMOJIS = {
 }
 
 MOMENTI_CONFIG = {
-    "HT": {"titolo": "📊 <b>STATS PRIMO TEMPO</b>", "badge": "FINE PRIMO TEMPO"},
-    "2H_END": {"titolo": "📊 <b>STATS SECONDO TEMPO</b>", "badge": "FINE SECONDO TEMPO"},
-    "FT": {"titolo": "📊 <b>STATS FINE PARTITA</b>", "badge": "FINE PARTITA"}
+    "HT": {"titolo": "<b>STATS PRIMO TEMPO</b> 📊", "badge": "FINE PRIMO TEMPO"},
+    "2H_END": {"titolo": "<b>STATS SECONDO TEMPO</b> 📊", "badge": "FINE SECONDO TEMPO"},
+    "FT": {"titolo": "<b>STATS FINE PARTITA</b> 📊", "badge": "FINE PARTITA"}
 }
 
 def get_league_emoji(league_id):
