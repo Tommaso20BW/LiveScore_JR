@@ -554,7 +554,7 @@ def avvia_ciclo_partita():
 
     # ── CICLO LIVE ─────────────────────────────────────────────────────────────
     while True:
-        current_sleep_time = 90  # default
+        current_sleep_time = 50  # default
         try:
             if os.path.exists("match_state.json"):
                 with open("match_state.json", "r") as f:
@@ -591,10 +591,10 @@ def avvia_ciclo_partita():
             league_id   = match.get('league', {}).get('id', 0)
             league_name = match.get('league', {}).get('name', 'Serie A')
             current_sleep_time = (
-                60  if status == "PEN" else
-                140 if status in ["ET", "AET"] else
+                30  if status == "PEN" else
+                60  if status in ["ET", "AET"] else
                 120 if status == "HT" else
-                70  if league_id == 135 else 90
+                35  if league_id == 135 else 90
             )
 
             e_comp  = get_league_emoji(league_id)
