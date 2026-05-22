@@ -27,7 +27,7 @@ CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 GH_PAT = os.getenv('GH_PAT')                 # Il tuo Personal Access Token di GitHub
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY') # Es: "tuo-utente/tuo-repo"
 
-JUVE_ID = 3701
+JUVE_ID = 496
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 
