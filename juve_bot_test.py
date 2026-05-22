@@ -5,7 +5,6 @@ import time
 import sys
 import base64
 from PIL import Image
-import os
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
@@ -357,29 +356,19 @@ def recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name,
         ("Espulsi", str(api_stats["Red Cards"][0] or 0), str(api_stats["Red Cards"][1] or 0), calcola_percentuale_barra(api_stats["Red Cards"][0], api_stats["Red Cards"][1]))
     ]
 
-        rows_html = "".join([f'''
+    rows_html = "".join([f'''
 <div class="stat-row">
-
   <div class="stat-top">
-
     <div class="val home-val">{h}</div>
-
     <div class="stat-label">
       {label}
     </div>
-
     <div class="val away-val">{a}</div>
-
   </div>
-
   <div class="bar-track">
-
     <div class="bar-home" style="width:{hp}%"></div>
-
     <div class="bar-away" style="width:{100-hp}%"></div>
-
   </div>
-
 </div>
 ''' for label, h, a, hp in stats_mappate])
 
@@ -388,60 +377,44 @@ def recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name,
 <html lang="it">
 <head>
 <meta charset="utf-8">
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
-
 <style>
-
 * {{
   margin:0;
   padding:0;
   box-sizing:border-box;
 }}
-
 body {{
   width:540px;
-
   background:
     radial-gradient(circle at top left,#1e3a8a 0%,transparent 35%),
     radial-gradient(circle at bottom right,#7c3aed 0%,transparent 35%),
     #060816;
-
   font-family:'Inter',sans-serif;
-
   padding:20px;
 }}
-
 .card {{
   width:540px;
-
   background:
     linear-gradient(
       180deg,
       rgba(17,24,39,0.96),
       rgba(10,14,28,0.96)
     );
-
   border-radius:32px;
-
   overflow:hidden;
-
   border:1px solid rgba(255,255,255,0.08);
-
   box-shadow:
     0 20px 50px rgba(0,0,0,0.55),
     inset 0 1px 0 rgba(255,255,255,0.04);
 }}
-
 .header {{
   position:relative;
   padding:34px 32px 30px;
   border-bottom:1px solid rgba(255,255,255,0.06);
 }}
-
 .league-row {{
   text-align:center;
   color:#7c8cb5;
@@ -451,7 +424,6 @@ body {{
   font-weight:700;
   margin-bottom:18px;
 }}
-
 .badge {{
   width:fit-content;
   margin:0 auto 22px;
@@ -464,17 +436,14 @@ body {{
   letter-spacing:1.5px;
   text-transform:uppercase;
 }}
-
 .teams-row {{
   display:flex;
   align-items:center;
   justify-content:space-between;
 }}
-
 .team {{
   width:120px;
 }}
-
 .logo {{
   width:72px;
   height:72px;
@@ -482,18 +451,15 @@ body {{
   display:block;
   margin:0 auto 14px;
 }}
-
 .team-name {{
   text-align:center;
   color:white;
   font-weight:800;
   font-size:16px;
 }}
-
 .score-wrap {{
   text-align:center;
 }}
-
 .score {{
   font-family:'Barlow Condensed',sans-serif;
   font-size:82px;
@@ -502,7 +468,6 @@ body {{
   color:white;
   letter-spacing:-2px;
 }}
-
 .match-status {{
   margin-top:10px;
   color:#8fa1c7;
@@ -510,11 +475,9 @@ body {{
   font-weight:600;
   text-transform:uppercase;
 }}
-
 .stats-body {{
   padding:30px 28px 34px;
 }}
-
 .stats-title {{
   text-align:center;
   color:#91a4d0;
@@ -524,23 +487,19 @@ body {{
   text-transform:uppercase;
   margin-bottom:24px;
 }}
-
 .stat-row {{
   padding:14px 0;
   border-bottom:1px solid rgba(255,255,255,0.05);
 }}
-
 .stat-row:last-child {{
   border-bottom:none;
 }}
-
 .stat-top {{
   display:flex;
   align-items:center;
   justify-content:space-between;
   margin-bottom:10px;
 }}
-
 .val {{
   width:52px;
   color:white;
@@ -548,21 +507,17 @@ body {{
   font-size:22px;
   font-family:'Barlow Condensed',sans-serif;
 }}
-
 .home-val {{
   text-align:left;
 }}
-
 .away-val {{
   text-align:right;
 }}
-
 .stat-label {{
   color:#b4c0df;
   font-size:13px;
   font-weight:700;
 }}
-
 .bar-track {{
   position:relative;
   height:12px;
@@ -570,79 +525,57 @@ body {{
   overflow:hidden;
   background:rgba(255,255,255,0.06);
 }}
-
 .bar-home,
 .bar-away {{
   position:absolute;
   top:0;
   height:100%;
 }}
-
 .bar-home {{
   left:0;
   background:linear-gradient(90deg,#60a5fa,#2563eb);
 }}
-
 .bar-away {{
   right:0;
   background:linear-gradient(90deg,#ef4444,#dc2626);
 }}
-
 </style>
 </head>
-
 <body>
-
 <div class="card">
-
   <div class="header">
-
     <div class="league-row">
       {league_name.upper()}
     </div>
-
     <div class="badge">
       {badge_label}
     </div>
-
     <div class="teams-row">
-
       <div class="team">
         <img src="{h_logo}" class="logo">
         <div class="team-name">{home_name}</div>
       </div>
-
       <div class="score-wrap">
         <div class="score">
           {home_goals}–{away_goals}
         </div>
-
         <div class="match-status">
           LIVE STATS
         </div>
       </div>
-
       <div class="team">
         <img src="{a_logo}" class="logo">
         <div class="team-name">{away_name}</div>
       </div>
-
     </div>
-
   </div>
-
   <div class="stats-body">
-
     <div class="stats-title">
       STATISTICHE ANALITICHE
     </div>
-
     {rows_html}
-
   </div>
-
 </div>
-
 </body>
 </html>
 """
@@ -662,11 +595,9 @@ body {{
         )
         page.goto(f"file://{path_html}")
         page.wait_for_timeout(3000)
-        # Esegue lo screenshot
         page.query_selector(".card").screenshot(path="/tmp/stats_raw.png")
         browser.close()
 
-    # --- INIZIO PARTE DA AGGIUNGERE ---
     def applica_texture_finale(input_path, texture_path, output_path):
         try:
             base = Image.open(input_path).convert("RGBA")
@@ -677,13 +608,11 @@ body {{
         except Exception as e:
             print(f"Errore texture: {e}")
 
-    # Controlla se la texture esiste e la applica
     if os.path.exists("texture.PNG"):
         applica_texture_finale("/tmp/stats_raw.png", "texture.PNG", "/tmp/stats_final.png")
         return "/tmp/stats_final.png"
     else:
         return "/tmp/stats_raw.png"
-    # --- FINE PARTE DA AGGIUNGERE ---
 
 # ==============================================================================
 # LOGICA DI GESTIONE E CICLO DEL MATCH LIVE
@@ -699,13 +628,11 @@ def avvia_ciclo_partita():
     url = "https://v3.football.api-sports.io/fixtures"
     match_id = None
 
-    # [FASE 2]: RECUPERO ID PARTITA (CICLO CONTINUO FINCHÉ NON TROVA UN MATCH)
     while not match_id:
         today_date = datetime.now().strftime('%Y-%m-%d')
         print(f"🔄 [Controllo Palinsesto] Cerco partita della Juventus ({today_date})...")
         
         try:
-            # 1. Controlliamo prima se c'è una partita già LIVE
             live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
             if live_res.get('response'):
                 for f in live_res['response']:
@@ -714,14 +641,12 @@ def avvia_ciclo_partita():
                         print(f"🔥 Match trovato già LIVE! Aggancio ID: {match_id}")
                         break
             
-            # 2. Se non è live, cerchiamo tra i match programmati per oggi
             if not match_id:
                 date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
                 if date_res.get('response') and len(date_res['response']) > 0:
                     match_id = date_res['response'][0]['fixture']['id']
                     print(f"📅 Match trovato nel palinsesto di oggi! ID: {match_id}")
 
-            # 3. Se l'API non rileva l'oggi, proviamo a prendere il prossimo match in assoluto
             if not match_id:
                 next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
                 if next_res.get('response') and len(next_res['response']) > 0:
@@ -739,7 +664,6 @@ def avvia_ciclo_partita():
     print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di monitoraggio eventi...")
     params = {"id": match_id}
 
-    # [FASE 3]: CICLO EVENTI IN LIVE REALE (SI SPEGNE SOLO A FINE PARTITA)
     while True:
         try:
             if os.path.exists("match_state.json"):
@@ -798,11 +722,10 @@ def avvia_ciclo_partita():
             if g_home_int > g_away_int:
                 punteggio_periodo = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
             elif g_away_int > g_home_int:
-                punteggio_periodo = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
+                punteggio_periodo = f"{home_name} {g_home_int}-<b>{g_away_int} {g_away_int} {away_name}</b>"
             else:
                 punteggio_periodo = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
 
-            # 1. CRONACA PERIODI (Testo Istantaneo + Trigger Attesa Live Stats dopo 2 minuti)
             if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
@@ -831,7 +754,6 @@ def avvia_ciclo_partita():
                 send_telegram_stats_photo(png_path, "2H_END", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("2H_END")
 
-            # 2. RIGORI AD OLTRANZA
             if status == "PEN":
                 events = match.get('events', [])
                 home_pen_icons, away_pen_icons = [], []
@@ -846,7 +768,6 @@ def avvia_ciclo_partita():
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 3. FISCHIO FINALE -> TESTO + CANVA (SUBITO) e DOPO 2 MINUTI GRAFICA STATS (PLAYWRIGHT)
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET", "PEN"] or "finished" in status_long:
                 print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva per l'export immediato...")
@@ -867,7 +788,6 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{punteggio_finale}\n{scorers_line}\n{e_comp} {hashtag}"
                 
-                # Invia subito Testo + Canva
                 canva_token_fresco = get_valid_token()
                 if canva_token_fresco:
                     foto_canva = get_canva_image(canva_token_fresco)
@@ -876,7 +796,6 @@ def avvia_ciclo_partita():
                     print("❌ Impossibile generare un token Canva valido al fischio finale. Invio solo testo.")
                     send_telegram(msg_finale)
                 
-                # Attesa di 2 minuti per l'invio delle statistiche finali
                 print("⏳ Attesa di 2 minuti per il consolidamento dati di FINE PARTITA (FT)...")
                 time.sleep(120)
                 
@@ -890,7 +809,6 @@ def avvia_ciclo_partita():
                 print("🏁 Processo terminato con successo. Spegnimento del bot.")
                 sys.exit(0)
 
-            # 4. GOL E UPDATE VAR
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
                 events, live_scorer_line = match.get('events', []), ""
@@ -928,7 +846,6 @@ def avvia_ciclo_partita():
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{home_name} {g_home_int}-{g_away_int} {away_name}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
 
-            # 5. CARTELLINI ROSSI E CAMBI
             events = match.get('events', [])
             if events:
                 subs_by_minute = {}
