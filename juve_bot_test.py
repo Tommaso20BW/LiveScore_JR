@@ -4,6 +4,8 @@ import json
 import time
 import sys
 import base64
+from PIL import Image
+import os
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
@@ -419,9 +421,28 @@ def recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name,
         page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
         page.goto(f"file://{path_html}")
         page.wait_for_timeout(3000)
-        page.query_selector(".card").screenshot(path=path_png, omit_background=True)
+        # Esegue lo screenshot
+        page.query_selector(".card").screenshot(path="/tmp/stats_raw.png")
         browser.close()
-    return path_png
+
+    # --- INIZIO PARTE DA AGGIUNGERE ---
+    def applica_texture_finale(input_path, texture_path, output_path):
+        try:
+            base = Image.open(input_path).convert("RGBA")
+            texture = Image.open(texture_path).convert("RGBA")
+            texture = texture.resize(base.size, Image.Resampling.LANCZOS)
+            out = Image.alpha_composite(base, texture)
+            out.convert("RGB").save(output_path, "PNG")
+        except Exception as e:
+            print(f"Errore texture: {e}")
+
+    # Controlla se la texture esiste e la applica
+    if os.path.exists("texture.PNG"):
+        applica_texture_finale("/tmp/stats_raw.png", "texture.PNG", "/tmp/stats_final.png")
+        return "/tmp/stats_final.png"
+    else:
+        return "/tmp/stats_raw.png"
+    # --- FINE PARTE DA AGGIUNGERE ---
 
 # ==============================================================================
 # LOGICA DI GESTIONE E CICLO DEL MATCH LIVE
