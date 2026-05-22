@@ -597,10 +597,12 @@ def avvia_ciclo_partita():
             else:
                 punteggio_periodo = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
 
+            # 1. INIZIO PARTITA
             if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
                 
+            # 2. FINE PRIMO TEMPO
             elif status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
@@ -611,12 +613,14 @@ def avvia_ciclo_partita():
                 send_telegram_stats_photo(png_path, "HT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("HT")
                 
+            # 3. INIZIO SECONDO TEMPO
             elif status == "2H" and "2H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
                 
-            elif status in ["ET", "AET", "PEN"] and "2H_END" not in state["sent_periods"]:
-                send_telegram(f"<b>FINE SECONDO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
+            # 4. FINE SECONDO TEMPO (Solo se si va ai supplementari, lo status diventa ET)
+            elif status == "ET" and "2H_END" not in state["sent_periods"]:
+                send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\nSi va ai tempi supplementari!\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
                 
                 print("⏳ Attesa di 2 minuti per il consolidamento dati di FINE SECONDO TEMPO (2H_END)...")
@@ -624,6 +628,23 @@ def avvia_ciclo_partita():
                 png_path = recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name, away_name, g_home_int, g_away_int, "2H_END", league_name)
                 send_telegram_stats_photo(png_path, "2H_END", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("2H_END")
+
+            # 5. CODICE DETTAGLIATO PER I TEMPI SUPPLEMENTARI (STATUS ET)
+            elif status == "ET":
+                # Inizio 1° Tempo Supplementare (minuto 91)
+                if elapsed_minutes >= 91 and elapsed_minutes <= 105 and "1ET_START" not in state["sent_periods"]:
+                    send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
+                    state["sent_periods"].append("1ET_START")
+                
+                # Fine 1° Tempo Supplementare (minuto 105 di solito fisso o con recupero)
+                elif elapsed_minutes == 105 and "1ET_END" not in state["sent_periods"]:
+                    send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
+                    state["sent_periods"].append("1ET_END")
+                
+                # Inizio 2° Tempo Supplementare (minuto 106)
+                elif elapsed_minutes >= 106 and "2ET_START" not in state["sent_periods"]:
+                    send_telegram(f"<b>INIZIO 2° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
+                    state["sent_periods"].append("2ET_START")
 
             if status == "PEN":
                 events = match.get('events', [])
