@@ -523,7 +523,7 @@ def avvia_ciclo_partita():
                 if next_res.get('response') and len(next_res['response']) > 0:
                     match_data = next_res['response'][0]
                     match_id = match_data['fixture']['id']
-                    print(f"📌 Agganciato il prossimo match in calendario. ID: {match_id} ({match_data['fixture']['date']})")
+                    print(f"📌 Agganciato the prossimo match in calendario. ID: {match_id} ({match_data['fixture']['date']})")
 
         except Exception as e:
             print(f"⚠️ Errore temporaneo nel recupero dei dati dall'API: {e}")
@@ -593,7 +593,7 @@ def avvia_ciclo_partita():
             if g_home_int > g_away_int:
                 punteggio_periodo = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
             elif g_away_int > g_home_int:
-                punteggio_periodo = f"{home_name} {g_home_int}-<b>{g_away_int} {g_away_int} {away_name}</b>"
+                punteggio_periodo = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
             else:
                 punteggio_periodo = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
 
@@ -636,7 +636,7 @@ def avvia_ciclo_partita():
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
                 
-                # Fine 1° Tempo Supplementare (minuto 105 di solito fisso o con recupero)
+                # Fine 1° Tempo Supplementare (minuto 105)
                 elif elapsed_minutes == 105 and "1ET_END" not in state["sent_periods"]:
                     send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_END")
@@ -648,7 +648,7 @@ def avvia_ciclo_partita():
 
             # 6. GESTIONE RIGORI LIVE (STATUS PEN)
             if status == "PEN":
-                # Flash intermedio: Fine supplementari, si va ai rigori
+                # Flash intermedio pulito di fine supplementari
                 if "ET_END_PENS" not in state["sent_periods"]:
                     send_telegram(f"<b>FINE TEMPI SUPPLEMENTARI {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("ET_END_PENS")
@@ -669,8 +669,8 @@ def avvia_ciclo_partita():
 
             # 7. CHIUSURA DEFINITIVA MATCH (FISCHIO FINALE REALE)
             status_long = fixture.get('status', {}).get('long', '').lower()
-            # Si attiva se è FT/AET, oppure se è PEN ma lo stato lungo conferma che la partita è finita (rigori conclusi)
-            if status in ["FT", "AET"] or (status == "PEN" and "finished" in status_long) or "finished" in status_long:
+            # Si chiude se lo stato è FT/AET, oppure se è PEN ed è "match finished" (rigori conclusi)
+            if status in ["FT", "AET"] or (status == "PEN" and status_long == "match finished"):
                 print("🏁 FISCHIO FINALE REALE RILEVATO! Connessione a Canva per l'export immediato...")
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 
@@ -731,13 +731,13 @@ def avvia_ciclo_partita():
                 if g_home_int > g_away_int:
                     punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
                 elif g_away_int > g_home_int:
-                    punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
+                    punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}"
                 else:
                     scoring_team_id = last_goal.get('team', {}).get('id') if events and all_goals else None
                     if scoring_team_id == home_id:
                         punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
                     elif scoring_team_id == away_id:
-                        punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
+                        punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}"
                     else:
                         punteggio_match = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
                         
