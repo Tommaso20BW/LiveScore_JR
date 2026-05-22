@@ -1,4 +1,4 @@
-name: Juventus Live Score Test
+name: Juventus Live Score
 
 on:
   workflow_dispatch: 
