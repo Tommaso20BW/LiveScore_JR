@@ -1,4 +1,4 @@
-name: Juventus Live Score
+name: Juventus Live Score PRO
 on:
   workflow_dispatch:
 permissions:
