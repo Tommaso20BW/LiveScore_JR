@@ -480,8 +480,8 @@ body {{
         except Exception as e:
             print(f"Errore applicazione texture: {e}")
 
-    if os.path.exists("texture.PNG"):
-        applica_texture_finale(path_raw_png, "texture.PNG", path_final_png)
+    if os.path.exists("texture.png"):
+        applica_texture_finale(path_raw_png, "texture.png", path_final_png)
         return path_final_png
     else:
         return path_raw_png
