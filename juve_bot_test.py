@@ -298,8 +298,8 @@ def recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name,
     # Valori di fallback predefiniti
     api_stats = {"Shots on Goal": [0,0], "Total Shots": [0,0], "Fouls": [0,0], "Corner Kicks": [0,0], 
                  "Ball Possession": ["50%","50%"], "Yellow Cards": [0,0], "Red Cards": [0,0], 
-                 "Expected Goals": ["0.0","0.0"], "Passes accurate": [0,0]}
-                 
+                 "expected_goals": ["0.0","0.0"], "Passes accurate": [0,0]}
+                                 
     try:
         res = requests.get(stats_url, headers=headers, timeout=15).json()
         if res.get('response') and len(res['response']) >= 2:
@@ -332,9 +332,16 @@ def recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name,
     pos_a = str(api_stats["Ball Possession"][1]) if api_stats["Ball Possession"][1] is not None else "50%"
     bp_perc = calcola_percentuale_barra(pos_h, pos_a)
 
-    xg_h = str(api_stats.get("Expected Goals", [0,0])[0]) if api_stats.get("Expected Goals", [0,0])[0] is not None else "0.0"
-    xg_a = str(api_stats.get("Expected Goals", [0,0])[1]) if api_stats.get("Expected Goals", [0,0])[1] is not None else "0.0"
-    xg_perc = calcola_percentuale_barra(xg_h, xg_a, tipo="float")
+    raw_xg_h = api_stats.get("expected_goals", ["0.0", "0.0"])[0]
+    raw_xg_a = api_stats.get("expected_goals", ["0.0", "0.0"])[1]
+
+    xg_h = str(raw_xg_h) if raw_xg_h is not None else "0.0"
+    xg_a = str(raw_xg_a) if raw_xg_a is not None else "0.0"
+
+    if pulisci_val_float(xg_h) == 0.0 and pulisci_val_float(xg_a) == 0.0:
+        xg_perc = 50
+    else:
+        xg_perc = calcola_percentuale_barra(xg_h, xg_a, tipo="float")
 
     stats_mappate = [
         ("Possesso palla", pos_h, pos_a, bp_perc),
