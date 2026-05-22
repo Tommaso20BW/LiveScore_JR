@@ -1,5 +1,6 @@
 import os
 import requests
+from PIL import Image
 from playwright.sync_api import sync_playwright
 
 # ==============================================================================
@@ -17,7 +18,6 @@ AWAY_GOALS = 0
 
 MOMENTO_CODICE = "HT" 
 
-# Mappatura messaggi con tag HTML <b> per il grassetto
 MOMENTI_CONFIG = {
     "HT": {"titolo": "📊 <b>STATS PRIMO TEMPO</b>", "badge": "FINE PRIMO TEMPO"},
     "2H": {"titolo": "📊 <b>STATS SECONDO TEMPO</b>", "badge": "FINE SECONDO TEMPO"},
@@ -29,12 +29,11 @@ API_LOGO_URL = "https://media.api-sports.io/football/teams/{}.png"
 
 def send_telegram_photo(png_path, momento):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
-    # Usiamo parse_mode="HTML" invece di Markdown
     caption = f"{MOMENTI_CONFIG[momento]['titolo']}\n\n🇮🇹 #JuveInter"
     with open(png_path, "rb") as f:
         requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"}, 
                       files={"photo": ("stats.png", f, "image/png")})
-    print("✅ Inviato su Telegram in formato HTML!")
+    print("✅ Inviato su Telegram in formato HTML con texture applicata!")
 
 def genera_html(momento):
     h_logo = JUVE_LOGO_URL if "juventus" in HOME_NAME.lower() else API_LOGO_URL.format(HOME_ID)
@@ -55,37 +54,69 @@ def genera_html(momento):
         ("Espulsi", "0", "0", 50)
     ]
     
-    rows_html = "".join([f'''<div class="stat-row">
-          <div class="val home-val">{h}</div>
-          <div class="stat-mid"><div class="stat-label">{label}</div><div class="bar-track"><div style="background:#4f9cf9;width:{hp}%;height:8px;border-radius:4px 0 0 4px"></div><div style="background:#f05252;width:{100-hp}%;height:8px;border-radius:0 4px 4px 0"></div></div></div>
-          <div class="val away-val">{a}</div>
-        </div>''' for label, h, a, hp in stats_data])
+    rows_html = "".join([f'''
+    <div class="stat-row">
+      <div class="stat-top">
+        <div class="val home-val">{h}</div>
+        <div class="stat-label">{label}</div>
+        <div class="val away-val">{a}</div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-home" style="width:{hp}%"></div>
+        <div class="bar-away" style="width:{100-hp}%"></div>
+      </div>
+    </div>''' for label, h, a, hp in stats_data])
 
     return f"""<!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
 <meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Barlow+Condensed:wght@700;900&display=swap');
-  * {{ margin:0; padding:0; box-sizing:border-box; }}
-  body {{ width: 540px; background: #0b0f1e; font-family: 'Barlow', sans-serif; }}
-  .card {{ width: 540px; background: #0b0f1e; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }}
-  .header {{ background: #0d1528; padding: 25px 28px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
-  .league-row {{ text-align: center; font-size: 11px; letter-spacing: 1.5px; color: #4a5470; text-transform: uppercase; margin-bottom: 12px; }}
-  .badge {{ display: block; width: fit-content; margin: 0 auto 14px; background: #f0b429; color: #0b0f1e; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 4px 14px; border-radius: 20px; text-transform: uppercase; }}
-  .teams-row {{ display: flex; align-items: center; justify-content: space-between; }}
-  .logo {{ width: 65px; height: 65px; object-fit: contain; display: block; margin: 0 auto 10px; }}
-  .team-name {{ color: #ffffff; font-weight: 700; font-size: 15px; text-align: center; }}
-  .score {{ color: #ffffff; font-family: 'Barlow Condensed'; font-size: 60px; font-weight: 900; margin: 0 15px; }}
-  .stats-body {{ padding: 20px 28px; }}
-  .stats-title {{ color: #6070a0; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 2px; text-align: center; }}
-  .stat-row {{ display: flex; align-items: center; padding: 8px 0; }}
-  .val {{ width: 50px; font-family: 'Barlow Condensed'; font-size: 19px; font-weight: 800; color: #ffffff; }}
-  .home-val {{ text-align: left; }}
-  .away-val {{ text-align: right; }}
-  .stat-mid {{ flex: 1; padding: 0 15px; text-align: center; color: #a0aacc; font-size: 12px; font-weight: 600; }}
-  .stat-label {{ margin-bottom: 5px; }}
-  .bar-track {{ display: flex; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); }}
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{
+  width: 540px;
+  background:
+    radial-gradient(circle at top left, #1e3a8a 0%, transparent 35%),
+    radial-gradient(circle at bottom right, #7c3aed 0%, transparent 35%),
+    #060816;
+  font-family: 'Inter', sans-serif;
+  padding: 20px;
+}}
+.card {{
+  width: 500px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(10,14,28,0.96));
+  border-radius: 32px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+}}
+.header {{ position: relative; padding: 34px 32px 30px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
+.league-row {{ text-align: center; color: #7c8cb5; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }}
+.badge {{ width: fit-content; margin: 0 auto 22px; padding: 7px 18px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 10px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; }}
+.teams-row {{ display: flex; align-items: center; justify-content: space-between; }}
+.team {{ width: 120px; }}
+.logo {{ width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 14px; }}
+.team-name {{ text-align: center; color: white; font-weight: 800; font-size: 16px; }}
+.score-wrap {{ text-align: center; }}
+.score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 82px; line-height: 0.9; font-weight: 900; color: white; letter-spacing: -2px; }}
+.match-status {{ margin-top: 10px; color: #8fa1c7; font-size: 12px; font-weight: 600; text-transform: uppercase; }}
+.stats-body {{ padding: 30px 28px 34px; }}
+.stats-title {{ text-align: center; color: #91a4d0; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }}
+.stat-row {{ padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }}
+.stat-row:last-child {{ border-bottom: none; }}
+.stat-top {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }}
+.val {{ width: 52px; color: white; font-weight: 900; font-size: 22px; font-family: 'Barlow Condensed', sans-serif; }}
+.home-val {{ text-align: left; }}
+.away-val {{ text-align: right; }}
+.stat-label {{ color: #b4c0df; font-size: 13px; font-weight: 700; }}
+.bar-track {{ position: relative; height: 12px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }}
+.bar-home, .bar-away {{ position: absolute; top: 0; height: 100%; }}
+.bar-home {{ left: 0; background: linear-gradient(90deg, #60a5fa, #2563eb); }}
+.bar-away {{ right: 0; background: linear-gradient(90deg, #ef4444, #dc2626); }}
 </style>
 </head>
 <body>
@@ -95,7 +126,7 @@ def genera_html(momento):
     <div class="badge">{badge_label}</div>
     <div class="teams-row">
       <div class="team"><img src="{h_logo}" class="logo" crossorigin="anonymous"><div class="team-name">{HOME_NAME}</div></div>
-      <div class="score">{HOME_GOALS} – {AWAY_GOALS}</div>
+      <div class="score-wrap"><div class="score">{HOME_GOALS}–{AWAY_GOALS}</div><div class="match-status">LIVE STATS</div></div>
       <div class="team"><img src="{a_logo}" class="logo" crossorigin="anonymous"><div class="team-name">{AWAY_NAME}</div></div>
     </div>
   </div>
@@ -108,18 +139,45 @@ def genera_html(momento):
 </html>"""
 
 def main():
-    path = "/tmp/test.html"
-    with open(path, "w", encoding="utf-8") as f: f.write(genera_html(MOMENTO_CODICE))
+    path_html = "/tmp/test.html"
+    path_raw_png = "/tmp/test_raw.png"
+    path_final_png = "/tmp/test_final.png"
+
+    with open(path_html, "w", encoding="utf-8") as f: 
+        f.write(genera_html(MOMENTO_CODICE))
     
+    print("📸 Rendering con Playwright...")
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
-        page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
-        page.goto(f"file://{path}")
+        page = browser.new_page(viewport={"width": 540, "height": 1350}, device_scale_factor=3.0)
+        page.goto(f"file://{path_html}")
         page.wait_for_timeout(3000)
-        page.query_selector(".card").screenshot(path="/tmp/test.png", omit_background=True)
+        page.query_selector(".card").screenshot(path=path_raw_png, omit_background=True)
         browser.close()
         
-    send_telegram_photo("/tmp/test.png", MOMENTO_CODICE)
+    # ==============================================================================
+    # SOVRAPPOSIZIONE TEXTURE CON PILLOW
+    # ==============================================================================
+    if os.path.exists("texture.PNG"):
+        try:
+            print("🎨 Applicazione della grana di texture.PNG in corso...")
+            base_img = Image.open(path_raw_png).convert("RGBA")
+            texture_img = Image.open("texture.PNG").convert("RGBA")
+            
+            # Adatta perfettamente la texture alle dimensioni esatte del ritaglio della card
+            texture_img = texture_img.resize(base_img.size, Image.Resampling.LANCZOS)
+            
+            # Unione dei due livelli mantenendo le trasparenze dei bordi arrotondati della card
+            final_img = Image.alpha_composite(base_img, texture_img)
+            final_img.save(path_final_png, "PNG")
+            
+            send_telegram_photo(path_final_png, MOMENTO_CODICE)
+        except Exception as e:
+            print(f"⚠️ Errore durante la sovrapposizione: {e}. Invio l'immagine senza grana.")
+            send_telegram_photo(path_raw_png, MOMENTO_CODICE)
+    else:
+        print("⚠️ File 'texture.PNG' non trovato. Invio l'immagine base.")
+        send_telegram_photo(path_raw_png, MOMENTO_CODICE)
 
 if __name__ == "__main__":
     main()
