@@ -382,10 +382,10 @@ def recupera_e_genera_stats_html(match_id, home_id, away_id, home_name, away_nam
     xg_perc = 50 if (pulisci_val_float(xg_h) == 0.0 and pulisci_val_float(xg_a) == 0.0) else calcola_percentuale_barra(xg_h, xg_a, tipo="float")
 
     stats_mappate = [
+        ("xG",               xg_h, xg_a, xg_perc),
         ("Possesso palla",   pos_h, pos_a, bp_perc),
         ("Tiri totali",      str(api_stats["Total Shots"][0] or 0),     str(api_stats["Total Shots"][1] or 0),     calcola_percentuale_barra(api_stats["Total Shots"][0], api_stats["Total Shots"][1])),
         ("Tiri in porta",    str(api_stats["Shots on Goal"][0] or 0),   str(api_stats["Shots on Goal"][1] or 0),   calcola_percentuale_barra(api_stats["Shots on Goal"][0], api_stats["Shots on Goal"][1])),
-        ("xG",               xg_h, xg_a, xg_perc),
         ("Passaggi riusciti",str(api_stats.get("Passes accurate",[0,0])[0] or 0), str(api_stats.get("Passes accurate",[0,0])[1] or 0), calcola_percentuale_barra(api_stats.get("Passes accurate",[0,0])[0], api_stats.get("Passes accurate",[0,0])[1])),
         ("Corner",           str(api_stats["Corner Kicks"][0] or 0),    str(api_stats["Corner Kicks"][1] or 0),    calcola_percentuale_barra(api_stats["Corner Kicks"][0], api_stats["Corner Kicks"][1])),
         ("Falli",            str(api_stats["Fouls"][0] or 0),           str(api_stats["Fouls"][1] or 0),           calcola_percentuale_barra(api_stats["Fouls"][0], api_stats["Fouls"][1])),
