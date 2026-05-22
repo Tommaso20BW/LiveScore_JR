@@ -289,15 +289,15 @@ def build_split_scorers_text(events, home_id, away_id):
 # ==============================================================================
 # LOGICA GENERAZIONE GRAFICA STATISTICHE CON PLAYWRIGHT
 # ==============================================================================
+# ==============================================================================
+# LOGICA GENERAZIONE GRAFICA STATISTICHE (PLAYWRIGHT + PILLOW)
+# ==============================================================================
 def recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name, away_name, home_goals, away_goals, momento, league_name="SERIE A"):
-    print(f"📊 Recupero statistiche reali dall'API per il momento {momento}...")
     stats_url = f"https://v3.football.api-sports.io/fixtures/statistics?fixture={match_id}"
-    
-    h_logo = JUVE_LOGO_URL if "juventus" in home_name.lower() else API_LOGO_URL.format(home_id)
-    a_logo = JUVE_LOGO_URL if "juventus" in away_name.lower() else API_LOGO_URL.format(away_id)
+    h_logo = JUVE_LOGO_URL if home_id == JUVE_ID else API_LOGO_URL.format(home_id)
+    a_logo = JUVE_LOGO_URL if away_id == JUVE_ID else API_LOGO_URL.format(away_id)
     badge_label = MOMENTI_CONFIG[momento]['badge']
     
-    # Valori di fallback predefiniti
     api_stats = {"Shots on Goal": [0,0], "Total Shots": [0,0], "Fouls": [0,0], "Corner Kicks": [0,0], 
                  "Ball Possession": ["50%","50%"], "Yellow Cards": [0,0], "Red Cards": [0,0], 
                  "expected_goals": ["0.0","0.0"], "Passes accurate": [0,0]}
@@ -306,144 +306,83 @@ def recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name,
         res = requests.get(stats_url, headers=headers, timeout=15).json()
         if res.get('response') and len(res['response']) >= 2:
             for team_data in res['response']:
-                t_id = team_data['team']['id']
-                idx = 0 if t_id == home_id else 1
+                idx = 0 if team_data['team']['id'] == home_id else 1
                 for s in team_data['statistics']:
                     api_stats[s['type']] = api_stats.get(s['type'], [0,0])
                     api_stats[s['type']][idx] = s['value']
-    except Exception as e:
-        print(f"⚠️ Errore nel recupero statistiche API: {e}. Uso valori di fallback.")
+    except: pass
 
-    def pulisci_val_int(val):
-        if val is None: return 0
-        return int(str(val).replace('%', '').strip())
+    def p_int(v): return int(str(v).replace('%','').strip()) if v else 0
+    def p_float(v): return float(str(v).strip()) if v else 0.0
+    def calc_p(h, a, t="i"):
+        vh, va = (p_float(h), p_float(a)) if t=="f" else (p_int(h), p_int(a))
+        return int((vh/(vh+va))*100) if (vh+va)>0 else 50
 
-    def pulisci_val_float(val):
-        if val is None: return 0.0
-        return float(str(val).strip())
-
-    def calcola_percentuale_barra(h_val, a_val, tipo="int"):
-        if tipo == "float":
-            h, a = pulisci_val_float(h_val), pulisci_val_float(a_val)
-        else:
-            h, a = pulisci_val_int(h_val), pulisci_val_int(a_val)
-        if (h + a) == 0: return 50
-        return int((h / (h + a)) * 100)
-
-    pos_h = str(api_stats["Ball Possession"][0]) if api_stats["Ball Possession"][0] is not None else "50%"
-    pos_a = str(api_stats["Ball Possession"][1]) if api_stats["Ball Possession"][1] is not None else "50%"
-    bp_perc = calcola_percentuale_barra(pos_h, pos_a)
-
-    raw_xg_h = api_stats.get("expected_goals", ["0.0", "0.0"])[0]
-    raw_xg_a = api_stats.get("expected_goals", ["0.0", "0.0"])[1]
-
-    xg_h = str(raw_xg_h) if raw_xg_h is not None else "0.0"
-    xg_a = str(raw_xg_a) if raw_xg_a is not None else "0.0"
-
-    if pulisci_val_float(xg_h) == 0.0 and pulisci_val_float(xg_a) == 0.0:
-        xg_perc = 50
-    else:
-        xg_perc = calcola_percentuale_barra(xg_h, xg_a, tipo="float")
-
-    stats_mappate = [
-        ("xG", xg_h, xg_a, xg_perc),
-        ("Possesso palla", pos_h, pos_a, bp_perc),
-        ("Tiri totali", str(api_stats["Total Shots"][0] or 0), str(api_stats["Total Shots"][1] or 0), calcola_percentuale_barra(api_stats["Total Shots"][0], api_stats["Total Shots"][1])),
-        ("Tiri in porta", str(api_stats["Shots on Goal"][0] or 0), str(api_stats["Shots on Goal"][1] or 0), calcola_percentuale_barra(api_stats["Shots on Goal"][0], api_stats["Shots on Goal"][1])),
-        ("Passaggi riusciti", str(api_stats.get("Passes accurate", [0,0])[0] or 0), str(api_stats.get("Passes accurate", [0,0])[1] or 0), calcola_percentuale_barra(api_stats.get("Passes accurate", [0,0])[0], api_stats.get("Passes accurate", [0,0])[1])),
-        ("Corner", str(api_stats["Corner Kicks"][0] or 0), str(api_stats["Corner Kicks"][1] or 0), calcola_percentuale_barra(api_stats["Corner Kicks"][0], api_stats["Corner Kicks"][1])),
-        ("Falli", str(api_stats["Fouls"][0] or 0), str(api_stats["Fouls"][1] or 0), calcola_percentuale_barra(api_stats["Fouls"][0], api_stats["Fouls"][1])),
-        ("Ammoniti", str(api_stats["Yellow Cards"][0] or 0), str(api_stats["Yellow Cards"][1] or 0), calcola_percentuale_barra(api_stats["Yellow Cards"][0], api_stats["Yellow Cards"][1])),
-        ("Espulsi", str(api_stats["Red Cards"][0] or 0), str(api_stats["Red Cards"][1] or 0), calcola_percentuale_barra(api_stats["Red Cards"][0], api_stats["Red Cards"][1]))
+    s_map = [
+        ("xG", str(api_stats.get("expected_goals",[0,0])[0] or "0.0"), str(api_stats.get("expected_goals",[0,0])[1] or "0.0"), calc_p(api_stats.get("expected_goals",["0.0","0.0"])[0], api_stats.get("expected_goals",["0.0","0.0"])[1], "f")),
+        ("Possesso", str(api_stats["Ball Possession"][0]), str(api_stats["Ball Possession"][1]), calc_p(api_stats["Ball Possession"][0], api_stats["Ball Possession"][1])),
+        ("Tiri Totali", str(api_stats["Total Shots"][0] or 0), str(api_stats["Total Shots"][1] or 0), calc_p(api_stats["Total Shots"][0], api_stats["Total Shots"][1])),
+        ("Tiri in Porta", str(api_stats["Shots on Goal"][0] or 0), str(api_stats["Shots on Goal"][1] or 0), calc_p(api_stats["Shots on Goal"][0], api_stats["Shots on Goal"][1])),
+        ("Passaggi", str(api_stats.get("Passes accurate",[0,0])[0] or 0), str(api_stats.get("Passes accurate",[0,0])[1] or 0), calc_p(api_stats.get("Passes accurate",[0,0])[0], api_stats.get("Passes accurate",[0,0])[1])),
+        ("Corner", str(api_stats["Corner Kicks"][0] or 0), str(api_stats["Corner Kicks"][1] or 0), calc_p(api_stats["Corner Kicks"][0], api_stats["Corner Kicks"][1])),
+        ("Falli", str(api_stats["Fouls"][0] or 0), str(api_stats["Fouls"][1] or 0), calc_p(api_stats["Fouls"][0], api_stats["Fouls"][1])),
+        ("Ammoniti", str(api_stats["Yellow Cards"][0] or 0), str(api_stats["Yellow Cards"][1] or 0), calc_p(api_stats["Yellow Cards"][0], api_stats["Yellow Cards"][1])),
+        ("Espulsi", str(api_stats["Red Cards"][0] or 0), str(api_stats["Red Cards"][1] or 0), calc_p(api_stats["Red Cards"][0], api_stats["Red Cards"][1]))
     ]
 
-    rows_html = "".join([f'''<div class="stat-row">
-          <div class="val home-val">{h}</div>
-          <div class="stat-mid"><div class="stat-label">{label}</div><div class="bar-track"><div style="background:#4f9cf9;width:{hp}%;height:8px;border-radius:4px 0 0 4px"></div><div style="background:#f05252;width:{100-hp}%;height:8px;border-radius:0 4px 4px 0"></div></div></div>
-          <div class="val away-val">{a}</div>
-        </div>''' for label, h, a, hp in stats_mappate])
+    rows_html = "".join([f'''<div class="stat-row"><div class="stat-top"><div class="val home-val">{h}</div><div class="stat-label">{l}</div><div class="val away-val">{a}</div></div>
+    <div class="bar-track"><div class="bar-home" style="width:{hp}%"></div><div class="bar-away" style="width:{100-hp}%"></div></div></div>''' for l, h, a, hp in s_map])
 
-    html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Barlow+Condensed:wght@700;900&display=swap');
-  * {{ margin:0; padding:0; box-sizing:border-box; }}
-  body {{ width: 540px; background: #0b0f1e; font-family: 'Barlow', sans-serif; }}
-  .card {{ width: 540px; background: #0b0f1e; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }}
-  .header {{ background: #0d1528; padding: 25px 28px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
-  .league-row {{ text-align: center; font-size: 11px; letter-spacing: 1.5px; color: #4a5470; text-transform: uppercase; margin-bottom: 12px; }}
-  .badge {{ display: block; width: fit-content; margin: 0 auto 14px; background: #f0b429; color: #0b0f1e; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 4px 14px; border-radius: 20px; text-transform: uppercase; }}
-  .teams-row {{ display: flex; align-items: center; justify-content: space-between; }}
-  .logo {{ width: 65px; height: 65px; object-fit: contain; display: block; margin: 0 auto 10px; }}
-  .team-name {{ color: #ffffff; font-weight: 700; font-size: 15px; text-align: center; }}
-  .score {{ color: #ffffff; font-family: 'Barlow Condensed'; font-size: 60px; font-weight: 900; margin: 0 15px; }}
-  .stats-body {{ padding: 20px 28px; }}
-  .stats-title {{ color: #6070a0; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 2px; text-align: center; }}
-  .stat-row {{ display: flex; align-items: center; padding: 8px 0; }}
-  .val {{ width: 50px; font-family: 'Barlow Condensed'; font-size: 19px; font-weight: 800; color: #ffffff; }}
-  .home-val {{ text-align: left; }}
-  .away-val {{ text-align: right; }}
-  .stat-mid {{ flex: 1; padding: 0 15px; text-align: center; color: #a0aacc; font-size: 12px; font-weight: 600; }}
-  .stat-label {{ margin-bottom: 5px; }}
-  .bar-track {{ display: flex; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); }}
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="header">
-    <div class="league-row">{league_name.upper()}</div>
-    <div class="badge">{badge_label}</div>
-    <div class="teams-row">
-      <div class="team"><img src="{h_logo}" class="logo" crossorigin="anonymous"><div class="team-name">{home_name}</div></div>
-      <div class="score">{home_goals} – {away_goals}</div>
-      <div class="team"><img src="{a_logo}" class="logo" crossorigin="anonymous"><div class="team-name">{away_name}</div></div>
-    </div>
-  </div>
-  <div class="stats-body">
-    <div class="stats-title">STATISTICHE ANALITICHE</div>
-    {rows_html}
-  </div>
-</div>
-</body>
-</html>"""
+    html_content = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+    *{{margin:0;padding:0;box-sizing:border-box;}}
+    body{{background:#060816;font-family:'Inter',sans-serif;width:540px;display:flex;justify-content:center;}}
+    .card{{width:540px;background:linear-gradient(180deg,rgba(17,24,39,0.96),rgba(10,14,28,0.96));border-radius:32px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);}}
+    .header{{padding:34px 32px 30px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.06);position:relative;}}
+    .league-row{{color:#7c8cb5;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:18px;}}
+    .badge{{width:fit-content;margin:0 auto 22px;padding:7px 18px;border-radius:999px;background:linear-gradient(135deg,#facc15,#f59e0b);color:#111827;font-size:10px;font-weight:900;text-transform:uppercase;}}
+    .teams-row{{display:flex;align-items:center;justify-content:space-between;}}
+    .team{{width:120px;}}.logo{{width:70px;height:70px;object-fit:contain;margin-bottom:10px;}}
+    .team-name{{color:white;font-weight:800;font-size:15px;}}
+    .score{{font-family:'Barlow Condensed';font-size:75px;font-weight:900;color:white;line-height:1;}}
+    .stats-body{{padding:30px 28px;}}.stats-title{{text-align:center;color:#91a4d0;font-size:11px;font-weight:800;text-transform:uppercase;margin-bottom:20px;letter-spacing:1px;}}
+    .stat-row{{padding:12px 0;}}.stat-top{{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}}
+    .val{{font-family:'Barlow Condensed';font-size:22px;font-weight:900;color:white;width:50px;}}
+    .home-val{{text-align:left;}}.away-val{{text-align:right;}}.stat-label{{color:#b4c0df;font-size:13px;font-weight:700;}}
+    .bar-track{{height:10px;background:rgba(255,255,255,0.06);border-radius:10px;position:relative;overflow:hidden;}}
+    .bar-home{{position:absolute;left:0;height:100%;background:linear-gradient(90deg,#60a5fa,#2563eb);}}
+    .bar-away{{position:absolute;right:0;height:100%;background:linear-gradient(90deg,#ef4444,#dc2626);}}
+    </style></head><body><div class="card" id="widget-card">
+    <div class="header"><div class="league-row">{league_name.upper()}</div><div class="badge">{badge_label}</div>
+    <div class="teams-row"><div class="team"><img src="{h_logo}" class="logo"><div class="team-name">{home_name}</div></div>
+    <div class="score">{home_goals}-{away_goals}</div>
+    <div class="team"><img src="{a_logo}" class="logo"><div class="team-name">{away_name}</div></div></div></div>
+    <div class="stats-body"><div class="stats-title">STATISTICHE ANALITICHE</div>{rows_html}</div></div></body></html>"""
 
-    path_html = "/tmp/stats.html"
-    path_png = "/tmp/stats.png"
+    path_html, path_raw, path_final = "/tmp/stats.html", "/tmp/stats_raw.png", "stats_final.png"
+    with open(path_html, "w", encoding="utf-8") as f: f.write(html_content)
     
-    with open(path_html, "w", encoding="utf-8") as f: 
-        f.write(html_content)
-    
-    print("📸 Avvio rendering con Playwright...")
     with sync_playwright() as p:
-        browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
-        page = browser.new_page(viewport={"width": 540, "height": 1050}, device_scale_factor=3.0)
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 540, "height": 1200}, device_scale_factor=2.0)
         page.goto(f"file://{path_html}")
-        page.wait_for_timeout(3000)
-        # Esegue lo screenshot
-        page.query_selector(".card").screenshot(path="/tmp/stats_raw.png")
+        page.wait_for_timeout(2000)
+        page.query_selector("#widget-card").screenshot(path=path_raw, omissions_background=True)
         browser.close()
 
-    # --- INIZIO PARTE DA AGGIUNGERE ---
-    def applica_texture_finale(input_path, texture_path, output_path):
-        try:
-            base = Image.open(input_path).convert("RGBA")
-            texture = Image.open(texture_path).convert("RGBA")
-            texture = texture.resize(base.size, Image.Resampling.LANCZOS)
-            out = Image.alpha_composite(base, texture)
-            out.convert("RGB").save(output_path, "PNG")
-        except Exception as e:
-            print(f"Errore texture: {e}")
-
-    # Controlla se la texture esiste e la applica
     if os.path.exists("texture.PNG"):
-        applica_texture_finale("/tmp/stats_raw.png", "texture.PNG", "/tmp/stats_final.png")
-        return "/tmp/stats_final.png"
-    else:
-        return "/tmp/stats_raw.png"
-    # --- FINE PARTE DA AGGIUNGERE ---
-
+        try:
+            base = Image.open(path_raw).convert("RGBA")
+            canvas = Image.new("RGBA", base.size, (6, 8, 22, 255))
+            canvas.paste(base, (0,0), base)
+            texture = Image.open("texture.PNG").convert("RGBA").resize(base.size, Image.Resampling.LANCZOS)
+            final = Image.alpha_composite(canvas, texture)
+            final.convert("RGB").save(path_final, "PNG")
+            return path_final
+        except: return path_raw
+    return path_raw
+    
 # ==============================================================================
 # LOGICA DI GESTIONE E CICLO DEL MATCH LIVE
 # ==============================================================================
