@@ -646,7 +646,14 @@ def avvia_ciclo_partita():
                     send_telegram(f"<b>INIZIO 2° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("2ET_START")
 
+            # 6. GESTIONE RIGORI LIVE (STATUS PEN)
             if status == "PEN":
+                # Flash intermedio: Fine supplementari, si va ai rigori
+                if "ET_END_PENS" not in state["sent_periods"]:
+                    send_telegram(f"<b>FINE TEMPI SUPPLEMENTARI {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
+                    state["sent_periods"].append("ET_END_PENS")
+                
+                # Tracciamento rigori colpo su colpo
                 events = match.get('events', [])
                 home_pen_icons, away_pen_icons = [], []
                 for e in events:
@@ -660,9 +667,11 @@ def avvia_ciclo_partita():
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
+            # 7. CHIUSURA DEFINITIVA MATCH (FISCHIO FINALE REALE)
             status_long = fixture.get('status', {}).get('long', '').lower()
-            if status in ["FT", "AET", "PEN"] or "finished" in status_long:
-                print("🏁 FISCHIO FINALE RILEVATO! Connessione a Canva per l'export immediato...")
+            # Si attiva se è FT/AET, oppure se è PEN ma lo stato lungo conferma che la partita è finita (rigori conclusi)
+            if status in ["FT", "AET"] or (status == "PEN" and "finished" in status_long) or "finished" in status_long:
+                print("🏁 FISCHIO FINALE REALE RILEVATO! Connessione a Canva per l'export immediato...")
                 scorers_line = build_split_scorers_text(match.get('events', []), home_id, away_id)
                 
                 if p_home is not None:
