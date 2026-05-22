@@ -40,39 +40,53 @@ def get_api_headers():
 def api_request(url, params=None, timeout=15):
     """
     Esegue una richiesta GET all'API Football.
-    Se la chiave attiva è esaurita (401/403/429), switcha automaticamente
-    alla chiave successiva e riprova. Non torna mai indietro alla chiave precedente.
+    Gestisce sia errori HTTP (401/403/429) sia errori nel body JSON
+    (es: "You have reached the request limit for the day").
+    Switcha automaticamente alla chiave successiva senza mai tornare indietro.
     """
     global active_key_index
 
-    # Proviamo dalla chiave attiva in poi (non ricomincia da capo)
-    for i in range(active_key_index, len(API_KEYS)):
+    keys_to_try = list(range(active_key_index, len(API_KEYS)))
+
+    for i in keys_to_try:
         headers = {"x-apisports-key": API_KEYS[i]}
         try:
             res = requests.get(url, headers=headers, params=params, timeout=timeout)
 
+            # Caso 1: errore HTTP diretto
             if res.status_code in [401, 403, 429]:
                 print(f"⚠️ API Key {i + 1} esaurita o bloccata (HTTP {res.status_code}).")
                 if i + 1 < len(API_KEYS):
                     print(f"🔄 Switcho definitivamente alla Key {i + 2} per il resto della partita...")
                     active_key_index = i + 1
-                    continue  # riprova con la chiave successiva
+                    continue
                 else:
                     print("❌ Tutte le API key sono esaurite.")
                     return None
 
-            res.raise_for_status()
             data = res.json()
 
-            # Aggiorna active_key_index se abbiamo usato una chiave diversa
-            if i != active_key_index:
-                active_key_index = i
+            # Caso 2: risponde 200 ma con errore nel body JSON
+            # Es: {"errors": {"requests": "You have reached the request limit..."}}
+            if data.get('errors'):
+                errors_str = str(data['errors']).lower()
+                if any(k in errors_str for k in ['limit', 'request', 'subscription', 'token', 'exceed']):
+                    print(f"⚠️ API Key {i + 1} esaurita (limite giornaliero raggiunto): {data['errors']}")
+                    if i + 1 < len(API_KEYS):
+                        print(f"🔄 Switcho definitivamente alla Key {i + 2} per il resto della partita...")
+                        active_key_index = i + 1
+                        continue
+                    else:
+                        print("❌ Tutte le API key hanno raggiunto il limite giornaliero.")
+                        return None
 
+            # Tutto ok: aggiorna l'indice attivo e restituisce i dati
+            active_key_index = i
             return data
 
         except requests.exceptions.RequestException as e:
             print(f"⚠️ Errore di rete con Key {i + 1}: {e}")
-            return None
+            continue  # prova la chiave successiva invece di return None
 
     print("❌ Tutte le API key hanno fallito.")
     return None
