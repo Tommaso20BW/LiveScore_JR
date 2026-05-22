@@ -170,11 +170,11 @@ def main():
     # ==============================================================================
     # SOVRAPPOSIZIONE TEXTURE CON PILLOW
     # ==============================================================================
-    if os.path.exists("texture.PNG"):
+    if os.path.exists("texture.png"):
         try:
-            print("🎨 Applicazione della grana di texture.PNG (1620x1980) in corso...")
+            print("🎨 Applicazione della grana di texture.png (1620x1980) in corso...")
             base_img = Image.open(path_raw_png).convert("RGBA")
-            texture_img = Image.open("texture.PNG").convert("RGBA")
+            texture_img = Image.open("texture.png").convert("RGBA")
             
             # Adatta la texture precisamente a 1620x1980
             texture_img = texture_img.resize(base_img.size, Image.Resampling.LANCZOS)
@@ -188,7 +188,7 @@ def main():
             print(f"⚠️ Errore durante la sovrapposizione: {e}. Invio senza grana.")
             send_telegram_photo(path_raw_png, MOMENTO_CODICE)
     else:
-        print("⚠️ File 'texture.PNG' non trovato. Invio l'immagine base ad alta definizione.")
+        print("⚠️ File 'texture.png' non trovato. Invio l'immagine base ad alta definizione.")
         send_telegram_photo(path_raw_png, MOMENTO_CODICE)
 
 if __name__ == "__main__":
