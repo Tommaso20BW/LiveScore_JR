@@ -33,13 +33,14 @@ def send_telegram_photo(png_path, momento):
     with open(png_path, "rb") as f:
         requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"}, 
                       files={"photo": ("stats.png", f, "image/png")})
-    print("✅ Inviato su Telegram in formato HTML 1620x1980 con texture applicata!")
+    print("✅ Inviato su Telegram in formato HTML 1620x1980 con tutte le statistiche e texture!")
 
 def genera_html(momento):
     h_logo = JUVE_LOGO_URL if "juventus" in HOME_NAME.lower() else API_LOGO_URL.format(HOME_ID)
     a_logo = JUVE_LOGO_URL if "juventus" in AWAY_NAME.lower() else API_LOGO_URL.format(AWAY_ID)
     badge_label = MOMENTI_CONFIG[momento]['badge']
 
+    # Lista completa di tutte le 11 statistiche richieste
     stats_data = [
         ("Possesso palla", "58%", "42%", 58),
         ("Tiri totali", "16", "9", 64),
@@ -84,12 +85,12 @@ body {{
     radial-gradient(circle at bottom right, #7c3aed 0%, transparent 40%),
     #060816;
   font-family: 'Inter', sans-serif;
-  padding: 60px;
+  padding: 50px 60px;
   overflow: hidden;
 }}
 .card {{
-  width: 1500px; /* 1620px totali - 120px di padding laterale del body */
-  height: 1860px; /* 1980px totali - 120px di padding verticale del body */
+  width: 1500px;
+  height: 1880px;
   margin: 0 auto;
   background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(10,14,28,0.96));
   border-radius: 70px;
@@ -101,28 +102,28 @@ body {{
 }}
 .header {{ 
   position: relative; 
-  padding: 90px 80px 70px; 
+  padding: 75px 80px 55px; 
   border-bottom: 3px solid rgba(255,255,255,0.06); 
 }}
-.league-row {{ text-align: center; color: #7c8cb5; font-size: 30px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 40px; }}
-.badge {{ width: fit-content; margin: 0 auto 50px; padding: 16px 42px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 24px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }}
-.teams-row {{ display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }}
+.league-row {{ text-align: center; color: #7c8cb5; font-size: 28px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 35px; }}
+.badge {{ width: fit-content; margin: 0 auto 40px; padding: 14px 40px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 22px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }}
+.teams-row {{ display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }}
 .team {{ width: 350px; text-align: center; }}
-.logo {{ width: 190px; height: 190px; object-fit: contain; display: block; margin: 0 auto 30px; }}
-.team-name {{ color: white; font-weight: 800; font-size: 42px; }}
+.logo {{ width: 170px; height: 170px; object-fit: contain; display: block; margin: 0 auto 25px; }}
+.team-name {{ color: white; font-weight: 800; font-size: 40px; }}
 .score-wrap {{ text-align: center; }}
-.score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 210px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
-.match-status {{ margin-top: 25px; color: #8fa1c7; font-size: 28px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
-.stats-body {{ padding: 70px 80px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }}
-.stats-title {{ text-align: center; color: #91a4d0; font-size: 28px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; }}
-.stat-row {{ padding: 22px 0; border-bottom: 2px solid rgba(255,255,255,0.05); }}
+.score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 195px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
+.match-status {{ margin-top: 20px; color: #8fa1c7; font-size: 26px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
+.stats-body {{ padding: 50px 80px 65px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }}
+.stats-title {{ text-align: center; color: #91a4d0; font-size: 26px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 15px; }}
+.stat-row {{ padding: 15px 0; border-bottom: 2px solid rgba(255,255,255,0.05); }}
 .stat-row:last-child {{ border-bottom: none; }}
-.stat-top {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }}
-.val {{ width: 120px; color: white; font-weight: 900; font-size: 54px; font-family: 'Barlow Condensed', sans-serif; }}
+.stat-top {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }}
+.val {{ width: 120px; color: white; font-weight: 900; font-size: 46px; font-family: 'Barlow Condensed', sans-serif; }}
 .home-val {{ text-align: left; }}
 .away-val {{ text-align: right; }}
-.stat-label {{ color: #b4c0df; font-size: 34px; font-weight: 700; }}
-.bar-track {{ position: relative; height: 26px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }}
+.stat-label {{ color: #b4c0df; font-size: 30px; font-weight: 700; }}
+.bar-track {{ position: relative; height: 22px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }}
 .bar-home, .bar-away {{ position: absolute; top: 0; height: 100%; }}
 .bar-home {{ left: 0; background: linear-gradient(90deg, #60a5fa, #2563eb); }}
 .bar-away {{ right: 0; background: linear-gradient(90deg, #ef4444, #dc2626); }}
@@ -158,17 +159,16 @@ def main():
     print("📸 Rendering con Playwright (Risoluzione 1620x1980)...")
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
-        # Viewport impostato esattamente sulle dimensioni totali desiderate
         page = browser.new_page(viewport={"width": 1620, "height": 1980}, device_scale_factor=1.0)
         page.goto(f"file://{path_html}")
         page.wait_for_timeout(3000)
         
-        # Scattiamo lo screenshot all'intera pagina (body) per preservare le proporzioni 1620x1980 incluse le sfumature esterne
+        # Screenshot full page per non perdere i gradienti esterni del layout 1620x1980
         page.screenshot(path=path_raw_png, omit_background=False)
         browser.close()
         
     # ==============================================================================
-    # SOVRAPPOSIZIONE TEXTURE AD ALTA RISOLUZIONE CON PILLOW
+    # SOVRAPPOSIZIONE TEXTURE CON PILLOW
     # ==============================================================================
     if os.path.exists("texture.PNG"):
         try:
@@ -176,10 +176,10 @@ def main():
             base_img = Image.open(path_raw_png).convert("RGBA")
             texture_img = Image.open("texture.PNG").convert("RGBA")
             
-            # Ridimensiona al pixel la texture per coprire l'intera area 1620x1980
+            # Adatta la texture precisamente a 1620x1980
             texture_img = texture_img.resize(base_img.size, Image.Resampling.LANCZOS)
             
-            # Fonde i due livelli ad alta definizione
+            # Unione dei due livelli
             final_img = Image.alpha_composite(base_img, texture_img)
             final_img.save(path_final_png, "PNG")
             
