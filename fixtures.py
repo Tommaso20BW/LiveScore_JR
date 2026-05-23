@@ -2,7 +2,7 @@ import os
 import requests
 from datetime import datetime, timezone, timedelta
 
-def vedi_calendario_juve():
+def vedi_calendario_juve_free():
     # Recupera la chiave dalle variabili d'ambiente (o incollala direttamente qui tra virgolette per fare un test al volo)
     api_key = os.getenv('API_KEY') or "LA_TUA_API_KEY_QUI"
     juve_id = 496
@@ -14,13 +14,13 @@ def vedi_calendario_juve():
     url = "https://v3.football.api-sports.io/fixtures"
     headers = {"x-apisports-key": api_key}
     
-    # Chiediamo tutti i match della stagione (usiamo 2025 perché l'anno calcistico 25/26 è indicizzato come 2025)
+    # MODIFICA PER PIANO FREE: Chiediamo i prossimi 10 match senza specificare la season (che generava l'errore)
     params = {
         "team": juve_id,
-        "season": "2025"
+        "next": "10"
     }
 
-    print(f"🔄 Interrogazione API-Football per il Team ID {juve_id}...")
+    print(f"🔄 Interrogazione API-Football [Piano Free] per le prossime partite del Team ID {juve_id}...")
     
     try:
         response = requests.get(url, headers=headers, params=params, timeout=15)
@@ -30,11 +30,11 @@ def vedi_calendario_juve():
         fixtures = data.get('response', [])
         
         if not fixtures:
-            print("❌ Nessun match trovato. Controlla se la stagione o l'API Key sono corrette.")
+            print("❌ Nessun match trovato. Controlla la risposta dell'API.")
             print(f"Risposta API: {data}")
             return
 
-        print(f"\n🎯 Trovate {len(fixtures)} partite nel calendario. Ecco l'elenco:\n")
+        print(f"\n🎯 Trovati {len(fixtures)} match imminenti. Ecco l'elenco:\n")
         print(f"{'ID FIXTURE':<12} | {'DATA E ORA (ITA)':<19} | {'PARTITA':<45} | {'STATO':<5}")
         print("-" * 90)
 
@@ -57,7 +57,7 @@ def vedi_calendario_juve():
             away_name = f['teams']['away']['name']
             match_str = f"{home_name} vs {away_name}"
 
-            # Se la partita ha già un punteggio, mostralo di fianco
+            # Se la partita ha già un punteggio o è live, mostralo
             if f['goals']['home'] is not None and f['goals']['away'] is not None:
                 match_str += f" ({f['goals']['home']}-{f['goals']['away']})"
 
@@ -67,4 +67,4 @@ def vedi_calendario_juve():
         print(f"❌ Errore durante la richiesta: {e}")
 
 if __name__ == "__main__":
-    vedi_calendario_juve()
+    vedi_calendario_juve_free()
