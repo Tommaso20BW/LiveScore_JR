@@ -5,7 +5,7 @@ import time
 import sys
 import base64
 from PIL import Image
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 
 try:
@@ -443,7 +443,7 @@ body {{
             out.convert("RGB").save(output_path, "PNG")
             print("🎨 Texture ad alta risoluzione fusa con successo!")
         except Exception as e:
-            print(f"Errore applicazione texture: {e}")
+            print(f"Errore application texture: {e}")
 
     if os.path.exists("texture.png"):
         applica_texture_finale(path_raw_png, "texture.png", path_final_png)
@@ -452,10 +452,10 @@ body {{
         return path_raw_png
 
 # ==============================================================================
-# LOGICA DI GESTIONE E CICLO DEL MATCH LIVE
+# LOGICA DI GESTIONE E CICLO DEL MATCH LIVE (AGGIORNATA PIANO FREE)
 # ==============================================================================
 def avvia_ciclo_partita():
-    print("✅ Procedo al recupero del match...")
+    print("✅ Procedo al recupero del match con la strategia Piano Free...")
 
     if not API_KEY:
         print("Errore: API_KEY mancante.")
@@ -465,73 +465,63 @@ def avvia_ciclo_partita():
     url = "https://v3.football.api-sports.io/fixtures"
     match_id = None
 
-    # ── Cerca partita UNA SOLA VOLTA (nessun loop infinito) ──────────────
-    today_date = datetime.now().strftime('%Y-%m-%d')
-    print(f"🔄 Cerco partita della Juventus ({today_date})...")
+    # Impostiamo il fuso orario italiano (Roma) per generare la data di oggi corretta
+    fuso_italiano = timezone(timedelta(hours=2)) 
+    today_date = datetime.now(fuso_italiano).strftime('%Y-%m-%d')
+    print(f"🔄 Interrogazione palinsesto globale per il giorno: {today_date}...")
 
     try:
-        # 1. Live ora?
-        live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
-        if live_res.get('response'):
-            for f in live_res['response']:
-                if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
-                    match_id = f['fixture']['id']
-                    print(f"🔥 Match trovato già LIVE! ID: {match_id}")
-                    break
+        # STRATEGIA PIANO FREE: Chiediamo tutti i match del mondo per la data di oggi.
+        # Questo endpoint non usa parametri bloccati ed è gratuito al 100%.
+        res_oggi = requests.get(f"{url}?date={today_date}", headers=headers, timeout=15).json()
+        fixtures = res_oggi.get('response', [])
 
-        # 2. Nel palinsesto di oggi?
-        if not match_id:
-            date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
-            if date_res.get('response') and len(date_res['response']) > 0:
-                match_data = date_res['response'][0]
-                match_kickoff_str = match_data['fixture']['date']
-                try:
-                    kickoff = datetime.fromisoformat(match_kickoff_str)
-                    now = datetime.now(timezone.utc)
-                    minuti_mancanti = (kickoff - now).total_seconds() / 60
-                    if minuti_mancanti > 30:
+        if fixtures:
+            # Scansione locale via Python dell'array per trovare la Juventus (ID 496)
+            for f in fixtures:
+                home_id = f['teams']['home']['id']
+                away_id = f['teams']['away']['id']
+                if home_id == JUVE_ID or away_id == JUVE_ID:
+                    match_id = f['fixture']['id']
+                    status_match = f['fixture']['status']['short']
+                    print(f"🎯 Partita della Juventus agganciata con successo! ID: {match_id} (Stato: {status_match})")
+                    
+                    # Calcoliamo matematicamente i minuti mancanti per evitare bug di fuso orario
+                    match_kickoff_str = f['fixture']['date'].replace('Z', '+00:00')
+                    kickoff_utc = datetime.fromisoformat(match_kickoff_str)
+                    now_utc = datetime.now(timezone.utc)
+                    minuti_mancanti = (kickoff_utc - now_utc).total_seconds() / 60
+                    
+                    if minuti_mancanti > 0:
                         ore = int(minuti_mancanti // 60)
                         minuti = int(minuti_mancanti % 60)
-                        print(f"⏰ Partita trovata ma inizia tra {ore}h {minuti}min. Riavvia il bot ~5min prima del fischio.")
-                        return
-                except Exception as e:
-                    print(f"⚠️ Impossibile leggere l'orario del match: {e}")
-                match_id = match_data['fixture']['id']
-                print(f"📅 Match trovato oggi nel palinsesto! ID: {match_id}")
+                        print(f"⏰ Il match inizia tra {ore}h {minuti}min. Avvio il monitoraggio continuo...")
+                    else:
+                        print(f"🏃‍♂️ Il match è già iniziato o in corso da {-int(minuti_mancanti)} minuti.")
+                    break
+        else:
+            print(f"⚠️ Nessun match restituito dall'API globale per oggi: {res_oggi.get('errors')}")
 
-        # 3. Prossima in calendario (solo se è oggi)?
+        # FALLBACK: Se la ricerca globale per data non restituisce nulla, verifichiamo se è già LIVE
         if not match_id:
-            next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
-            if next_res.get('response') and len(next_res['response']) > 0:
-                match_data = next_res['response'][0]
-                next_date = match_data['fixture']['date'][:10]
-                if next_date == today_date:
-                    match_kickoff_str = match_data['fixture']['date']
-                    try:
-                        kickoff = datetime.fromisoformat(match_kickoff_str)
-                        now = datetime.now(timezone.utc)
-                        minuti_mancanti = (kickoff - now).total_seconds() / 60
-                        if minuti_mancanti > 30:
-                            ore = int(minuti_mancanti // 60)
-                            minuti = int(minuti_mancanti % 60)
-                            print(f"⏰ Partita trovata ma inizia tra {ore}h {minuti}min. Riavvia il bot ~5min prima del fischio.")
-                            return
-                    except Exception as e:
-                        print(f"⚠️ Impossibile leggere l'orario del match: {e}")
-                    match_id = match_data['fixture']['id']
-                    print(f"📌 Match imminente trovato con next=1. ID: {match_id}")
-                else:
-                    print(f"📌 Prossimo match il {next_date}, non oggi. Nessuna partita da seguire.")
+            print("🔄 Tentativo di fallback: verifico se il match è attualmente LIVE...")
+            live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
+            if live_res.get('response'):
+                for f in live_res['response']:
+                    if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
+                        match_id = f['fixture']['id']
+                        print(f"🔥 Match trovato via Fallback LIVE! ID: {match_id}")
+                        break
 
     except Exception as e:
-        print(f"⚠️ Errore nel recupero dati dall'API: {e}")
+        print(f"⚠️ Errore nel recupero dati dall'API durante la fase di inizializzazione: {e}")
 
     # ── Se non c'è nulla oggi, fermati ───────────────────────────────────
     if not match_id:
-        print("❌ Nessuna partita della Juventus trovata oggi. Bot in uscita.")
+        print("❌ Nessuna partita della Juventus trovata per oggi con i filtri Free. Bot in uscita.")
         return
 
-    # ── Ciclo live: aspetta inizio se NS, poi monitora ────────────────────
+    # ── Ciclo live: da qui in poi monitora costantemente senza spegnersi ──
     print(f"⏳ Agganciato ID {match_id}. Entro nel ciclo di monitoraggio...")
     params = {"id": match_id}
 
@@ -606,7 +596,7 @@ def avvia_ciclo_partita():
             elif status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-                print("⏳ Attesa di 2 minuti per il consolidamento dati di FINE PRIMO TEMPO (HT)...")
+                print("⏳ Attesa di 2 minutes per il consolidamento dati di FINE PRIMO TEMPO (HT)...")
                 time.sleep(120)
                 png_path = recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name, away_name, g_home_int, g_away_int, "HT", league_name)
                 send_telegram_stats_photo(png_path, "HT", f"{e_comp} {hashtag}")
