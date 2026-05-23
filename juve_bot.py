@@ -547,7 +547,10 @@ def avvia_ciclo_partita():
             match = res['response'][0]
             fixture = match.get('fixture', {})
             status = fixture.get('status', {}).get('short', 'NS')
-            elapsed_minutes = fixture.get('status', {}).get('elapsed', 0)
+
+            # CORREZIONE: Se l'API restituisce None, lo trasformiamo in 0
+            raw_elapsed = fixture.get('status', {}).get('elapsed', 0)
+            elapsed_minutes = raw_elapsed if raw_elapsed is not None else 0
 
             goals_home = match.get('goals', {}).get('home')
             goals_away = match.get('goals', {}).get('away')
