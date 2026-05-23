@@ -6,6 +6,12 @@ import sys
 import base64
 from PIL import Image
 from datetime import datetime, timezone
+import pytz
+
+TIMEZONE_ITALIA = pytz.timezone("Europe/Rome")
+
+def get_today_italy():
+    return datetime.now(TIMEZONE_ITALIA).strftime("%Y-%m-%d")
 from playwright.sync_api import sync_playwright
 
 try:
@@ -466,7 +472,7 @@ def avvia_ciclo_partita():
     match_id = None
 
     # ── Cerca partita UNA SOLA VOLTA (nessun loop infinito) ──────────────
-    today_date = datetime.now().strftime('%Y-%m-%d')
+    today_date = get_today_italy()
     print(f"🔄 Cerco partita della Juventus ({today_date})...")
 
     try:
