@@ -42,4 +42,4 @@ jobs:
           GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           # Rimosso il riferimento errato a env.ONLY_REFRESH_TOKEN che non esisteva
-        run: python -u juve_bot.py
+        run: python -u fixtures.py
