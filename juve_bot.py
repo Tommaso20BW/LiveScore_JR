@@ -472,7 +472,6 @@ def avvia_ciclo_partita():
 
     try:
         # STRATEGIA PIANO FREE: Chiediamo tutti i match del mondo per la data di oggi.
-        # Questo endpoint non usa parametri bloccati ed è gratuito al 100%.
         res_oggi = requests.get(f"{url}?date={today_date}", headers=headers, timeout=15).json()
         fixtures = res_oggi.get('response', [])
 
@@ -492,10 +491,16 @@ def avvia_ciclo_partita():
                     now_utc = datetime.now(timezone.utc)
                     minuti_mancanti = (kickoff_utc - now_utc).total_seconds() / 60
                     
-                    if minuti_mancanti > 0:
+                    # BLOCCO DI SICUREZZA RICHIESTO: Se manca più di mezz'ora si spegne
+                    if minuti_mancanti > 30:
                         ore = int(minuti_mancanti // 60)
                         minuti = int(minuti_mancanti % 60)
-                        print(f"⏰ Il match inizia tra {ore}h {minuti}min. Avvio il monitoraggio continuo...")
+                        print(f"🛑 Mancano {ore}h {minuti}min all'inizio del match (più di 30 minuti).")
+                        print("🔒 Per salvaguardare la quota del Piano Free, il bot si spegne in sicurezza.")
+                        sys.exit(0)
+                    
+                    elif minuti_mancanti > 0:
+                        print(f"⏰ Il match inizia tra {int(minuti_mancanti)} minuti. Avvio il monitoraggio continuo...")
                     else:
                         print(f"🏃‍♂️ Il match è già iniziato o in corso da {-int(minuti_mancanti)} minuti.")
                     break
@@ -547,8 +552,8 @@ def avvia_ciclo_partita():
             match = res['response'][0]
             fixture = match.get('fixture', {})
             status = fixture.get('status', {}).get('short', 'NS')
-
-            # CORREZIONE: Se l'API restituisce None, lo trasformiamo in 0
+            
+            # CORREZIONE BUG CRASH: Protezione NoneType se l'API si addormenta nell'invio del minutaggio
             raw_elapsed = fixture.get('status', {}).get('elapsed', 0)
             elapsed_minutes = raw_elapsed if raw_elapsed is not None else 0
 
@@ -599,7 +604,7 @@ def avvia_ciclo_partita():
             elif status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-                print("⏳ Attesa di 2 minutes per il consolidamento dati di FINE PRIMO TEMPO (HT)...")
+                print("⏳ Attesa di 2 minuti per il consolidamento dati di FINE PRIMO TEMPO (HT)...")
                 time.sleep(120)
                 png_path = recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name, away_name, g_home_int, g_away_int, "HT", league_name)
                 send_telegram_stats_photo(png_path, "HT", f"{e_comp} {hashtag}")
@@ -620,7 +625,7 @@ def avvia_ciclo_partita():
                 send_telegram_stats_photo(png_path, "2H_END", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("2H_END")
 
-            # 5. CODICE DETTAGLIATO PER I TEMPI SUPPLEMENTARI (STATUS ET)
+            # 5. TEMPI SUPPLEMENTARI (STATUS ET)
             elif status == "ET":
                 if elapsed_minutes >= 91 and elapsed_minutes <= 105 and "1ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
@@ -650,7 +655,7 @@ def avvia_ciclo_partita():
                     send_telegram(f"{home_name}: " + "".join(home_pen_icons) + f"\n{away_name}: " + "".join(away_pen_icons) + f"\n\n{e_comp} {hashtag}")
                     state["penalties_count"] = total_kicks
 
-            # 7. CHIUSURA DEFINITIVA MATCH (FISCHIO FINALE REALE)
+            # 7. FISCHIO FINALE REALE E SPEGNIMENTO
             status_long = fixture.get('status', {}).get('long', '').lower()
             if status in ["FT", "AET"] or (status == "PEN" and status_long == "match finished"):
                 print("🏁 FISCHIO FINALE REALE RILEVATO! Connessione a Canva per l'export immediato...")
@@ -694,7 +699,7 @@ def avvia_ciclo_partita():
 
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
-                events, live_scorer_line = match.get('events', []), ""
+                events, live_scorer_line = map_events = match.get('events', []), ""
                 if events:
                     all_goals = [e for e in events if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower()]
                     if all_goals:
