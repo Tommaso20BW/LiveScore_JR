@@ -482,8 +482,10 @@ def avvia_ciclo_partita():
     try:
         # 1. Live ora?
         live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
+        print(f"DEBUG live=all → {live_res.get('results', 0)} risultati")
         if live_res.get('response'):
             for f in live_res['response']:
+                print(f"  DEBUG live fixture: {f['teams']['home']['name']} vs {f['teams']['away']['name']} | home_id={f['teams']['home']['id']} away_id={f['teams']['away']['id']}")
                 if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
                     match_id = f['fixture']['id']
                     print(f"🔥 Match trovato già LIVE! ID: {match_id}")
@@ -492,8 +494,10 @@ def avvia_ciclo_partita():
         # 2. Nel palinsesto di oggi (data italiana)?
         if not match_id:
             date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
+            print(f"DEBUG date={today_date} → {date_res.get('results', 0)} risultati")
             if date_res.get('response') and len(date_res['response']) > 0:
                 match_data = date_res['response'][0]
+                print(f"  DEBUG fixture date: {match_data['fixture']['date']} | status: {match_data['fixture']['status']['short']}")
                 match_kickoff_str = match_data['fixture']['date']
                 try:
                     kickoff = datetime.fromisoformat(match_kickoff_str)
@@ -512,10 +516,13 @@ def avvia_ciclo_partita():
         # 3. Prossima in calendario — accettata solo se è oggi (ora italiana)?
         if not match_id:
             next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
+            print(f"DEBUG next=1 → {next_res.get('results', 0)} risultati")
             if next_res.get('response') and len(next_res['response']) > 0:
                 match_data = next_res['response'][0]
+                print(f"  DEBUG next fixture: {match_data['fixture']['date']} | status: {match_data['fixture']['status']['short']}")
                 # Convertiamo la data del match in orario italiano prima di confrontare
                 next_date = fixture_date_to_italy(match_data['fixture']['date'])
+                print(f"  DEBUG next_date (Italia): {next_date} | today_date: {today_date}")
                 if next_date == today_date:
                     match_kickoff_str = match_data['fixture']['date']
                     try:
