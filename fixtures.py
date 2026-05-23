@@ -2,7 +2,7 @@ import os
 import requests
 from datetime import datetime, timezone, timedelta
 
-def vedi_calendario_juve_free():
+def vedi_calendario_juve_free_date():
     # Recupera la chiave dalle variabili d'ambiente (o incollala direttamente qui tra virgolette per fare un test al volo)
     api_key = os.getenv('API_KEY') or "LA_TUA_API_KEY_QUI"
     juve_id = 496
@@ -14,13 +14,16 @@ def vedi_calendario_juve_free():
     url = "https://v3.football.api-sports.io/fixtures"
     headers = {"x-apisports-key": api_key}
     
-    # MODIFICA PER PIANO FREE: Chiediamo i prossimi 10 match senza specificare la season (che generava l'errore)
+    # Impostiamo il fuso orario italiano (Roma) per generare la data corretta di oggi
+    fuso_italiano = timezone(timedelta(hours=2)) # UTC+2 nel periodo estivo/maggio
+    today_date = datetime.now(fuso_italiano).strftime('%Y-%m-%d')
+
+    # STRATEGIA PIANO FREE: Chiediamo tutti i match del giorno senza inserire parametri bloccati
     params = {
-        "team": juve_id,
-        "next": "10"
+        "date": today_date
     }
 
-    print(f"🔄 Interrogazione API-Football [Piano Free] per le prossime partite del Team ID {juve_id}...")
+    print(f"🔄 [Piano Free] Interrogazione palinsesto mondiale per la data di oggi: {today_date}...")
     
     try:
         response = requests.get(url, headers=headers, params=params, timeout=15)
@@ -30,41 +33,59 @@ def vedi_calendario_juve_free():
         fixtures = data.get('response', [])
         
         if not fixtures:
-            print("❌ Nessun match trovato. Controlla la risposta dell'API.")
+            print(f"⚠️ Nessun match restituito dall'API per la data di oggi ({today_date}).")
             print(f"Risposta API: {data}")
             return
 
-        print(f"\n🎯 Trovati {len(fixtures)} match imminenti. Ecco l'elenco:\n")
-        print(f"{'ID FIXTURE':<12} | {'DATA E ORA (ITA)':<19} | {'PARTITA':<45} | {'STATO':<5}")
-        print("-" * 90)
-
-        # Configura il fuso orario italiano (UTC+2 per l'ora legale corrente di maggio)
-        fuso_italiano = timezone(timedelta(hours=2))
-
-        # Ordina le partite in base alla data d'inizio
-        fixtures.sort(key=lambda x: x['fixture']['date'])
-
+        # Cerchiamo la Juventus filtrando l'array direttamente in locale su Python
+        match_juve = None
         for f in fixtures:
-            match_id = f['fixture']['id']
-            stato = f['fixture']['status']['short']
+            home_id = f['teams']['home']['id']
+            away_id = f['teams']['away']['id']
+            if home_id == juve_id or away_id == juve_id:
+                match_juve = f
+                break
+
+        if match_juve:
+            print("\n🎯 PARTITA DELLA JUVENTUS TROVATA CON SUCCESSO!")
+            print("-" * 60)
             
-            # Converte la data ISO dell'API in datetime UTC e poi nel fuso italiano
-            data_iso = f['fixture']['date'].replace('Z', '+00:00')
+            match_id = match_juve['fixture']['id']
+            stato = match_juve['fixture']['status']['short']
+            
+            # Converte l'orario ISO dell'API in orario italiano
+            data_iso = match_juve['fixture']['date'].replace('Z', '+00:00')
             kickoff_utc = datetime.fromisoformat(data_iso)
             kickoff_ita = kickoff_utc.astimezone(fuso_italiano).strftime('%Y-%m-%d %H:%M')
 
-            home_name = f['teams']['home']['name']
-            away_name = f['teams']['away']['name']
+            home_name = match_juve['teams']['home']['name']
+            away_name = match_juve['teams']['away']['name']
             match_str = f"{home_name} vs {away_name}"
 
-            # Se la partita ha già un punteggio o è live, mostralo
-            if f['goals']['home'] is not None and f['goals']['away'] is not None:
-                match_str += f" ({f['goals']['home']}-{f['goals']['away']})"
+            if match_juve['goals']['home'] is not None and match_juve['goals']['away'] is not None:
+                match_str += f" ({match_juve['goals']['home']}-{match_juve['goals']['away']})"
 
-            print(f"{match_id:<12} | {kickoff_ita:<19} | {match_str:<45} | {stato:<5}")
+            print(f"🆔 FIXTURE ID : {match_id}")
+            print(f"⏰ ORA ITALIANA: {kickoff_ita}")
+            print(f"⚽ PARTITA    : {match_str}")
+            print(f"📊 STATO      : {stato}")
+            print("-" * 60)
+            
+            # Calcolo tempo residuo al fischio d'inizio
+            now_utc = datetime.now(timezone.utc)
+            minuti_mancanti = (kickoff_utc - now_utc).total_seconds() / 60
+            if minuti_mancanti > 0:
+                ore = int(minuti_mancanti // 60)
+                minuti = int(minuti_mancanti % 60)
+                print(f"⏳ Mancano ancora {ore} ore e {minuti} minuti al fischio d'inizio.")
+            else:
+                print(f"🏃‍♂️ Il match è in corso o è già terminato da {-int(minuti_mancanti)} minuti.")
+        else:
+            print(f"❌ La Juventus non gioca oggi ({today_date}) secondo il palinsesto dell'API.")
+            print("💡 Nota: Se la partita si gioca domani o ieri (secondo il fuso del server), controlla i giorni adiacenti.")
 
     except Exception as e:
         print(f"❌ Errore durante la richiesta: {e}")
 
 if __name__ == "__main__":
-    vedi_calendario_juve_free()
+    vedi_calendario_juve_free_date()
