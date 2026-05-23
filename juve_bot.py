@@ -6,7 +6,6 @@ import sys
 import base64
 from PIL import Image
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from playwright.sync_api import sync_playwright
 
 try:
@@ -32,15 +31,6 @@ PAGINA_TARGET = 11
 
 JUVE_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
 API_LOGO_URL = "https://media.api-sports.io/football/teams/{}.png"
-
-TIMEZONE_ITALIA = ZoneInfo("Europe/Rome")
-
-def get_today_italy():
-    return datetime.now(TIMEZONE_ITALIA).strftime('%Y-%m-%d')
-
-def fixture_date_to_italy(date_str):
-    """Converte la data ISO dell'API (UTC) in data italiana YYYY-MM-DD."""
-    return datetime.fromisoformat(date_str).astimezone(TIMEZONE_ITALIA).strftime('%Y-%m-%d')
 
 # ==============================================================================
 # SET EMOJI STANDARD (BRANDING @Juventus_Reborn)
@@ -476,28 +466,24 @@ def avvia_ciclo_partita():
     match_id = None
 
     # ── Cerca partita UNA SOLA VOLTA (nessun loop infinito) ──────────────
-    today_date = get_today_italy()
-    print(f"🔄 Cerco partita della Juventus ({today_date}, orario Italia)...")
+    today_date = datetime.now().strftime('%Y-%m-%d')
+    print(f"🔄 Cerco partita della Juventus ({today_date})...")
 
     try:
         # 1. Live ora?
         live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
-        print(f"DEBUG live=all → {live_res.get('results', 0)} risultati")
         if live_res.get('response'):
             for f in live_res['response']:
-                print(f"  DEBUG live fixture: {f['teams']['home']['name']} vs {f['teams']['away']['name']} | home_id={f['teams']['home']['id']} away_id={f['teams']['away']['id']}")
                 if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
                     match_id = f['fixture']['id']
                     print(f"🔥 Match trovato già LIVE! ID: {match_id}")
                     break
 
-        # 2. Nel palinsesto di oggi (data italiana)?
+        # 2. Nel palinsesto di oggi?
         if not match_id:
             date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
-            print(f"DEBUG date={today_date} → {date_res.get('results', 0)} risultati")
             if date_res.get('response') and len(date_res['response']) > 0:
                 match_data = date_res['response'][0]
-                print(f"  DEBUG fixture date: {match_data['fixture']['date']} | status: {match_data['fixture']['status']['short']}")
                 match_kickoff_str = match_data['fixture']['date']
                 try:
                     kickoff = datetime.fromisoformat(match_kickoff_str)
@@ -513,16 +499,12 @@ def avvia_ciclo_partita():
                 match_id = match_data['fixture']['id']
                 print(f"📅 Match trovato oggi nel palinsesto! ID: {match_id}")
 
-        # 3. Prossima in calendario — accettata solo se è oggi (ora italiana)?
+        # 3. Prossima in calendario (solo se è oggi)?
         if not match_id:
             next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
-            print(f"DEBUG next=1 → {next_res.get('results', 0)} risultati")
             if next_res.get('response') and len(next_res['response']) > 0:
                 match_data = next_res['response'][0]
-                print(f"  DEBUG next fixture: {match_data['fixture']['date']} | status: {match_data['fixture']['status']['short']}")
-                # Convertiamo la data del match in orario italiano prima di confrontare
-                next_date = fixture_date_to_italy(match_data['fixture']['date'])
-                print(f"  DEBUG next_date (Italia): {next_date} | today_date: {today_date}")
+                next_date = match_data['fixture']['date'][:10]
                 if next_date == today_date:
                     match_kickoff_str = match_data['fixture']['date']
                     try:
@@ -539,7 +521,7 @@ def avvia_ciclo_partita():
                     match_id = match_data['fixture']['id']
                     print(f"📌 Match imminente trovato con next=1. ID: {match_id}")
                 else:
-                    print(f"📌 Prossimo match il {next_date} (ora italiana), non oggi. Nessuna partita da seguire.")
+                    print(f"📌 Prossimo match il {next_date}, non oggi. Nessuna partita da seguire.")
 
     except Exception as e:
         print(f"⚠️ Errore nel recupero dati dall'API: {e}")
