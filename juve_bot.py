@@ -729,7 +729,6 @@ def avvia_ciclo_partita():
                         elif "own goal" in det: p_name += " (Autogol)"
                         live_scorer_line = f"{E_BALL} <i>{minute_str}' {p_name}</i>\n"
 
-                # ✅ FIX: tutti i rami ora chiudono correttamente il tag </b>
                 if g_home_int > g_away_int:
                     punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
                 elif g_away_int > g_home_int:
