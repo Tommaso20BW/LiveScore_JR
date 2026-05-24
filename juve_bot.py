@@ -572,7 +572,7 @@ def avvia_ciclo_partita():
                 
             league_id = match.get('league', {}).get('id', 0)
             league_name = match.get('league', {}).get('name', 'Serie A')
-            current_sleep_time = 60 if status == "PEN" else (140 if status in ["ET", "AET"] else (120 if status == "HT" else (70 if league_id == 135 else 90)))
+            current_sleep_time = 60 if status == "PEN" else (140 if status in ["ET", "AET"] else (120 if status == "HT" else (100 if league_id == 135 else 90)))
             
             e_comp = get_league_emoji(league_id)
             teams = match.get('teams', {})
