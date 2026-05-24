@@ -523,7 +523,7 @@ def avvia_ciclo_partita():
 
     # ── Se non c'è nulla oggi, fermati ───────────────────────────────────
     if not match_id:
-        print("❌ Nessuna partita della Juventus trovata per oggi con i filtri Free. Bot in uscita.")
+        print("❌ Nessuna partita della Juventus trouvata per oggi con i filtri Free. Bot in uscita.")
         return
 
     # ── Ciclo live: da qui in poi monitora costantemente senza spegnersi ──
@@ -699,7 +699,7 @@ def avvia_ciclo_partita():
 
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
-                events, live_scorer_line = map_events = match.get('events', []), ""
+                events, live_scorer_line = match.get('events', []), ""
                 if events:
                     all_goals = [e for e in events if e.get('type', '').lower() == 'goal' and "shootout" not in e.get('detail', '').lower()]
                     if all_goals:
