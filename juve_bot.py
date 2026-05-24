@@ -274,7 +274,7 @@ def build_split_scorers_text(events, home_id, away_id):
             if "penalty" in detail: player_name += " (Rig.)"
             elif "own goal" in detail: player_name += " (Autogol)"
             
-            scorer_entry = f"{minute_str}’ {player_name}"
+            scorer_entry = f"{minute_str}' {player_name}"
             if event_team_id == home_id: home_scorers.append(scorer_entry)
             elif event_team_id == away_id: away_scorers.append(scorer_entry)
                 
@@ -727,18 +727,19 @@ def avvia_ciclo_partita():
                         
                         if "penalty" in det: p_name += " (Rig.)"
                         elif "own goal" in det: p_name += " (Autogol)"
-                        live_scorer_line = f"{E_BALL} <i>{minute_str}’ {p_name}</i>\n"
-                
+                        live_scorer_line = f"{E_BALL} <i>{minute_str}' {p_name}</i>\n"
+
+                # ✅ FIX: tutti i rami ora chiudono correttamente il tag </b>
                 if g_home_int > g_away_int:
                     punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
                 elif g_away_int > g_home_int:
-                    punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}"
+                    punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
                 else:
                     scoring_team_id = last_goal.get('team', {}).get('id') if events and all_goals else None
                     if scoring_team_id == home_id:
                         punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
                     elif scoring_team_id == away_id:
-                        punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}"
+                        punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
                     else:
                         punteggio_match = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
                         
@@ -766,7 +767,7 @@ def avvia_ciclo_partita():
                         p_name = e.get('player', {}).get('name', 'Giocatore')
                         card_id = f"card_{minute}_{p_name}".replace(" ", "_")
                         if card_id not in state["sent_cards"]:
-                            send_telegram(f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>{minute}’ {p_name}</i>\n\n{e_comp} {hashtag}")
+                            send_telegram(f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>{minute}' {p_name}</i>\n\n{e_comp} {hashtag}")
                             state["sent_cards"].append(card_id)
 
                 for sub_key, sub_data in subs_by_minute.items():
