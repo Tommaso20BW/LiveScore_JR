@@ -729,15 +729,21 @@ def avvia_ciclo_partita():
                         elif "own goal" in det: p_name += " (Autogol)"
                         live_scorer_line = f"{E_BALL} <i>{minute_str}' {p_name}</i>\n"
 
-                if g_home_int > g_away_int:
+                # Determina chi ha segnato l'ultimo gol dall'evento (più affidabile del solo punteggio)
+                scoring_team_id = last_goal.get('team', {}).get('id') if events and all_goals else None
+                # Gestione autogol: un autogol va a favore della squadra AVVERSARIA
+                if events and all_goals and "own goal" in last_goal.get('detail', '').lower():
+                    scoring_team_id = away_id if scoring_team_id == home_id else home_id
+
+                if scoring_team_id == home_id:
                     punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
-                elif g_away_int > g_home_int:
+                elif scoring_team_id == away_id:
                     punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
                 else:
-                    scoring_team_id = last_goal.get('team', {}).get('id') if events and all_goals else None
-                    if scoring_team_id == home_id:
+                    # Fallback sul punteggio se l'evento non è disponibile
+                    if g_home_int > g_away_int:
                         punteggio_match = f"<b>{home_name} {g_home_int}</b>-{g_away_int} {away_name}"
-                    elif scoring_team_id == away_id:
+                    elif g_away_int > g_home_int:
                         punteggio_match = f"{home_name} {g_home_int}-<b>{g_away_int} {away_name}</b>"
                     else:
                         punteggio_match = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
@@ -757,7 +763,9 @@ def avvia_ciclo_partita():
                         p_out, p_in = e.get('player', {}).get('name', 'Uscente'), e.get('assist', {}).get('name', 'Entrante')
                         sub_id = f"sub_{minute}_{p_out}_{p_in}".replace(" ", "_")
                         if sub_id not in state["sent_subs"]:
-                            sub_key = f"{minute}_{team_id}"
+                            # Chiave solo per team_id: raggruppa tutti i cambi nuovi
+                            # della stessa squadra nello stesso ciclo di polling
+                            sub_key = f"{team_id}"
                             if sub_key not in subs_by_minute: subs_by_minute[sub_key] = {"minute": minute, "team_id": team_id, "in": [], "out": [], "ids": []}
                             subs_by_minute[sub_key]["in"].append(p_in)
                             subs_by_minute[sub_key]["out"].append(p_out)
