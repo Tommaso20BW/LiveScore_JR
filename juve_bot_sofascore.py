@@ -28,7 +28,7 @@ GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 # ==============================================================================
 # SOFASCORE — IDs e configurazione
 # ==============================================================================
-JUVE_ID        = 2697          # ID Juventus su Sofascore
+JUVE_ID        = 2524
 JUVE_LOGO_URL  = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
 
 SOFASCORE_BASE = "https://www.sofascore.com/api/v1"
