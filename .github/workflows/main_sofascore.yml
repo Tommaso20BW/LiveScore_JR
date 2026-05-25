@@ -40,4 +40,4 @@ jobs:
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           GH_PAT:               ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
-        run: python -u juve_bot.py
+        run: python -u juve_bot_sofascore.py
