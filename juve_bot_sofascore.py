@@ -4,6 +4,7 @@ import json
 import time
 import sys
 import base64
+import random
 from PIL import Image
 from datetime import datetime, timezone
 from playwright.sync_api import sync_playwright
@@ -28,24 +29,40 @@ GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 # ==============================================================================
 # SOFASCORE — IDs e configurazione
 # ==============================================================================
-JUVE_ID        = 2524
+JUVE_ID        = 2697          # ID Juventus su Sofascore
 JUVE_LOGO_URL  = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
 
 SOFASCORE_BASE = "https://www.sofascore.com/api/v1"
 SOFASCORE_IMG  = "https://api.sofascore.com/api/v1/team/{}/image"
 
-# Headers per simulare un browser reale (evita 403 Cloudflare)
-SF_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept":          "application/json",
-    "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
-    "Referer":         "https://www.sofascore.com/",
-    "Origin":          "https://www.sofascore.com",
-}
+# Pool di User-Agent reali — viene scelto uno a caso ad ogni sessione
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+]
+
+def _build_headers():
+    """Costruisce headers freschi con UA casuale ad ogni chiamata."""
+    ua = random.choice(USER_AGENTS)
+    return {
+        "User-Agent":                ua,
+        "Accept":                    "application/json, text/plain, */*",
+        "Accept-Language":           "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding":           "gzip, deflate, br",
+        "Referer":                   "https://www.sofascore.com/",
+        "Origin":                    "https://www.sofascore.com",
+        "DNT":                       "1",
+        "Connection":                "keep-alive",
+        "Sec-Fetch-Dest":            "empty",
+        "Sec-Fetch-Mode":            "cors",
+        "Sec-Fetch-Site":            "same-origin",
+        "Cache-Control":             "no-cache",
+        "Pragma":                    "no-cache",
+    }
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET   = 11
@@ -86,26 +103,67 @@ def clean_name(name):
 # ==============================================================================
 # SOFASCORE API — wrapper
 # ==============================================================================
-def sf_get(path, retries=3, delay=10):
-    """Chiama Sofascore con retry automatico su errore 403/timeout."""
+# SOFASCORE API — wrapper anti-Cloudflare
+# ==============================================================================
+_session = None
+
+def _get_session():
+    """Sessione persistente con cookie — simula un browser che naviga il sito."""
+    global _session
+    if _session is None:
+        _session = requests.Session()
+        # Prima visita alla homepage per ottenere i cookie Cloudflare
+        try:
+            print("🌐 Inizializzazione sessione Sofascore...")
+            _session.get(
+                "https://www.sofascore.com/",
+                headers=_build_headers(),
+                timeout=15
+            )
+            time.sleep(random.uniform(2, 4))  # pausa umana dopo la homepage
+            print("✅ Sessione inizializzata.")
+        except Exception as e:
+            print(f"⚠️ Errore init sessione: {e}")
+    return _session
+
+def sf_get(path, retries=4, base_delay=15):
+    """Chiama Sofascore con retry, sessione persistente e delay casuale."""
     url = f"{SOFASCORE_BASE}{path}"
+    session = _get_session()
+
     for attempt in range(retries):
         try:
-            r = requests.get(url, headers=SF_HEADERS, timeout=15)
+            # Delay casuale tra chiamate (simula comportamento umano)
+            if attempt > 0:
+                wait = base_delay * (attempt) + random.uniform(3, 8)
+                print(f"   ⏳ Attendo {wait:.0f}s prima del tentativo {attempt+1}/{retries}...")
+                time.sleep(wait)
+
+            r = session.get(url, headers=_build_headers(), timeout=15)
+
             if r.status_code == 200:
                 return r.json()
             elif r.status_code == 403:
-                print(f"⚠️ Sofascore 403 Cloudflare (tentativo {attempt+1}/{retries}). Attendo {delay}s...")
-                time.sleep(delay)
+                print(f"⚠️ Sofascore 403 (tentativo {attempt+1}/{retries}) — reinizializzo sessione...")
+                # Reinizializza la sessione con nuovi cookie
+                global _session
+                _session = None
+                _get_session()
+            elif r.status_code == 429:
+                wait = base_delay * 2 + random.uniform(5, 15)
+                print(f"⚠️ Sofascore 429 Too Many Requests. Attendo {wait:.0f}s...")
+                time.sleep(wait)
             else:
                 print(f"⚠️ Sofascore HTTP {r.status_code} su {path}")
                 time.sleep(5)
+
         except requests.exceptions.Timeout:
             print(f"⚠️ Timeout Sofascore (tentativo {attempt+1}/{retries}).")
-            time.sleep(delay)
         except Exception as e:
             print(f"⚠️ Errore Sofascore: {e}")
             time.sleep(5)
+
+    print(f"❌ Sofascore non raggiungibile dopo {retries} tentativi su {path}")
     return None
 
 def trova_partita_juve_live():
