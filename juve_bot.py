@@ -597,6 +597,21 @@ def avvia_ciclo_partita():
     print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di monitoraggio eventi...")
     params = {"id": match_id}
 
+    # ---------------------------------------------------------------
+    # GIST: lo stato viene letto UNA SOLA VOLTA prima del loop.
+    # All'interno del loop viene mantenuto in memoria e salvato sul Gist
+    # nel blocco finally. In questo modo, anche se leggi_stato_da_gist()
+    # fallisse durante il loop, lo stato locale rimane integro e non
+    # causa il reinvio di messaggi già inviati (es. INIZIO PARTITA).
+    # ---------------------------------------------------------------
+    state = leggi_stato_da_gist()
+    if state is None:
+        state = {
+            "live_match_id": match_id, "sent_periods": [], "goals_detected": 0,
+            "sent_subs": [], "sent_cards": [], "sent_failed_penalties": [], "penalties_count": 0,
+            "sent_stats": []
+        }
+
     while True:
         # ---------------------------------------------------------------
         # FIX 1: current_sleep_time inizializzato con valore di default
@@ -605,17 +620,6 @@ def avvia_ciclo_partita():
         current_sleep_time = 90
 
         try:
-            # ---------------------------------------------------------------
-            # GIST: legge lo stato dal Gist se esiste, altrimenti inizializza.
-            # Garantisce persistenza tra workflow diversi sulla stessa partita.
-            # ---------------------------------------------------------------
-            state = leggi_stato_da_gist()
-            if state is None:
-                state = {
-                    "live_match_id": match_id, "sent_periods": [], "goals_detected": 0,
-                    "sent_subs": [], "sent_cards": [], "sent_failed_penalties": [], "penalties_count": 0,
-                    "sent_stats": []
-                }
 
             response = requests.get(url, headers=headers, params=params, timeout=15)
             response.raise_for_status()
