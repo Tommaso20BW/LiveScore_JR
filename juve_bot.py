@@ -25,6 +25,7 @@ CLIENT_SECRET = os.getenv('CANVA_CLIENT_SECRET')
 CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 GH_PAT = os.getenv('GH_PAT')
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
+GIST_ID = os.getenv('GIST_ID')
 
 JUVE_ID = 84
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
@@ -163,6 +164,69 @@ def update_github_secret(secret_name, new_value):
     except Exception as e:
         print(f"❌ Eccezione durante l'aggiornamento del secret GitHub: {e}")
         return False
+
+# ==============================================================================
+# FUNZIONI GIST — STATO PERSISTENTE TRA UN WORKFLOW E L'ALTRO
+# ==============================================================================
+def leggi_stato_da_gist():
+    """Legge match_state.json dal Gist. Se vuoto o assente, restituisce None."""
+    if not GH_PAT or not GIST_ID:
+        print("⚠️ GH_PAT o GIST_ID mancanti. Impossibile leggere lo stato dal Gist.")
+        return None
+    try:
+        headers = {
+            "Authorization": f"Bearer {GH_PAT}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+        res = requests.get(f"https://api.github.com/gists/{GIST_ID}", headers=headers, timeout=10)
+        if res.status_code != 200:
+            print(f"❌ Errore lettura Gist: {res.text}")
+            return None
+        content = res.json()["files"]["match_state.json"]["content"].strip()
+        if not content or content == "{}":
+            return None
+        state = json.loads(content)
+        print("✅ Stato partita recuperato dal Gist.")
+        return state
+    except Exception as e:
+        print(f"❌ Eccezione lettura Gist: {e}")
+        return None
+
+def salva_stato_su_gist(state):
+    """Scrive lo stato aggiornato su Gist."""
+    if not GH_PAT or not GIST_ID:
+        return
+    try:
+        headers = {
+            "Authorization": f"Bearer {GH_PAT}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+        payload = {"files": {"match_state.json": {"content": json.dumps(state, ensure_ascii=False)}}}
+        res = requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=headers, json=payload, timeout=10)
+        if res.status_code == 200:
+            print("💾 Stato salvato sul Gist.")
+        else:
+            print(f"❌ Errore salvataggio Gist: {res.text}")
+    except Exception as e:
+        print(f"❌ Eccezione salvataggio Gist: {e}")
+
+def resetta_gist():
+    """Resetta il Gist a {} a fine partita, pronto per il prossimo match."""
+    if not GH_PAT or not GIST_ID:
+        return
+    try:
+        headers = {
+            "Authorization": f"Bearer {GH_PAT}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+        payload = {"files": {"match_state.json": {"content": "{}"}}}
+        requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=headers, json=payload, timeout=10)
+        print("🔄 Gist resettato per il prossimo match.")
+    except Exception as e:
+        print(f"❌ Eccezione reset Gist: {e}")
 
 # ==============================================================================
 # FUNZIONI INTEGRATE CANVA API
@@ -534,10 +598,19 @@ def avvia_ciclo_partita():
     params = {"id": match_id}
 
     while True:
+        # ---------------------------------------------------------------
+        # FIX 1: current_sleep_time inizializzato con valore di default
+        # sicuro per evitare NameError in caso di percorsi inattesi.
+        # ---------------------------------------------------------------
+        current_sleep_time = 90
+
         try:
-            if os.path.exists("match_state.json"):
-                with open("match_state.json", "r") as f: state = json.load(f)
-            else:
+            # ---------------------------------------------------------------
+            # GIST: legge lo stato dal Gist se esiste, altrimenti inizializza.
+            # Garantisce persistenza tra workflow diversi sulla stessa partita.
+            # ---------------------------------------------------------------
+            state = leggi_stato_da_gist()
+            if state is None:
                 state = {
                     "live_match_id": match_id, "sent_periods": [], "goals_detected": 0,
                     "sent_subs": [], "sent_cards": [], "sent_failed_penalties": [], "penalties_count": 0,
@@ -629,11 +702,17 @@ def avvia_ciclo_partita():
 
             # 5. CODICE DETTAGLIATO PER I TEMPI SUPPLEMENTARI (STATUS ET)
             elif status == "ET":
-                if elapsed_minutes >= 91 and elapsed_minutes <= 105 and "1ET_START" not in state["sent_periods"]:
+                # ---------------------------------------------------------------
+                # FIX 2: separazione netta tra inizio e fine 1° tempo supplementare.
+                # Originale: elapsed_minutes <= 105 includeva il 105 nel blocco
+                # "1ET_START", impedendo l'invio di "1ET_END" allo stesso minuto.
+                # Fix: < 105 per "1ET_START" e >= 105 per "1ET_END".
+                # ---------------------------------------------------------------
+                if elapsed_minutes >= 91 and elapsed_minutes < 105 and "1ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
                 
-                elif elapsed_minutes == 105 and "1ET_END" not in state["sent_periods"]:
+                elif elapsed_minutes >= 105 and "1ET_END" not in state["sent_periods"]:
                     send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_END")
                 
@@ -698,6 +777,7 @@ def avvia_ciclo_partita():
                 
                 if os.path.exists("match_state.json"): 
                     os.remove("match_state.json")
+                resetta_gist()
                 
                 print("🏁 Processo terminato con successo. Spegnimento del bot.")
                 sys.exit(0)
@@ -731,13 +811,10 @@ def avvia_ciclo_partita():
 
                             live_scorer_line = f"{E_BALL} <i>{minute_str}' {p_name}</i>\n"
                         else:
-                            # Nome non ancora disponibile: aspetta il prossimo ciclo
                             print("⏳ Nome marcatore non ancora disponibile dall'API, attendo il prossimo ciclo...")
-                            with open("match_state.json", "w") as f: json.dump(state, f)
                             time.sleep(current_sleep_time)
                             continue
 
-                # Determina il punteggio in grassetto in base a chi ha segnato
                 scoring_team_id = last_goal.get('team', {}).get('id') if last_goal else None
                 if last_goal and "own goal" in last_goal.get('detail', '').lower():
                     scoring_team_id = away_id if scoring_team_id == home_id else home_id
@@ -764,7 +841,6 @@ def avvia_ciclo_partita():
             # 9. CAMBI E CARTELLINI
             # ---------------------------------------------------------------
             # FIX cambi: raggruppati per squadra + finestra temporale di 2 minuti.
-            # Cambi della stessa squadra entro 2 minuti → un solo messaggio.
             # ---------------------------------------------------------------
             events = match.get('events', [])
             if events:
@@ -781,7 +857,6 @@ def avvia_ciclo_partita():
                         sub_id = f"sub_{minute}_{p_out}_{p_in}".replace(" ", "_")
 
                         if sub_id not in state["sent_subs"]:
-                            # Bucket di 2 minuti: 70 e 71 → stesso bucket (35)
                             time_bucket = minute // 2
                             sub_key = f"{team_id}_{time_bucket}"
                             if sub_key not in subs_by_minute:
@@ -811,11 +886,18 @@ def avvia_ciclo_partita():
                     )
                     state["sent_subs"].extend(sub_data["ids"])
 
-            with open("match_state.json", "w") as f: json.dump(state, f)
-
         except Exception as e:
             print(f"Errore ciclo live: {e}")
             current_sleep_time = 30
+
+        finally:
+            # ---------------------------------------------------------------
+            # FIX 1 + GIST: salvataggio stato su Gist nel finally, garantisce
+            # che venga sempre eseguito anche in caso di crash a metà ciclo.
+            # Persiste tra un workflow e l'altro su GitHub Actions.
+            # ---------------------------------------------------------------
+            if 'state' in locals() and isinstance(state, dict):
+                salva_stato_su_gist(state)
 
         time.sleep(current_sleep_time)
 
