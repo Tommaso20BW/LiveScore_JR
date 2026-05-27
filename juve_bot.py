@@ -292,9 +292,11 @@ def get_canva_image(access_token):
             return None
         
         status_url = f"https://api.canva.com/rest/v1/exports/{job_id}"
-        print("⏳ Attesa rendering della grafica su Canva...")
-        for i in range(40):
-            time.sleep(4)
+        print("⏳ Attesa iniziale di 8 secondi per il rendering Canva...")
+        time.sleep(8)
+        print("⏳ Avvio polling stato export Canva...")
+        for i in range(60):
+            time.sleep(5)
             check_res = requests.get(status_url, headers=headers, timeout=15)
             if check_res.status_code == 200:
                 status_data = check_res.json()
@@ -306,14 +308,17 @@ def get_canva_image(access_token):
                     download_url = urls_list[0] if urls_list else (status_data.get("url") or status_data.get("job", {}).get("url"))
                     
                     if download_url:
-                        print("📥 Download file PNG completato.")
-                        img_res = requests.get(download_url, timeout=20)
+                        print("⏳ Export pronto. Attesa di 10 secondi per garantire la massima qualità prima del download...")
+                        time.sleep(10)
+                        print("📥 Download file PNG in corso...")
+                        img_res = requests.get(download_url, timeout=30)
+                        print("✅ Download completato.")
                         return img_res.content
                         
                 elif status_corrente == "failed":
                     return None
                     
-        print("❌ Timeout Canva.")
+        print("❌ Timeout Canva (5 minuti superati).")
     except Exception as e:
         print(f"❌ Errore durante il recupero da Canva: {e}")
     return None
