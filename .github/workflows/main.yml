@@ -41,5 +41,6 @@ jobs:
           CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
           GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GIST_ID: ${{ secrets.GIST_ID }}
           # Rimosso il riferimento errato a env.ONLY_REFRESH_TOKEN che non esisteva
         run: python -u juve_bot.py
