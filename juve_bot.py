@@ -27,7 +27,8 @@ GH_PAT = os.getenv('GH_PAT')
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
 GIST_ID = os.getenv('GIST_ID')
 
-JUVE_ID = 52
+JUVE_ID = 496
+TEAM_ID = int(os.getenv('TEAM_ID', JUVE_ID))  # Squadra da seguire (default: Juventus)
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 
@@ -360,8 +361,8 @@ def recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name,
     print(f"📊 Recupero statistiche reali dall'API per il momento {momento}...")
     stats_url = f"https://v3.football.api-sports.io/fixtures/statistics?fixture={match_id}"
     
-    h_logo = JUVE_LOGO_URL if "juventus" in home_name.lower() else API_LOGO_URL.format(home_id)
-    a_logo = JUVE_LOGO_URL if "juventus" in away_name.lower() else API_LOGO_URL.format(away_id)
+    h_logo = JUVE_LOGO_URL if home_id == JUVE_ID else API_LOGO_URL.format(home_id)
+    a_logo = JUVE_LOGO_URL if away_id == JUVE_ID else API_LOGO_URL.format(away_id)
     badge_label = MOMENTI_CONFIG[momento]['badge']
     
     api_stats = {"Shots on Goal": [0,0], "Total Shots": [0,0], "Fouls": [0,0], "Corner Kicks": [0,0], 
@@ -568,25 +569,25 @@ def avvia_ciclo_partita():
 
     while not match_id:
         today_date = datetime.now().strftime('%Y-%m-%d')
-        print(f"🔄 [Controllo Palinsesto] Cerco partita della Juventus ({today_date})...")
+        print(f"🔄 [Controllo Palinsesto] Cerco partita (team ID: {TEAM_ID}) ({today_date})...")
         
         try:
             live_res = requests.get(f"{url}?live=all", headers=headers, timeout=10).json()
             if live_res.get('response'):
                 for f in live_res['response']:
-                    if f['teams']['home']['id'] == JUVE_ID or f['teams']['away']['id'] == JUVE_ID:
+                    if f['teams']['home']['id'] == TEAM_ID or f['teams']['away']['id'] == TEAM_ID:
                         match_id = f['fixture']['id']
                         print(f"🔥 Match trovato già LIVE! Aggancio ID: {match_id}")
                         break
             
             if not match_id:
-                date_res = requests.get(f"{url}?team={JUVE_ID}&date={today_date}", headers=headers, timeout=10).json()
+                date_res = requests.get(f"{url}?team={TEAM_ID}&date={today_date}", headers=headers, timeout=10).json()
                 if date_res.get('response') and len(date_res['response']) > 0:
                     match_id = date_res['response'][0]['fixture']['id']
                     print(f"📅 Match trovato nel palinsesto di oggi! ID: {match_id}")
 
             if not match_id:
-                next_res = requests.get(f"{url}?team={JUVE_ID}&next=1", headers=headers, timeout=10).json()
+                next_res = requests.get(f"{url}?team={TEAM_ID}&next=1", headers=headers, timeout=10).json()
                 if next_res.get('response') and len(next_res['response']) > 0:
                     match_data = next_res['response'][0]
                     match_id = match_data['fixture']['id']
@@ -886,7 +887,7 @@ def avvia_ciclo_partita():
                             state["sent_cards"].append(card_id)
 
                 for sub_key, sub_data in subs_by_minute.items():
-                    team_title = "JUVENTUS" if sub_data["team_id"] == JUVE_ID else (home_name.upper() if sub_data["team_id"] == home_id else away_name.upper())
+                    team_title = home_name.upper() if sub_data["team_id"] == home_id else away_name.upper()
                     send_telegram(
                         f"<b>CAMBIO {team_title} {E_SUB}</b>\n\n"
                         f"{E_UP} {', '.join(sub_data['in'])}\n"
