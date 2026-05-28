@@ -28,7 +28,7 @@ GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
 GIST_ID = os.getenv('GIST_ID')
 
 JUVE_ID = 496
-TEAM_ID = int(os.getenv('TEAM_ID', JUVE_ID))  # Squadra da seguire (default: Juventus)
+TEAM_ID = int(os.getenv('TEAM_ID', 505))  # Squadra da seguire (default: Juventus)
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET = 11
 
