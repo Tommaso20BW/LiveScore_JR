@@ -603,13 +603,6 @@ def avvia_ciclo_partita():
     print(f"⏳ Bot agganciato con successo all'ID {match_id}. Entro nel ciclo di monitoraggio eventi...")
     params = {"id": match_id}
 
-    # ---------------------------------------------------------------
-    # GIST: lo stato viene letto UNA SOLA VOLTA prima del loop.
-    # All'interno del loop viene mantenuto in memoria e salvato sul Gist
-    # nel blocco finally. In questo modo, anche se leggi_stato_da_gist()
-    # fallisse durante il loop, lo stato locale rimane integro e non
-    # causa il reinvio di messaggi già inviati (es. INIZIO PARTITA).
-    # ---------------------------------------------------------------
     state = leggi_stato_da_gist()
     if state is None:
         state = {
@@ -619,10 +612,6 @@ def avvia_ciclo_partita():
         }
 
     while True:
-        # ---------------------------------------------------------------
-        # FIX 1: current_sleep_time inizializzato con valore di default
-        # sicuro per evitare NameError in caso di percorsi inattesi.
-        # ---------------------------------------------------------------
         current_sleep_time = 90
 
         try:
@@ -712,12 +701,6 @@ def avvia_ciclo_partita():
 
             # 5. CODICE DETTAGLIATO PER I TEMPI SUPPLEMENTARI (STATUS ET)
             elif status == "ET":
-                # ---------------------------------------------------------------
-                # FIX 2: separazione netta tra inizio e fine 1° tempo supplementare.
-                # Originale: elapsed_minutes <= 105 includeva il 105 nel blocco
-                # "1ET_START", impedendo l'invio di "1ET_END" allo stesso minuto.
-                # Fix: < 105 per "1ET_START" e >= 105 per "1ET_END".
-                # ---------------------------------------------------------------
                 if elapsed_minutes >= 91 and elapsed_minutes < 105 and "1ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
@@ -784,19 +767,22 @@ def avvia_ciclo_partita():
                 png_path = recupera_e_genera_stats_html(match_id, headers, home_id, away_id, home_name, away_name, g_home_int, g_away_int, "FT", league_name)
                 send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("FT")
-                
-                if os.path.exists("match_state.json"): 
+
+                # ---------------------------------------------------------------
+                # FIX RACE CONDITION: il flag "_reset_done" impedisce al finally
+                # di sovrascrivere il Gist appena resettato con lo stato pieno.
+                # L'ordine è: 1) setta il flag, 2) resetta il Gist, 3) esci.
+                # Il finally vede il flag e salta salva_stato_su_gist().
+                # ---------------------------------------------------------------
+                state["_reset_done"] = True
+                if os.path.exists("match_state.json"):
                     os.remove("match_state.json")
                 resetta_gist()
-                
+
                 print("🏁 Processo terminato con successo. Spegnimento del bot.")
                 sys.exit(0)
 
             # 8. RILEVAMENTO GOAL
-            # ---------------------------------------------------------------
-            # FIX: invia il messaggio solo se il nome del marcatore è disponibile.
-            # Se l'API restituisce null, aspetta il prossimo ciclo di polling.
-            # ---------------------------------------------------------------
             total_goals_now = g_home_int + g_away_int
             if total_goals_now > state["goals_detected"]:
                 events = match.get('events', [])
@@ -849,9 +835,6 @@ def avvia_ciclo_partita():
                 state["goals_detected"] = total_goals_now
 
             # 9. CAMBI E CARTELLINI
-            # ---------------------------------------------------------------
-            # FIX cambi: raggruppati per squadra + finestra temporale di 2 minuti.
-            # ---------------------------------------------------------------
             events = match.get('events', [])
             if events:
                 subs_by_minute = {}
@@ -902,12 +885,12 @@ def avvia_ciclo_partita():
 
         finally:
             # ---------------------------------------------------------------
-            # FIX 1 + GIST: salvataggio stato su Gist nel finally, garantisce
-            # che venga sempre eseguito anche in caso di crash a metà ciclo.
-            # Persiste tra un workflow e l'altro su GitHub Actions.
+            # FIX RACE CONDITION: salta il salvataggio se il reset è già
+            # avvenuto, per non sovrascrivere il Gist appena pulito.
             # ---------------------------------------------------------------
             if 'state' in locals() and isinstance(state, dict):
-                salva_stato_su_gist(state)
+                if not state.get("_reset_done"):
+                    salva_stato_su_gist(state)
 
         time.sleep(current_sleep_time)
 
