@@ -667,13 +667,17 @@ def avvia_ciclo_partita():
             else:
                 punteggio_periodo = f"{home_name} {g_home_int}-{g_away_int} {away_name}"
 
+            # ==================================================================
+            # GESTIONE PERIODI — tutti "if" indipendenti (fix bug elif)
+            # ==================================================================
+
             # 1. INIZIO PARTITA
             if (status == "1H" or elapsed_minutes > 0) and "1H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
                 
             # 2. FINE PRIMO TEMPO
-            elif status == "HT" and "HT" not in state["sent_periods"]:
+            if status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
                 
@@ -684,12 +688,12 @@ def avvia_ciclo_partita():
                 state["sent_stats"].append("HT")
                 
             # 3. INIZIO SECONDO TEMPO
-            elif status == "2H" and "2H" not in state["sent_periods"]:
+            if status == "2H" and "2H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
                 
             # 4. FINE SECONDO TEMPO (Solo se si va ai supplementari, lo status diventa ET)
-            elif status == "ET" and "2H_END" not in state["sent_periods"]:
+            if status == "ET" and "2H_END" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\nSi va ai tempi supplementari!\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
                 
@@ -700,7 +704,7 @@ def avvia_ciclo_partita():
                 state["sent_stats"].append("2H_END")
 
             # 5. CODICE DETTAGLIATO PER I TEMPI SUPPLEMENTARI (STATUS ET)
-            elif status == "ET":
+            if status == "ET":
                 if elapsed_minutes >= 91 and elapsed_minutes < 105 and "1ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{punteggio_periodo}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
@@ -771,8 +775,6 @@ def avvia_ciclo_partita():
                 # ---------------------------------------------------------------
                 # FIX RACE CONDITION: il flag "_reset_done" impedisce al finally
                 # di sovrascrivere il Gist appena resettato con lo stato pieno.
-                # L'ordine è: 1) setta il flag, 2) resetta il Gist, 3) esci.
-                # Il finally vede il flag e salta salva_stato_su_gist().
                 # ---------------------------------------------------------------
                 state["_reset_done"] = True
                 if os.path.exists("match_state.json"):
