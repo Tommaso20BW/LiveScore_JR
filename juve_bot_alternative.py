@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN         = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID           = os.getenv('TELEGRAM_TO')
-TEAM_ID           = '111'   # ESPN team ID — modifica qui
+TEAM_ID           = '18206'   # ESPN team ID — modifica qui
 GH_PAT            = os.getenv('GH_PAT')
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
 GIST_ID           = os.getenv('GIST_ID')
