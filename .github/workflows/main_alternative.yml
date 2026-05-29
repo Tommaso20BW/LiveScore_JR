@@ -1,4 +1,4 @@
-name: Juventus Bot LiveScore Alternative
+name: Juventus Live Score Alternative
  
 on:
   workflow_dispatch:
