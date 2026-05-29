@@ -33,7 +33,7 @@ ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
 LEAGUE_SLUGS = [
     # Italia
-    "ita.1", "ita.coppa_italia", "ita.super_cup", "ita.2",
+    "ita.1", "ita.coppa_italia", "ita.super_cup",
     # UEFA
     "uefa.champions", "uefa.europa", "uefa.europa_conf",
     # Top 5 Europe
@@ -65,7 +65,6 @@ LEAGUE_EMOJIS = {
     "ita.1":                    "🇮🇹",
     "ita.coppa_italia":         "🇮🇹",
     "ita.super_cup":            "🇮🇹",
-    "ita.2":                    "🇮🇹",
     # UEFA
     "uefa.champions":           "🇪🇺",
     "uefa.europa":              "🇪🇺",
@@ -617,10 +616,33 @@ def build_score_str(home_name, away_name, g_home, g_away):
     elif g_away > g_home: return f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
     else:                 return f"{home_name} {g_home}-{g_away} {away_name}"
 
-def build_hashtag(home_name, away_name, team_id, home_id, away_id):
-    h = "Juve" if home_id == team_id else home_name.replace(" ", "")
-    a = "Juve" if away_id == team_id else away_name.replace(" ", "")
-    return f"#{h}{a}"
+# Abbreviazioni personalizzate per l'hashtag — aggiungi pure altre squadre
+TEAM_ABBREVIATIONS = {
+    "juventus":              "Juve",
+    "inter":                 "Inter",
+    "ac milan":              "Milan",
+    "as roma":               "Roma",
+    "napoli":                "Napoli",
+    "lazio":                 "Lazio",
+    "fiorentina":            "Fiorentina",
+    "atalanta":              "Atalanta",
+    "real madrid":           "Real",
+    "fc barcelona":          "Barca",
+    "barcelona":             "Barca",
+    "manchester city":       "ManCity",
+    "manchester united":     "ManUtd",
+    "liverpool":             "Liverpool",
+    "chelsea":               "Chelsea",
+    "arsenal":               "Arsenal",
+    "paris saint-germain":   "PSG",
+    "bayern munich":         "Bayern",
+    "borussia dortmund":     "BVB",
+}
+
+def build_hashtag(home_name, away_name):
+    def abbr(name):
+        return TEAM_ABBREVIATIONS.get(name.lower(), name.replace(" ", ""))
+    return f"#{abbr(home_name)}{abbr(away_name)}"
 
 # ==============================================================================
 # CICLO PRINCIPALE
@@ -665,7 +687,7 @@ def avvia_ciclo_partita():
 
             home_id, away_id, home_name, away_name, g_home, g_away = parse_score(competitors)
             score_str = build_score_str(home_name, away_name, g_home, g_away)
-            hashtag   = build_hashtag(home_name, away_name, team_id, home_id, away_id)
+            hashtag   = build_hashtag(home_name, away_name)
             e_comp    = get_league_emoji(league_slug)
             events    = parse_events(data)
 
