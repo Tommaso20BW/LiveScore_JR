@@ -33,7 +33,7 @@ ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
 LEAGUE_SLUGS = [
     # Italia
-    "ita.1", "ita.coppa_italia", "ita.super_cup",
+    "ita.1", "ita.coppa_italia", "ita.super_cup", "ita.2",
     # UEFA
     "uefa.champions", "uefa.europa", "uefa.europa_conf",
     # Top 5 Europe
@@ -65,6 +65,7 @@ LEAGUE_EMOJIS = {
     "ita.1":                    "🇮🇹",
     "ita.coppa_italia":         "🇮🇹",
     "ita.super_cup":            "🇮🇹",
+    "ita.2":                    "🇮🇹",
     # UEFA
     "uefa.champions":           "🇪🇺",
     "uefa.europa":              "🇪🇺",
