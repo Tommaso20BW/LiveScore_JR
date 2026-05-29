@@ -26,13 +26,13 @@ GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
 
 # ESPN: ID Juventus = "111"
-ESPN_JUVE_ID   = "18206"
+ESPN_JUVE_ID   = "111"
 ESPN_JUVE_NAME = "Juventus"
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET   = 11
 
-JUVE_LOGO_URL = "https://a.espncdn.com/i/teamlogos/soccer/500/18206.png"
+JUVE_LOGO_URL = "https://a.espncdn.com/i/teamlogos/soccer/500/111.png"
 
 # Tutte le competizioni in cui può giocare la Juventus
 ESPN_SLUGS = [
@@ -543,18 +543,25 @@ def avvia_ciclo_partita():
 
     print(f"⚽ Partita: {home_name} vs {away_name} [{comp_name}] ID:{event_id}")
 
-    state = leggi_stato_da_gist()
-    if state is None:
-        state = {
-            "event_id":        event_id,
-            "sent_periods":    [],
-            "sent_key_events": [],
-            "sent_goals":      [],
-            "goals_home":      0,
-            "goals_away":      0,
-            "sent_stats":      [],
-            "_reset_done":     False,
-        }
+    # --- FIX SICUREZZA DI INIZIALIZZAZIONE ---
+    default_state = {
+        "event_id":        event_id,
+        "sent_periods":    [],
+        "sent_key_events": [],
+        "sent_goals":      [],
+        "goals_home":      0,
+        "goals_away":      0,
+        "sent_stats":      [],
+        "_reset_done":     False,
+    }
+
+    gist_state = leggi_stato_da_gist()
+    if gist_state and isinstance(gist_state, dict):
+        # Unione sicura: mantiene i dati vecchi ma inserisce le chiavi mancanti
+        state = {**default_state, **gist_state}
+    else:
+        state = default_state
+    # ----------------------------------------
 
     while True:
         sleep_time = 90
@@ -581,65 +588,71 @@ def avvia_ciclo_partita():
             key_events = summary.get("keyEvents", []) if summary else []
 
             for ke in key_events:
-                ke_id = ke.get("id", "")
-                if ke_id in state["sent_key_events"]:
+                # --- MICRO-TRY PER PROTEGGERE IL CICLO ---
+                try:
+                    ke_id = ke.get("id", "")
+                    if not ke_id or ke_id in state["sent_key_events"]:
+                        continue
+
+                    p = parse_key_event(ke)
+
+                    if p["type"] == "kickoff" and "kickoff" not in state["sent_periods"]:
+                        send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {comp_name.upper()} | {hashtag}")
+                        state["sent_periods"].append("kickoff")
+                        state["sent_key_events"].append(ke_id)
+
+                    elif p["type"] == "halftime" and "HT" not in state["sent_periods"]:
+                        send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_fmt}\n\n{e_comp} {hashtag}")
+                        state["sent_periods"].append("HT")
+                        state["sent_key_events"].append(ke_id)
+                        if summary and "HT" not in state["sent_stats"]:
+                            time.sleep(60)
+                            sf = get_summary(event_id, slug)
+                            if sf:
+                                png = genera_stats_html(sf, home_name, away_name, home_score, away_score, home_logo, away_logo, "HT", comp_name)
+                                send_telegram_stats_photo(png, "HT", f"{e_comp} {hashtag}")
+                                state["sent_stats"].append("HT")
+
+                    elif p["type"] == "second_half_start" and "2H" not in state["sent_periods"]:
+                        send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{score_fmt}\n\n{e_comp} {hashtag}")
+                        state["sent_periods"].append("2H")
+                        state["sent_key_events"].append(ke_id)
+
+                    elif p["type"] in ("goal", "goal_penalty", "own_goal"):
+                        scorer = p["p0"] or "?"
+                        assist = p["p1"]
+                        is_pen = p["type"] == "goal_penalty"
+                        is_own = p["type"] == "own_goal"
+                        scoring_team = (away_id if p["team_id"] == home_id else home_id) if is_own else p["team_id"]
+                        note = " (Rig.)" if is_pen else (" (Autogol)" if is_own else "")
+                        assist_line = f"\n🎯 <i>Assist: {assist}</i>" if assist else ""
+                        score_goal = fmt_score(home_name, home_score, away_score, away_name,
+                                               winner_id=scoring_team, home_id=home_id, away_id=away_id)
+                        send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{score_goal}\n{E_BALL} <i>{p['clock']}' {scorer}{note}</i>{assist_line}\n\n{e_comp} {hashtag}")
+                        state["sent_goals"].append({"minute": p["clock"], "scorer": scorer + note})
+                        state["goals_home"] = home_score
+                        state["goals_away"] = away_score
+                        state["sent_key_events"].append(ke_id)
+
+                    elif p["type"] == "substitution":
+                        send_telegram(f"<b>CAMBIO {p['team_name'].upper()} {E_SUB}</b>\n\n{E_UP} {p['p0']}\n{E_DOWN} {p['p1']}\n\n{e_comp} {hashtag}")
+                        state["sent_key_events"].append(ke_id)
+
+                    elif p["type"] == "yellow_card":
+                        send_telegram(f"<b>CARTELLINO GIALLO {E_YEL}</b>\n\n{E_FLAG} <i>{p['clock']}' {p['p0']} ({p['team_name']})</i>\n\n{e_comp} {hashtag}")
+                        state["sent_key_events"].append(ke_id)
+
+                    elif p["type"] == "red_card":
+                        send_telegram(f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>{p['clock']}' {p['p0']} ({p['team_name']})</i>\n\n{e_comp} {hashtag}")
+                        state["sent_key_events"].append(ke_id)
+
+                    elif p["type"] == "penalty_missed":
+                        send_telegram(f"<b>RIGORE SBAGLIATO {E_PEN_KO}</b>\n\n<i>{p['clock']}' {p['p0']} ({p['team_name']})</i>\n\n{e_comp} {hashtag}")
+                        state["sent_key_events"].append(ke_id)
+
+                except Exception as ke_error:
+                    print(f"⚠️ Errore elaborazione singolo evento: {ke_error}")
                     continue
-
-                p = parse_key_event(ke)
-
-                if p["type"] == "kickoff" and "kickoff" not in state["sent_periods"]:
-                    send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {comp_name.upper()} | {hashtag}")
-                    state["sent_periods"].append("kickoff")
-                    state["sent_key_events"].append(ke_id)
-
-                elif p["type"] == "halftime" and "HT" not in state["sent_periods"]:
-                    send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_fmt}\n\n{e_comp} {hashtag}")
-                    state["sent_periods"].append("HT")
-                    state["sent_key_events"].append(ke_id)
-                    if summary and "HT" not in state["sent_stats"]:
-                        time.sleep(60)
-                        sf = get_summary(event_id, slug)
-                        if sf:
-                            png = genera_stats_html(sf, home_name, away_name, home_score, away_score, home_logo, away_logo, "HT", comp_name)
-                            send_telegram_stats_photo(png, "HT", f"{e_comp} {hashtag}")
-                            state["sent_stats"].append("HT")
-
-                elif p["type"] == "second_half_start" and "2H" not in state["sent_periods"]:
-                    send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{score_fmt}\n\n{e_comp} {hashtag}")
-                    state["sent_periods"].append("2H")
-                    state["sent_key_events"].append(ke_id)
-
-                elif p["type"] in ("goal", "goal_penalty", "own_goal"):
-                    scorer = p["p0"] or "?"
-                    assist = p["p1"]
-                    is_pen = p["type"] == "goal_penalty"
-                    is_own = p["type"] == "own_goal"
-                    scoring_team = (away_id if p["team_id"] == home_id else home_id) if is_own else p["team_id"]
-                    note = " (Rig.)" if is_pen else (" (Autogol)" if is_own else "")
-                    assist_line = f"\n🎯 <i>Assist: {assist}</i>" if assist else ""
-                    score_goal = fmt_score(home_name, home_score, away_score, away_name,
-                                           winner_id=scoring_team, home_id=home_id, away_id=away_id)
-                    send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{score_goal}\n{E_BALL} <i>{p['clock']}' {scorer}{note}</i>{assist_line}\n\n{e_comp} {hashtag}")
-                    state["sent_goals"].append({"minute": p["clock"], "scorer": scorer + note})
-                    state["goals_home"] = home_score
-                    state["goals_away"] = away_score
-                    state["sent_key_events"].append(ke_id)
-
-                elif p["type"] == "substitution":
-                    send_telegram(f"<b>CAMBIO {p['team_name'].upper()} {E_SUB}</b>\n\n{E_UP} {p['p0']}\n{E_DOWN} {p['p1']}\n\n{e_comp} {hashtag}")
-                    state["sent_key_events"].append(ke_id)
-
-                elif p["type"] == "yellow_card":
-                    send_telegram(f"<b>CARTELLINO GIALLO {E_YEL}</b>\n\n{E_FLAG} <i>{p['clock']}' {p['p0']} ({p['team_name']})</i>\n\n{e_comp} {hashtag}")
-                    state["sent_key_events"].append(ke_id)
-
-                elif p["type"] == "red_card":
-                    send_telegram(f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>{p['clock']}' {p['p0']} ({p['team_name']})</i>\n\n{e_comp} {hashtag}")
-                    state["sent_key_events"].append(ke_id)
-
-                elif p["type"] == "penalty_missed":
-                    send_telegram(f"<b>RIGORE SBAGLIATO {E_PEN_KO}</b>\n\n<i>{p['clock']}' {p['p0']} ({p['team_name']})</i>\n\n{e_comp} {hashtag}")
-                    state["sent_key_events"].append(ke_id)
 
             # Gol annullato (VAR)
             if home_score + away_score < state["goals_home"] + state["goals_away"]:
@@ -690,19 +703,7 @@ def avvia_ciclo_partita():
         finally:
             if isinstance(state, dict) and not state.get("_reset_done"):
                 salva_stato_su_gist(state)
-
-        time.sleep(sleep_time)
-
-# ==============================================================================
-# MAIN
-# ==============================================================================
-def main():
-    print("🚀 Avvio Juventus Live Score Bot (ESPN - no API key)")
-    if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
-        print("🔒 Modalità Keep-Alive: rinnovo token Canva...")
-        get_valid_token()
-        return
-    avvia_ciclo_partita()
+            time.sleep(sleep_time)
 
 if __name__ == "__main__":
-    main()
+    avvia_ciclo_partita()
