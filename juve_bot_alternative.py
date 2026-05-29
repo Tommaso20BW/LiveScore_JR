@@ -32,10 +32,94 @@ PAGINA_TARGET   = 11
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
 LEAGUE_SLUGS = [
+    # Italia
     "ita.1", "ita.coppa_italia", "ita.super_cup",
+    # UEFA
     "uefa.champions", "uefa.europa", "uefa.europa_conf",
-    "friendly.club"
+    # Top 5 Europe
+    "esp.1", "esp.copa_del_rey", "esp.super_cup",
+    "eng.1", "eng.fa", "eng.league_cup",
+    "ger.1", "ger.dfb_pokal",
+    "fra.1", "fra.coupe_de_france",
+    "por.1", "ned.1", "bel.1", "tur.1", "sco.1",
+    # Americhe
+    "usa.1",           # MLS
+    "usa.open",        # US Open Cup
+    "concacaf.champions",
+    "mex.1",           # Liga MX
+    "bra.1",           # Brasileirao
+    "arg.1",           # Liga Profesional Argentina
+    "col.1", "chi.1", "ecu.1", "per.1", "uru.1",
+    "conmebol.libertadores", "conmebol.sudamericana",
+    # Resto del mondo
+    "aus.1",           # A-League
+    "jpn.1",           # J-League
+    "chn.1",           # Chinese Super League
+    "sau.1",           # Saudi Pro League
+    # Amichevoli
+    "friendly.club",
 ]
+
+LEAGUE_EMOJIS = {
+    # Italia
+    "ita.1":                    "🇮🇹",
+    "ita.coppa_italia":         "🇮🇹",
+    "ita.super_cup":            "🇮🇹",
+    # UEFA
+    "uefa.champions":           "🇪🇺",
+    "uefa.europa":              "🇪🇺",
+    "uefa.europa_conf":         "🇪🇺",
+    # Spagna
+    "esp.1":                    "🇪🇸",
+    "esp.copa_del_rey":         "🇪🇸",
+    "esp.super_cup":            "🇪🇸",
+    # Inghilterra
+    "eng.1":                    "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.fa":                   "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.league_cup":           "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    # Germania
+    "ger.1":                    "🇩🇪",
+    "ger.dfb_pokal":            "🇩🇪",
+    # Francia
+    "fra.1":                    "🇫🇷",
+    "fra.coupe_de_france":      "🇫🇷",
+    # Portogallo
+    "por.1":                    "🇵🇹",
+    # Olanda
+    "ned.1":                    "🇳🇱",
+    # Belgio
+    "bel.1":                    "🇧🇪",
+    # Turchia
+    "tur.1":                    "🇹🇷",
+    # Scozia
+    "sco.1":                    "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    # USA
+    "usa.1":                    "🇺🇸",
+    "usa.open":                 "🇺🇸",
+    "concacaf.champions":       "🌎",
+    # Messico
+    "mex.1":                    "🇲🇽",
+    # Sudamerica
+    "bra.1":                    "🇧🇷",
+    "arg.1":                    "🇦🇷",
+    "col.1":                    "🇨🇴",
+    "chi.1":                    "🇨🇱",
+    "ecu.1":                    "🇪🇨",
+    "per.1":                    "🇵🇪",
+    "uru.1":                    "🇺🇾",
+    "conmebol.libertadores":    "🌎",
+    "conmebol.sudamericana":    "🌎",
+    # Asia/Oceania
+    "aus.1":                    "🇦🇺",
+    "jpn.1":                    "🇯🇵",
+    "chn.1":                    "🇨🇳",
+    "sau.1":                    "🇸🇦",
+    # Amichevoli
+    "friendly.club":            "🤝",
+}
+
+def get_league_emoji(slug: str) -> str:
+    return LEAGUE_EMOJIS.get(slug, "⚽️")
 
 MOMENTI_CONFIG = {
     "HT":    {"titolo": "<b>STATS PRIMO TEMPO</b> 📊",    "badge": "FINE PRIMO TEMPO"},
@@ -581,7 +665,7 @@ def avvia_ciclo_partita():
             home_id, away_id, home_name, away_name, g_home, g_away = parse_score(competitors)
             score_str = build_score_str(home_name, away_name, g_home, g_away)
             hashtag   = build_hashtag(home_name, away_name, team_id, home_id, away_id)
-            e_comp    = "⚽️"
+            e_comp    = get_league_emoji(league_slug)
             events    = parse_events(data)
 
             print(f"[{status}] {home_name} {g_home}-{g_away} {away_name} | min {elapsed}")
