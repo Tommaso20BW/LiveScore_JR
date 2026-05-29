@@ -36,14 +36,190 @@ JUVE_LOGO_URL = "https://a.espncdn.com/i/teamlogos/soccer/500/111.png"
 
 # Tutte le competizioni in cui può giocare la Juventus
 ESPN_SLUGS = [
-    ("Serie A",             "ita.1"),
-    ("Coppa Italia",        "ita.coppa_italia"),
-    ("Champions League",    "uefa.champions"),
-    ("Europa League",       "uefa.europa"),
-    ("Conference League",   "uefa.europa.conference_league"),
-    ("Supercoppa Italiana", "ita.super_cup"),
-    ("UEFA Super Cup",      "uefa.super_cup"),
-    ("Mondiale per Club",   "fifa.cwc"),
+    # 🇮🇹 Italia
+    ("Serie A",                           "ita.1"),
+    ("Serie B",                           "ita.2"),
+    ("Serie C",                           "ita.3"),
+    ("Coppa Italia",                      "ita.coppa_italia"),
+    ("Supercoppa Italiana",               "ita.super_cup"),
+
+    # 🇬🇧 Regno Unito
+    ("Premier League",                    "eng.1"),
+    ("Championship",                      "eng.2"),
+    ("League One",                        "eng.3"),
+    ("League Two",                        "eng.4"),
+    ("FA Cup",                            "eng.fa"),
+    ("Carabao Cup",                       "eng.leag_cup"),
+    ("FA Community Shield",               "eng.charity"),
+    ("EFL Trophy",                        "eng.trophy"),
+    ("Scottish Premiership",              "sco.1"),
+    ("Scottish Championship",             "sco.2"),
+    ("Scottish Cup",                      "sco.cup"),
+    ("Scottish League Cup",               "sco.leag_cup"),
+    ("Cymru Premier",                     "wal.1"),
+
+    # 🇪🇸 Spagna
+    ("LaLiga",                            "esp.1"),
+    ("Segunda División",                  "esp.2"),
+    ("Copa del Rey",                      "esp.copa_del_rey"),
+    ("Supercoppa Spagnola",               "esp.super_cup"),
+
+    # 🇩🇪 Germania
+    ("Bundesliga",                        "ger.1"),
+    ("2. Bundesliga",                     "ger.2"),
+    ("3. Liga",                           "ger.3"),
+    ("DFB-Pokal",                         "ger.dfb_pokal"),
+    ("DFB-Supercup",                      "ger.super_cup"),
+
+    # 🇫🇷 Francia
+    ("Ligue 1",                           "fra.1"),
+    ("Ligue 2",                           "fra.2"),
+    ("Coupe de France",                   "fra.coupe_de_france"),
+    ("Trophée des Champions",             "fra.super_cup"),
+
+    # 🇪🇺 Altri Campionati Europei
+    ("Eredivisie",                        "ned.1"),
+    ("KNVB Beker",                        "ned.cup"),
+    ("Primeira Liga",                     "por.1"),
+    ("Taça de Portugal",                  "por.cup"),
+    ("Taça da Liga",                      "por.leag_cup"),
+    ("Süper Lig",                         "tur.1"),
+    ("Türkiye Kupası",                    "tur.cup"),
+    ("Jupiler Pro League",                "bel.1"),
+    ("Croky Cup",                         "bel.cup"),
+    ("Super League Grecia",               "gre.1"),
+    ("Coppa di Grecia",                   "gre.cup"),
+    ("Austrian Bundesliga",               "aut.1"),
+    ("ÖFB Cup",                           "aut.cup"),
+    ("Swiss Super League",                "sui.1"),
+    ("Coppa Svizzera",                    "sui.cup"),
+    ("Russian Premier League",            "rus.1"),
+    ("Coppa di Russia",                   "rus.cup"),
+    ("Ukrainian Premier League",          "ukr.1"),
+    ("Danish Superliga",                  "den.1"),
+    ("Allsvenskan",                       "swe.1"),
+    ("Eliteserien",                       "nor.1"),
+    ("Chance Liga",                       "cze.1"),
+    ("HNL",                               "cro.1"),
+    ("Liga I",                            "rom.1"),
+    ("Ekstraklasa",                       "pol.1"),
+    ("LOI Premier Division",              "irl.1"),
+
+    # 🇪🇺 Competizioni UEFA
+    ("Champions League",                  "uefa.champions"),
+    ("Europa League",                     "uefa.europa"),
+    ("Conference League",                 "uefa.europa.conference_league"),
+    ("UEFA Super Cup",                    "uefa.super_cup"),
+    ("UEFA Youth League",                 "uefa.youthleague"),
+
+    # 🇺🇸 🇨🇦 Nord / Centro America
+    ("MLS",                               "usa.1"),
+    ("US Open Cup",                       "usa.open"),
+    ("MLS Next Pro",                      "usa.mls.next.pro"),
+    ("Canadian Premier League",           "can.1"),
+    ("Canadian Championship",             "can.championship"),
+    ("Liga MX",                           "mex.1"),
+    ("Liga de Expansión MX",              "mex.2"),
+    ("Copa MX",                           "mex.copa"),
+    ("CONCACAF Champions Cup",            "concacaf.champions"),
+    ("Leagues Cup",                       "leagues.cup"),
+    ("CONCACAF Central American Cup",     "concacaf.central_american_cup"),
+    ("CONCACAF Caribbean Cup",            "concacaf.caribbean_cup"),
+
+    # 🇧🇷 🇦🇷 Sud America
+    ("Liga Profesional Argentina",        "arg.1"),
+    ("Copa de la Liga Profesional",       "arg.copa"),
+    ("Copa Argentina",                    "arg.cup"),
+    ("Brasileirão Série A",               "bra.1"),
+    ("Brasileirão Série B",               "bra.2"),
+    ("Copa do Brasil",                    "bra.cup"),
+    ("Campeonato Paulista",               "bra.camp_paulista"),
+    ("Campeonato Carioca",                "bra.camp_carioca"),
+    ("Categoría Primera A",               "col.1"),
+    ("Primera División de Chile",         "chi.1"),
+    ("Primera División de Uruguay",       "uru.1"),
+    ("LigaPro Ecuador",                   "ecu.1"),
+    ("Primera División de Paraguay",       "par.1"),
+    ("Liga 1 Perù",                       "per.1"),
+    ("Liga FUTVE",                        "ven.1"),
+    ("Copa Libertadores",                 "conmebol.libertadores"),
+    ("Copa Sudamericana",                 "conmebol.sudamericana"),
+    ("Recopa Sudamericana",               "conmebol.recopa"),
+
+    # 🇸🇦 🇨🇳 🇯🇵 Asia / Oceania
+    ("Saudi Pro League",                  "ksa.1"),
+    ("King Cup",                          "ksa.kings"),
+    ("Saudi Super Cup",                   "ksa.super_cup"),
+    ("A-League Men",                      "aus.1"),
+    ("Australia Cup",                     "aus.cup"),
+    ("J1 League",                         "jpn.1"),
+    ("Coppa dell'Imperatore",             "jpn.cup"),
+    ("J.League Cup",                      "jpn.leag_cup"),
+    ("Chinese Super League",              "chn.1"),
+    ("Chinese FA Cup",                    "chn.cup"),
+    ("K League 1",                        "kor.1"),
+    ("Indian Super League",               "ind.1"),
+    ("AFC Champions League Elite",        "afc.champions"),
+    ("AFC Champions League Two",          "afc.champions_two"),
+    ("AFC Challenge League",              "afc.challenge_league"),
+
+    # 🌍 Africa
+    ("Betway Premiership",                "rsa.1"),
+    ("Egyptian Premier League",           "egy.1"),
+    ("Botola Pro",                        "mar.1"),
+    ("Ligue Professionnelle 1",           "tun.1"),
+    ("CAF Champions League",              "caf.champions"),
+    ("CAF Confederation Cup",             "caf.confederation"),
+    ("Supercoppa CAF",                    "caf.super_cup"),
+    ("African Football League",           "african.football.league"),
+
+    # 🌐 Internazionali Club & Amichevoli
+    ("Mondiale per Club",                 "fifa.cwc"),
+    ("Coppa Intercontinentale FIFA",      "fifa.intercontinental_cup"),
+    ("Amichevole",                        "club.friendly"),
+
+    # 🎽 Nazionali Maggiori Maschili
+    ("Mondiale FIFA",                     "fifa.world"),
+    ("Qualificazioni Mondiali",           "fifa.worldq"),
+    ("Qualificazioni Mondiali (UEFA)",    "fifa.worldq.uefa"),
+    ("Qualificazioni Mondiali (CONMEBOL)","fifa.worldq.conmebol"),
+    ("Qualificazioni Mondiali (CONCACAF)","fifa.worldq.concacaf"),
+    ("Qualificazioni Mondiali (AFC)",     "fifa.worldq.afc"),
+    ("Qualificazioni Mondiali (CAF)",     "fifa.worldq.caf"),
+    ("Qualificazioni Mondiali (OFC)",     "fifa.worldq.ofc"),
+    ("Campionato Europeo UEFA",           "uefa.euro"),
+    ("Qualificazioni Europei",            "uefa.euroq"),
+    ("UEFA Nations League",               "uefa.nations"),
+    ("Copa América",                      "conmebol.america"),
+    ("CONCACAF Gold Cup",                 "concacaf.gold"),
+    ("CONCACAF Nations League",           "concacaf.nations"),
+    ("Coppa d'Africa",                    "caf.nations"),
+    ("Coppa d'Asia",                      "afc.asian"),
+    ("Coppa delle nazioni oceaniane",     "ofc.nations"),
+    ("Confederations Cup",                "fifa.confederations"),
+    ("Torneo Olimpico Maschile",          "olympics.soccer"),
+    ("Amichevole Internazionale",         "fifa.friendly"),
+
+    # 🚺 Calcio Femminile
+    ("Mondiale Femminile FIFA",           "fifa.w.world"),
+    ("Campionato Europeo Femminile",      "uefa.w.euro"),
+    ("Qualificazioni Europei Femminili",  "uefa.w.euroq"),
+    ("UEFA Women's Nations League",       "uefa.w.nations"),
+    ("Torneo Olimpico Femminile",         "olympics.w.soccer"),
+    ("NWSL",                              "usa.w.1"),
+    ("Women's Super League",              "eng.w.1"),
+    ("Liga F",                            "esp.w.1"),
+    ("Première Ligue",                    "fra.w.1"),
+    ("Frauen-Bundesliga",                 "ger.w.1"),
+    ("Serie A Femminile",                 "ita.w.1"),
+    ("UEFA Women's Champions League",     "uefa.w.champions"),
+
+    # 👶 Giovanili
+    ("Campionato Europeo UEFA U21",       "uefa.under21"),
+    ("Campionato Europeo UEFA U19",       "uefa.under19"),
+    ("Campionato Europeo UEFA U17",       "uefa.under17"),
+    ("Mondiale FIFA U20",                 "fifa.under20"),
+    ("Mondiale FIFA U17",                 "fifa.under17"),
 ]
 
 ESPN_HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -64,14 +240,190 @@ E_PEN_OK = '✅'
 E_PEN_KO = '❌'
 
 COMP_EMOJIS = {
+    # 🇮🇹 Italia
     "ita.1":                           "🇮🇹",
+    "ita.2":                           "🇮🇹",
+    "ita.3":                           "🇮🇹",
     "ita.coppa_italia":                "🇮🇹",
     "ita.super_cup":                   "🇮🇹",
+
+    # 🇬🇧 Regno Unito
+    "eng.1":                           "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.2":                           "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.3":                           "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.4":                           "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.fa":                          "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.leag_cup":                    "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.charity":                     "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "eng.trophy":                      "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "sco.1":                           "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "sco.2":                           "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "sco.cup":                         "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "sco.leag_cup":                    "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "wal.1":                           "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+
+    # 🇪🇸 Spagna
+    "esp.1":                           "🇪🇸",
+    "esp.2":                           "🇪🇸",
+    "esp.copa_del_rey":                "🇪🇸",
+    "esp.super_cup":                   "🇪🇸",
+
+    # 🇩🇪 Germania
+    "ger.1":                           "🇩🇪",
+    "ger.2":                           "🇩🇪",
+    "ger.3":                           "🇩🇪",
+    "ger.dfb_pokal":                   "🇩🇪",
+    "ger.super_cup":                   "🇩🇪",
+
+    # 🇫🇷 Francia
+    "fra.1":                           "🇫🇷",
+    "fra.2":                           "🇫🇷",
+    "fra.coupe_de_france":             "🇫🇷",
+    "fra.super_cup":                   "🇫🇷",
+
+    # 🇪🇺 Altri Campionati Europei
+    "ned.1":                           "🇳🇱",
+    "ned.cup":                         "🇳🇱",
+    "por.1":                           "🇵🇹",
+    "por.cup":                         "🇵🇹",
+    "por.leag_cup":                    "🇵🇹",
+    "tur.1":                           "🇹🇷",
+    "tur.cup":                         "🇹🇷",
+    "bel.1":                           "🇧🇪",
+    "bel.cup":                         "🇧🇪",
+    "gre.1":                           "🇬🇷",
+    "gre.cup":                         "🇬🇷",
+    "aut.1":                           "🇦🇹",
+    "aut.cup":                         "🇦🇹",
+    "sui.1":                           "🇨🇭",
+    "sui.cup":                         "🇨🇭",
+    "rus.1":                           "🇷🇺",
+    "rus.cup":                         "🇷🇺",
+    "ukr.1":                           "🇺🇦",
+    "den.1":                           "🇩🇰",
+    "swe.1":                           "🇸🇪",
+    "nor.1":                           "🇳🇴",
+    "cze.1":                           "🇨🇿",
+    "cro.1":                           "🇭🇷",
+    "rom.1":                           "🇷🇴",
+    "pol.1":                           "🇵🇱",
+    "irl.1":                           "🇮🇪",
+
+    # 🇪🇺 Competizioni UEFA
     "uefa.champions":                  "🇪🇺",
     "uefa.europa":                     "🇪🇺",
     "uefa.europa.conference_league":   "🇪🇺",
     "uefa.super_cup":                  "🇪🇺",
+    "uefa.youthleague":                "🇪🇺",
+
+    # 🇺🇸 🇨🇦 Nord / Centro America
+    "usa.1":                           "🇺🇸",
+    "usa.open":                        "🇺🇸",
+    "usa.mls.next.pro":                "🇺🇸",
+    "can.1":                           "🇨🇦",
+    "can.championship":                "🇨🇦",
+    "mex.1":                           "🇲🇽",
+    "mex.2":                           "🇲🇽",
+    "mex.copa":                        "🇲🇽",
+    "concacaf.champions":              "🏆",
+    "leagues.cup":                     "🏆",
+    "concacaf.central_american_cup":   "🏆",
+    "concacaf.caribbean_cup":          "🏆",
+
+    # 🇧🇷 🇦🇷 Sud America
+    "arg.1":                           "🇦🇷",
+    "arg.copa":                        "🇦🇷",
+    "arg.cup":                         "🇦🇷",
+    "bra.1":                           "🇧🇷",
+    "bra.2":                           "🇧🇷",
+    "bra.cup":                         "🇧🇷",
+    "bra.camp_paulista":               "🇧🇷",
+    "bra.camp_carioca":                "🇧🇷",
+    "col.1":                           "🇨🇴",
+    "chi.1":                           "🇨🇱",
+    "uru.1":                           "🇺🇾",
+    "ecu.1":                           "🇪🇨",
+    "par.1":                           "🇵🇾",
+    "per.1":                           "🇵🇪",
+    "ven.1":                           "🇻🇪",
+    "conmebol.libertadores":           "🏆",
+    "conmebol.sudamericana":           "🏆",
+    "conmebol.recopa":                 "🏆",
+
+    # 🇸🇦 🇨🇳 🇯🇵 Asia / Oceania
+    "ksa.1":                           "🇸🇦",
+    "ksa.kings":                       "🇸🇦",
+    "ksa.super_cup":                   "🇸🇦",
+    "aus.1":                           "🇦🇺",
+    "aus.cup":                         "🇦🇺",
+    "jpn.1":                           "🇯🇵",
+    "jpn.cup":                         "🇯🇵",
+    "jpn.leag_cup":                    "🇯🇵",
+    "chn.1":                           "🇨🇳",
+    "chn.cup":                         "🇨🇳",
+    "kor.1":                           "🇰🇷",
+    "ind.1":                           "🇮🇳",
+    "afc.champions":                   "🏆",
+    "afc.champions_two":               "🏆",
+    "afc.challenge_league":            "🏆",
+
+    # 🌍 Africa
+    "rsa.1":                           "🇿🇦",
+    "egy.1":                           "🇪🇬",
+    "mar.1":                           "🇲🇦",
+    "tun.1":                           "🇹🇳",
+    "caf.champions":                   "🏆",
+    "caf.confederation":               "🏆",
+    "caf.super_cup":                   "🏆",
+    "african.football.league":         "🏆",
+
+    # 🌐 Internazionali Club & Amichevoli
     "fifa.cwc":                        "🌍",
+    "fifa.intercontinental_cup":       "🌍",
+    "club.friendly":                   "🤝",
+
+    # 🎽 Nazionali Maggiori Maschili
+    "fifa.world":                      "🏆",
+    "fifa.worldq":                     "🌍",
+    "fifa.worldq.uefa":                "🇪🇺",
+    "fifa.worldq.conmebol":            "🌍",
+    "fifa.worldq.concacaf":            "🌍",
+    "fifa.worldq.afc":                 "🌍",
+    "fifa.worldq.caf":                 "🌍",
+    "fifa.worldq.ofc":                 "🌍",
+    "uefa.euro":                       "🇪🇺",
+    "uefa.euroq":                      "🇪🇺",
+    "uefa.nations":                    "🇪🇺",
+    "conmebol.america":                "🏆",
+    "concacaf.gold":                   "🏆",
+    "concacaf.nations":                "🏆",
+    "caf.nations":                     "🌍",
+    "afc.asian":                       "🏆",
+    "ofc.nations":                     "🏆",
+    "fifa.confederations":             "🏆",
+    "olympics.soccer":                 "🏅",
+    "fifa.friendly":                   "🤝",
+
+    # 🚺 Calcio Femminile
+    "fifa.w.world":                    "🏆",
+    "uefa.w.euro":                     "🇪🇺",
+    "uefa.w.euroq":                    "🇪🇺",
+    "uefa.w.nations":                  "🇪🇺",
+    "olympics.w.soccer":               "🏅",
+    "usa.w.1":                         "🇺🇸",
+    "eng.w.1":                         "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "esp.w.1":                         "🇪🇸",
+    "fra.w.1":                         "🇫🇷",
+    "ger.w.1":                         "🇩🇪",
+    "ita.w.1":                         "🇮🇹",
+    "uefa.w.champions":                "🇪🇺",
+
+    # 👶 Giovanili
+    "uefa.under21":                    "🇪🇺",
+    "uefa.under19":                    "🇪🇺",
+    "uefa.under17":                    "🇪🇺",
+    "fifa.under20":                    "🏆",
+    "fifa.under17":                    "🏆",
 }
 
 # ==============================================================================
@@ -597,7 +949,7 @@ def avvia_ciclo_partita():
                     p = parse_key_event(ke)
 
                     if p["type"] == "kickoff" and "kickoff" not in state["sent_periods"]:
-                        send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {comp_name.upper()} | {hashtag}")
+                        send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                         state["sent_periods"].append("kickoff")
                         state["sent_key_events"].append(ke_id)
 
