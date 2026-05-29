@@ -256,18 +256,9 @@ def get_canva_image(access_token: str):
     return None
 
 # ==============================================================================
-# PARSE EVENTS — FIX PRINCIPALE
-# ESPN soccer mette gli eventi in strutture diverse da data["plays"]
-# Leggiamo da: scoringPlays, keyPlays, e plays come fallback
+# PARSE EVENTS
 # ==============================================================================
 def parse_events(data: dict) -> list:
-    """
-    Raccoglie tutti gli eventi significativi dalla risposta ESPN soccer.
-    ESPN soccer non usa data["plays"] come altri sport: gli eventi stanno in
-    data["scoringPlays"] (goal), data["keyPlays"] (cambi, cartellini, ecc.)
-    e/o data["plays"] come fallback.
-    Normalizza tutto in un formato comune.
-    """
     events = []
     seen_ids = set()
 
@@ -296,7 +287,6 @@ def parse_events(data: dict) -> list:
             "assist_name": assist_name,
         })
 
-    # ---- 1. scoringPlays (goal confermati da ESPN) ----
     for item in data.get("scoringPlays", []):
         try:
             ev_type    = item.get("type", {}).get("text", "goal")
@@ -311,7 +301,6 @@ def parse_events(data: dict) -> list:
         except Exception as e:
             print(f"⚠️ Errore parsing scoringPlay: {e}")
 
-    # ---- 2. keyPlays (cambi, cartellini, e anche goal alternativi) ----
     for item in data.get("keyPlays", []):
         try:
             ev_type = item.get("type", {}).get("text", "")
@@ -328,7 +317,6 @@ def parse_events(data: dict) -> list:
         except Exception as e:
             print(f"⚠️ Errore parsing keyPlay: {e}")
 
-    # ---- 3. plays (fallback generico) ----
     for item in data.get("plays", []):
         try:
             ev_type = item.get("type", {}).get("text", "")
@@ -345,7 +333,6 @@ def parse_events(data: dict) -> list:
         except Exception as e:
             print(f"⚠️ Errore parsing play: {e}")
 
-    # ---- 4. Fallback: header competitions plays ----
     try:
         for comp in data.get("header", {}).get("competitions", []):
             for item in comp.get("plays", []):
@@ -369,20 +356,14 @@ def parse_events(data: dict) -> list:
     if events:
         print(f"📋 Eventi totali trovati: {len(events)} — tipi: {list(set(e['type'] for e in events))}")
     else:
-        print("⚠️ Nessun evento trovato in scoringPlays/keyPlays/plays. Verifica la struttura ESPN del summary.")
+        print("⚠️ Nessun evento trovato in scoringPlays/keyPlays/plays.")
 
     return events
 
 # ==============================================================================
-# STATISTICHE — FIX: legge anche da header.competitions[].competitors[].statistics
+# STATISTICHE
 # ==============================================================================
 def _estrai_stats_espn(data: dict) -> dict:
-    """
-    ESPN soccer può esporre le statistiche in due posti:
-      A) data["boxscore"]["teams"][x]["statistics"]  (più completo, spesso post-partita)
-      B) data["header"]["competitions"][0]["competitors"][x]["statistics"]  (disponibile live)
-    Legge entrambi e unisce. Ritorna {"home": {nome: valore}, "away": {nome: valore}}
-    """
     raw = {"home": {}, "away": {}}
 
     # --- Fonte A: boxscore ---
@@ -406,14 +387,14 @@ def _estrai_stats_espn(data: dict) -> dict:
                 for s in competitor.get("statistics", []):
                     key = s.get("name", "").lower()
                     val = s.get("displayValue", s.get("value", "0"))
-                    if key and key not in raw[side]:  # non sovrascrivere boxscore se già presente
+                    if key and key not in raw[side]:
                         raw[side][key] = str(val)
     except Exception as e:
         print(f"⚠️ Errore parsing header competitors stats: {e}")
 
-    # Debug: mostra le chiavi trovate
-    print(f"📊 Stats home keys ({len(raw['home'])}): {list(raw['home'].keys())[:10]}")
-    print(f"📊 Stats away keys ({len(raw['away'])}): {list(raw['away'].keys())[:10]}")
+    # Debug: mostra TUTTE le chiavi trovate
+    print(f"📊 Stats home keys ({len(raw['home'])}): {list(raw['home'].keys())}")
+    print(f"📊 Stats away keys ({len(raw['away'])}): {list(raw['away'].keys())}")
 
     return raw
 
@@ -434,12 +415,10 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     raw = _estrai_stats_espn(data_espn)
 
     def g(side, *keys, fallback="0"):
-        """Prova più chiavi alternative fino a trovarne una con valore non-zero."""
         for key in keys:
             val = raw[side].get(key.lower(), None)
             if val is not None and val not in ("0", "", "0.0", "0%"):
                 return val
-        # Se non trovato, ritorna comunque il primo disponibile o fallback
         for key in keys:
             val = raw[side].get(key.lower(), None)
             if val is not None:
@@ -465,10 +444,10 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     except Exception:
         bp_perc = 50
 
-    # Tiri in porta (Shots on Goal)
+    # Tiri in porta
     sot_h    = g("home", "shotsOnTarget", "shotsontarget", fallback="0")
     sot_a    = g("away", "shotsOnTarget", "shotsontarget", fallback="0")
-    # Tiri totali (Shot Attempts)
+    # Tiri totali
     shots_h  = g("home", "totalShots", "totalshots", fallback="0")
     shots_a  = g("away", "totalShots", "totalshots", fallback="0")
     # Falli
@@ -480,9 +459,9 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     # Cartellini rossi
     rossi_h  = g("home", "redCards", "redcards", fallback="0")
     rossi_a  = g("away", "redCards", "redcards", fallback="0")
-    # Corner
-    corner_h = g("home", "cornerKicks", "cornerkicks", fallback="0")
-    corner_a = g("away", "cornerKicks", "cornerkicks", fallback="0")
+    # Corner — tutte le varianti ESPN note
+    corner_h = g("home", "cornerKicks", "cornerkicks", "cornerKick", "cornerkick", "corners", "corner", fallback="0")
+    corner_a = g("away", "cornerKicks", "cornerkicks", "cornerKick", "cornerkick", "corners", "corner", fallback="0")
     # Parate
     saves_h  = g("home", "saves", fallback="0")
     saves_a  = g("away", "saves", fallback="0")
@@ -641,7 +620,6 @@ def fetch_evento(event_id: str, league_slug: str):
                          params={"event": event_id}, timeout=15)
         if r.status_code == 200:
             d = r.json()
-            # Debug: mostra le chiavi top-level per capire la struttura
             print(f"🔍 Chiavi ESPN summary: {list(d.keys())}")
             return d
         return None
@@ -771,12 +749,10 @@ def avvia_ciclo_partita():
 
             sleep_time = 60 if status == "PEN" else 90
 
-            # ---- 1. INIZIO PARTITA ----
             if status == "1H" and "1H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
 
-            # ---- 2. FINE PRIMO TEMPO ----
             if status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
@@ -788,12 +764,10 @@ def avvia_ciclo_partita():
                 send_telegram_stats_photo(png_path, "HT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("HT")
 
-            # ---- 3. INIZIO SECONDO TEMPO ----
             if status == "2H" and "2H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
 
-            # ---- 4. FINE REGOLAMENTARI ----
             if status == "ET" and "2H_END" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\nSi va ai supplementari!\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
@@ -805,7 +779,6 @@ def avvia_ciclo_partita():
                 send_telegram_stats_photo(png_path, "2H_END", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("2H_END")
 
-            # ---- 5. SUPPLEMENTARI ----
             if status == "ET":
                 if elapsed >= 91 and elapsed < 105 and "1ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
@@ -817,7 +790,6 @@ def avvia_ciclo_partita():
                     send_telegram(f"<b>INIZIO 2° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("2ET_START")
 
-            # ---- 6. RIGORI ----
             if status == "PEN":
                 if "ET_END_PENS" not in state["sent_periods"]:
                     send_telegram(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
@@ -837,7 +809,6 @@ def avvia_ciclo_partita():
                     )
                     state["penalties_count"] = total_kicks
 
-            # ---- 7. FINE PARTITA ----
             is_finished = (
                 status in ["FT", "AET"] or
                 (status == "PEN" and
@@ -886,7 +857,6 @@ def avvia_ciclo_partita():
                 print("🏁 Partita terminata. Bot spento.")
                 sys.exit(0)
 
-            # ---- 8. GOAL ----
             total_goals_now = g_home + g_away
             if total_goals_now > state["goals_detected"]:
                 goal_events = [e for e in events if "goal" in e["type"] and "shootout" not in e["type"]]
@@ -919,7 +889,6 @@ def avvia_ciclo_partita():
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
 
-            # ---- 9. CAMBI E CARTELLINI ----
             subs_by_bucket: dict = {}
             for e in events:
                 ev_type = e["type"]
