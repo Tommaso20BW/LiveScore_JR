@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN         = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID           = os.getenv('TELEGRAM_TO')
-TEAM_ID           = '4007'   # ESPN team ID — modifica qui
+TEAM_ID           = '4007'
 GH_PAT            = os.getenv('GH_PAT')
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
 GIST_ID           = os.getenv('GIST_ID')
@@ -32,105 +32,44 @@ PAGINA_TARGET   = 11
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
 LEAGUE_SLUGS = [
-    # Italia
     "ita.1", "ita.coppa_italia", "ita.super_cup", "ita.2",
-    # UEFA
     "uefa.champions", "uefa.europa", "uefa.europa_conf",
-    # Top 5 Europe
     "esp.1", "esp.copa_del_rey", "esp.super_cup",
     "eng.1", "eng.fa", "eng.league_cup",
     "ger.1", "ger.dfb_pokal",
     "fra.1", "fra.coupe_de_france",
     "por.1", "ned.1", "bel.1", "tur.1", "sco.1",
-    # Americhe
-    "usa.1",           # MLS
-    "usa.open",        # US Open Cup
-    "concacaf.champions",
-    "mex.1",           # Liga MX
-    "bra.1",           # Brasileirao
-    "arg.1",           # Liga Profesional Argentina
-    "col.1", "chi.1", "ecu.1", "per.1", "uru.1",
+    "usa.1", "usa.open", "concacaf.champions",
+    "mex.1", "bra.1", "arg.1", "col.1", "chi.1", "ecu.1", "per.1", "uru.1",
     "conmebol.libertadores", "conmebol.sudamericana",
-    # Resto del mondo
-    "aus.1",           # A-League
-    "jpn.1",           # J-League
-    "chn.1",           # Chinese Super League
-    "sau.1",           # Saudi Pro League
-    # Amichevoli
+    "aus.1", "jpn.1", "chn.1", "sau.1",
     "friendly.club",
 ]
 
 LEAGUE_EMOJIS = {
-    # Italia
-    "ita.1":                    "🇮🇹",
-    "ita.coppa_italia":         "🇮🇹",
-    "ita.super_cup":            "🇮🇹",
-    "ita.2":                    "🇮🇹",
-    # UEFA
-    "uefa.champions":           "🇪🇺",
-    "uefa.europa":              "🇪🇺",
-    "uefa.europa_conf":         "🇪🇺",
-    # Spagna
-    "esp.1":                    "🇪🇸",
-    "esp.copa_del_rey":         "🇪🇸",
-    "esp.super_cup":            "🇪🇸",
-    # Inghilterra
-    "eng.1":                    "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    "eng.fa":                   "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    "eng.league_cup":           "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    # Germania
-    "ger.1":                    "🇩🇪",
-    "ger.dfb_pokal":            "🇩🇪",
-    # Francia
-    "fra.1":                    "🇫🇷",
-    "fra.coupe_de_france":      "🇫🇷",
-    # Portogallo
-    "por.1":                    "🇵🇹",
-    # Olanda
-    "ned.1":                    "🇳🇱",
-    # Belgio
-    "bel.1":                    "🇧🇪",
-    # Turchia
-    "tur.1":                    "🇹🇷",
-    # Scozia
-    "sco.1":                    "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-    # USA
-    "usa.1":                    "🇺🇸",
-    "usa.open":                 "🇺🇸",
-    "concacaf.champions":       "🌎",
-    # Messico
-    "mex.1":                    "🇲🇽",
-    # Sudamerica
-    "bra.1":                    "🇧🇷",
-    "arg.1":                    "🇦🇷",
-    "col.1":                    "🇨🇴",
-    "chi.1":                    "🇨🇱",
-    "ecu.1":                    "🇪🇨",
-    "per.1":                    "🇵🇪",
-    "uru.1":                    "🇺🇾",
-    "conmebol.libertadores":    "🌎",
-    "conmebol.sudamericana":    "🌎",
-    # Asia/Oceania
-    "aus.1":                    "🇦🇺",
-    "jpn.1":                    "🇯🇵",
-    "chn.1":                    "🇨🇳",
-    "sau.1":                    "🇸🇦",
-    # Amichevoli
-    "friendly.club":            "🤝",
+    "ita.1": "🇮🇹", "ita.coppa_italia": "🇮🇹", "ita.super_cup": "🇮🇹", "ita.2": "🇮🇹",
+    "uefa.champions": "🇪🇺", "uefa.europa": "🇪🇺", "uefa.europa_conf": "🇪🇺",
+    "esp.1": "🇪🇸", "esp.copa_del_rey": "🇪🇸", "esp.super_cup": "🇪🇸",
+    "eng.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.fa": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.league_cup": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "ger.1": "🇩🇪", "ger.dfb_pokal": "🇩🇪",
+    "fra.1": "🇫🇷", "fra.coupe_de_france": "🇫🇷",
+    "por.1": "🇵🇹", "ned.1": "🇳🇱", "bel.1": "🇧🇪", "tur.1": "🇹🇷", "sco.1": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "usa.1": "🇺🇸", "usa.open": "🇺🇸", "concacaf.champions": "🌎",
+    "mex.1": "🇲🇽", "bra.1": "🇧🇷", "arg.1": "🇦🇷", "col.1": "🇨🇴",
+    "chi.1": "🇨🇱", "ecu.1": "🇪🇨", "per.1": "🇵🇪", "uru.1": "🇺🇾",
+    "conmebol.libertadores": "🌎", "conmebol.sudamericana": "🌎",
+    "aus.1": "🇦🇺", "jpn.1": "🇯🇵", "chn.1": "🇨🇳", "sau.1": "🇸🇦",
+    "friendly.club": "🤝",
 }
 
-def get_league_emoji(slug: str) -> str:
-    return LEAGUE_EMOJIS.get(slug, "⚽️")
+def get_league_emoji(slug): return LEAGUE_EMOJIS.get(slug, "⚽️")
 
 MOMENTI_CONFIG = {
-    "HT":    {"titolo": "<b>STATS PRIMO TEMPO</b> 📊",    "badge": "FINE PRIMO TEMPO"},
-    "2H_END":{"titolo": "<b>STATS SECONDO TEMPO</b> 📊",  "badge": "FINE SECONDO TEMPO"},
-    "FT":    {"titolo": "<b>STATS FINE PARTITA</b> 📊",   "badge": "FINE PARTITA"},
+    "HT":    {"titolo": "<b>STATS PRIMO TEMPO</b> 📊",   "badge": "FINE PRIMO TEMPO"},
+    "2H_END":{"titolo": "<b>STATS SECONDO TEMPO</b> 📊", "badge": "FINE SECONDO TEMPO"},
+    "FT":    {"titolo": "<b>STATS FINE PARTITA</b> 📊",  "badge": "FINE PARTITA"},
 }
 
-# ==============================================================================
-# EMOJI
-# ==============================================================================
 E_BOLT   = '⚡️'
 E_FLAG   = '🏁'
 E_MIC    = '🎙'
@@ -142,9 +81,6 @@ E_RED    = '🟥'
 E_PEN_OK = '✅'
 E_PEN_KO = '❌'
 
-# ==============================================================================
-# HELPER: "N. Cognome"
-# ==============================================================================
 def fmt_player(full_name: str) -> str:
     if not full_name:
         return "N/A"
@@ -170,17 +106,13 @@ def send_telegram(text: str):
 
 def send_telegram_with_photo(text: str, photo_bytes):
     if not photo_bytes:
-        print("⚠️ Immagine Canva mancante. Invio solo testo...")
         send_telegram(text)
         return
-    print("📤 Invio post con grafica Canva su Telegram...")
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     try:
         r = requests.post(url, data={"chat_id": CHAT_ID, "caption": text, "parse_mode": "HTML"},
                           files={"photo": ("matchday.png", photo_bytes)}, timeout=25)
-        if r.status_code == 200:
-            print("🏁 Grafica fine partita pubblicata!")
-        else:
+        if r.status_code != 200:
             send_telegram(text)
     except Exception:
         send_telegram(text)
@@ -215,14 +147,14 @@ def update_github_secret(secret_name: str, new_value: str):
         r = requests.put(f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/{secret_name}",
                          headers=headers, json={"encrypted_value": encrypted, "key_id": pk["key_id"]}, timeout=10)
         if r.status_code in [201, 204]:
-            print(f"✅ Secret '{secret_name}' aggiornato su GitHub.")
+            print(f"✅ Secret '{secret_name}' aggiornato.")
             return True
     except Exception as e:
         print(f"❌ Errore update secret: {e}")
     return False
 
 # ==============================================================================
-# GIST — stato persistente
+# GIST
 # ==============================================================================
 def _gist_headers():
     return {"Authorization": f"Bearer {GH_PAT}", "Accept": "application/vnd.github+json",
@@ -252,8 +184,6 @@ def salva_stato_su_gist(state: dict):
                            json=payload, timeout=10)
         if r.status_code == 200:
             print("💾 Stato salvato sul Gist.")
-        else:
-            print(f"❌ Errore salvataggio Gist: {r.text}")
     except Exception as e:
         print(f"❌ Eccezione salvataggio Gist: {e}")
 
@@ -264,7 +194,7 @@ def resetta_gist():
         payload = {"files": {"match_state.json": {"content": "{}"}}}
         requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
                        json=payload, timeout=10)
-        print("🔄 Gist resettato per il prossimo match.")
+        print("🔄 Gist resettato.")
     except Exception as e:
         print(f"❌ Eccezione reset Gist: {e}")
 
@@ -275,7 +205,6 @@ def get_valid_token():
     if not CANVA_REFRESH_TOKEN:
         print("❌ CANVA_REFRESH_TOKEN mancante.")
         return None
-    print("🔄 Richiesta Access Token Canva...")
     try:
         r = requests.post("https://api.canva.com/rest/v1/oauth/token", data={
             "grant_type": "refresh_token", "refresh_token": CANVA_REFRESH_TOKEN,
@@ -283,9 +212,7 @@ def get_valid_token():
         }, timeout=15)
         if r.status_code == 200:
             tokens = r.json()
-            print("✅ Access Token Canva generato.")
             if "refresh_token" in tokens and tokens["refresh_token"] != CANVA_REFRESH_TOKEN:
-                print("🔄 Nuovo Refresh Token ricevuto. Aggiorno GitHub Secrets...")
                 update_github_secret("CANVA_REFRESH_TOKEN", tokens["refresh_token"])
             return tokens["access_token"]
         print(f"❌ Errore token Canva: {r.text}")
@@ -298,20 +225,16 @@ def get_canva_image(access_token: str):
         return None
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     try:
-        print("🎨 Avvio export Canva...")
         r = requests.post("https://api.canva.com/rest/v1/exports", headers=headers, json={
             "design_id": CANVA_DESIGN_ID, "format": {"type": "png", "pages": [PAGINA_TARGET]}
         }, timeout=15)
         if r.status_code not in [200, 201]:
-            print(f"❌ Errore avvio export: {r.text}")
             return None
         job_data = r.json()
         job_id = job_data.get("id") or job_data.get("job", {}).get("id")
         if not job_id:
             return None
-
         status_url = f"https://api.canva.com/rest/v1/exports/{job_id}"
-        print("⏳ Attesa 8s prima del polling Canva...")
         time.sleep(8)
         for i in range(60):
             time.sleep(5)
@@ -319,34 +242,188 @@ def get_canva_image(access_token: str):
             if check.status_code == 200:
                 d = check.json()
                 stato = d.get("status") or d.get("job", {}).get("status")
-                print(f"   [Controllo {i+1}/60] Stato Canva: {stato}")
+                print(f"   [Controllo {i+1}/60] Canva: {stato}")
                 if stato == "success":
                     urls = d.get("urls") or d.get("job", {}).get("urls")
                     url_dl = urls[0] if urls else (d.get("url") or d.get("job", {}).get("url"))
                     if url_dl:
-                        print("⏳ Export pronto. Attendo 10s prima del download...")
                         time.sleep(10)
-                        img = requests.get(url_dl, timeout=30)
-                        print("✅ Download Canva completato.")
-                        return img.content
+                        return requests.get(url_dl, timeout=30).content
                 elif stato == "failed":
                     return None
-        print("❌ Timeout Canva.")
     except Exception as e:
         print(f"❌ Errore Canva: {e}")
     return None
 
 # ==============================================================================
-# STATISTICHE HTML + PLAYWRIGHT
-# ESPN espone le stats in boxscore.teams[].statistics
+# PARSE EVENTS — FIX PRINCIPALE
+# ESPN soccer mette gli eventi in strutture diverse da data["plays"]
+# Leggiamo da: scoringPlays, keyPlays, e plays come fallback
 # ==============================================================================
+def parse_events(data: dict) -> list:
+    """
+    Raccoglie tutti gli eventi significativi dalla risposta ESPN soccer.
+    ESPN soccer non usa data["plays"] come altri sport: gli eventi stanno in
+    data["scoringPlays"] (goal), data["keyPlays"] (cambi, cartellini, ecc.)
+    e/o data["plays"] come fallback.
+    Normalizza tutto in un formato comune.
+    """
+    events = []
+    seen_ids = set()
+
+    def safe_minute(clock_str):
+        try:
+            return int(str(clock_str).split(":")[0])
+        except Exception:
+            return 0
+
+    def extract_athlete(participants, index=0):
+        try:
+            return participants[index].get("athlete", {}).get("displayName", "")
+        except Exception:
+            return ""
+
+    def add_event(ev_type, minute, team_id, player_name, assist_name, uid=None):
+        key = uid or f"{ev_type}_{minute}_{player_name}"
+        if key in seen_ids:
+            return
+        seen_ids.add(key)
+        events.append({
+            "type": ev_type.lower(),
+            "minute": minute,
+            "team_id": str(team_id),
+            "player_name": player_name,
+            "assist_name": assist_name,
+        })
+
+    # ---- 1. scoringPlays (goal confermati da ESPN) ----
+    for item in data.get("scoringPlays", []):
+        try:
+            ev_type    = item.get("type", {}).get("text", "goal")
+            clock      = item.get("clock", {}).get("displayValue", "0:00")
+            minute     = safe_minute(clock)
+            team_id    = item.get("team", {}).get("id", "")
+            parts      = item.get("participants", [])
+            player     = extract_athlete(parts, 0)
+            assist     = extract_athlete(parts, 1)
+            uid        = item.get("id", f"sp_{minute}_{player}")
+            add_event(ev_type, minute, team_id, player, assist, uid)
+        except Exception as e:
+            print(f"⚠️ Errore parsing scoringPlay: {e}")
+
+    # ---- 2. keyPlays (cambi, cartellini, e anche goal alternativi) ----
+    for item in data.get("keyPlays", []):
+        try:
+            ev_type = item.get("type", {}).get("text", "")
+            if not ev_type:
+                continue
+            clock   = item.get("clock", {}).get("displayValue", "0:00")
+            minute  = safe_minute(clock)
+            team_id = item.get("team", {}).get("id", "")
+            parts   = item.get("participants", [])
+            player  = extract_athlete(parts, 0)
+            assist  = extract_athlete(parts, 1)
+            uid     = item.get("id", f"kp_{minute}_{player}_{ev_type}")
+            add_event(ev_type, minute, team_id, player, assist, uid)
+        except Exception as e:
+            print(f"⚠️ Errore parsing keyPlay: {e}")
+
+    # ---- 3. plays (fallback generico) ----
+    for item in data.get("plays", []):
+        try:
+            ev_type = item.get("type", {}).get("text", "")
+            if not ev_type:
+                continue
+            clock   = item.get("clock", {}).get("displayValue", "0:00")
+            minute  = safe_minute(clock)
+            team_id = item.get("team", {}).get("id", "")
+            parts   = item.get("participants", [])
+            player  = extract_athlete(parts, 0)
+            assist  = extract_athlete(parts, 1)
+            uid     = item.get("id", f"p_{minute}_{player}_{ev_type}")
+            add_event(ev_type, minute, team_id, player, assist, uid)
+        except Exception as e:
+            print(f"⚠️ Errore parsing play: {e}")
+
+    # ---- 4. Fallback: header competitions plays ----
+    try:
+        for comp in data.get("header", {}).get("competitions", []):
+            for item in comp.get("plays", []):
+                try:
+                    ev_type = item.get("type", {}).get("text", "")
+                    if not ev_type:
+                        continue
+                    clock   = item.get("clock", {}).get("displayValue", "0:00")
+                    minute  = safe_minute(clock)
+                    team_id = item.get("team", {}).get("id", "")
+                    parts   = item.get("participants", [])
+                    player  = extract_athlete(parts, 0)
+                    assist  = extract_athlete(parts, 1)
+                    uid     = item.get("id", f"hp_{minute}_{player}_{ev_type}")
+                    add_event(ev_type, minute, team_id, player, assist, uid)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    if events:
+        print(f"📋 Eventi totali trovati: {len(events)} — tipi: {list(set(e['type'] for e in events))}")
+    else:
+        print("⚠️ Nessun evento trovato in scoringPlays/keyPlays/plays. Verifica la struttura ESPN del summary.")
+
+    return events
+
+# ==============================================================================
+# STATISTICHE — FIX: legge anche da header.competitions[].competitors[].statistics
+# ==============================================================================
+def _estrai_stats_espn(data: dict) -> dict:
+    """
+    ESPN soccer può esporre le statistiche in due posti:
+      A) data["boxscore"]["teams"][x]["statistics"]  (più completo, spesso post-partita)
+      B) data["header"]["competitions"][0]["competitors"][x]["statistics"]  (disponibile live)
+    Legge entrambi e unisce. Ritorna {"home": {nome: valore}, "away": {nome: valore}}
+    """
+    raw = {"home": {}, "away": {}}
+
+    # --- Fonte A: boxscore ---
+    try:
+        for team_data in data.get("boxscore", {}).get("teams", []):
+            side = "home" if team_data.get("homeAway") == "home" else "away"
+            for s in team_data.get("statistics", []):
+                key = s.get("name", "").lower()
+                val = s.get("displayValue", "0")
+                if key:
+                    raw[side][key] = val
+    except Exception as e:
+        print(f"⚠️ Errore parsing boxscore.teams: {e}")
+
+    # --- Fonte B: header.competitions.competitors (LIVE) ---
+    try:
+        comps = data.get("header", {}).get("competitions", [{}])
+        for comp in comps:
+            for competitor in comp.get("competitors", []):
+                side = "home" if competitor.get("homeAway") == "home" else "away"
+                for s in competitor.get("statistics", []):
+                    key = s.get("name", "").lower()
+                    val = s.get("displayValue", s.get("value", "0"))
+                    if key and key not in raw[side]:  # non sovrascrivere boxscore se già presente
+                        raw[side][key] = str(val)
+    except Exception as e:
+        print(f"⚠️ Errore parsing header competitors stats: {e}")
+
+    # Debug: mostra le chiavi trovate
+    print(f"📊 Stats home keys ({len(raw['home'])}): {list(raw['home'].keys())[:10]}")
+    print(f"📊 Stats away keys ({len(raw['away'])}): {list(raw['away'].keys())[:10]}")
+
+    return raw
+
+
 def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   home_name: str, away_name: str,
                                   home_goals: int, away_goals: int,
                                   momento: str, league_name: str = "SERIE A"):
-    print(f"📊 Parsing statistiche ESPN per momento {momento}...")
+    print(f"📊 Generazione stats HTML per momento {momento}...")
 
-    # Logo ESPN: usa logoURL dal competitor se disponibile, altrimenti placeholder
     def logo_url(competitor_id):
         return f"https://a.espncdn.com/i/teamlogos/soccer/500/{competitor_id}.png"
 
@@ -354,52 +431,71 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     a_logo = logo_url(away_id)
     badge_label = MOMENTI_CONFIG[momento]["badge"]
 
-    # Mappa ESPN stat name → valore per home/away
-    raw = {"home": {}, "away": {}}
-    try:
-        for team_data in data_espn.get("boxscore", {}).get("teams", []):
-            side = "home" if team_data.get("homeAway") == "home" else "away"
-            for s in team_data.get("statistics", []):
-                raw[side][s.get("name", "").lower()] = s.get("displayValue", "0")
-    except Exception as e:
-        print(f"⚠️ Errore parsing boxscore ESPN: {e}")
+    raw = _estrai_stats_espn(data_espn)
 
-    def g(side, key, fallback="0"):
-        return raw[side].get(key, fallback)
+    def g(side, *keys, fallback="0"):
+        """Prova più chiavi alternative fino a trovarne una con valore non-zero."""
+        for key in keys:
+            val = raw[side].get(key.lower(), None)
+            if val is not None and val not in ("0", "", "0.0", "0%"):
+                return val
+        # Se non trovato, ritorna comunque il primo disponibile o fallback
+        for key in keys:
+            val = raw[side].get(key.lower(), None)
+            if val is not None:
+                return val
+        return fallback
 
     def calcola_perc(h_val, a_val, tipo="int"):
         try:
+            clean = lambda v: str(v).replace("%", "").strip()
             if tipo == "float":
-                h, a = float(str(h_val).replace("%", "")), float(str(a_val).replace("%", ""))
+                h, a = float(clean(h_val)), float(clean(a_val))
             else:
-                h, a = int(str(h_val).replace("%", "")), int(str(a_val).replace("%", ""))
+                h, a = int(float(clean(h_val))), int(float(clean(a_val)))
             return 50 if (h + a) == 0 else int(h / (h + a) * 100)
         except Exception:
             return 50
 
-    # possesso già in percentuale tipo "56%"
-    pos_h = g("home", "possessionpct", "50%")
-    pos_a = g("away", "possessionpct", "50%")
+    # Possesso
+    pos_h = g("home", "possessionPct", "possessionpct", "possession", fallback="50%")
+    pos_a = g("away", "possessionPct", "possessionpct", "possession", fallback="50%")
     try:
-        bp_perc = int(str(pos_h).replace("%", ""))
+        bp_perc = int(float(str(pos_h).replace("%", "")))
     except Exception:
         bp_perc = 50
 
-    xg_h = g("home", "expectedgoals", "0.0")
-    xg_a = g("away", "expectedgoals", "0.0")
-
-    def si(side, key): return g(side, key, "0")
+    # Tiri in porta (Shots on Goal)
+    sot_h    = g("home", "shotsOnTarget", "shotsontarget", fallback="0")
+    sot_a    = g("away", "shotsOnTarget", "shotsontarget", fallback="0")
+    # Tiri totali (Shot Attempts)
+    shots_h  = g("home", "totalShots", "totalshots", fallback="0")
+    shots_a  = g("away", "totalShots", "totalshots", fallback="0")
+    # Falli
+    falli_h  = g("home", "foulsCommitted", "foulscommitted", "fouls", fallback="0")
+    falli_a  = g("away", "foulsCommitted", "foulscommitted", "fouls", fallback="0")
+    # Cartellini gialli
+    gialli_h = g("home", "yellowCards", "yellowcards", fallback="0")
+    gialli_a = g("away", "yellowCards", "yellowcards", fallback="0")
+    # Cartellini rossi
+    rossi_h  = g("home", "redCards", "redcards", fallback="0")
+    rossi_a  = g("away", "redCards", "redcards", fallback="0")
+    # Corner
+    corner_h = g("home", "cornerKicks", "cornerkicks", fallback="0")
+    corner_a = g("away", "cornerKicks", "cornerkicks", fallback="0")
+    # Parate
+    saves_h  = g("home", "saves", fallback="0")
+    saves_a  = g("away", "saves", fallback="0")
 
     stats_mappate = [
-        ("xG",               xg_h,                          xg_a,                          calcola_perc(xg_h, xg_a, "float")),
-        ("Possesso palla",   pos_h,                         pos_a,                         bp_perc),
-        ("Tiri totali",      si("home","totalshots"),       si("away","totalshots"),       calcola_perc(si("home","totalshots"), si("away","totalshots"))),
-        ("Tiri in porta",    si("home","shotsontarget"),    si("away","shotsontarget"),    calcola_perc(si("home","shotsontarget"), si("away","shotsontarget"))),
-        ("Passaggi riusciti",si("home","accuratepasses"),   si("away","accuratepasses"),   calcola_perc(si("home","accuratepasses"), si("away","accuratepasses"))),
-        ("Corner",           si("home","cornerkicks"),      si("away","cornerkicks"),      calcola_perc(si("home","cornerkicks"), si("away","cornerkicks"))),
-        ("Falli",            si("home","foulscommitted"),   si("away","foulscommitted"),   calcola_perc(si("home","foulscommitted"), si("away","foulscommitted"))),
-        ("Ammoniti",         si("home","yellowcards"),      si("away","yellowcards"),      calcola_perc(si("home","yellowcards"), si("away","yellowcards"))),
-        ("Espulsi",          si("home","redcards"),         si("away","redcards"),         calcola_perc(si("home","redcards"), si("away","redcards"))),
+        ("Possesso palla",  pos_h,   pos_a,   bp_perc),
+        ("Tiri in porta",   sot_h,   sot_a,   calcola_perc(sot_h,   sot_a)),
+        ("Tiri totali",     shots_h, shots_a, calcola_perc(shots_h, shots_a)),
+        ("Falli",           falli_h, falli_a, calcola_perc(falli_h, falli_a)),
+        ("Ammoniti",        gialli_h,gialli_a,calcola_perc(gialli_h,gialli_a)),
+        ("Espulsi",         rossi_h, rossi_a, calcola_perc(rossi_h, rossi_a)),
+        ("Corner",          corner_h,corner_a,calcola_perc(corner_h,corner_a)),
+        ("Parate",          saves_h, saves_a, calcola_perc(saves_h, saves_a)),
     ]
 
     rows_html = "".join([f'''
@@ -507,7 +603,6 @@ body {{
             base_img = Image.open(path_raw_png).convert("RGBA")
             texture  = Image.open("texture.png").convert("RGBA").resize(base_img.size, Image.Resampling.LANCZOS)
             Image.alpha_composite(base_img, texture).convert("RGB").save(path_final_png, "PNG")
-            print("🎨 Texture fusa con successo!")
             return path_final_png
         except Exception as e:
             print(f"⚠️ Errore texture: {e}")
@@ -544,7 +639,12 @@ def fetch_evento(event_id: str, league_slug: str):
     try:
         r = requests.get(f"{ESPN_BASE}/{league_slug}/summary",
                          params={"event": event_id}, timeout=15)
-        return r.json() if r.status_code == 200 else None
+        if r.status_code == 200:
+            d = r.json()
+            # Debug: mostra le chiavi top-level per capire la struttura
+            print(f"🔍 Chiavi ESPN summary: {list(d.keys())}")
+            return d
+        return None
     except Exception as e:
         print(f"❌ Errore fetch evento: {e}")
         return None
@@ -577,67 +677,40 @@ def parse_status(data: dict):
         if state == "pre":
             return "NS", 0
         if state == "post":
-            if "pen" in desc:   return "PEN", 120
-            if "extra" in desc or "aet" in desc: return "AET", 120
+            if "pen" in desc:
+                return "PEN", 120
+            if "extra" in desc or "aet" in desc:
+                return "AET", 120
             return "FT", 90
-        # in progress
-        if "halftime" in desc or desc == "half time": return "HT", 45
-        if "first" in desc and "half" in desc:        return "1H", elapsed
-        if "second" in desc and "half" in desc:       return "2H", elapsed
-        if "extra" in desc:                           return "ET", elapsed
-        if "penalty" in desc or "penalties" in desc:  return "PEN", elapsed
+        if "halftime" in desc or desc == "half time":
+            return "HT", 45
+        if "first" in desc and "half" in desc:
+            return "1H", elapsed
+        if "second" in desc and "half" in desc:
+            return "2H", elapsed
+        if "extra" in desc:
+            return "ET", elapsed
+        if "penalty" in desc or "penalties" in desc:
+            return "PEN", elapsed
         return ("1H" if period == 1 else "2H"), elapsed
     except Exception:
         return "NS", 0
 
-def parse_events(data: dict):
-    events = []
-    try:
-        for item in data.get("plays", []):
-            ev_type = item.get("type", {}).get("text", "").lower()
-            clock   = item.get("clock", {}).get("displayValue", "0:00")
-            try:
-                minute = int(clock.split(":")[0])
-            except Exception:
-                minute = 0
-            parts = item.get("participants", [])
-            events.append({
-                "type":        ev_type,
-                "minute":      minute,
-                "team_id":     str(item.get("team", {}).get("id", "")),
-                "player_name": parts[0].get("athlete", {}).get("displayName", "") if parts else "",
-                "assist_name": parts[1].get("athlete", {}).get("displayName", "") if len(parts) > 1 else "",
-            })
-    except Exception as e:
-        print(f"⚠️ Errore parsing events: {e}")
-    return events
-
 def build_score_str(home_name, away_name, g_home, g_away):
-    if g_home > g_away:   return f"<b>{home_name} {g_home}</b>-{g_away} {away_name}"
-    elif g_away > g_home: return f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
-    else:                 return f"{home_name} {g_home}-{g_away} {away_name}"
+    if g_home > g_away:
+        return f"<b>{home_name} {g_home}</b>-{g_away} {away_name}"
+    elif g_away > g_home:
+        return f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
+    else:
+        return f"{home_name} {g_home}-{g_away} {away_name}"
 
-# Abbreviazioni personalizzate per l'hashtag — aggiungi pure altre squadre
 TEAM_ABBREVIATIONS = {
-    "juventus":              "Juve",
-    "inter":                 "Inter",
-    "ac milan":              "Milan",
-    "as roma":               "Roma",
-    "napoli":                "Napoli",
-    "lazio":                 "Lazio",
-    "fiorentina":            "Fiorentina",
-    "atalanta":              "Atalanta",
-    "real madrid":           "Real",
-    "fc barcelona":          "Barca",
-    "barcelona":             "Barca",
-    "manchester city":       "ManCity",
-    "manchester united":     "ManUtd",
-    "liverpool":             "Liverpool",
-    "chelsea":               "Chelsea",
-    "arsenal":               "Arsenal",
-    "paris saint-germain":   "PSG",
-    "bayern munich":         "Bayern",
-    "borussia dortmund":     "BVB",
+    "juventus": "Juve", "inter": "Inter", "ac milan": "Milan", "as roma": "Roma",
+    "napoli": "Napoli", "lazio": "Lazio", "fiorentina": "Fiorentina", "atalanta": "Atalanta",
+    "real madrid": "Real", "fc barcelona": "Barca", "barcelona": "Barca",
+    "manchester city": "ManCity", "manchester united": "ManUtd",
+    "liverpool": "Liverpool", "chelsea": "Chelsea", "arsenal": "Arsenal",
+    "paris saint-germain": "PSG", "bayern munich": "Bayern", "borussia dortmund": "BVB",
 }
 
 def build_hashtag(home_name, away_name):
@@ -652,10 +725,9 @@ def avvia_ciclo_partita():
     team_id = str(TEAM_ID).strip()
     print(f"🚀 Avvio bot ESPN per team_id={team_id}")
 
-    print("🔍 Cerco partita di oggi su ESPN...")
     partita = trova_partita_oggi(team_id)
     if not partita:
-        print(f"📭 Nessun evento trovato oggi per team_id={team_id}. Bot terminato.")
+        print(f"📭 Nessun evento trovato oggi per team_id={team_id}.")
         return
 
     event_id    = partita["event_id"]
@@ -675,7 +747,6 @@ def avvia_ciclo_partita():
         try:
             data = fetch_evento(event_id, league_slug)
             if not data:
-                print("⚠️ Risposta ESPN vuota. Riprovo tra 30s...")
                 time.sleep(30)
                 continue
 
@@ -692,10 +763,9 @@ def avvia_ciclo_partita():
             e_comp    = get_league_emoji(league_slug)
             events    = parse_events(data)
 
-            print(f"[{status}] {home_name} {g_home}-{g_away} {away_name} | min {elapsed}")
+            print(f"[{status}] {home_name} {g_home}-{g_away} {away_name} | min {elapsed} | eventi: {len(events)}")
 
             if status == "NS":
-                print("💤 Partita non ancora iniziata. Attendo 60s...")
                 time.sleep(60)
                 continue
 
@@ -710,7 +780,6 @@ def avvia_ciclo_partita():
             if status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-                print("⏳ Attesa 2 minuti per consolidamento dati HT...")
                 time.sleep(120)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
@@ -724,11 +793,10 @@ def avvia_ciclo_partita():
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
 
-            # ---- 4. FINE REGOLAMENTARI → SUPPLEMENTARI ----
+            # ---- 4. FINE REGOLAMENTARI ----
             if status == "ET" and "2H_END" not in state["sent_periods"]:
-                send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\nSi va ai tempi supplementari!\n\n{score_str}\n\n{e_comp} {hashtag}")
+                send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\nSi va ai supplementari!\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
-                print("⏳ Attesa 2 minuti per consolidamento dati 2H_END...")
                 time.sleep(120)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
@@ -752,7 +820,7 @@ def avvia_ciclo_partita():
             # ---- 6. RIGORI ----
             if status == "PEN":
                 if "ET_END_PENS" not in state["sent_periods"]:
-                    send_telegram(f"<b>FINE TEMPI SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    send_telegram(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("ET_END_PENS")
 
                 home_pen_icons, away_pen_icons = [], []
@@ -781,8 +849,10 @@ def avvia_ciclo_partita():
                 for e in events:
                     if "goal" in e["type"] and "shootout" not in e["type"]:
                         ps = fmt_player(e["player_name"])
-                        if "own" in e["type"]:     ps += " (Autogol)"
-                        elif "penalty" in e["type"]: ps += " (Rig.)"
+                        if "own" in e["type"]:
+                            ps += " (Autogol)"
+                        elif "penalty" in e["type"]:
+                            ps += " (Rig.)"
                         entry = f"{e['minute']}' {ps}"
                         (home_scorers if e["team_id"] == home_id else away_scorers).append(entry)
 
@@ -802,10 +872,8 @@ def avvia_ciclo_partita():
                     foto = get_canva_image(canva_token)
                     send_telegram_with_photo(msg_finale, foto)
                 else:
-                    print("❌ Token Canva non disponibile. Invio solo testo.")
                     send_telegram(msg_finale)
 
-                print("⏳ Attesa 2 minuti per consolidamento dati FT...")
                 time.sleep(120)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
@@ -813,7 +881,6 @@ def avvia_ciclo_partita():
                                                          "FT", league_name)
                 send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("FT")
-
                 state["_reset_done"] = True
                 resetta_gist()
                 print("🏁 Partita terminata. Bot spento.")
@@ -826,12 +893,14 @@ def avvia_ciclo_partita():
                 if goal_events:
                     last = sorted(goal_events, key=lambda x: x["minute"])[-1]
                     if not last["player_name"]:
-                        print("⏳ Nome marcatore non ancora disponibile. Riprovo al prossimo ciclo...")
+                        print("⏳ Nome marcatore non ancora disponibile. Riprovo...")
                         time.sleep(sleep_time)
                         continue
                     ps = fmt_player(last["player_name"])
-                    if "own" in last["type"]:     ps += " (Autogol)"
-                    elif "penalty" in last["type"]: ps += " (Rig.)"
+                    if "own" in last["type"]:
+                        ps += " (Autogol)"
+                    elif "penalty" in last["type"]:
+                        ps += " (Rig.)"
                     scorer_line = f"{E_BALL} <i>{last['minute']}' {ps}</i>\n"
 
                     scoring_tid = last["team_id"]
@@ -901,9 +970,7 @@ def main():
     print("🚀 ESPN Live Score Bot avviato...")
 
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
-        print("🔒 Modalità Keep-Alive: Rinnovo il token Canva...")
         get_valid_token()
-        print("🔒 Token aggiornato. Termino.")
         return
 
     avvia_ciclo_partita()
