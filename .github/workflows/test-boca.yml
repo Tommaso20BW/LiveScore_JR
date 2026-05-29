@@ -1,119 +1,92 @@
-name: Test ESPN - Boca Juniors Live
+name: Test ESPN - Boca Libertadores Live
 
 on:
   workflow_dispatch:
 
 jobs:
-  test-boca:
+  test-boca-libertadores:
     runs-on: ubuntu-latest
     steps:
 
-      - name: Cerca Boca Juniors nelle leghe argentini
-        run: |
-          echo "=== Probando slug arg.1 (Liga Profesional) ==="
-          curl -s -w "\nHTTP:%{http_code}" \
-            "https://site.api.espn.com/apis/site/v2/sports/soccer/arg.1/scoreboard" \
-          | python3 -c "
-          import json, sys
-          raw = sys.stdin.read()
-          http = raw.split('HTTP:')[-1].strip()
-          body = raw.rsplit('HTTP:', 1)[0]
-          print(f'Status: {http}')
-          try:
-              data = json.loads(body)
-              events = data.get('events', [])
-              print(f'Partite oggi: {len(events)}')
-              for e in events:
-                  comps = e.get('competitions', [{}])[0]
-                  teams = comps.get('competitors', [])
-                  names = [t['team']['displayName'] for t in teams]
-                  scores = [t.get('score', '?') for t in teams]
-                  state = e['status']['type']['state']
-                  desc = e['status']['type']['description']
-                  clock = e['status'].get('displayClock', '')
-                  boca = any('Boca' in n for n in names)
-                  tag = ' ← BOCA!' if boca else ''
-                  print(f'  [{state}] {names[0]} {scores[0]} - {scores[1]} {names[1]} | {desc} {clock}{tag}')
-          except Exception as ex:
-              print(f'Errore parsing: {ex}')
-              print(body[:400])
-          "
-
-      - name: Fetch incidents partita Boca (se live)
+      - name: Scoreboard Libertadores + cerca Boca
         run: |
           python3 << 'EOF'
           import urllib.request, json
 
-          # Prendi il match di Boca dalla scoreboard
-          url = "https://site.api.espn.com/apis/site/v2/sports/soccer/arg.1/scoreboard"
+          url = "https://site.api.espn.com/apis/site/v2/sports/soccer/conmebol.libertadores/scoreboard"
           req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
           with urllib.request.urlopen(req) as r:
               data = json.load(r)
 
           events = data.get("events", [])
+          print(f"Partite Libertadores oggi: {len(events)}\n")
+
           boca_event = None
           for e in events:
               comps = e.get("competitions", [{}])[0]
               teams = comps.get("competitors", [])
               names = [t["team"]["displayName"] for t in teams]
-              if any("Boca" in n for n in names):
+              scores = [t.get("score", "?") for t in teams]
+              state = e["status"]["type"]["state"]
+              desc = e["status"]["type"]["description"]
+              clock = e["status"].get("displayClock", "")
+              date = e.get("date", "")
+              boca = any("Boca" in n for n in names)
+              tag = " ← BOCA!" if boca else ""
+              print(f"[{state}] {names[0]} {scores[0]} - {scores[1]} {names[1]} | {desc} {clock} | {date}{tag}")
+              if boca:
                   boca_event = e
-                  break
 
           if not boca_event:
-              print("Boca Juniors non trovata nella scoreboard oggi.")
-              print("Partite disponibili:")
-              for e in events:
-                  comps = e.get("competitions", [{}])[0]
-                  teams = comps.get("competitors", [])
-                  names = [t["team"]["displayName"] for t in teams]
-                  print(f"  - {names}")
+              print("\nBoca non in campo oggi su Libertadores.")
               exit(0)
 
           event_id = boca_event["id"]
-          state    = boca_event["status"]["type"]["state"]
-          desc     = boca_event["status"]["type"]["description"]
-          clock    = boca_event["status"].get("displayClock", "")
           comps    = boca_event.get("competitions", [{}])[0]
           teams    = comps.get("competitors", [])
           names    = [t["team"]["displayName"] for t in teams]
           scores   = [t.get("score", "0") for t in teams]
+          state    = boca_event["status"]["type"]["state"]
+          desc     = boca_event["status"]["type"]["description"]
+          clock    = boca_event["status"].get("displayClock", "")
 
-          print(f"\n{'='*50}")
-          print(f"PARTITA: {names[0]} {scores[0]} - {scores[1]} {names[1]}")
-          print(f"STATUS:  {desc} {clock}")
-          print(f"ID:      {event_id}")
-          print(f"{'='*50}")
+          print(f"\n{'='*55}")
+          print(f"  {names[0]}  {scores[0]} - {scores[1]}  {names[1]}")
+          print(f"  {desc} {clock}  (event_id: {event_id})")
+          print(f"{'='*55}")
 
-          # Fetch summary (contiene plays/eventi)
-          sum_url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/arg.1/summary?event={event_id}"
+          sum_url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/conmebol.libertadores/summary?event={event_id}"
           req2 = urllib.request.Request(sum_url, headers={"User-Agent": "Mozilla/5.0"})
           with urllib.request.urlopen(req2) as r2:
               summary = json.load(r2)
 
-          # Stampa le chiavi disponibili nel summary
-          print(f"\nChiavi summary: {list(summary.keys())}")
+          print(f"\nChiavi summary disponibili: {list(summary.keys())}")
 
-          # Scoring plays / key events
           plays = summary.get("plays", [])
-          key_plays = [p for p in plays if p.get("scoringPlay") or p.get("type", {}).get("text") in
-                       ["Goal", "Yellow Card", "Red Card", "Substitution", "Penalty"]]
+          print(f"\nTotale plays: {len(plays)}")
+          if plays:
+              print("Ultimi 15 eventi:")
+              for p in plays[-15:]:
+                  clock_p = p.get("clock", {}).get("displayValue", "?'")
+                  ptype   = p.get("type", {}).get("text", "?")
+                  text    = p.get("text", "")
+                  home_s  = p.get("homeScore", "")
+                  away_s  = p.get("awayScore", "")
+                  score_s = f"[{home_s}-{away_s}]" if home_s != "" else ""
+                  goal    = "⚽ " if p.get("scoringPlay") else "   "
+                  print(f"  {goal}{clock_p:>6} | {ptype:<20} | {text} {score_s}")
 
-          print(f"\nEventi chiave trovati: {len(key_plays)} (su {len(plays)} totali)")
-          for p in key_plays[-10:]:
-              clock_p = p.get("clock", {}).get("displayValue", "?")
-              ptype   = p.get("type", {}).get("text", "?")
-              text    = p.get("text", "")
-              scoring = "⚽" if p.get("scoringPlay") else "  "
-              home_s  = p.get("homeScore", "")
-              away_s  = p.get("awayScore", "")
-              score_s = f"[{home_s}-{away_s}]" if home_s or away_s else ""
-              print(f"  {scoring} {clock_p} | {ptype} | {text} {score_s}")
+          scoring = summary.get("scoringPlays", [])
+          if scoring:
+              print(f"\nGol segnati ({len(scoring)}):")
+              for g in scoring:
+                  clock_g = g.get("clock", {}).get("displayValue", "?'")
+                  text_g  = g.get("text", "")
+                  home_s  = g.get("homeScore", "")
+                  away_s  = g.get("awayScore", "")
+                  print(f"  ⚽ {clock_g:>6} | {text_g} [{home_s}-{away_s}]")
 
-          # Se partita non ancora iniziata, mostra dettagli
-          if state == "pre":
-              venue = comps.get("venue", {})
-              date  = boca_event.get("date", "")
-              print(f"\nPartita programmata: {date}")
-              print(f"Stadio: {venue.get('fullName','?')} - {venue.get('address',{}).get('city','?')}")
+          if plays:
+              print(f"\nStruttura play raw (primo elemento):")
+              print(json.dumps(plays[0], indent=2))
           EOF
