@@ -26,13 +26,13 @@ GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
 
 # ESPN: ID Juventus = "111"
-ESPN_JUVE_ID   = "111"
+ESPN_JUVE_ID   = "18206"
 ESPN_JUVE_NAME = "Juventus"
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET   = 11
 
-JUVE_LOGO_URL = "https://a.espncdn.com/i/teamlogos/soccer/500/111.png"
+JUVE_LOGO_URL = "https://a.espncdn.com/i/teamlogos/soccer/500/18206.png"
 
 # Tutte le competizioni in cui può giocare la Juventus
 ESPN_SLUGS = [
