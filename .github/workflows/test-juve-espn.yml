@@ -1,0 +1,175 @@
+name: Test ESPN - Struttura dati Juventus
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-juve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cerca Juventus in tutte le competizioni ESPN
+        run: |
+          python3 << 'EOF'
+          import urllib.request, json, time
+
+          SLUGS = [
+              ("Serie A",            "ita.1"),
+              ("Coppa Italia",       "ita.coppa_italia"),
+              ("Champions League",   "uefa.champions"),
+              ("Europa League",      "uefa.europa"),
+              ("Conference League",  "uefa.europa.conference_league"),
+              ("Supercoppa Italiana","ita.super_cup"),
+              ("UEFA Super Cup",     "uefa.super_cup"),
+              ("Mondiale per Club",  "fifa.cwc"),
+          ]
+
+          juve_event = None
+          juve_slug  = None
+
+          for name, slug in SLUGS:
+              try:
+                  url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
+                  req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=8) as r:
+                      data = json.load(r)
+                  events = data.get("events", [])
+                  for e in events:
+                      comps = e.get("competitions", [{}])[0]
+                      teams = comps.get("competitors", [])
+                      names = [t["team"]["displayName"] for t in teams]
+                      if any("Juventus" in n for n in names):
+                          state = e["status"]["type"]["state"]
+                          desc  = e["status"]["type"]["description"]
+                          clock = e["status"].get("displayClock", "")
+                          scores = [t.get("score","?") for t in teams]
+                          print(f"\n✅ JUVENTUS TROVATA in [{name}] ({slug})")
+                          print(f"   {names[0]} {scores[0]} - {scores[1]} {names[1]}")
+                          print(f"   Stato: {state} | {desc} {clock}")
+                          print(f"   Event ID: {e['id']}")
+                          juve_event = e
+                          juve_slug  = slug
+                          break
+                  if not juve_event:
+                      print(f"[{slug}] {len(events)} partite, nessuna Juventus")
+              except Exception as ex:
+                  print(f"[{slug}] errore: {ex}")
+              time.sleep(0.2)
+
+          if not juve_event:
+              print("\n⚠️  Juventus non trovata in nessuna competizione oggi.")
+              print("Provo a cercare l'ultima partita giocata (Serie A come fallback)...")
+              url = "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard?limit=50"
+              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+              with urllib.request.urlopen(req, timeout=8) as r:
+                  data = json.load(r)
+              events = data.get("events", [])
+              for e in events:
+                  comps = e.get("competitions", [{}])[0]
+                  teams = comps.get("competitors", [])
+                  names = [t["team"]["displayName"] for t in teams]
+                  if any("Juventus" in n for n in names):
+                      juve_event = e
+                      juve_slug = "ita.1"
+                      print(f"Trovata: {names}")
+                      break
+
+          if not juve_event:
+              print("Nessuna partita Juventus disponibile. Esci.")
+              exit(0)
+
+          # ── SUMMARY completo ──────────────────────────────────────────────
+          eid = juve_event["id"]
+          sum_url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{juve_slug}/summary?event={eid}"
+          req2 = urllib.request.Request(sum_url, headers={"User-Agent": "Mozilla/5.0"})
+          with urllib.request.urlopen(req2, timeout=10) as r2:
+              summary = json.load(r2)
+
+          print(f"\n{'='*60}")
+          print(f"CHIAVI SUMMARY: {list(summary.keys())}")
+          print(f"{'='*60}")
+
+          # Plays (eventi in-game)
+          plays = summary.get("plays", [])
+          print(f"\nTotale plays: {len(plays)}")
+          if plays:
+              print("\nUltimi 10 plays:")
+              for p in plays[-10:]:
+                  clock_p = p.get("clock", {}).get("displayValue", "?'")
+                  ptype   = p.get("type", {}).get("text", "?")
+                  text    = p.get("text", "")
+                  scoring = "⚽" if p.get("scoringPlay") else "  "
+                  print(f"  {scoring} {clock_p:>6} | {ptype:<25} | {text[:60]}")
+              print("\nSTRUTTURA PLAY RAW (primo):")
+              print(json.dumps(plays[0], indent=2))
+
+          # Scoring plays
+          scoring = summary.get("scoringPlays", [])
+          print(f"\nScoringPlays: {len(scoring)}")
+          for g in scoring:
+              print(f"  {json.dumps(g, indent=2)[:300]}")
+
+          # Stats
+          stats = summary.get("statistics", [])
+          print(f"\nStatistiche team: {len(stats)}")
+          if stats:
+              print(f"Chiavi stats[0]: {list(stats[0].keys())}")
+              splits = stats[0].get("splits", {}).get("categories", [])
+              print(f"Categorie splits: {[c.get('name') for c in splits[:5]]}")
+              if splits:
+                  print(f"Stat esempio: {json.dumps(splits[0], indent=2)[:400]}")
+
+          # Rosters / lineups
+          rosters = summary.get("rosters", [])
+          print(f"\nRosters: {len(rosters)}")
+          if rosters:
+              print(f"Chiavi roster[0]: {list(rosters[0].keys())}")
+
+          EOF
+
+      - name: Dump JSON completo summary (per analisi)
+        run: |
+          python3 << 'EOF'
+          import urllib.request, json, time
+
+          SLUGS = [
+              "ita.1", "ita.coppa_italia", "uefa.champions",
+              "uefa.europa", "uefa.europa.conference_league",
+              "ita.super_cup", "fifa.cwc",
+          ]
+
+          juve_event = None
+          juve_slug  = None
+
+          for slug in SLUGS:
+              try:
+                  url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard"
+                  req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=8) as r:
+                      data = json.load(r)
+                  for e in data.get("events", []):
+                      comps = e.get("competitions", [{}])[0]
+                      teams = comps.get("competitors", [])
+                      if any("Juventus" in t["team"]["displayName"] for t in teams):
+                          juve_event = e
+                          juve_slug = slug
+                          break
+              except: pass
+              if juve_event: break
+              time.sleep(0.2)
+
+          if not juve_event:
+              print("Nessuna partita Juventus trovata oggi.")
+              exit(0)
+
+          eid = juve_event["id"]
+          sum_url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{juve_slug}/summary?event={eid}"
+          req = urllib.request.Request(sum_url, headers={"User-Agent": "Mozilla/5.0"})
+          with urllib.request.urlopen(req, timeout=10) as r:
+              summary = json.load(r)
+
+          # Salva il JSON completo nei log (troncato a 8000 chars per leggibilità)
+          full = json.dumps(summary, indent=2, ensure_ascii=False)
+          print(full[:8000])
+          if len(full) > 8000:
+              print(f"\n... (troncato, totale {len(full)} chars)")
+          EOF
