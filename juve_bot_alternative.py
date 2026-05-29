@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN         = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID           = os.getenv('TELEGRAM_TO')
-TEAM_ID           = '18206'   # ESPN team ID — modifica qui
+TEAM_ID           = '4007'   # ESPN team ID — modifica qui
 GH_PAT            = os.getenv('GH_PAT')
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
 GIST_ID           = os.getenv('GIST_ID')
@@ -33,7 +33,7 @@ ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
 LEAGUE_SLUGS = [
     # Italia
-    "ita.1", "ita.coppa_italia", "ita.super_cup",
+    "ita.1", "ita.coppa_italia", "ita.super_cup", "ita.2",
     # UEFA
     "uefa.champions", "uefa.europa", "uefa.europa_conf",
     # Top 5 Europe
