@@ -86,9 +86,13 @@ EVENT_MAP = {
     "shootout_saved":      ("🧤",  "RIGORE PARATO"),
 }
 
-def fmt(type_id: str) -> tuple[str, str]:
+def fmt(type_id) -> tuple[str, str]:
+    # ESPN a volte restituisce type come dict {"id": "...", "text": "..."}
+    if isinstance(type_id, dict):
+        type_id = type_id.get("id") or type_id.get("text") or ""
+    type_id = str(type_id) if type_id else ""
     k = type_id.lower().replace("-", "_")
-    return EVENT_MAP.get(k, ("📌", type_id.upper()))
+    return EVENT_MAP.get(k, ("📌", type_id.upper() or "EVENTO"))
 
 
 # ─────────────────────────────────────────────────────────
