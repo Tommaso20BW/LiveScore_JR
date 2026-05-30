@@ -567,6 +567,8 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     h_logo      = JUVE_LOGO if str(home_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
     a_logo      = JUVE_LOGO if str(away_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
     badge_label = MOMENTI_CONFIG[momento]["badge"]
+    if momento == "FT" and (pen_home > 0 or pen_away > 0):
+        badge_label = "FINE PARTITA d.c.r."
     raw         = _estrai_stats_espn(data_espn)
 
     def g(side, *keys, fallback="0"):
@@ -667,14 +669,11 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
 
     if pen_home > 0 or pen_away > 0:
         score_block_html = (
-            f'<div class="score-line">'
-            f'<span class="pen-score">({pen_home})</span>'
-            f'<span class="score">{home_goals}\u2013{away_goals}</span>'
-            f'<span class="pen-score">({pen_away})</span>'
-            f'</div>'
+            f'<div class="score">{home_goals} \u2013 {away_goals}</div>'
+            f'<div class="pen-score">({pen_home} - {pen_away})</div>'
         )
     else:
-        score_block_html = f'<div class="score">{home_goals}\u2013{away_goals}</div>'
+        score_block_html = f'<div class="score">{home_goals} \u2013 {away_goals}</div>'
 
     html_content = f"""<!DOCTYPE html>
 <html lang="it">
@@ -717,9 +716,8 @@ body {{
 .team-name {{ color: white; font-weight: 800; font-size: 34px; }}
 .score-wrap {{ text-align: center; }}
 .score-wrap {{ text-align: center; }}
-.score-line {{ display: flex; align-items: center; justify-content: center; gap: 0; }}
 .score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
-.pen-score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 60px; line-height: 1; font-weight: 700; color: white; align-self: center; padding: 0 8px; }}
+.pen-score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 64px; line-height: 1.1; font-weight: 700; color: white; text-align: center; margin-top: 8px; }}
 .match-status {{ margin-top: 16px; color: #8fa1c7; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
 .stats-body {{
   flex: 1;
