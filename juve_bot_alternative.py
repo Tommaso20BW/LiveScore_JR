@@ -886,6 +886,7 @@ def avvia_ciclo_partita():
 
     while True:
         sleep_time = 10
+        state_changed = False
         try:
             data = fetch_evento(event_id, league_slug)
             if not data:
@@ -934,11 +935,15 @@ def avvia_ciclo_partita():
             if status == "1H" and "1H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
+                salva_stato_su_gist(state)
+                state_changed = True
 
             # --- Fine primo tempo ---
             if status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
+                salva_stato_su_gist(state)
+                state_changed = True
                 time.sleep(60)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
@@ -946,16 +951,21 @@ def avvia_ciclo_partita():
                                                          "HT", league_name)
                 send_telegram_stats_photo(png_path, "HT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("HT")
+                state_changed = True
 
             # --- Inizio secondo tempo ---
             if status == "2H" and "2H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
+                salva_stato_su_gist(state)
+                state_changed = True
 
             # --- Fine regolamentari → supplementari ---
             if status == "ET" and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
+                salva_stato_su_gist(state)
+                state_changed = True
                 time.sleep(60)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
@@ -963,12 +973,15 @@ def avvia_ciclo_partita():
                                                          "2H_END", league_name)
                 send_telegram_stats_photo(png_path, "2H_END", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("2H_END")
+                state_changed = True
 
             # --- Supplementari ---
             if status == "ET":
                 if "1ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
+                    salva_stato_su_gist(state)
+                    state_changed = True
 
                 # Leggi stato ESPN preciso per determinare intervallo/2°ET
                 try:
@@ -988,16 +1001,22 @@ def avvia_ciclo_partita():
                 if (is_et_halftime or is_second_et) and "1ET_END" not in state["sent_periods"]:
                     send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_END")
+                    salva_stato_su_gist(state)
+                    state_changed = True
 
                 if is_second_et and "2ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 2° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("2ET_START")
+                    salva_stato_su_gist(state)
+                    state_changed = True
 
             # --- Rigori ---
             if status == "PEN":
                 if "ET_END_PENS" not in state["sent_periods"]:
                     send_telegram(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("ET_END_PENS")
+                    salva_stato_su_gist(state)
+                    state_changed = True
 
                 home_pen_icons, away_pen_icons = [], []
                 for e in events:
@@ -1013,6 +1032,7 @@ def avvia_ciclo_partita():
                         f"{away_name}: " + "".join(away_pen_icons or ["-"]) + f"\n\n{e_comp} {hashtag}"
                     )
                     state["penalties_count"] = total_kicks
+                    state_changed = True
 
             # --- Fine partita ---
             is_finished = (
@@ -1083,6 +1103,7 @@ def avvia_ciclo_partita():
                                                          "FT", league_name)
                 send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("FT")
+                state_changed = True
                 state["_reset_done"] = True
                 resetta_gist()
                 print("🏁 Partita terminata. Bot spento.")
@@ -1169,14 +1190,20 @@ def avvia_ciclo_partita():
                     send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{goal_score}\n{scorer_line}\n{e_comp} {hashtag}")
 
                 state["goals_detected"] = total_goals_now
+                state_changed = True
                 state["prev_home_goals"] = g_home
+                state_changed = True
                 state["prev_away_goals"] = g_away
+                state_changed = True
 
             elif total_goals_now < state["goals_detected"]:
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
+                state_changed = True
                 state["prev_home_goals"] = g_home
+                state_changed = True
                 state["prev_away_goals"] = g_away
+                state_changed = True
 
             # --- Cambi ---
             # ✅ FIX: se ci sono cambi nuovi, attende 30s e rilegge per raggruppare
@@ -1224,6 +1251,7 @@ def avvia_ciclo_partita():
                         f"{e_comp} {hashtag}"
                     )
                     state["sent_subs"].extend(s["sub_id"] for s in g["subs"])
+                    state_changed = True
 
             # --- Cartellini rossi / doppio giallo ---
             for e in events:
@@ -1236,6 +1264,7 @@ def avvia_ciclo_partita():
                             f"🔚 <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
                         )
                         state["sent_cards"].append(card_id)
+                        state_changed = True
 
             # --- Rigori sbagliati (tempo regolamentare / supplementari) ---
             for e in events:
@@ -1249,13 +1278,14 @@ def avvia_ciclo_partita():
                             f"🥅 <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
                         )
                         state["sent_failed_penalties"].append(pen_id)
+                        state_changed = True
 
         except Exception as e:
             print(f"❌ Errore ciclo live: {e}")
             sleep_time = 10
 
         finally:
-            if isinstance(state, dict) and not state.get("_reset_done"):
+            if isinstance(state, dict) and not state.get("_reset_done") and state_changed:
                 salva_stato_su_gist(state)
 
         time.sleep(sleep_time)
