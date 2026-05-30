@@ -1,7 +1,7 @@
 import requests, json
 
 # Metti un event_id reale — prendilo dai log del bot ("event_id=...")
-EVENT_ID    = "XXXXXXXXX"
+EVENT_ID    = "737158"
 LEAGUE_SLUG = "ita.1"
 
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
