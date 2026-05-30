@@ -293,9 +293,9 @@ def get_canva_image(access_token: str):
         if not job_id:
             return None
         status_url = f"https://api.canva.com/rest/v1/exports/{job_id}"
-        time.sleep(8)
+        time.sleep(3)  # era 8
         for i in range(60):
-            time.sleep(5)
+            time.sleep(3)  # era 5
             check = requests.get(status_url, headers=headers, timeout=15)
             if check.status_code == 200:
                 d = check.json()
@@ -836,11 +836,11 @@ def avvia_ciclo_partita():
         }
 
     while True:
-        sleep_time = 30
+        sleep_time = 10  # era 30
         try:
             data = fetch_evento(event_id, league_slug)
             if not data:
-                time.sleep(30)
+                time.sleep(10)
                 continue
 
             status, elapsed = parse_status(data)
@@ -874,12 +874,12 @@ def avvia_ciclo_partita():
                             sys.exit(0)
                 except Exception as e:
                     print(f"⚠️ Impossibile leggere orario partita: {e}")
-                time.sleep(30)
+                time.sleep(10)
                 continue
 
-            # Rigori: polling più rapido
+            # Rigori: polling ancora più rapido
             if status == "PEN":
-                sleep_time = 15
+                sleep_time = 8  # era 15
 
             # --- Inizio primo tempo ---
             if status == "1H" and "1H" not in state["sent_periods"]:
@@ -890,7 +890,7 @@ def avvia_ciclo_partita():
             if status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-                time.sleep(120)
+                time.sleep(60)  # era 120
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
@@ -907,7 +907,7 @@ def avvia_ciclo_partita():
             if status == "ET" and "2H_END" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\nSi va ai supplementari!\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
-                time.sleep(120)
+                time.sleep(60)  # era 120
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
@@ -989,7 +989,7 @@ def avvia_ciclo_partita():
                 else:
                     send_telegram(msg_finale)
 
-                time.sleep(120)
+                time.sleep(60)  # era 120
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
@@ -1095,7 +1095,7 @@ def avvia_ciclo_partita():
 
         except Exception as e:
             print(f"❌ Errore ciclo live: {e}")
-            sleep_time = 30
+            sleep_time = 10
 
         finally:
             if isinstance(state, dict) and not state.get("_reset_done"):
