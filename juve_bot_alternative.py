@@ -109,28 +109,22 @@ E_PEN_OK = '✅'
 E_PEN_KO = '❌'
 
 # Mapping testo ESPN → tipo interno normalizzato
-# Fonte: commentary[].play.type.text reale da ESPN
 EVENT_TYPE_MAP = {
-    # Goal
     "goal":                     "goal",
     "own goal":                 "own goal",
     "penalty goal":             "penalty goal",
     "penalty - goal":           "penalty goal",
-    # Rigori sbagliati
     "penalty missed":           "penalty missed",
     "penalty saved":            "penalty saved",
     "penalty - missed":         "penalty missed",
     "penalty - saved":          "penalty saved",
-    # Cartellini
     "yellow card":              "yellow card",
     "red card":                 "red card",
     "second yellow card":       "second yellow card",
     "yellow card - second":     "second yellow card",
-    # Cambi
     "substitution":             "substitution",
     "substitution - player on": "substitution",
     "substitution - off":       "substitution",
-    # Shootout rigori
     "penalty shootout - goal":  "shootout goal",
     "penalty shootout - miss":  "shootout miss",
     "penalty shootout - saved": "shootout saved",
@@ -321,16 +315,9 @@ def get_canva_image(access_token: str):
 
 # ==============================================================================
 # PARSE EVENTS
-# Fonte primaria: commentary[].play  (unica sezione popolata da ESPN per Serie A)
-# Fonte secondaria: keyEvents[]      (subset degli eventi chiave)
-# Fonte terziaria: scoringPlays[]    (solo goal, quando presenti)
 # ==============================================================================
 def _extract_team_id_from_commentary(item: dict, home_name: str, away_name: str,
                                       home_id: str, away_id: str) -> str:
-    """
-    Nei commentary ESPN il team può essere in play.team.displayName oppure
-    va dedotto dal testo della voce. Restituisce home_id o away_id.
-    """
     play = item.get("play", {})
     team_name = play.get("team", {}).get("displayName", "")
     team_id   = play.get("team", {}).get("id", "")
@@ -341,7 +328,6 @@ def _extract_team_id_from_commentary(item: dict, home_name: str, away_name: str,
             return home_id
         if team_name.lower() == away_name.lower():
             return away_id
-    # fallback: cerca nel testo del commento
     text = item.get("text", "")
     if home_name and home_name.lower() in text.lower():
         return home_id
@@ -356,7 +342,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
     seen_ids  = set()
 
     def safe_minute(clock_val) -> int:
-        """Accetta sia '45'' che 45.0 che '1:30'."""
         try:
             s = str(clock_val).replace("'", "").strip()
             return int(float(s.split(":")[0]))
@@ -456,7 +441,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
 def _estrai_stats_espn(data: dict) -> dict:
     raw = {"home": {}, "away": {}}
 
-    # Fonte principale: boxscore.teams (sempre popolata)
     try:
         for team_data in data.get("boxscore", {}).get("teams", []):
             side = "home" if team_data.get("homeAway") == "home" else "away"
@@ -468,7 +452,6 @@ def _estrai_stats_espn(data: dict) -> dict:
     except Exception as e:
         print(f"⚠️ Errore parsing boxscore.teams: {e}")
 
-    # Fonte secondaria: header.competitions.competitors
     try:
         for comp in data.get("header", {}).get("competitions", [{}]):
             for competitor in comp.get("competitors", []):
@@ -519,7 +502,6 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
             return 50
 
     def fmt_pct(val):
-        """Converte 0.8 → '80%', lascia '43.3%' intatto."""
         try:
             v = float(str(val).replace("%", "").strip())
             if v <= 1.0:
@@ -528,7 +510,6 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         except Exception:
             return str(val)
 
-    # --- Raccolta valori con chiavi ESPN reali ---
     pos_h_raw = g("home", "possessionPct", "possessionpct", "possession", fallback="50")
     pos_a_raw = g("away", "possessionPct", "possessionpct", "possession", fallback="50")
     pos_h     = fmt_pct(pos_h_raw)
@@ -550,7 +531,6 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     gialli_a = g("away", "yellowCards",     "yellowcards",     fallback="0")
     rossi_h  = g("home", "redCards",        "redcards",        fallback="0")
     rossi_a  = g("away", "redCards",        "redcards",        fallback="0")
-    # CORNER: chiave reale ESPN è wonCorners
     corner_h = g("home", "wonCorners",      "woncorners",
                           "cornerKicks",    "cornerkicks",
                           "corners",        "corner",          fallback="0")
@@ -879,13 +859,25 @@ def avvia_ciclo_partita():
             hashtag   = build_hashtag(home_name, away_name)
             e_comp    = get_league_emoji(league_slug)
 
-            # parse_events ora riceve i nomi squadre per risolvere il team_id
             events = parse_events(data, home_name, away_name, home_id, away_id)
 
             print(f"[{status}] {home_name} {g_home}-{g_away} {away_name} | min {elapsed} | eventi: {len(events)}")
 
             # --- Non ancora iniziata ---
             if status == "NS":
+                try:
+                    comp       = data["header"]["competitions"][0]
+                    start_str  = comp.get("date", "")
+                    if start_str:
+                        start_time         = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+                        now_utc            = datetime.now(timezone.utc)
+                        minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
+                        print(f"⏳ Partita non ancora iniziata. Inizio tra {minutes_to_kickoff:.0f} min.")
+                        if minutes_to_kickoff > 30:
+                            print(f"🛑 Mancano più di 30 minuti all'inizio ({minutes_to_kickoff:.0f} min). Bot spento.")
+                            sys.exit(0)
+                except Exception as e:
+                    print(f"⚠️ Impossibile leggere orario partita: {e}")
                 time.sleep(30)
                 continue
 
@@ -978,7 +970,6 @@ def avvia_ciclo_partita():
                             ps += " (Rig.)"
                         entry = f"{e['minute']}' {ps}"
                         tid   = e["team_id"]
-                        # autogol: attribuito alla squadra avversaria
                         if e["type"] == "own goal":
                             tid = away_id if tid == home_id else home_id
                         (home_scorers if tid == home_id else away_scorers).append(entry)
@@ -1032,7 +1023,6 @@ def avvia_ciclo_partita():
                         ps += " (Rig.)"
                     scorer_line = f"{E_BALL} <i>{last['minute']}' {ps}</i>\n"
 
-                    # Per autogol il gol va alla squadra avversaria
                     scoring_tid = last["team_id"]
                     if last["type"] == "own goal":
                         scoring_tid = away_id if scoring_tid == home_id else home_id
