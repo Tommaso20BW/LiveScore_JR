@@ -1006,16 +1006,15 @@ def avvia_ciclo_partita():
                         start_time         = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                         now_utc            = datetime.now(timezone.utc)
                         minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
-                        if minutes_to_kickoff > 0:
-                            print(f"⏳ Inizio tra {minutes_to_kickoff:.0f} min — in attesa")
-                        else:
-                            print(f"⏳ Partita iniziata da {abs(minutes_to_kickoff):.0f} min — in attesa")
                         if minutes_to_kickoff > 30:
                             print(f"🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
                             sys.exit(0)
+                        if "_ns_logged" not in state:
+                            print(f"⏳ Partita non ancora iniziata (ESPN) — in attesa")
+                            state["_ns_logged"] = True
                 except Exception as e:
                     print(f"⚠️ Impossibile leggere orario partita: {e}")
-                time.sleep(10)
+                time.sleep(6)
                 continue
 
             # Rigori: polling ancora più rapido
