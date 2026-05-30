@@ -559,7 +559,8 @@ def _estrai_stats_espn(data: dict) -> dict:
 def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   home_name: str, away_name: str,
                                   home_goals: int, away_goals: int,
-                                  momento: str, league_name: str = "SERIE A"):
+                                  momento: str, league_name: str = "SERIE A",
+                                  pen_home: int = 0, pen_away: int = 0):
 
     JUVE_ID     = '111'
     JUVE_LOGO   = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
@@ -664,6 +665,17 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
 </div>
 ''' for label, h, a, hp in stats_mappate])
 
+    if pen_home > 0 or pen_away > 0:
+        score_block_html = (
+            f'<div class="score-line">'
+            f'<span class="pen-score">({pen_home})</span>'
+            f'<span class="score">{home_goals}\u2013{away_goals}</span>'
+            f'<span class="pen-score">({pen_away})</span>'
+            f'</div>'
+        )
+    else:
+        score_block_html = f'<div class="score">{home_goals}\u2013{away_goals}</div>'
+
     html_content = f"""<!DOCTYPE html>
 <html lang="it">
 <head>
@@ -704,7 +716,10 @@ body {{
 .logo {{ width: 150px; height: 150px; object-fit: contain; display: block; margin: 0 auto 20px; }}
 .team-name {{ color: white; font-weight: 800; font-size: 34px; }}
 .score-wrap {{ text-align: center; }}
+.score-wrap {{ text-align: center; }}
+.score-line {{ display: flex; align-items: center; justify-content: center; gap: 0; }}
 .score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
+.pen-score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 60px; line-height: 1; font-weight: 700; color: white; align-self: center; padding: 0 8px; }}
 .match-status {{ margin-top: 16px; color: #8fa1c7; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
 .stats-body {{
   flex: 1;
@@ -733,7 +748,7 @@ body {{
     <div class="badge">{badge_label}</div>
     <div class="teams-row">
       <div class="team"><img src="{h_logo}" class="logo"><div class="team-name">{home_name}</div></div>
-      <div class="score-wrap"><div class="score">{home_goals}–{away_goals}</div><div class="match-status">LIVE STATS</div></div>
+      <div class="score-wrap">{score_block_html}<div class="match-status">LIVE STATS</div></div>
       <div class="team"><img src="{a_logo}" class="logo"><div class="team-name">{away_name}</div></div>
     </div>
   </div>
@@ -1197,9 +1212,12 @@ def avvia_ciclo_partita():
 
                 time.sleep(60)
                 data_fresh = fetch_evento(event_id, league_slug) or data
+                ft_pen_home = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
+                ft_pen_away = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
-                                                         "FT", league_name)
+                                                         "FT", league_name,
+                                                         pen_home=ft_pen_home, pen_away=ft_pen_away)
                 send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("FT")
                 state_changed = True
