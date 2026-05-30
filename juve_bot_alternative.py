@@ -1381,7 +1381,7 @@ def avvia_ciclo_partita():
                         state["sent_cards"].append(card_id)
                         state_changed = True
 
-            # --- Rigori sbagliati (tempo regolamentare / supplementari): solo log, nessun messaggio ---
+            # --- Rigori sbagliati (tempo regolamentare / supplementari): esclusa lotteria ---
             for e in events:
                 if e["type"] in ("penalty missed", "penalty saved"):
                     pen_id = f"failpen_{e['minute']}_{e['player_name']}".replace(" ", "_")
@@ -1389,6 +1389,11 @@ def avvia_ciclo_partita():
                         state["sent_failed_penalties"].append(pen_id)
                         state_changed = True
                         print(f"🥅 Rigore fallito: {e['player_name']} {e['minute']}'")
+                        send_telegram(
+                            f"<b>RIGORE 🥅</b>\n\n"
+                            f"{E_PEN_KO} <i>{e['minute']}' {fmt_player(e['player_name'])}</i>\n\n"
+                            f"{e_comp} {hashtag}"
+                        )
 
         except Exception as e:
             print(f"❌ Errore ciclo live: {e}")
