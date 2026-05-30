@@ -3,7 +3,9 @@ import json
 import os
 import importlib.util
 import types
+import time
 import unittest.mock as mock
+import requests
 
 # ---------------------------------------------------------------------------
 # Stub moduli opzionali (playwright, PIL, nacl) — non servono nel test
@@ -26,13 +28,7 @@ bot  = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bot)
 
 # ---------------------------------------------------------------------------
-# Patch solo le cose che non devono girare nel test:
-#   - sleep → istantaneo
-#   - sys.exit → eccezione gestita
-#   - Gist → silenzioso
-#   - Canva → disabilitato
-#   - stats HTML/foto → invia solo il testo senza rendering
-# Telegram, parse_events, parse_status, ecc. → REALI
+# Patch e Wrappers
 # ---------------------------------------------------------------------------
 bot.time = mock.MagicMock()
 bot.sys.exit = lambda code=0: (_ for _ in ()).throw(SystemExit(0))
@@ -41,6 +37,15 @@ bot.salva_stato_su_gist = lambda state: None
 bot.leggi_stato_da_gist = lambda: None
 bot.get_valid_token     = lambda: None
 bot.get_canva_image     = lambda token: None
+
+# Intercettiamo send_telegram per forzare un delay di 30 secondi tra i messaggi reali
+_original_send_telegram = bot.send_telegram
+def delayed_send_telegram(text):
+    print(f"[Telegram Delay] Attendo 30 secondi prima di inviare...")
+    time.sleep(30)
+    _original_send_telegram(text)
+
+bot.send_telegram = delayed_send_telegram
 
 def _stats_solo_testo(data_espn, home_id, away_id, home_name, away_name,
                       home_goals, away_goals, momento, league_name=""):
@@ -74,8 +79,6 @@ bot.send_telegram_stats_photo = _stats_foto_testo
 # ---------------------------------------------------------------------------
 # Fetch dati ESPN (locale se disponibile, altrimenti API)
 # ---------------------------------------------------------------------------
-import requests
-
 def fetch_data(event_id: str, league_slug: str) -> dict:
     local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"espn_{event_id}.json")
     if os.path.exists(local_path):
@@ -124,7 +127,7 @@ def replay(event_id: str, league_slug: str):
         "goals_detected":        0,
         "prev_home_goals":       0,
         "prev_away_goals":       0,
-        "sent_subs":             [],
+        "sent_subs_groups":      [], # Tracciamento ID dei gruppi di cambi inviati
         "sent_cards":            [],
         "penalties_count":       0,
         "sent_stats":            [],
@@ -132,7 +135,7 @@ def replay(event_id: str, league_slug: str):
     }
 
     # -----------------------------------------------------------------------
-    # Stessa logica del ciclo principale del bot — un solo giro completo
+    # Ciclo principale eventi e periodi di gara
     # -----------------------------------------------------------------------
 
     # Inizio partita
@@ -144,7 +147,7 @@ def replay(event_id: str, league_slug: str):
     if status == "HT" and "HT" not in state["sent_periods"]:
         bot.send_telegram(f"<b>FINE PRIMO TEMPO {bot.E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
         state["sent_periods"].append("HT")
-        png = _stats_solo_testo(data, home_id, away_id, home_name, away_name, g_home, g_away, "HT", league_name)
+        _stats_solo_testo(data, home_id, away_id, home_name, away_name, g_home, g_away, "HT", league_name)
         state["sent_stats"].append("HT")
 
     # Inizio secondo tempo
@@ -192,72 +195,93 @@ def replay(event_id: str, league_slug: str):
             bot.send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {bot.E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
             state["sent_periods"].append("1ET_END")
 
-    # Rigori
+    # Lotteria dei Rigori Finale (Aggiornamento interattivo ad ogni tiro)
     if status == "PEN":
         if "ET_END_PENS" not in state["sent_periods"]:
             if "2ET_START" in state["sent_periods"] or "1ET_START" in state["sent_periods"]:
                 bot.send_telegram(f"<b>FINE SUPPLEMENTARI {bot.E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
             state["sent_periods"].append("ET_END_PENS")
 
-        home_pen_icons, away_pen_icons = [], []
-        for e in events:
-            if e["type"] in ("shootout goal", "shootout miss", "shootout saved"):
-                icon = bot.E_PEN_OK if e["type"] == "shootout goal" else bot.E_PEN_KO
-                (home_pen_icons if e["team_id"] == home_id else away_pen_icons).append(icon)
+        shootout_events = [e for e in events if e["type"] in ("shootout goal", "shootout miss", "shootout saved")]
+        total_kicks = len(shootout_events)
 
-        total_kicks = len(home_pen_icons) + len(away_pen_icons)
         if total_kicks > state["penalties_count"]:
+            home_pen_icons, away_pen_icons = [], []
+            for e in shootout_events:
+                icon = bot.E_PEN_OK if e["type"] == "shootout goal" else bot.E_PEN_KO
+                if e["team_id"] == home_id:
+                    home_pen_icons.append(icon)
+                else:
+                    away_pen_icons.append(icon)
+
             bot.send_telegram(
-                f"<b>RIGORI {bot.E_MIC}</b>\n\n"
+                f"<b>RIGORI 🥅</b>\n\n"
                 f"{home_name}: " + "".join(home_pen_icons or ["-"]) + "\n"
-                f"{away_name}: " + "".join(away_pen_icons or ["-"]) + f"\n\n{e_comp} {hashtag}"
+                f"{away_name}: " + "".join(away_pen_icons or ["-"])
             )
             state["penalties_count"] = total_kicks
 
-    # Goal
-    total_goals_now = g_home + g_away
-    if total_goals_now > state["goals_detected"]:
-        goal_events = [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")]
-        home_goal_count = 0
-        away_goal_count = 0
-        for e in sorted(goal_events, key=lambda x: x["minute"]):
-            is_home = (e["type"] != "own goal" and e["team_id"] == home_id) or \
-                      (e["type"] == "own goal" and e["team_id"] == away_id)
-            if is_home:
-                home_goal_count += 1
-                gh, ga = home_goal_count, away_goal_count
-                goal_score = f"<b>{home_name} {gh}</b>-{ga} {away_name}"
-            else:
-                away_goal_count += 1
-                gh, ga = home_goal_count, away_goal_count
-                goal_score = f"{home_name} {gh}-<b>{ga} {away_name}</b>"
+    # Goal (Solo nei tempi regolamentari/supplementari)
+    if status != "PEN":
+        total_goals_now = g_home + g_away
+        if total_goals_now > state["goals_detected"]:
+            goal_events = [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")]
+            home_goal_count = 0
+            away_goal_count = 0
+            for e in sorted(goal_events, key=lambda x: x["minute"]):
+                is_home = (e["type"] != "own goal" and e["team_id"] == home_id) or \
+                          (e["type"] == "own goal" and e["team_id"] == away_id)
+                if is_home:
+                    home_goal_count += 1
+                    gh, ga = home_goal_count, away_goal_count
+                    goal_score = f"<b>{home_name} {gh}</b>-{ga} {away_name}"
+                else:
+                    away_goal_count += 1
+                    gh, ga = home_goal_count, away_goal_count
+                    goal_score = f"{home_name} {gh}-<b>{ga} {away_name}</b>"
 
-            ps = bot.fmt_player(e["player_name"])
-            if e["type"] == "own goal":
-                ps += " (Autogol)"
-            elif e["type"] == "penalty goal":
-                ps += " (Rig.)"
+                ps = bot.fmt_player(e["player_name"])
+                if e["type"] == "own goal":
+                    ps += " (Autogol)"
+                elif e["type"] == "penalty goal":
+                    ps += " (Rig.)"
 
+                bot.send_telegram(
+                    f"<b>GOAL {bot.E_MIC}</b>\n\n{goal_score}\n"
+                    f"{bot.E_BALL} <i>{e['minute']}' {ps}</i>\n\n{e_comp} {hashtag}"
+                )
+
+            state["goals_detected"]    = total_goals_now
+            state["prev_home_goals"]   = g_home
+            state["prev_away_goals"]   = g_away
+
+    # Raggruppamento dei cambi (stesso minuto per singola squadra)
+    raw_subs = [x for x in events if x["type"] == "substitution"]
+    subs_by_team_and_minute = {}
+    for s in raw_subs:
+        key = (s["team_id"], s["minute"])
+        if key not in subs_by_team_and_minute:
+            subs_by_team_and_minute[key] = []
+        subs_by_team_and_minute[key].append(s)
+
+    for (team_id, minute), group in sorted(subs_by_team_and_minute.items(), key=lambda x: x[0][1]):
+        # Identificativo unico del gruppo basato sulle UID dei cambi
+        group_id = f"sub_group_{team_id}_{minute}_" + "_".join(sorted([e["uid"] for e in group]))
+        if group_id not in state["sent_subs_groups"]:
+            team_title = home_name.upper() if team_id == home_id else away_name.upper()
+            
+            # Costruiamo le linee dei giocatori entrati/usciti per questo specifico minuto
+            lines = []
+            for e in group:
+                lines.append(f"{bot.E_UP} {bot.fmt_player(e['assist_name'])}\n{bot.E_DOWN} {bot.fmt_player(e['player_name'])}")
+            
+            subs_content = "\n\n".join(lines)
             bot.send_telegram(
-                f"<b>GOAL {bot.E_MIC}</b>\n\n{goal_score}\n"
-                f"{bot.E_BALL} <i>{e['minute']}' {ps}</i>\n\n{e_comp} {hashtag}"
-            )
-
-        state["goals_detected"]    = total_goals_now
-        state["prev_home_goals"]   = g_home
-        state["prev_away_goals"]   = g_away
-
-    # Cambi
-    for e in sorted([x for x in events if x["type"] == "substitution"], key=lambda x: x["minute"]):
-        if e["uid"] not in state["sent_subs"]:
-            team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
-            bot.send_telegram(
-                f"<b>CAMBIO {team_title} {bot.E_SUB}</b>\n\n"
-                f"{bot.E_UP} {bot.fmt_player(e['assist_name'])}\n"
-                f"{bot.E_DOWN} {bot.fmt_player(e['player_name'])}\n\n"
+                f"<b>CAMBIO {team_title} {bot.E_SUB} ({minute}')</b>\n\n"
+                f"{subs_content}\n\n"
                 f"{e_comp} {hashtag}"
             )
-            state["sent_subs"].append(e["uid"])
+            state["sent_subs_groups"].append(group_id)
 
     # Cartellini rossi / doppio giallo
     for e in events:
@@ -270,7 +294,7 @@ def replay(event_id: str, league_slug: str):
                 )
                 state["sent_cards"].append(card_id)
 
-    # Rigori sbagliati (tempo regolamentare)
+    # Rigori sbagliati (Solo nei tempi regolamentari/supplementari)
     for e in events:
         if e["type"] in ("penalty missed", "penalty saved"):
             pen_id = f"failpen_{e['minute']}_{e['player_name']}".replace(" ", "_")
@@ -282,7 +306,7 @@ def replay(event_id: str, league_slug: str):
                 )
                 state["sent_failed_penalties"].append(pen_id)
 
-    # Fine partita
+    # Fine partita definitiva
     comp_state_espn = (
         data.get("header", {}).get("competitions", [{}])[0]
             .get("status", {}).get("type", {}).get("state", "")
