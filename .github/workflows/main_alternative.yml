@@ -1,4 +1,4 @@
-name: Juventus Live Score Alternative
+name: Juventus Live Score - ESPN
  
 on:
   workflow_dispatch:
