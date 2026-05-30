@@ -584,43 +584,53 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{
-  width: 1620px;
+  width: 1620px; height: 1980px;
   background:
     radial-gradient(circle at top left, #1e3a8a 0%, transparent 40%),
     radial-gradient(circle at bottom right, #7c3aed 0%, transparent 40%),
     #060816;
   font-family: 'Inter', sans-serif;
-  padding: 50px 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }}
 .card {{
-  width: 1500px; margin: 0 auto;
+  width: 1500px; height: 1900px;
   background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(10,14,28,0.96));
-  border-radius: 70px; overflow: hidden;
+  border-radius: 50px; overflow: hidden;
   border: 3px solid rgba(255,255,255,0.08);
   box-shadow: 0 50px 100px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.04);
   display: flex; flex-direction: column;
-  padding-bottom: 60px;
 }}
-.header {{ position: relative; padding: 75px 80px 55px; border-bottom: 3px solid rgba(255,255,255,0.06); }}
-.league-row {{ text-align: center; color: #7c8cb5; font-size: 28px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 35px; }}
-.badge {{ width: fit-content; margin: 0 auto 40px; padding: 14px 40px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 22px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }}
-.teams-row {{ display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }}
-.team {{ width: 350px; text-align: center; }}
-.logo {{ width: 170px; height: 170px; object-fit: contain; display: block; margin: 0 auto 25px; }}
-.team-name {{ color: white; font-weight: 800; font-size: 38px; }}
+.header {{
+  padding: 55px 80px 40px;
+  border-bottom: 2px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}}
+.league-row {{ text-align: center; color: #7c8cb5; font-size: 26px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 25px; }}
+.badge {{ width: fit-content; margin: 0 auto 30px; padding: 12px 36px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 20px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }}
+.teams-row {{ display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }}
+.team {{ width: 320px; text-align: center; }}
+.logo {{ width: 150px; height: 150px; object-fit: contain; display: block; margin: 0 auto 20px; }}
+.team-name {{ color: white; font-weight: 800; font-size: 34px; }}
 .score-wrap {{ text-align: center; }}
-.score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 195px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
-.match-status {{ margin-top: 20px; color: #8fa1c7; font-size: 26px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
-.stats-body {{ padding: 45px 80px 0; }}
-.stats-title {{ text-align: center; color: #91a4d0; font-size: 26px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 10px; }}
-.stat-row {{ padding: 13px 0; border-bottom: 2px solid rgba(255,255,255,0.05); }}
-.stat-row:last-child {{ border-bottom: none; }}
-.stat-top {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }}
-.val {{ width: 130px; color: white; font-weight: 900; font-size: 42px; font-family: 'Barlow Condensed', sans-serif; }}
+.score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
+.match-status {{ margin-top: 16px; color: #8fa1c7; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
+.stats-body {{
+  flex: 1;
+  padding: 0 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}}
+.stats-title {{ text-align: center; color: #91a4d0; font-size: 24px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; }}
+.stat-row {{ }}
+.stat-top {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }}
+.val {{ width: 120px; color: white; font-weight: 900; font-size: 40px; font-family: 'Barlow Condensed', sans-serif; }}
 .home-val {{ text-align: left; }}
 .away-val {{ text-align: right; }}
-.stat-label {{ color: #b4c0df; font-size: 28px; font-weight: 700; }}
-.bar-track {{ position: relative; height: 18px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }}
+.stat-label {{ color: #b4c0df; font-size: 26px; font-weight: 700; }}
+.bar-track {{ position: relative; height: 16px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }}
 .bar-home, .bar-away {{ position: absolute; top: 0; height: 100%; }}
 .bar-home {{ left: 0; background: linear-gradient(90deg, #60a5fa, #2563eb); }}
 .bar-away {{ right: 0; background: linear-gradient(90deg, #ef4444, #dc2626); }}
@@ -658,7 +668,7 @@ body {{
         page = browser.new_page(viewport={"width": 1620, "height": 4000}, device_scale_factor=1.0)
         page.goto(f"file://{path_html}")
         page.wait_for_timeout(3000)
-        page.screenshot(path=path_raw_png, full_page=True, omit_background=False)
+        page.screenshot(path=path_raw_png, clip={"x": 0, "y": 0, "width": 1620, "height": 1980}, omit_background=False)
         browser.close()
 
     if os.path.exists("texture.png"):
@@ -982,10 +992,14 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
-                canva_token = get_valid_token()
-                if canva_token:
-                    foto = get_canva_image(canva_token)
-                    send_telegram_with_photo(msg_finale, foto)
+                is_juve_match = home_id == '111' or away_id == '111'
+                if is_juve_match:
+                    canva_token = get_valid_token()
+                    if canva_token:
+                        foto = get_canva_image(canva_token)
+                        send_telegram_with_photo(msg_finale, foto)
+                    else:
+                        send_telegram(msg_finale)
                 else:
                     send_telegram(msg_finale)
 
