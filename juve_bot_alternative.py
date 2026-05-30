@@ -1071,12 +1071,10 @@ def avvia_ciclo_partita():
                     last = candidates[expected_count - 1] if len(candidates) >= expected_count else (candidates[-1] if candidates else None)
 
                     if not last:
-                        print("⏳ Evento goal non ancora disponibile, riprovo...")
                         time.sleep(sleep_time)
                         continue
 
                     if not last["player_name"]:
-                        print("⏳ Marcatore non ancora disponibile, riprovo...")
                         time.sleep(sleep_time)
                         continue
 
