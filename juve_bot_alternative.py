@@ -969,10 +969,27 @@ def avvia_ciclo_partita():
                 if "1ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
-                if elapsed >= 105 and "1ET_END" not in state["sent_periods"]:
+
+                # Leggi stato ESPN preciso per determinare intervallo/2°ET
+                try:
+                    comp_status = data["header"]["competitions"][0].get("status", {})
+                    stype_name  = comp_status.get("type", {}).get("name", "").upper()
+                    et_period   = comp_status.get("period", 1)
+                except Exception:
+                    stype_name = ""
+                    et_period  = 1
+
+                # Fine 1°ET: ESPN pubblica esplicitamente un nome di intervallo
+                is_et_halftime = any(kw in stype_name for kw in
+                                     ("HALFTIME", "HALF_TIME", "HT_ET", "EXTRA_TIME_HALF"))
+                # Fallback: siamo già al period 4 (2°ET), oppure elapsed > 106 con period >= 3
+                is_second_et = (et_period >= 4 or (elapsed >= 106 and et_period >= 3))
+
+                if (is_et_halftime or is_second_et) and "1ET_END" not in state["sent_periods"]:
                     send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_END")
-                if elapsed >= 106 and "2ET_START" not in state["sent_periods"]:
+
+                if is_second_et and "2ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 2° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("2ET_START")
 
@@ -1028,6 +1045,23 @@ def avvia_ciclo_partita():
                     scorers_line = f"{E_BALL} <i>{' // '.join(parts)}</i>\n"
                 else:
                     scorers_line = ""
+
+                # Rigori: conta i gol dal dischetto per costruire il punteggio
+                if status == "PEN" or "ET_END_PENS" in state["sent_periods"]:
+                    home_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
+                    away_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
+                    if home_pen_goals > 0 or away_pen_goals > 0:
+                        if home_pen_goals > away_pen_goals:
+                            pen_score_str = (
+                                f"<b>{home_name} {g_home} ({home_pen_goals})</b>"
+                                f"-({away_pen_goals}) {g_away} {away_name}"
+                            )
+                        else:
+                            pen_score_str = (
+                                f"{home_name} {g_home} ({home_pen_goals})"
+                                f"-<b>({away_pen_goals}) {g_away} {away_name}</b>"
+                            )
+                        score_str = pen_score_str
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
@@ -1149,7 +1183,7 @@ def avvia_ciclo_partita():
             new_subs_check = []
             for e in events:
                 if e["type"] == "substitution":
-                    sub_id = f"sub_{e['uid']}_{e['minute']}_{e['player_name']}".replace(" ", "_")
+                    sub_id = f"sub_{e['minute']}_{e['player_name']}_{e['assist_name']}".replace(" ", "_")
                     if sub_id not in state["sent_subs"]:
                         new_subs_check.append({**e, "sub_id": sub_id})
 
