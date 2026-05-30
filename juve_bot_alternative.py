@@ -795,7 +795,7 @@ def avvia_ciclo_partita():
         }
 
     while True:
-        sleep_time = 90
+        sleep_time = 30
         try:
             data = fetch_evento(event_id, league_slug)
             if not data:
@@ -818,10 +818,10 @@ def avvia_ciclo_partita():
             print(f"[{status}] {home_name} {g_home}-{g_away} {away_name} | min {elapsed} | eventi: {len(events)}")
 
             if status == "NS":
-                time.sleep(60)
+                time.sleep(30)
                 continue
 
-            sleep_time = 60 if status == "PEN" else 90
+            sleep_time = 15 if status == "PEN" else 30
 
             if status == "1H" and "1H" not in state["sent_periods"]:
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
