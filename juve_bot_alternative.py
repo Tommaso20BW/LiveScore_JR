@@ -5,7 +5,7 @@ import time
 import sys
 import base64
 from PIL import Image
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 
 try:
@@ -16,14 +16,14 @@ except ImportError:
 # ==============================================================================
 # CONFIGURAZIONE
 # ==============================================================================
-BOT_TOKEN         = os.getenv('TELEGRAM_TOKEN')
-CHAT_ID           = os.getenv('TELEGRAM_TO')
-TEAM_ID           = '18206'
-GH_PAT            = os.getenv('GH_PAT')
-GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
-GIST_ID           = os.getenv('GIST_ID')
-CLIENT_ID         = os.getenv('CANVA_CLIENT_ID')
-CLIENT_SECRET     = os.getenv('CANVA_CLIENT_SECRET')
+BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
+CHAT_ID             = os.getenv('TELEGRAM_TO')
+TEAM_ID             = '18206'
+GH_PAT              = os.getenv('GH_PAT')
+GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
+GIST_ID             = os.getenv('GIST_ID')
+CLIENT_ID           = os.getenv('CANVA_CLIENT_ID')
+CLIENT_SECRET       = os.getenv('CANVA_CLIENT_SECRET')
 CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
@@ -74,7 +74,7 @@ LEAGUE_SLUGS = [
 
     # --- CALCIO FEMMINILE (CLUB & TORNEI) ---
     "usa.nwsl", "eng.w.1", "fra.w.1", "ger.w.1", "esp.w.1",
-    "uefa.w.champions", "fifa.w.world", "fifa.w.world.q", 
+    "uefa.w.champions", "fifa.w.world", "fifa.w.world.q",
     "uefa.w.euro", "uefa.w.nations", "olympics.w.soccer",
 
     # --- NAZIONALI MASCHILI (MONDIALI & QUALIFICAZIONI) ---
@@ -89,40 +89,27 @@ LEAGUE_SLUGS = [
 ]
 
 LEAGUE_EMOJIS = {
-    # --- ITALIA ---
     "ita.1": "🇮🇹", "ita.coppa_italia": "🇮🇹", "ita.super_cup": "🇮🇹", "ita.2": "🇮🇹",
-
-    # --- EUROPA ---
     "uefa.champions": "🇪🇺", "uefa.europa": "🇪🇺", "uefa.europa_conf": "🇪🇺", "uefa.super_cup": "🇪🇺",
-    "eng.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.fa": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.league_cup": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.community": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", 
+    "eng.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.fa": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.league_cup": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.community": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
     "eng.2": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.3": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.4": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
     "esp.1": "🇪🇸", "esp.copa_del_rey": "🇪🇸", "esp.super_cup": "🇪🇸", "esp.2": "🇪🇸",
     "ger.1": "🇩🇪", "ger.dfb_pokal": "🇩🇪", "ger.2": "🇩🇪",
     "fra.1": "🇫🇷", "fra.coupe_de_france": "🇫🇷", "fra.2": "🇫🇷",
     "por.1": "🇵🇹", "ned.1": "🇳🇱", "bel.1": "🇧🇪", "tur.1": "🇹🇷", "sco.1": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-    "rus.1": "🇷🇺", "ukr.1": "🇺🇦", "gre.1": "🇬🇷", "aut.1": "🇦🇹", "sui.1": "🇨🇭", 
+    "rus.1": "🇷🇺", "ukr.1": "🇺🇦", "gre.1": "🇬🇷", "aut.1": "🇦🇹", "sui.1": "🇨🇭",
     "den.1": "🇩🇰", "nor.1": "🇳🇴", "swe.1": "🇸🇪",
-
-    # --- AMERICHE ---
     "usa.1": "🇺🇸", "usa.open": "🇺🇸", "usa.leagues_cup": "🌎", "usa.mls.is.back": "🇺🇸",
     "mex.1": "🇲🇽", "mex.copa_mx": "🇲🇽", "mex.campeon_campeones": "🇲🇽",
     "concacaf.champions": "🌎",
-    "bra.1": "🇧🇷", "arg.1": "🇦🇷", "col.1": "🇨🇴", "chi.1": "🇨🇱", "ecu.1": "🇪🇨", 
+    "bra.1": "🇧🇷", "arg.1": "🇦🇷", "col.1": "🇨🇴", "chi.1": "🇨🇱", "ecu.1": "🇪🇨",
     "per.1": "🇵🇪", "uru.1": "🇺🇾", "conmebol.libertadores": "🌎", "conmebol.sudamericana": "🌎",
-
-    # --- ASIA & AFRICA ---
     "aus.1": "🇦🇺", "jpn.1": "🇯🇵", "chn.1": "🇨🇳", "sau.1": "🇸🇦", "afc.champions": "🌏",
     "caf.champions": "🌍",
-
-    # --- AMICHEVOLI ---
     "friendly.club": "🤝",
-
-    # --- FEMMINILE ---
     "usa.nwsl": "🇺🇸", "eng.w.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "fra.w.1": "🇫🇷", "ger.w.1": "🇩🇪", "esp.w.1": "🇪🇸",
-    "uefa.w.champions": "🇪🇺", "fifa.w.world": "🏆", "fifa.w.world.q": "🌍", 
+    "uefa.w.champions": "🇪🇺", "fifa.w.world": "🏆", "fifa.w.world.q": "🌍",
     "uefa.w.euro": "🇪🇺", "uefa.w.nations": "🇪🇺", "olympics.w.soccer": "🏅",
-
-    # --- NAZIONALI MASCHILI & TORNEI INTERCONTINENTALI ---
     "fifa.world": "🏆", "fifa.world.q": "🌍", "fifa.confed": "🏆", "fifa.friendly": "🌍", "olympics.m.soccer": "🏅",
     "uefa.euro": "🇪🇺", "uefa.euro.q": "🇪🇺", "uefa.nations": "🇪🇺",
     "conmebol.america": "🌎", "conmebol.america.q": "🌎",
@@ -134,9 +121,9 @@ LEAGUE_EMOJIS = {
 def get_league_emoji(slug): return LEAGUE_EMOJIS.get(slug, "⚽️")
 
 MOMENTI_CONFIG = {
-    "HT":    {"titolo": "<b>STATS PRIMO TEMPO</b> 📊",   "badge": "FINE PRIMO TEMPO"},
-    "2H_END":{"titolo": "<b>STATS SECONDO TEMPO</b> 📊", "badge": "FINE SECONDO TEMPO"},
-    "FT":    {"titolo": "<b>STATS FINE PARTITA</b> 📊",  "badge": "FINE PARTITA"},
+    "HT":     {"titolo": "<b>STATS PRIMO TEMPO</b> 📊",   "badge": "FINE PRIMO TEMPO"},
+    "2H_END": {"titolo": "<b>STATS SECONDO TEMPO</b> 📊", "badge": "FINE SECONDO TEMPO"},
+    "FT":     {"titolo": "<b>STATS FINE PARTITA</b> 📊",  "badge": "FINE PARTITA"},
 }
 
 E_BOLT   = '⚡️'
@@ -358,14 +345,14 @@ def parse_events(data: dict) -> list:
 
     for item in data.get("scoringPlays", []):
         try:
-            ev_type    = item.get("type", {}).get("text", "goal")
-            clock      = item.get("clock", {}).get("displayValue", "0:00")
-            minute     = safe_minute(clock)
-            team_id    = item.get("team", {}).get("id", "")
-            parts      = item.get("participants", [])
-            player     = extract_athlete(parts, 0)
-            assist     = extract_athlete(parts, 1)
-            uid        = item.get("id", f"sp_{minute}_{player}")
+            ev_type = item.get("type", {}).get("text", "goal")
+            clock   = item.get("clock", {}).get("displayValue", "0:00")
+            minute  = safe_minute(clock)
+            team_id = item.get("team", {}).get("id", "")
+            parts   = item.get("participants", [])
+            player  = extract_athlete(parts, 0)
+            assist  = extract_athlete(parts, 1)
+            uid     = item.get("id", f"sp_{minute}_{player}")
             add_event(ev_type, minute, team_id, player, assist, uid)
         except Exception as e:
             print(f"⚠️ Errore parsing scoringPlay: {e}")
@@ -435,7 +422,6 @@ def parse_events(data: dict) -> list:
 def _estrai_stats_espn(data: dict) -> dict:
     raw = {"home": {}, "away": {}}
 
-    # --- Fonte A: boxscore ---
     try:
         for team_data in data.get("boxscore", {}).get("teams", []):
             side = "home" if team_data.get("homeAway") == "home" else "away"
@@ -447,7 +433,6 @@ def _estrai_stats_espn(data: dict) -> dict:
     except Exception as e:
         print(f"⚠️ Errore parsing boxscore.teams: {e}")
 
-    # --- Fonte B: header.competitions.competitors (LIVE) ---
     try:
         comps = data.get("header", {}).get("competitions", [{}])
         for comp in comps:
@@ -461,7 +446,6 @@ def _estrai_stats_espn(data: dict) -> dict:
     except Exception as e:
         print(f"⚠️ Errore parsing header competitors stats: {e}")
 
-    # Debug: mostra TUTTE le chiavi trovate
     print(f"📊 Stats home keys ({len(raw['home'])}): {list(raw['home'].keys())}")
     print(f"📊 Stats away keys ({len(raw['away'])}): {list(raw['away'].keys())}")
 
@@ -505,45 +489,37 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         except Exception:
             return 50
 
-    # Possesso
-    pos_h = g("home", "possessionPct", "possessionpct", "possession", fallback="50%")
-    pos_a = g("away", "possessionPct", "possessionpct", "possession", fallback="50%")
+    pos_h    = g("home", "possessionPct", "possessionpct", "possession", fallback="50%")
+    pos_a    = g("away", "possessionPct", "possessionpct", "possession", fallback="50%")
     try:
         bp_perc = int(float(str(pos_h).replace("%", "")))
     except Exception:
         bp_perc = 50
 
-    # Tiri in porta
     sot_h    = g("home", "shotsOnTarget", "shotsontarget", fallback="0")
     sot_a    = g("away", "shotsOnTarget", "shotsontarget", fallback="0")
-    # Tiri totali
     shots_h  = g("home", "totalShots", "totalshots", fallback="0")
     shots_a  = g("away", "totalShots", "totalshots", fallback="0")
-    # Falli
     falli_h  = g("home", "foulsCommitted", "foulscommitted", "fouls", fallback="0")
     falli_a  = g("away", "foulsCommitted", "foulscommitted", "fouls", fallback="0")
-    # Cartellini gialli
     gialli_h = g("home", "yellowCards", "yellowcards", fallback="0")
     gialli_a = g("away", "yellowCards", "yellowcards", fallback="0")
-    # Cartellini rossi
     rossi_h  = g("home", "redCards", "redcards", fallback="0")
     rossi_a  = g("away", "redCards", "redcards", fallback="0")
-    # Corner — tutte le varianti ESPN note
     corner_h = g("home", "cornerKicks", "cornerkicks", "cornerKick", "cornerkick", "corners", "corner", fallback="0")
     corner_a = g("away", "cornerKicks", "cornerkicks", "cornerKick", "cornerkick", "corners", "corner", fallback="0")
-    # Parate
     saves_h  = g("home", "saves", fallback="0")
     saves_a  = g("away", "saves", fallback="0")
 
     stats_mappate = [
-        ("Possesso palla",  pos_h,   pos_a,   bp_perc),
-        ("Tiri in porta",   sot_h,   sot_a,   calcola_perc(sot_h,   sot_a)),
-        ("Tiri totali",     shots_h, shots_a, calcola_perc(shots_h, shots_a)),
-        ("Falli",           falli_h, falli_a, calcola_perc(falli_h, falli_a)),
-        ("Ammoniti",        gialli_h,gialli_a,calcola_perc(gialli_h,gialli_a)),
-        ("Espulsi",         rossi_h, rossi_a, calcola_perc(rossi_h, rossi_a)),
-        ("Corner",          corner_h,corner_a,calcola_perc(corner_h,corner_a)),
-        ("Parate",          saves_h, saves_a, calcola_perc(saves_h, saves_a)),
+        ("Possesso palla",  pos_h,    pos_a,    bp_perc),
+        ("Tiri in porta",   sot_h,    sot_a,    calcola_perc(sot_h,    sot_a)),
+        ("Tiri totali",     shots_h,  shots_a,  calcola_perc(shots_h,  shots_a)),
+        ("Falli",           falli_h,  falli_a,  calcola_perc(falli_h,  falli_a)),
+        ("Ammoniti",        gialli_h, gialli_a, calcola_perc(gialli_h, gialli_a)),
+        ("Espulsi",         rossi_h,  rossi_a,  calcola_perc(rossi_h,  rossi_a)),
+        ("Corner",          corner_h, corner_a, calcola_perc(corner_h, corner_a)),
+        ("Parate",          saves_h,  saves_a,  calcola_perc(saves_h,  saves_a)),
     ]
 
     rows_html = "".join([f'''
@@ -661,27 +637,48 @@ body {{
 # ESPN API
 # ==============================================================================
 def trova_partita_oggi(team_id: str):
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
-    for slug in LEAGUE_SLUGS:
-        url = f"{ESPN_BASE}/{slug}/scoreboard"
-        try:
-            r = requests.get(url, params={"dates": today}, timeout=10)
-            if r.status_code != 200:
-                continue
-            data = r.json()
-            league_name = data.get("leagues", [{}])[0].get("name", slug)
-            for event in data.get("events", []):
-                competitions = event.get("competitions", [])
-                if not competitions:
+    """
+    Cerca la partita del team nelle date: ieri, oggi, domani (UTC).
+    Questo gestisce sfasamenti di fuso orario e partite in serata/notturne.
+    """
+    now_utc = datetime.now(timezone.utc)
+    dates_to_try = [
+        (now_utc - timedelta(days=1)).strftime("%Y%m%d"),
+        now_utc.strftime("%Y%m%d"),
+        (now_utc + timedelta(days=1)).strftime("%Y%m%d"),
+    ]
+
+    print(f"🔍 Ricerca partita per team_id={team_id} nelle date: {dates_to_try}")
+
+    for date_str in dates_to_try:
+        for slug in LEAGUE_SLUGS:
+            url = f"{ESPN_BASE}/{slug}/scoreboard"
+            try:
+                r = requests.get(url, params={"dates": date_str}, timeout=10)
+                if r.status_code != 200:
                     continue
-                competitors = competitions[0].get("competitors", [])
-                ids = [c.get("team", {}).get("id", "") for c in competitors]
-                if team_id in ids:
-                    return {"event_id": event["id"], "league_slug": slug,
-                            "league_name": league_name, "competitors": competitors}
-        except Exception as e:
-            print(f"⚠️ Errore fetch slug {slug}: {e}")
+                data = r.json()
+                league_name = data.get("leagues", [{}])[0].get("name", slug)
+                for event in data.get("events", []):
+                    competitions = event.get("competitions", [])
+                    if not competitions:
+                        continue
+                    competitors = competitions[0].get("competitors", [])
+                    ids = [c.get("team", {}).get("id", "") for c in competitors]
+                    if team_id in ids:
+                        print(f"✅ Trovata: slug={slug} data={date_str} event_id={event['id']}")
+                        return {
+                            "event_id": event["id"],
+                            "league_slug": slug,
+                            "league_name": league_name,
+                            "competitors": competitors,
+                        }
+            except Exception as e:
+                print(f"⚠️ Errore fetch slug={slug} data={date_str}: {e}")
+
+    print(f"📭 Nessun evento trovato per team_id={team_id}.")
     return None
+
 
 def fetch_evento(event_id: str, league_slug: str):
     try:
@@ -771,6 +768,14 @@ def build_hashtag(home_name, away_name):
 def avvia_ciclo_partita():
     team_id = str(TEAM_ID).strip()
     print(f"🚀 Avvio bot ESPN per team_id={team_id}")
+
+    # --- DEBUG: verifica che l'API ESPN risponda ---
+    try:
+        test_url = f"{ESPN_BASE}/ita.1/scoreboard"
+        test_r = requests.get(test_url, params={"dates": datetime.now(timezone.utc).strftime("%Y%m%d")}, timeout=10)
+        print(f"🔍 Test API ita.1: status={test_r.status_code}, eventi={len(test_r.json().get('events', []))}")
+    except Exception as e:
+        print(f"⚠️ Test API fallito: {e}")
 
     partita = trova_partita_oggi(team_id)
     if not partita:
