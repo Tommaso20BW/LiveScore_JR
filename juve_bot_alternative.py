@@ -241,7 +241,7 @@ def salva_stato_su_gist(state: dict):
         r = requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
                            json=payload, timeout=10)
         if r.status_code == 200:
-            print("💾 Stato salvato sul Gist.")
+            pass  # salvataggio silenzioso
     except Exception as e:
         print(f"❌ Eccezione salvataggio Gist: {e}")
 
@@ -428,9 +428,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         except Exception as e:
             print(f"⚠️ Errore parsing scoringPlay: {e}")
 
-    if events:
-        print(f"📋 {len(events)} eventi — tipi: {sorted(set(e['type'] for e in events))}")
-    else:
+    if not events:
         print("⚠️ Nessun evento trovato.")
 
     return events
@@ -464,8 +462,6 @@ def _estrai_stats_espn(data: dict) -> dict:
     except Exception as e:
         print(f"⚠️ Errore parsing header competitors stats: {e}")
 
-    print(f"📊 Stats home ({len(raw['home'])} chiavi): {list(raw['home'].keys())}")
-    print(f"📊 Stats away ({len(raw['away'])} chiavi): {list(raw['away'].keys())}")
     return raw
 
 
