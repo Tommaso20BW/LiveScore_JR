@@ -1038,20 +1038,42 @@ def avvia_ciclo_partita():
             prev_away = state.get("prev_away_goals", 0)
 
             if total_goals_now > state["goals_detected"]:
+                # La squadra che ha appena segnato è determinata dal punteggio reale ESPN,
+                # non dagli eventi (che possono avere team_id mancante/sbagliato)
                 if g_home > prev_home:
                     scoring_tid = home_id
+                    expected_home_goals = g_home
+                    expected_away_goals = prev_away
                 elif g_away > prev_away:
                     scoring_tid = away_id
+                    expected_home_goals = prev_home
+                    expected_away_goals = g_away
                 else:
+                    # Entrambe hanno segnato nello stesso ciclo (raro): gestisci separatamente
                     scoring_tid = None
+                    expected_home_goals = g_home
+                    expected_away_goals = g_away
 
                 goal_events = [e for e in events
                                if e["type"] in ("goal", "own goal", "penalty goal")]
 
-                if scoring_tid and goal_events:
-                    team_goals = [e for e in goal_events if e["team_id"] == scoring_tid]
-                    candidates = team_goals if team_goals else goal_events
-                    last = sorted(candidates, key=lambda x: x["minute"])[-1]
+                if scoring_tid:
+                    # Conta quanti goal ha quella squadra negli eventi
+                    # per trovare quello appena segnato (l'ennesimo)
+                    team_goals = [e for e in goal_events if e["type"] != "own goal" and e["team_id"] == scoring_tid]
+                    own_goals_vs = [e for e in goal_events if e["type"] == "own goal" and e["team_id"] != scoring_tid]
+                    candidates = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
+
+                    # Numero di goal attesi per questa squadra
+                    expected_count = g_home if scoring_tid == home_id else g_away
+
+                    # Prendi il goal corrispondente all'indice atteso (es. 1° goal = index 0)
+                    last = candidates[expected_count - 1] if len(candidates) >= expected_count else (candidates[-1] if candidates else None)
+
+                    if not last:
+                        print("⏳ Evento goal non ancora disponibile, riprovo...")
+                        time.sleep(sleep_time)
+                        continue
 
                     if not last["player_name"]:
                         print("⏳ Marcatore non ancora disponibile, riprovo...")
@@ -1059,14 +1081,15 @@ def avvia_ciclo_partita():
                         continue
 
                     ps = fmt_player(last["player_name"])
+                    actual_scoring_tid = scoring_tid
                     if last["type"] == "own goal":
                         ps += " (Autogol)"
-                        scoring_tid = away_id if last["team_id"] == home_id else home_id
+                        actual_scoring_tid = away_id if last["team_id"] == home_id else home_id
                     elif last["type"] == "penalty goal":
                         ps += " (Rig.)"
                     scorer_line = f"{E_BALL} <i>{last['minute']}' {ps}</i>\n"
 
-                    if scoring_tid == home_id:
+                    if actual_scoring_tid == home_id:
                         goal_score = f"<b>{home_name} {g_home}</b>-{g_away} {away_name}"
                     else:
                         goal_score = f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
