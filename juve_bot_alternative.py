@@ -767,35 +767,57 @@ def parse_status(data: dict):
     try:
         comp   = data["header"]["competitions"][0]
         status = comp.get("status", {})
-        state  = status.get("type", {}).get("state", "pre")
-        desc   = status.get("type", {}).get("description", "").lower()
+        stype  = status.get("type", {})
+        state  = stype.get("state", "pre")
+        name   = stype.get("name", "").upper()
+        desc   = stype.get("description", "").lower()
         clock  = status.get("displayClock", "0:00")
         period = status.get("period", 1)
+
         try:
-            elapsed = int(clock.split(":")[0])
+            raw_clock = clock.split("+")[0].split(":")[0]
+            elapsed = int(raw_clock)
         except Exception:
             elapsed = 0
 
+        print(f"🔍 ESPN status: state={state} name={name} desc={desc} clock={clock} period={period}")
+
         if state == "pre":
             return "NS", 0
+
         if state == "post":
-            if "pen" in desc:
+            if "PEN" in name:
                 return "PEN", 120
-            if "extra" in desc or "aet" in desc:
+            if "AET" in name or "EXTRA" in name:
                 return "AET", 120
             return "FT", 90
-        if "halftime" in desc or desc == "half time":
+
+        # In gioco — usa name come riferimento principale
+        if "HALFTIME" in name or "HALF_TIME" in name:
             return "HT", 45
-        if "first" in desc and "half" in desc:
-            return "1H", elapsed
-        if "second" in desc and "half" in desc:
-            return "2H", elapsed
-        if "extra" in desc:
-            return "ET", elapsed
-        if "penalty" in desc or "penalties" in desc:
+        if "EXTRA_TIME_HALF" in name or "HALFTIME_ET" in name:
+            return "HT_ET", 105
+        if "PENALTY" in name or "SHOOTOUT" in name:
             return "PEN", elapsed
-        return ("1H" if period == 1 else "2H"), elapsed
-    except Exception:
+        if "EXTRA" in name or "OT" in name:
+            return "ET", elapsed
+        if "END_PERIOD" in name:
+            # Fine di un periodo — determina quale
+            if period <= 2:
+                return "HT", 45
+            return "ET", elapsed
+        if period == 1:
+            return "1H", elapsed
+        if period == 2:
+            return "2H", elapsed
+        if period == 3:
+            return "ET", elapsed
+        if period == 4:
+            return "ET", elapsed
+
+        return "1H", elapsed
+    except Exception as e:
+        print(f"⚠️ Errore parse_status: {e}")
         return "NS", 0
 
 
