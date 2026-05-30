@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = '111'
+TEAM_ID             = '160'
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
@@ -114,6 +114,7 @@ EVENT_TYPE_MAP = {
     "own goal":                 "own goal",
     "penalty goal":             "penalty goal",
     "penalty - goal":           "penalty goal",
+    "penalty - scored":         "penalty goal",
     "penalty missed":           "penalty missed",
     "penalty saved":            "penalty saved",
     "penalty - missed":         "penalty missed",
@@ -126,6 +127,9 @@ EVENT_TYPE_MAP = {
     "substitution - player on": "substitution",
     "substitution - off":       "substitution",
     "penalty shootout - goal":  "shootout goal",
+    "shootout goal":             "shootout goal",
+    "shootout miss":             "shootout miss",
+    "shootout saved":            "shootout saved",
     "penalty shootout - miss":  "shootout miss",
     "penalty shootout - saved": "shootout saved",
 }
@@ -134,7 +138,8 @@ def normalize_event_type(raw: str) -> str:
     if not raw:
         return ""
     low = raw.strip().lower()
-    for k, v in EVENT_TYPE_MAP.items():
+    # Ordina per lunghezza decrescente: le chiavi piu specifiche hanno precedenza
+    for k, v in sorted(EVENT_TYPE_MAP.items(), key=lambda x: len(x[0]), reverse=True):
         if k in low:
             return v
     return low
