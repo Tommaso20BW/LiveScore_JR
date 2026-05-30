@@ -343,8 +343,18 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
 
     def safe_minute(clock_val) -> int:
         try:
-            s = str(clock_val).replace("'", "").strip()
-            return int(float(s.split(":")[0]))
+            s = str(clock_val).strip()
+            # Gestisce "45'+7'" → base=45, extra=7 → 52
+            if "+" in s:
+                parts_plus = s.split("+")
+                base  = int(float(parts_plus[0].replace("'", "").strip()))
+                extra = int(float(parts_plus[1].replace("'", "").strip()))
+                return base + extra
+            s = s.replace("'", "").strip()
+            # Gestisce "MM:SS"
+            if ":" in s:
+                return int(float(s.split(":")[0]))
+            return int(float(s))
         except Exception:
             return 0
 
@@ -421,7 +431,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
 
             t_name  = play.get("team", {}).get("displayName", "")
             t_id    = play.get("team", {}).get("id", "")
-            if not t_id:
+            if not t_id and t_name:
                 t_id = home_id if t_name.lower() == home_name.lower() else away_id
             add_event(ev_type, minute, t_id, player, assist, uid)
         except Exception as e:
@@ -441,6 +451,28 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             add_event(ev_type, minute, team_id, player, assist, uid)
         except Exception as e:
             print(f"⚠️ Errore parsing scoringPlay: {e}")
+
+    # --- FONTE 4: shootout[] (rigori dal dischetto) ---
+    for team_shootout in data.get("shootout", []):
+        try:
+            t_id   = str(team_shootout.get("team", {}).get("id", ""))
+            t_name = team_shootout.get("team", {}).get("displayName", "")
+            if not t_id and t_name:
+                t_id = home_id if t_name.lower() == home_name.lower() else away_id
+            for kick in team_shootout.get("shootoutAttempts", []):
+                scored  = kick.get("scored", False)
+                saved   = kick.get("saved", False)
+                player  = kick.get("athlete", {}).get("displayName", "")
+                uid     = str(kick.get("id", f"shootout_{t_id}_{player}"))
+                if scored:
+                    ev_type = "shootout goal"
+                elif saved:
+                    ev_type = "shootout saved"
+                else:
+                    ev_type = "shootout miss"
+                add_event(ev_type, 120, t_id, player, "", uid)
+        except Exception as e:
+            print(f"⚠️ Errore parsing shootout: {e}")
 
     if not events:
         print("⚠️ Nessun evento trovato.")
@@ -961,28 +993,25 @@ def avvia_ciclo_partita():
                 state_changed = True
 
             # --- Fine regolamentari → supplementari ---
-            if status == "ET" and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
+            # Copre sia la transizione live ET che il caso in cui ESPN salti direttamente a PEN/AET
+            if status in ("ET", "PEN", "AET") and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
                 salva_stato_su_gist(state)
                 state_changed = True
-                time.sleep(60)
-                data_fresh = fetch_evento(event_id, league_slug) or data
-                png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
-                                                         home_name, away_name, g_home, g_away,
-                                                         "2H_END", league_name)
-                send_telegram_stats_photo(png_path, "2H_END", f"{e_comp} {hashtag}")
-                state["sent_stats"].append("2H_END")
-                state_changed = True
+                if status == "ET":
+                    # Le stats le mandiamo solo se siamo davvero a fine 2° tempo, non già ai rigori
+                    time.sleep(60)
+                    data_fresh = fetch_evento(event_id, league_slug) or data
+                    png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
+                                                             home_name, away_name, g_home, g_away,
+                                                             "2H_END", league_name)
+                    send_telegram_stats_photo(png_path, "2H_END", f"{e_comp} {hashtag}")
+                    state["sent_stats"].append("2H_END")
+                    state_changed = True
 
             # --- Supplementari ---
             if status == "ET":
-                if "1ET_START" not in state["sent_periods"]:
-                    send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
-                    state["sent_periods"].append("1ET_START")
-                    salva_stato_su_gist(state)
-                    state_changed = True
-
                 # Leggi stato ESPN preciso per determinare intervallo/2°ET
                 try:
                     comp_status = data["header"]["competitions"][0].get("status", {})
@@ -992,11 +1021,16 @@ def avvia_ciclo_partita():
                     stype_name = ""
                     et_period  = 1
 
-                # Fine 1°ET: ESPN pubblica esplicitamente un nome di intervallo
                 is_et_halftime = any(kw in stype_name for kw in
                                      ("HALFTIME", "HALF_TIME", "HT_ET", "EXTRA_TIME_HALF"))
-                # Fallback: siamo già al period 4 (2°ET), oppure elapsed > 106 con period >= 3
                 is_second_et = (et_period >= 4 or (elapsed >= 106 and et_period >= 3))
+
+                # Inizio 1°ET — solo se non siamo già all'intervallo o al 2°ET
+                if "1ET_START" not in state["sent_periods"] and not is_et_halftime and not is_second_et:
+                    send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    state["sent_periods"].append("1ET_START")
+                    salva_stato_su_gist(state)
+                    state_changed = True
 
                 if (is_et_halftime or is_second_et) and "1ET_END" not in state["sent_periods"]:
                     send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
@@ -1010,10 +1044,23 @@ def avvia_ciclo_partita():
                     salva_stato_su_gist(state)
                     state_changed = True
 
+            # --- Intervallo supplementari (ESPN manda HT_ET esplicitamente) ---
+            if status == "HT_ET":
+                if "1ET_START" not in state["sent_periods"]:
+                    state["sent_periods"].append("1ET_START")
+                    state_changed = True
+                if "1ET_END" not in state["sent_periods"]:
+                    send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    state["sent_periods"].append("1ET_END")
+                    salva_stato_su_gist(state)
+                    state_changed = True
+
             # --- Rigori ---
             if status == "PEN":
                 if "ET_END_PENS" not in state["sent_periods"]:
-                    send_telegram(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    # Manda "FINE SUPPLEMENTARI" solo se non già inviato con altro trigger
+                    if "2ET_START" in state["sent_periods"] or "1ET_START" in state["sent_periods"]:
+                        send_telegram(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("ET_END_PENS")
                     salva_stato_su_gist(state)
                     state_changed = True
@@ -1035,11 +1082,13 @@ def avvia_ciclo_partita():
                     state_changed = True
 
             # --- Fine partita ---
+            comp_state_espn = (
+                data.get("header", {}).get("competitions", [{}])[0]
+                    .get("status", {}).get("type", {}).get("state", "")
+            )
             is_finished = (
-                status in ["FT", "AET"] or
-                (status == "PEN" and
-                 data.get("header", {}).get("competitions", [{}])[0]
-                     .get("status", {}).get("type", {}).get("state") == "post")
+                status in ("FT", "AET") or
+                (status == "PEN" and comp_state_espn == "post")
             )
             if is_finished and "FT" not in state["sent_periods"]:
                 home_scorers, away_scorers = [], []
@@ -1067,19 +1116,24 @@ def avvia_ciclo_partita():
                     scorers_line = ""
 
                 # Rigori: conta i gol dal dischetto per costruire il punteggio
-                if status == "PEN" or "ET_END_PENS" in state["sent_periods"]:
+                has_shootout = (
+                    "ET_END_PENS" in state["sent_periods"] or
+                    status == "PEN" or
+                    len(data.get("shootout", [])) > 0
+                )
+                if has_shootout:
                     home_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
                     away_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
                     if home_pen_goals > 0 or away_pen_goals > 0:
                         if home_pen_goals > away_pen_goals:
                             pen_score_str = (
-                                f"<b>{home_name} {g_home} ({home_pen_goals})</b>"
-                                f"-({away_pen_goals}) {g_away} {away_name}"
+                                f"<b>{home_name} {g_home}-{g_away} {away_name}</b>\n"
+                                f"(d.c.r. <b>{home_pen_goals}</b>-{away_pen_goals})"
                             )
                         else:
                             pen_score_str = (
-                                f"{home_name} {g_home} ({home_pen_goals})"
-                                f"-<b>({away_pen_goals}) {g_away} {away_name}</b>"
+                                f"<b>{home_name} {g_home}-{g_away} {away_name}</b>\n"
+                                f"(d.c.r. {home_pen_goals}-<b>{away_pen_goals}</b>)"
                             )
                         score_str = pen_score_str
 
@@ -1210,7 +1264,7 @@ def avvia_ciclo_partita():
             new_subs_check = []
             for e in events:
                 if e["type"] == "substitution":
-                    sub_id = f"sub_{e['minute']}_{e['player_name']}_{e['assist_name']}".replace(" ", "_")
+                    sub_id = e["uid"]
                     if sub_id not in state["sent_subs"]:
                         new_subs_check.append({**e, "sub_id": sub_id})
 
@@ -1224,7 +1278,7 @@ def avvia_ciclo_partita():
                 new_subs = []
                 for e in events_subs:
                     if e["type"] == "substitution":
-                        sub_id = f"sub_{e['minute']}_{e['player_name']}_{e['assist_name']}".replace(" ", "_")
+                        sub_id = e["uid"]
                         if sub_id not in state["sent_subs"]:
                             new_subs.append({**e, "sub_id": sub_id})
 
