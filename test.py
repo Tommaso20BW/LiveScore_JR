@@ -115,6 +115,11 @@ bot.sys.exit                   = _fake_exit
 # Fetch dati ESPN reali
 # ---------------------------------------------------------------------------
 def fetch_data(event_id: str, league_slug: str) -> dict:
+    local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"espn_{event_id}.json")
+    if os.path.exists(local_path):
+        print(f"📁 Usando dati locali: {local_path}")
+        with open(local_path, encoding="utf-8") as f:
+            return json.load(f)
     url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league_slug}/summary"
     r = requests.get(url, params={"event": event_id}, timeout=20)
     r.raise_for_status()
