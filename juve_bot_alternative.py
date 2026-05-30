@@ -780,7 +780,7 @@ def parse_status(data: dict):
         except Exception:
             elapsed = 0
 
-        print(f"🔍 ESPN status: state={state} name={name} desc={desc} clock={clock} period={period}")
+        print(f"🔍 ESPN: state={state} name={name} clock={clock} period={period}")
 
         if state == "pre":
             return "NS", 0
