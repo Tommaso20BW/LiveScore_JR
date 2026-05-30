@@ -1149,7 +1149,7 @@ def avvia_ciclo_partita():
             new_subs_check = []
             for e in events:
                 if e["type"] == "substitution":
-                    sub_id = f"sub_{e['minute']}_{e['player_name']}_{e['assist_name']}".replace(" ", "_")
+                    sub_id = f"sub_{e['uid']}_{e['minute']}_{e['player_name']}".replace(" ", "_")
                     if sub_id not in state["sent_subs"]:
                         new_subs_check.append({**e, "sub_id": sub_id})
 
