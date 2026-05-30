@@ -439,6 +439,18 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                 player = extract_athlete(parts, 0)
                 assist = extract_athlete(parts, 1)
 
+            # ✅ FIX ESPN: period=5 = shootout; "Penalty - Scored/Missed/Saved" va rimappato
+            period_num = play.get("period", {}).get("number", 0)
+            if period_num == 5:
+                raw_type = play.get("type", {}).get("type", "")
+                ev_low = ev_type.lower()
+                if "scored" in raw_type or "scored" in ev_low:
+                    ev_type = "shootout goal"
+                elif "missed" in raw_type or "missed" in ev_low:
+                    ev_type = "shootout miss"
+                elif "saved" in raw_type or "saved" in ev_low:
+                    ev_type = "shootout saved"
+
             team_id = _extract_team_id_from_commentary(item, home_name, away_name, home_id, away_id)
             add_event(ev_type, minute, team_id, player, assist, uid)
         except Exception as e:
@@ -489,18 +501,25 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             print(f"⚠️ Errore parsing scoringPlay: {e}")
 
     # --- FONTE 4: shootout[] (rigori dal dischetto) ---
+    # Struttura reale ESPN: .id=team_id, .team=stringa nome, .shots[]=calci con .didScore e .player
     for team_shootout in data.get("shootout", []):
         try:
-            t_id   = str(team_shootout.get("team", {}).get("id", ""))
-            t_name = team_shootout.get("team", {}).get("displayName", "")
-            if not t_id and t_name:
+            t_id_raw = str(team_shootout.get("id", ""))
+            t_name   = team_shootout.get("team", "")
+            if t_id_raw:
+                t_id = t_id_raw
+            elif isinstance(t_name, str) and t_name:
                 t_id = home_id if t_name.lower() == home_name.lower() else away_id
-            for kick in team_shootout.get("shootoutAttempts", []):
-                scored  = kick.get("scored", False)
-                saved   = kick.get("saved", False)
-                player  = kick.get("athlete", {}).get("displayName", "")
-                uid     = str(kick.get("id", f"shootout_{t_id}_{player}"))
-                if scored:
+            else:
+                t_id = ""
+            # Supporta sia shots (ESPN reale) che shootoutAttempts (schema alternativo)
+            kicks = team_shootout.get("shots") or team_shootout.get("shootoutAttempts", [])
+            for kick in kicks:
+                did_score = kick.get("didScore", kick.get("scored", False))
+                saved     = kick.get("saved", False)
+                player    = kick.get("player") or kick.get("athlete", {}).get("displayName", "")
+                uid       = str(kick.get("id", f"shootout_{t_id}_{player}"))
+                if did_score:
                     ev_type = "shootout goal"
                 elif saved:
                     ev_type = "shootout saved"
