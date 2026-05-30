@@ -1129,17 +1129,11 @@ def avvia_ciclo_partita():
 
                 total_kicks = len(home_pen_icons) + len(away_pen_icons)
                 if total_kicks > state["penalties_count"]:
-                    pen_text = (
+                    send_telegram(
                         f"<b>RIGORI 🥅</b>\n\n"
                         f"{home_name}: " + ("".join(home_pen_icons) if home_pen_icons else "—") + "\n"
                         f"{away_name}: " + ("".join(away_pen_icons) if away_pen_icons else "—") + f"\n\n{e_comp} {hashtag}"
                     )
-                    existing_id = state.get("shootout_message_id")
-                    if existing_id:
-                        send_telegram_edit(existing_id, pen_text)
-                    else:
-                        new_id = send_telegram_get_id(pen_text)
-                        state["shootout_message_id"] = new_id
                     state["penalties_count"] = total_kicks
                     state_changed = True
 
