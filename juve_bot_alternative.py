@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = '15362'
+TEAM_ID             = '160'
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
@@ -717,7 +717,7 @@ body {{
 .score-wrap {{ text-align: center; }}
 .score-wrap {{ text-align: center; }}
 .score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
-.pen-score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 64px; line-height: 1.1; font-weight: 700; color: white; text-align: center; margin-top: 8px; }}
+.pen-score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 40px; line-height: 1.1; font-weight: 700; color: white; text-align: center; margin-top: 8px; }}
 .match-status {{ margin-top: 16px; color: #8fa1c7; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
 .stats-body {{
   flex: 1;
