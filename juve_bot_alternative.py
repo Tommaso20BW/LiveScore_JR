@@ -775,7 +775,7 @@ def parse_status(data: dict):
         period = status.get("period", 1)
 
         try:
-            raw_clock = clock.split("+")[0].split(":")[0]
+            raw_clock = clock.replace("'", "").split("+")[0].split(":")[0].strip()
             elapsed = int(raw_clock)
         except Exception:
             elapsed = 0
