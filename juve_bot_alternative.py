@@ -163,7 +163,6 @@ def send_telegram(text: str):
     try:
         r = requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}, timeout=10)
         r.raise_for_status()
-        print(f"📨 Telegram inviato: {text[:80]}...")
     except Exception as e:
         print(f"❌ Errore Telegram: {e}")
 
@@ -178,7 +177,6 @@ def send_telegram_edit(message_id: int, text: str):
             "text": text, "parse_mode": "HTML"
         }, timeout=10)
         r.raise_for_status()
-        print(f"✏️ Messaggio {message_id} aggiornato.")
     except Exception as e:
         print(f"❌ Errore editMessageText: {e}")
 
@@ -192,7 +190,6 @@ def send_telegram_get_id(text: str) -> int | None:
         r = requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}, timeout=10)
         r.raise_for_status()
         msg_id = r.json().get("result", {}).get("message_id")
-        print(f"📨 Telegram inviato (id={msg_id}): {text[:80]}...")
         return msg_id
     except Exception as e:
         print(f"❌ Errore Telegram: {e}")
@@ -218,7 +215,6 @@ def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str):
         with open(png_path, "rb") as f:
             requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"},
                           files={"photo": ("stats.png", f, "image/png")}, timeout=25)
-        print(f"✅ Statistiche ({momento}) inviate su Telegram!")
     except Exception as e:
         print(f"❌ Errore invio foto statistiche: {e}")
 
@@ -241,7 +237,6 @@ def update_github_secret(secret_name: str, new_value: str):
         r = requests.put(f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/{secret_name}",
                          headers=headers, json={"encrypted_value": encrypted, "key_id": pk["key_id"]}, timeout=10)
         if r.status_code in [201, 204]:
-            print(f"✅ Secret '{secret_name}' aggiornato.")
             return True
     except Exception as e:
         print(f"❌ Errore update secret: {e}")
@@ -288,7 +283,6 @@ def resetta_gist():
         payload = {"files": {"match_state.json": {"content": "{}"}}}
         requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
                        json=payload, timeout=10)
-        print("🔄 Gist resettato.")
     except Exception as e:
         print(f"❌ Eccezione reset Gist: {e}")
 
@@ -336,7 +330,6 @@ def get_canva_image(access_token: str):
             if check.status_code == 200:
                 d = check.json()
                 stato = d.get("status") or d.get("job", {}).get("status")
-                print(f"   [Controllo {i+1}/60] Canva: {stato}")
                 if stato == "success":
                     urls = d.get("urls") or d.get("job", {}).get("urls")
                     url_dl = urls[0] if urls else (d.get("url") or d.get("job", {}).get("url"))
@@ -529,9 +522,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         except Exception as e:
             print(f"⚠️ Errore parsing shootout: {e}")
 
-    if not events:
-        print("⚠️ Nessun evento trovato.")
-
     return events
 
 # ==============================================================================
@@ -570,7 +560,6 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   home_name: str, away_name: str,
                                   home_goals: int, away_goals: int,
                                   momento: str, league_name: str = "SERIE A"):
-    print(f"📊 Generazione stats HTML per momento {momento}...")
 
     JUVE_ID     = '111'
     JUVE_LOGO   = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
@@ -763,7 +752,6 @@ body {{
     with open(path_html, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    print("📸 Rendering con Playwright...")
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
         page = browser.new_page(viewport={"width": 1620, "height": 4000}, device_scale_factor=1.0)
@@ -793,7 +781,7 @@ def trova_partita_oggi(team_id: str):
         now_utc.strftime("%Y%m%d"),
         (now_utc + timedelta(days=1)).strftime("%Y%m%d"),
     ]
-    print(f"🔍 Ricerca partita per team_id={team_id} nelle date: {dates_to_try}")
+    print(f"🔍 Cerco partita per team_id={team_id}...")
 
     for date_str in dates_to_try:
         for slug in LEAGUE_SLUGS:
@@ -811,15 +799,15 @@ def trova_partita_oggi(team_id: str):
                     competitors = competitions[0].get("competitors", [])
                     ids = [c.get("team", {}).get("id", "") for c in competitors]
                     if team_id in ids:
-                        print(f"✅ Trovata: slug={slug} data={date_str} event_id={event['id']}")
+                        print(f"✅ Partita trovata: {league_name} — event_id={event['id']}")
                         return {
                             "event_id":    event["id"],
                             "league_slug": slug,
                             "league_name": league_name,
                             "competitors": competitors,
                         }
-            except Exception as e:
-                print(f"⚠️ Errore fetch slug={slug} data={date_str}: {e}")
+            except Exception:
+                pass
 
     print(f"📭 Nessun evento trovato per team_id={team_id}.")
     return None
@@ -867,7 +855,6 @@ def parse_status(data: dict):
         except Exception:
             elapsed = 0
 
-        print(f"🔍 ESPN: state={state} name={name} clock={clock} period={period}")
 
         if state == "pre":
             return "NS", 0
@@ -936,13 +923,11 @@ def build_hashtag(home_name, away_name):
 # ==============================================================================
 def avvia_ciclo_partita():
     team_id = str(TEAM_ID).strip()
-    print(f"🚀 Avvio bot ESPN per team_id={team_id}")
 
     # Test connettività API
     try:
         test_r = requests.get(f"{ESPN_BASE}/ita.1/scoreboard",
                                params={"dates": datetime.now(timezone.utc).strftime("%Y%m%d")}, timeout=10)
-        print(f"🔍 Test API ita.1: status={test_r.status_code}, eventi={len(test_r.json().get('events', []))}")
     except Exception as e:
         print(f"⚠️ Test API fallito: {e}")
 
@@ -954,7 +939,7 @@ def avvia_ciclo_partita():
     event_id    = partita["event_id"]
     league_slug = partita["league_slug"]
     league_name = partita["league_name"]
-    print(f"✅ Partita trovata: event_id={event_id} ({league_name})")
+    print(f"📅 {league_name} — {home_name} vs {away_name}")
 
     state = leggi_stato_da_gist()
     if state is None or state.get("event_id") != event_id:
@@ -995,7 +980,7 @@ def avvia_ciclo_partita():
 
             events = parse_events(data, home_name, away_name, home_id, away_id)
 
-            print(f"[{status}] {home_name} {g_home}-{g_away} {away_name} | min {elapsed} | eventi: {len(events)}")
+            print(f"[{status} {elapsed}'] {home_name} {g_home}-{g_away} {away_name}")
 
             # --- Non ancora iniziata ---
             if status == "NS":
@@ -1006,9 +991,9 @@ def avvia_ciclo_partita():
                         start_time         = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                         now_utc            = datetime.now(timezone.utc)
                         minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
-                        print(f"⏳ Partita non ancora iniziata. Inizio tra {minutes_to_kickoff:.0f} min.")
+                        print(f"⏳ Inizio tra {minutes_to_kickoff:.0f} min — in attesa")
                         if minutes_to_kickoff > 30:
-                            print(f"🛑 Mancano più di 30 minuti all'inizio ({minutes_to_kickoff:.0f} min). Bot spento.")
+                            print(f"🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
                             sys.exit(0)
                 except Exception as e:
                     print(f"⚠️ Impossibile leggere orario partita: {e}")
@@ -1183,11 +1168,15 @@ def avvia_ciclo_partita():
                     if home_pen_goals > 0 or away_pen_goals > 0:
                         if home_pen_goals > away_pen_goals:
                             pen_score_str = (
-                                f"<b>{home_name} {g_home} ({home_pen_goals})-({away_pen_goals}) {g_away} {away_name}</b>"
+                                f"<b>{home_name} {g_home} ({home_pen_goals})</b>-({away_pen_goals}) {g_away} {away_name}"
+                            )
+                        elif away_pen_goals > home_pen_goals:
+                            pen_score_str = (
+                                f"{home_name} {g_home} ({home_pen_goals})-<b>({away_pen_goals}) {g_away} {away_name}</b>"
                             )
                         else:
                             pen_score_str = (
-                                f"<b>{home_name} {g_home} ({home_pen_goals})-({away_pen_goals}) {g_away} {away_name}</b>"
+                                f"{home_name} {g_home} ({home_pen_goals})-({away_pen_goals}) {g_away} {away_name}"
                             )
                         score_str = pen_score_str
 
@@ -1214,7 +1203,7 @@ def avvia_ciclo_partita():
                 state_changed = True
                 state["_reset_done"] = True
                 resetta_gist()
-                print("🏁 Partita terminata. Bot spento.")
+                print("🏁 Partita terminata")
                 sys.exit(0)
 
             # --- Rilevamento goal ---
@@ -1232,7 +1221,7 @@ def avvia_ciclo_partita():
                     competitors_confirm = competitors
                 _, _, _, _, g_home_c, g_away_c = parse_score(competitors_confirm)
                 if g_home_c + g_away_c != total_goals_now:
-                    print(f"⚠️ Punteggio instabile ({g_home}-{g_away} → {g_home_c}-{g_away_c}), skip.")
+                    print(f"⚠️ Punteggio instabile ({g_home}-{g_away} → {g_home_c}-{g_away_c}), attendo")
                     time.sleep(sleep_time)
                     continue
                 # Usa i dati confermati
@@ -1323,7 +1312,7 @@ def avvia_ciclo_partita():
                         new_subs_check.append({**e, "sub_id": sub_id})
 
             if new_subs_check:
-                print(f"🔄 Cambio rilevato, attendo 30s per raggruppare...")
+                print(f"🔄 Cambio rilevato, raggruppo...")
                 time.sleep(30)
                 # Rileggi i dati aggiornati
                 data_subs = fetch_evento(event_id, league_slug) or data
@@ -1381,7 +1370,7 @@ def avvia_ciclo_partita():
                     if pen_id not in state["sent_failed_penalties"]:
                         state["sent_failed_penalties"].append(pen_id)
                         state_changed = True
-                        print(f"🥅 Rigore fallito registrato (nessun msg): {e['player_name']} {e['minute']}'")
+                        print(f"🥅 Rigore fallito: {e['player_name']} {e['minute']}'")
 
         except Exception as e:
             print(f"❌ Errore ciclo live: {e}")
@@ -1397,7 +1386,7 @@ def avvia_ciclo_partita():
 # MAIN
 # ==============================================================================
 def main():
-    print("🚀 ESPN Live Score Bot avviato...")
+    print("🚀 Bot avviato")
 
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
         get_valid_token()
