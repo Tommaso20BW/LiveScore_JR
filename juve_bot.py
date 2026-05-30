@@ -871,6 +871,22 @@ def avvia_ciclo_partita():
                             send_telegram(f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n🔚 <i>{minute}' {p_name}</i>\n\n{e_comp} {hashtag}")
                             state["sent_cards"].append(card_id)
 
+                    elif ev_type == 'var' and "penalty" in detail and ("missed" in detail or "saved" in detail or "no penalty" in detail):
+                        p_name   = e.get('player', {}).get('name', 'Giocatore')
+                        pen_id   = f"failpen_{minute}_{p_name}".replace(" ", "_")
+                        if pen_id not in state["sent_failed_penalties"]:
+                            team_name_pen = home_name if team_id == home_id else away_name
+                            send_telegram(f"<b>RIGORE SBAGLIATO {team_name_pen.upper()} {E_PEN_KO}</b>\n\n🥅 <i>{minute}' {p_name}</i>\n\n{e_comp} {hashtag}")
+                            state["sent_failed_penalties"].append(pen_id)
+
+                    elif ev_type == 'goal' and ("missed" in detail or "saved" in detail) and "penalty" in detail:
+                        p_name   = e.get('player', {}).get('name', 'Giocatore')
+                        pen_id   = f"failpen_{minute}_{p_name}".replace(" ", "_")
+                        if pen_id not in state["sent_failed_penalties"]:
+                            team_name_pen = home_name if team_id == home_id else away_name
+                            send_telegram(f"<b>RIGORE SBAGLIATO {team_name_pen.upper()} {E_PEN_KO}</b>\n\n🥅 <i>{minute}' {p_name}</i>\n\n{e_comp} {hashtag}")
+                            state["sent_failed_penalties"].append(pen_id)
+
                 for sub_key, sub_data in subs_by_minute.items():
                     team_title = home_name.upper() if sub_data["team_id"] == home_id else away_name.upper()
                     send_telegram(
