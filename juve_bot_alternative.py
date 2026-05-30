@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = '209'
+TEAM_ID             = '160'
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
@@ -970,7 +970,7 @@ def avvia_ciclo_partita():
         }
 
     while True:
-        sleep_time = 10
+        sleep_time = 6
         state_changed = False
         try:
             data = fetch_evento(event_id, league_slug)
@@ -1017,7 +1017,7 @@ def avvia_ciclo_partita():
 
             # Rigori: polling ancora più rapido
             if status == "PEN":
-                sleep_time = 8
+                sleep_time = 6
 
             # --- Inizio primo tempo ---
             if status == "1H" and "1H" not in state["sent_periods"]:
@@ -1398,7 +1398,7 @@ def avvia_ciclo_partita():
 
         except Exception as e:
             print(f"❌ Errore ciclo live: {e}")
-            sleep_time = 10
+            sleep_time = 6
 
         finally:
             if isinstance(state, dict) and not state.get("_reset_done") and state_changed:
