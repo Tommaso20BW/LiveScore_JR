@@ -953,8 +953,8 @@ def avvia_ciclo_partita():
                 state["sent_periods"].append("2H")
 
             # --- Fine regolamentari → supplementari ---
-            if status == "ET" and "2H_END" not in state["sent_periods"]:
-                send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\nSi va ai supplementari!\n\n{score_str}\n\n{e_comp} {hashtag}")
+            if status == "ET" and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
+                send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
                 time.sleep(60)
                 data_fresh = fetch_evento(event_id, league_slug) or data
