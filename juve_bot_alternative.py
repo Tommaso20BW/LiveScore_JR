@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = '19141'
+TEAM_ID             = '160'
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
@@ -166,6 +166,37 @@ def send_telegram(text: str):
         print(f"📨 Telegram inviato: {text[:80]}...")
     except Exception as e:
         print(f"❌ Errore Telegram: {e}")
+
+def send_telegram_edit(message_id: int, text: str):
+    """Edita un messaggio Telegram già inviato."""
+    if not BOT_TOKEN or not CHAT_ID or not message_id:
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+    try:
+        r = requests.post(url, json={
+            "chat_id": CHAT_ID, "message_id": message_id,
+            "text": text, "parse_mode": "HTML"
+        }, timeout=10)
+        r.raise_for_status()
+        print(f"✏️ Messaggio {message_id} aggiornato.")
+    except Exception as e:
+        print(f"❌ Errore editMessageText: {e}")
+
+def send_telegram_get_id(text: str) -> int | None:
+    """Invia un messaggio Telegram e restituisce il message_id."""
+    if not BOT_TOKEN or not CHAT_ID:
+        print("⚠️ BOT_TOKEN o CHAT_ID mancanti.")
+        return None
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    try:
+        r = requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}, timeout=10)
+        r.raise_for_status()
+        msg_id = r.json().get("result", {}).get("message_id")
+        print(f"📨 Telegram inviato (id={msg_id}): {text[:80]}...")
+        return msg_id
+    except Exception as e:
+        print(f"❌ Errore Telegram: {e}")
+        return None
 
 def send_telegram_with_photo(text: str, photo_bytes):
     if not photo_bytes:
@@ -919,6 +950,7 @@ def avvia_ciclo_partita():
             "penalties_count":        0,
             "sent_stats":             [],
             "sent_failed_penalties":  [],
+            "shootout_message_id":    None,
         }
 
     while True:
@@ -1078,11 +1110,17 @@ def avvia_ciclo_partita():
 
                 total_kicks = len(home_pen_icons) + len(away_pen_icons)
                 if total_kicks > state["penalties_count"]:
-                    send_telegram(
-                        f"<b>RIGORI {E_MIC}</b>\n\n"
-                        f"{home_name}: " + "".join(home_pen_icons or ["-"]) + "\n"
-                        f"{away_name}: " + "".join(away_pen_icons or ["-"]) + f"\n\n{e_comp} {hashtag}"
+                    pen_text = (
+                        f"<b>RIGORI 🥅</b>\n\n"
+                        f"{home_name}: " + ("".join(home_pen_icons) if home_pen_icons else "—") + "\n"
+                        f"{away_name}: " + ("".join(away_pen_icons) if away_pen_icons else "—") + f"\n\n{e_comp} {hashtag}"
                     )
+                    existing_id = state.get("shootout_message_id")
+                    if existing_id:
+                        send_telegram_edit(existing_id, pen_text)
+                    else:
+                        new_id = send_telegram_get_id(pen_text)
+                        state["shootout_message_id"] = new_id
                     state["penalties_count"] = total_kicks
                     state_changed = True
 
@@ -1132,13 +1170,11 @@ def avvia_ciclo_partita():
                     if home_pen_goals > 0 or away_pen_goals > 0:
                         if home_pen_goals > away_pen_goals:
                             pen_score_str = (
-                                f"<b>{home_name} {g_home}-{g_away} {away_name}</b>\n"
-                                f"(d.c.r. <b>{home_pen_goals}</b>-{away_pen_goals})"
+                                f"<b>{home_name} {g_home} ({home_pen_goals})-({away_pen_goals}) {g_away} {away_name}</b>"
                             )
                         else:
                             pen_score_str = (
-                                f"<b>{home_name} {g_home}-{g_away} {away_name}</b>\n"
-                                f"(d.c.r. {home_pen_goals}-<b>{away_pen_goals}</b>)"
+                                f"<b>{home_name} {g_home} ({home_pen_goals})-({away_pen_goals}) {g_away} {away_name}</b>"
                             )
                         score_str = pen_score_str
 
@@ -1325,19 +1361,14 @@ def avvia_ciclo_partita():
                         state["sent_cards"].append(card_id)
                         state_changed = True
 
-            # --- Rigori sbagliati (tempo regolamentare / supplementari) ---
+            # --- Rigori sbagliati (tempo regolamentare / supplementari): solo log, nessun messaggio ---
             for e in events:
                 if e["type"] in ("penalty missed", "penalty saved"):
-                    p_name = fmt_player(e["player_name"])
                     pen_id = f"failpen_{e['minute']}_{e['player_name']}".replace(" ", "_")
                     if pen_id not in state["sent_failed_penalties"]:
-                        team_name_pen = home_name if e["team_id"] == home_id else away_name
-                        send_telegram(
-                            f"<b>RIGORE SBAGLIATO {team_name_pen.upper()} {E_PEN_KO}</b>\n\n"
-                            f"🥅 <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
-                        )
                         state["sent_failed_penalties"].append(pen_id)
                         state_changed = True
+                        print(f"🥅 Rigore fallito registrato (nessun msg): {e['player_name']} {e['minute']}'")
 
         except Exception as e:
             print(f"❌ Errore ciclo live: {e}")
