@@ -939,7 +939,6 @@ def avvia_ciclo_partita():
     event_id    = partita["event_id"]
     league_slug = partita["league_slug"]
     league_name = partita["league_name"]
-    print(f"📅 {league_name} — {home_name} vs {away_name}")
 
     state = leggi_stato_da_gist()
     if state is None or state.get("event_id") != event_id:
@@ -980,6 +979,9 @@ def avvia_ciclo_partita():
 
             events = parse_events(data, home_name, away_name, home_id, away_id)
 
+            if "_intro_logged" not in state:
+                print(f"📅 {league_name} — {home_name} vs {away_name}")
+                state["_intro_logged"] = True
             print(f"[{status} {elapsed}'] {home_name} {g_home}-{g_away} {away_name}")
 
             # --- Non ancora iniziata ---
