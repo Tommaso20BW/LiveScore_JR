@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = '209'
+TEAM_ID             = '160'
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
@@ -995,7 +995,11 @@ def avvia_ciclo_partita():
             if "_intro_logged" not in state:
                 print(f"📅 {league_name} — {home_name} vs {away_name}")
                 state["_intro_logged"] = True
-            print(f"[{status} {elapsed}'] {home_name} {g_home}-{g_away} {away_name}")
+
+            _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
+            if state.get("_last_log_key") != _log_key:
+                print(f"[{status} {elapsed}'] {home_name} {g_home}-{g_away} {away_name}")
+                state["_last_log_key"] = _log_key
 
             # --- Non ancora iniziata ---
             if status == "NS":
