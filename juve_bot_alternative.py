@@ -1090,6 +1090,21 @@ def avvia_ciclo_partita():
                         )
                         state["sent_cards"].append(card_id)
 
+            # --- Rigori sbagliati (tempo regolamentare / supplementari) ---
+            for e in events:
+                if e["type"] in ("penalty missed", "penalty saved"):
+                    p_name = fmt_player(e["player_name"])
+                    pen_id = f"failpen_{e['minute']}_{e['player_name']}".replace(" ", "_")
+                    if pen_id not in state.get("sent_failed_penalties", []):
+                        team_name_pen = home_name if e["team_id"] == home_id else away_name
+                        send_telegram(
+                            f"<b>RIGORE SBAGLIATO {team_name_pen.upper()} {E_PEN_KO}</b>\n\n"
+                            f"🥅 <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
+                        )
+                        if "sent_failed_penalties" not in state:
+                            state["sent_failed_penalties"] = []
+                        state["sent_failed_penalties"].append(pen_id)
+
         except Exception as e:
             print(f"❌ Errore ciclo live: {e}")
             sleep_time = 30
