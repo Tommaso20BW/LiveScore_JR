@@ -966,7 +966,7 @@ def avvia_ciclo_partita():
 
             # --- Supplementari ---
             if status == "ET":
-                if elapsed >= 91 and "1ET_START" not in state["sent_periods"]:
+                if "1ET_START" not in state["sent_periods"]:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
                 if elapsed >= 105 and "1ET_END" not in state["sent_periods"]:
@@ -1060,6 +1060,24 @@ def avvia_ciclo_partita():
             prev_away = state.get("prev_away_goals", 0)
 
             if total_goals_now > state["goals_detected"]:
+                # Conferma il punteggio aspettando 15s e rileggendo
+                time.sleep(15)
+                data_confirm = fetch_evento(event_id, league_slug) or data
+                try:
+                    competitors_confirm = data_confirm["header"]["competitions"][0]["competitors"]
+                except Exception:
+                    competitors_confirm = competitors
+                _, _, _, _, g_home_c, g_away_c = parse_score(competitors_confirm)
+                if g_home_c + g_away_c != total_goals_now:
+                    print(f"⚠️ Punteggio instabile ({g_home}-{g_away} → {g_home_c}-{g_away_c}), skip.")
+                    time.sleep(sleep_time)
+                    continue
+                # Usa i dati confermati
+                data   = data_confirm
+                g_home = g_home_c
+                g_away = g_away_c
+                events = parse_events(data, home_name, away_name, home_id, away_id)
+                score_str = build_score_str(home_name, away_name, g_home, g_away)
                 # La squadra che ha appena segnato è determinata dal punteggio reale ESPN,
                 # non dagli eventi (che possono avere team_id mancante/sbagliato)
                 if g_home > prev_home:
