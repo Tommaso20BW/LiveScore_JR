@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = '18206'
+TEAM_ID             = '111'
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
@@ -492,8 +492,10 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   momento: str, league_name: str = "SERIE A"):
     print(f"📊 Generazione stats HTML per momento {momento}...")
 
-    h_logo      = f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
-    a_logo      = f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
+    JUVE_ID     = '111'
+    JUVE_LOGO   = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
+    h_logo      = JUVE_LOGO if str(home_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
+    a_logo      = JUVE_LOGO if str(away_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
     badge_label = MOMENTI_CONFIG[momento]["badge"]
     raw         = _estrai_stats_espn(data_espn)
 
