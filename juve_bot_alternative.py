@@ -1006,7 +1006,10 @@ def avvia_ciclo_partita():
                         start_time         = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                         now_utc            = datetime.now(timezone.utc)
                         minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
-                        print(f"⏳ Inizio tra {minutes_to_kickoff:.0f} min — in attesa")
+                        if minutes_to_kickoff > 0:
+                            print(f"⏳ Inizio tra {minutes_to_kickoff:.0f} min — in attesa")
+                        else:
+                            print(f"⏳ Partita iniziata da {abs(minutes_to_kickoff):.0f} min — in attesa")
                         if minutes_to_kickoff > 30:
                             print(f"🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
                             sys.exit(0)
