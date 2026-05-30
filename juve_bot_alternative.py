@@ -1389,8 +1389,9 @@ def avvia_ciclo_partita():
                         state["sent_failed_penalties"].append(pen_id)
                         state_changed = True
                         print(f"🥅 Rigore fallito: {e['player_name']} {e['minute']}'")
+                        team_name = home_name if e["team_id"] == home_id else away_name
                         send_telegram(
-                            f"<b>RIGORE 🥅</b>\n\n"
+                            f"<b>RIGORE SBAGLIATO {team_name.upper()} 🥅</b>\n\n"
                             f"{E_PEN_KO} <i>{e['minute']}' {fmt_player(e['player_name'])}</i>\n\n"
                             f"{e_comp} {hashtag}"
                         )
