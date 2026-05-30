@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN         = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID           = os.getenv('TELEGRAM_TO')
-TEAM_ID           = '4007'
+TEAM_ID           = '18206'
 GH_PAT            = os.getenv('GH_PAT')
 GITHUB_REPOSITORY = os.getenv('GITHUB_REPOSITORY')
 GIST_ID           = os.getenv('GIST_ID')
@@ -32,34 +32,103 @@ PAGINA_TARGET   = 11
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
 LEAGUE_SLUGS = [
+    # --- ITALIA ---
     "ita.1", "ita.coppa_italia", "ita.super_cup", "ita.2",
-    "uefa.champions", "uefa.europa", "uefa.europa_conf",
-    "esp.1", "esp.copa_del_rey", "esp.super_cup",
-    "eng.1", "eng.fa", "eng.league_cup",
-    "ger.1", "ger.dfb_pokal",
-    "fra.1", "fra.coupe_de_france",
+
+    # --- EUROPA (CLUB & COPPE CONTINENTALI) ---
+    "uefa.champions", "uefa.europa", "uefa.europa_conf", "uefa.super_cup",
+
+    # --- INGHILTERRA ---
+    "eng.1", "eng.fa", "eng.league_cup", "eng.community", "eng.2", "eng.3", "eng.4",
+
+    # --- SPAGNA ---
+    "esp.1", "esp.copa_del_rey", "esp.super_cup", "esp.2",
+
+    # --- GERMANIA ---
+    "ger.1", "ger.dfb_pokal", "ger.2",
+
+    # --- FRANCIA ---
+    "fra.1", "fra.coupe_de_france", "fra.2",
+
+    # --- ALTRI CAMPIONATI EUROPEI ---
     "por.1", "ned.1", "bel.1", "tur.1", "sco.1",
-    "usa.1", "usa.open", "concacaf.champions",
-    "mex.1", "bra.1", "arg.1", "col.1", "chi.1", "ecu.1", "per.1", "uru.1",
+    "rus.1", "ukr.1", "gre.1", "aut.1", "sui.1", "den.1", "nor.1", "swe.1",
+
+    # --- NORD & CENTRO AMERICA ---
+    "usa.1", "usa.open", "usa.leagues_cup", "usa.mls.is.back",
+    "mex.1", "mex.copa_mx", "mex.campeon_campeones",
+    "concacaf.champions",
+
+    # --- SUDAMERICA (CLUB & COPPE) ---
+    "bra.1", "arg.1", "col.1", "chi.1", "ecu.1", "per.1", "uru.1",
     "conmebol.libertadores", "conmebol.sudamericana",
-    "aus.1", "jpn.1", "chn.1", "sau.1",
+
+    # --- ASIA & OCEANIA ---
+    "aus.1", "jpn.1", "chn.1", "sau.1", "afc.champions",
+
+    # --- AFRICA ---
+    "caf.champions",
+
+    # --- AMICHEVOLI ---
     "friendly.club",
+
+    # --- CALCIO FEMMINILE (CLUB & TORNEI) ---
+    "usa.nwsl", "eng.w.1", "fra.w.1", "ger.w.1", "esp.w.1",
+    "uefa.w.champions", "fifa.w.world", "fifa.w.world.q", 
+    "uefa.w.euro", "uefa.w.nations", "olympics.w.soccer",
+
+    # --- NAZIONALI MASCHILI (MONDIALI & QUALIFICAZIONI) ---
+    "fifa.world", "fifa.world.q", "fifa.confed", "fifa.friendly", "olympics.m.soccer",
+
+    # --- TORNEI CONTINENTALI NAZIONALI ---
+    "uefa.euro", "uefa.euro.q", "uefa.nations",
+    "conmebol.america", "conmebol.america.q",
+    "concacaf.gold", "concacaf.nations",
+    "caf.nations", "caf.nations.q",
+    "afc.asian_cup", "afc.asian_cup.q"
 ]
 
 LEAGUE_EMOJIS = {
+    # --- ITALIA ---
     "ita.1": "🇮🇹", "ita.coppa_italia": "🇮🇹", "ita.super_cup": "🇮🇹", "ita.2": "🇮🇹",
-    "uefa.champions": "🇪🇺", "uefa.europa": "🇪🇺", "uefa.europa_conf": "🇪🇺",
-    "esp.1": "🇪🇸", "esp.copa_del_rey": "🇪🇸", "esp.super_cup": "🇪🇸",
-    "eng.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.fa": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.league_cup": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    "ger.1": "🇩🇪", "ger.dfb_pokal": "🇩🇪",
-    "fra.1": "🇫🇷", "fra.coupe_de_france": "🇫🇷",
+
+    # --- EUROPA ---
+    "uefa.champions": "🇪🇺", "uefa.europa": "🇪🇺", "uefa.europa_conf": "🇪🇺", "uefa.super_cup": "🇪🇺",
+    "eng.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.fa": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.league_cup": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.community": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", 
+    "eng.2": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.3": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.4": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "esp.1": "🇪🇸", "esp.copa_del_rey": "🇪🇸", "esp.super_cup": "🇪🇸", "esp.2": "🇪🇸",
+    "ger.1": "🇩🇪", "ger.dfb_pokal": "🇩🇪", "ger.2": "🇩🇪",
+    "fra.1": "🇫🇷", "fra.coupe_de_france": "🇫🇷", "fra.2": "🇫🇷",
     "por.1": "🇵🇹", "ned.1": "🇳🇱", "bel.1": "🇧🇪", "tur.1": "🇹🇷", "sco.1": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-    "usa.1": "🇺🇸", "usa.open": "🇺🇸", "concacaf.champions": "🌎",
-    "mex.1": "🇲🇽", "bra.1": "🇧🇷", "arg.1": "🇦🇷", "col.1": "🇨🇴",
-    "chi.1": "🇨🇱", "ecu.1": "🇪🇨", "per.1": "🇵🇪", "uru.1": "🇺🇾",
-    "conmebol.libertadores": "🌎", "conmebol.sudamericana": "🌎",
-    "aus.1": "🇦🇺", "jpn.1": "🇯🇵", "chn.1": "🇨🇳", "sau.1": "🇸🇦",
+    "rus.1": "🇷🇺", "ukr.1": "🇺🇦", "gre.1": "🇬🇷", "aut.1": "🇦🇹", "sui.1": "🇨🇭", 
+    "den.1": "🇩🇰", "nor.1": "🇳🇴", "swe.1": "🇸🇪",
+
+    # --- AMERICHE ---
+    "usa.1": "🇺🇸", "usa.open": "🇺🇸", "usa.leagues_cup": "🌎", "usa.mls.is.back": "🇺🇸",
+    "mex.1": "🇲🇽", "mex.copa_mx": "🇲🇽", "mex.campeon_campeones": "🇲🇽",
+    "concacaf.champions": "🌎",
+    "bra.1": "🇧🇷", "arg.1": "🇦🇷", "col.1": "🇨🇴", "chi.1": "🇨🇱", "ecu.1": "🇪🇨", 
+    "per.1": "🇵🇪", "uru.1": "🇺🇾", "conmebol.libertadores": "🌎", "conmebol.sudamericana": "🌎",
+
+    # --- ASIA & AFRICA ---
+    "aus.1": "🇦🇺", "jpn.1": "🇯🇵", "chn.1": "🇨🇳", "sau.1": "🇸🇦", "afc.champions": "🌏",
+    "caf.champions": "🌍",
+
+    # --- AMICHEVOLI ---
     "friendly.club": "🤝",
+
+    # --- FEMMINILE ---
+    "usa.nwsl": "🇺🇸", "eng.w.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "fra.w.1": "🇫🇷", "ger.w.1": "🇩🇪", "esp.w.1": "🇪🇸",
+    "uefa.w.champions": "🇪🇺", "fifa.w.world": "🏆", "fifa.w.world.q": "🌍", 
+    "uefa.w.euro": "🇪🇺", "uefa.w.nations": "🇪🇺", "olympics.w.soccer": "🏅",
+
+    # --- NAZIONALI MASCHILI & TORNEI INTERCONTINENTALI ---
+    "fifa.world": "🏆", "fifa.world.q": "🌍", "fifa.confed": "🏆", "fifa.friendly": "🌍", "olympics.m.soccer": "🏅",
+    "uefa.euro": "🇪🇺", "uefa.euro.q": "🇪🇺", "uefa.nations": "🇪🇺",
+    "conmebol.america": "🌎", "conmebol.america.q": "🌎",
+    "concacaf.gold": "🌎", "concacaf.nations": "🌎",
+    "caf.nations": "🌍", "caf.nations.q": "🌍",
+    "afc.asian_cup": "🌏", "afc.asian_cup.q": "🌏"
 }
 
 def get_league_emoji(slug): return LEAGUE_EMOJIS.get(slug, "⚽️")
