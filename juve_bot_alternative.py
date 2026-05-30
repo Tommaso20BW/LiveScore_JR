@@ -241,7 +241,7 @@ def salva_stato_su_gist(state: dict):
         r = requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
                            json=payload, timeout=10)
         if r.status_code == 200:
-            pass  # salvataggio silenzioso
+            pass
     except Exception as e:
         print(f"❌ Eccezione salvataggio Gist: {e}")
 
@@ -293,9 +293,9 @@ def get_canva_image(access_token: str):
         if not job_id:
             return None
         status_url = f"https://api.canva.com/rest/v1/exports/{job_id}"
-        time.sleep(3)  # era 8
+        time.sleep(3)
         for i in range(60):
-            time.sleep(3)  # era 5
+            time.sleep(3)
             check = requests.get(status_url, headers=headers, timeout=15)
             if check.status_code == 200:
                 d = check.json()
@@ -384,8 +384,15 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                        play.get("clock", {}).get("value", "0"))
             minute  = safe_minute(clock)
             parts   = play.get("participants", [])
-            player  = extract_athlete(parts, 0)
-            assist  = extract_athlete(parts, 1)
+
+            # ✅ FIX: per le sostituzioni participants[0]=entra, participants[1]=esce
+            if normalize_event_type(ev_type) == "substitution":
+                player = extract_athlete(parts, 1)  # esce
+                assist = extract_athlete(parts, 0)  # entra
+            else:
+                player = extract_athlete(parts, 0)
+                assist = extract_athlete(parts, 1)
+
             team_id = _extract_team_id_from_commentary(item, home_name, away_name, home_id, away_id)
             add_event(ev_type, minute, team_id, player, assist, uid)
         except Exception as e:
@@ -403,8 +410,15 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                        play.get("clock", {}).get("value", "0"))
             minute  = safe_minute(clock)
             parts   = play.get("participants", [])
-            player  = extract_athlete(parts, 0)
-            assist  = extract_athlete(parts, 1)
+
+            # ✅ FIX: per le sostituzioni participants[0]=entra, participants[1]=esce
+            if normalize_event_type(ev_type) == "substitution":
+                player = extract_athlete(parts, 1)  # esce
+                assist = extract_athlete(parts, 0)  # entra
+            else:
+                player = extract_athlete(parts, 0)
+                assist = extract_athlete(parts, 1)
+
             t_name  = play.get("team", {}).get("displayName", "")
             t_id    = play.get("team", {}).get("id", "")
             if not t_id:
@@ -836,17 +850,20 @@ def avvia_ciclo_partita():
     state = leggi_stato_da_gist()
     if state is None or state.get("event_id") != event_id:
         state = {
-            "event_id":       event_id,
-            "sent_periods":   [],
-            "goals_detected": 0,
-            "sent_subs":      [],
-            "sent_cards":     [],
-            "penalties_count": 0,
-            "sent_stats":     [],
+            "event_id":               event_id,
+            "sent_periods":           [],
+            "goals_detected":         0,
+            "prev_home_goals":        0,
+            "prev_away_goals":        0,
+            "sent_subs":              [],
+            "sent_cards":             [],
+            "penalties_count":        0,
+            "sent_stats":             [],
+            "sent_failed_penalties":  [],
         }
 
     while True:
-        sleep_time = 10  # era 30
+        sleep_time = 10
         try:
             data = fetch_evento(event_id, league_slug)
             if not data:
@@ -889,7 +906,7 @@ def avvia_ciclo_partita():
 
             # Rigori: polling ancora più rapido
             if status == "PEN":
-                sleep_time = 8  # era 15
+                sleep_time = 8
 
             # --- Inizio primo tempo ---
             if status == "1H" and "1H" not in state["sent_periods"]:
@@ -900,7 +917,7 @@ def avvia_ciclo_partita():
             if status == "HT" and "HT" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
-                time.sleep(60)  # era 120
+                time.sleep(60)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
@@ -917,7 +934,7 @@ def avvia_ciclo_partita():
             if status == "ET" and "2H_END" not in state["sent_periods"]:
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\nSi va ai supplementari!\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
-                time.sleep(60)  # era 120
+                time.sleep(60)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
@@ -1003,7 +1020,7 @@ def avvia_ciclo_partita():
                 else:
                     send_telegram(msg_finale)
 
-                time.sleep(60)  # era 120
+                time.sleep(60)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
@@ -1017,25 +1034,37 @@ def avvia_ciclo_partita():
 
             # --- Rilevamento goal ---
             total_goals_now = g_home + g_away
+            prev_home = state.get("prev_home_goals", 0)
+            prev_away = state.get("prev_away_goals", 0)
+
             if total_goals_now > state["goals_detected"]:
+                if g_home > prev_home:
+                    scoring_tid = home_id
+                elif g_away > prev_away:
+                    scoring_tid = away_id
+                else:
+                    scoring_tid = None
+
                 goal_events = [e for e in events
                                if e["type"] in ("goal", "own goal", "penalty goal")]
-                if goal_events:
-                    last = sorted(goal_events, key=lambda x: x["minute"])[-1]
+
+                if scoring_tid and goal_events:
+                    team_goals = [e for e in goal_events if e["team_id"] == scoring_tid]
+                    candidates = team_goals if team_goals else goal_events
+                    last = sorted(candidates, key=lambda x: x["minute"])[-1]
+
                     if not last["player_name"]:
                         print("⏳ Marcatore non ancora disponibile, riprovo...")
                         time.sleep(sleep_time)
                         continue
+
                     ps = fmt_player(last["player_name"])
                     if last["type"] == "own goal":
                         ps += " (Autogol)"
+                        scoring_tid = away_id if last["team_id"] == home_id else home_id
                     elif last["type"] == "penalty goal":
                         ps += " (Rig.)"
                     scorer_line = f"{E_BALL} <i>{last['minute']}' {ps}</i>\n"
-
-                    scoring_tid = last["team_id"]
-                    if last["type"] == "own goal":
-                        scoring_tid = away_id if scoring_tid == home_id else home_id
 
                     if scoring_tid == home_id:
                         goal_score = f"<b>{home_name} {g_home}</b>-{g_away} {away_name}"
@@ -1043,42 +1072,63 @@ def avvia_ciclo_partita():
                         goal_score = f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
 
                     send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{goal_score}\n{scorer_line}\n{e_comp} {hashtag}")
-                    state["goals_detected"] = total_goals_now
+
+                state["goals_detected"] = total_goals_now
+                state["prev_home_goals"] = g_home
+                state["prev_away_goals"] = g_away
 
             elif total_goals_now < state["goals_detected"]:
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
+                state["prev_home_goals"] = g_home
+                state["prev_away_goals"] = g_away
 
             # --- Cambi ---
-            subs_by_bucket: dict = {}
+            # ✅ FIX: se ci sono cambi nuovi, attende 30s e rilegge per raggruppare
+            new_subs_check = []
             for e in events:
                 if e["type"] == "substitution":
-                    p_out  = fmt_player(e["player_name"])
-                    p_in   = fmt_player(e["assist_name"])
                     sub_id = f"sub_{e['minute']}_{e['player_name']}_{e['assist_name']}".replace(" ", "_")
                     if sub_id not in state["sent_subs"]:
-                        bucket = f"{e['team_id']}_{e['minute'] // 2}"
-                        if bucket not in subs_by_bucket:
-                            subs_by_bucket[bucket] = {
-                                "minute":  e["minute"],
-                                "team_id": e["team_id"],
-                                "in":      [],
-                                "out":     [],
-                                "ids":     [],
-                            }
-                        subs_by_bucket[bucket]["in"].append(p_in)
-                        subs_by_bucket[bucket]["out"].append(p_out)
-                        subs_by_bucket[bucket]["ids"].append(sub_id)
+                        new_subs_check.append({**e, "sub_id": sub_id})
 
-            for bucket, sub in subs_by_bucket.items():
-                team_title = home_name.upper() if sub["team_id"] == home_id else away_name.upper()
-                send_telegram(
-                    f"<b>CAMBIO {team_title} {E_SUB}</b>\n\n"
-                    f"{E_UP} {', '.join(sub['in'])}\n"
-                    f"{E_DOWN} {', '.join(sub['out'])}\n\n"
-                    f"{e_comp} {hashtag}"
-                )
-                state["sent_subs"].extend(sub["ids"])
+            if new_subs_check:
+                print(f"🔄 Cambio rilevato, attendo 30s per raggruppare...")
+                time.sleep(30)
+                # Rileggi i dati aggiornati
+                data_subs = fetch_evento(event_id, league_slug) or data
+                events_subs = parse_events(data_subs, home_name, away_name, home_id, away_id)
+
+                new_subs = []
+                for e in events_subs:
+                    if e["type"] == "substitution":
+                        sub_id = f"sub_{e['minute']}_{e['player_name']}_{e['assist_name']}".replace(" ", "_")
+                        if sub_id not in state["sent_subs"]:
+                            new_subs.append({**e, "sub_id": sub_id})
+
+                # Raggruppa: stessa squadra, minuto entro ±2
+                groups = []
+                for sub in new_subs:
+                    placed = False
+                    for g in groups:
+                        if g["team_id"] == sub["team_id"] and abs(g["minute"] - sub["minute"]) <= 2:
+                            g["subs"].append(sub)
+                            placed = True
+                            break
+                    if not placed:
+                        groups.append({"team_id": sub["team_id"], "minute": sub["minute"], "subs": [sub]})
+
+                for g in groups:
+                    team_title = home_name.upper() if g["team_id"] == home_id else away_name.upper()
+                    ins  = ", ".join(fmt_player(s["assist_name"]) for s in g["subs"])
+                    outs = ", ".join(fmt_player(s["player_name"]) for s in g["subs"])
+                    send_telegram(
+                        f"<b>CAMBIO {team_title} {E_SUB}</b>\n\n"
+                        f"{E_UP} {ins}\n"
+                        f"{E_DOWN} {outs}\n\n"
+                        f"{e_comp} {hashtag}"
+                    )
+                    state["sent_subs"].extend(s["sub_id"] for s in g["subs"])
 
             # --- Cartellini rossi / doppio giallo ---
             for e in events:
@@ -1097,14 +1147,12 @@ def avvia_ciclo_partita():
                 if e["type"] in ("penalty missed", "penalty saved"):
                     p_name = fmt_player(e["player_name"])
                     pen_id = f"failpen_{e['minute']}_{e['player_name']}".replace(" ", "_")
-                    if pen_id not in state.get("sent_failed_penalties", []):
+                    if pen_id not in state["sent_failed_penalties"]:
                         team_name_pen = home_name if e["team_id"] == home_id else away_name
                         send_telegram(
                             f"<b>RIGORE SBAGLIATO {team_name_pen.upper()} {E_PEN_KO}</b>\n\n"
                             f"🥅 <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
                         )
-                        if "sent_failed_penalties" not in state:
-                            state["sent_failed_penalties"] = []
                         state["sent_failed_penalties"].append(pen_id)
 
         except Exception as e:
