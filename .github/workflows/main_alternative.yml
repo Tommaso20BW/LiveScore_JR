@@ -33,4 +33,4 @@ jobs:
           CANVA_CLIENT_ID:      ${{ secrets.CANVA_CLIENT_ID }}
           CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
-        run: python -u test.py
+        run: python -u juve_bot_alternative.py
