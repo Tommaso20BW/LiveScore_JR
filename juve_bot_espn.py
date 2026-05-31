@@ -1056,28 +1056,37 @@ def avvia_ciclo_partita():
                             _seen_uids.add(uid)
                             _deduped.append(e)
                 goal_events_all = sorted(_deduped, key=lambda x: x["minute"])
+
+                # ---------------------------------------------------------------
+                # RICOSTRUZIONE PUNTEGGIO PROGRESSIVO
+                #
+                # ESPN manda team_id = squadra del giocatore che segna.
+                # Per gli autogol il giocatore è della squadra che SUBISCE, quindi
+                # il punto va all'avversaria (invertiamo).
+                # Usiamo g_home/g_away come ground truth: saltiamo eventi che
+                # porterebbero un contatore oltre il punteggio reale (duplicati/fantasma).
+                # ---------------------------------------------------------------
                 ch, ca = 0, 0  # punteggio progressivo
                 for ge in goal_events_all:
-                    # Stop se abbiamo già raggiunto il punteggio reale
                     if ch + ca >= g_home + g_away:
-                        break
+                        break  # raggiunto il totale reale, stop
 
-                    # actual_tid = squadra che ha SEGNATO (beneficiato del goal)
-                    # Per gli autogol ESPN team_id può essere indifferentemente la squadra
-                    # del giocatore O quella che beneficia: usiamo always la logica "own goal
-                    # inverte la squadra del giocatore" ma con fallback se team_id non è noto.
+                    # actual_tid = squadra che ha BENEFICIATO del gol
                     if ge["type"] == "own goal":
-                        # Se ESPN manda team_id della squadra che subisce (il giocatore), invertiamo.
-                        # Se ESPN manda team_id della squadra che beneficia, non invertiamo.
-                        # Euristico sicuro: se team_id è home → autogol → punto a away, e viceversa.
                         actual_tid = away_id if ge["team_id"] == home_id else home_id
                     else:
                         actual_tid = ge["team_id"]
 
-                    # Aggiorna punteggio progressivo in base alla squadra che ha beneficiato
+                    # Verifica che il contatore non superi il punteggio reale ESPN
                     if actual_tid == home_id:
+                        if ch + 1 > g_home:
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  CATCHUP goal {ge['minute']}' supererebbe g_home ({g_home}), saltato")
+                            continue
                         ch += 1
                     else:
+                        if ca + 1 > g_away:
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  CATCHUP goal {ge['minute']}' supererebbe g_away ({g_away}), saltato")
+                            continue
                         ca += 1
 
                     p_name = ge.get("player_name", "")
