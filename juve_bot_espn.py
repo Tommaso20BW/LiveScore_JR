@@ -92,9 +92,9 @@ LEAGUE_EMOJIS = {
 def get_league_emoji(slug): return LEAGUE_EMOJIS.get(slug, "⚽️")
 
 MOMENTI_CONFIG = {
-    "HT":     {"titolo": "<b>STATS PRIMO TEMPO</b> 📊",   "badge": "FINE PRIMO TEMPO"},
-    "2H_END": {"titolo": "<b>STATS SECONDO TEMPO</b> 📊", "badge": "FINE SECONDO TEMPO"},
-    "FT":     {"titolo": "<b>STATS FINE PARTITA</b> 📊",  "badge": "FINE PARTITA"},
+    "HT":     {"titolo": f"<b>STATS PRIMO TEMPO</b> {E_STATS}",   "badge": "FINE PRIMO TEMPO"},
+    "2H_END": {"titolo": f"<b>STATS SECONDO TEMPO</b> {E_STATS}", "badge": "FINE SECONDO TEMPO"},
+    "FT":     {"titolo": f"<b>STATS FINE PARTITA</b> {E_STATS}",  "badge": "FINE PARTITA"},
 }
 
 E_BOLT   = '⚡️'
@@ -108,6 +108,10 @@ E_RED    = '🟥'
 E_PEN_OK = '✅'
 E_PEN_KO = '❌'
 E_ASSIST = '🅰️'
+E_KICK   = '🥅'
+E_EXIT   = '🔚'
+E_STATS  = '📊'
+E_CANCEL = '📺'
 
 # Mapping testo ESPN → tipo interno normalizzato
 EVENT_TYPE_MAP = {
@@ -1146,7 +1150,7 @@ def avvia_ciclo_partita():
                 total_kicks = len(home_pen_icons) + len(away_pen_icons)
                 if total_kicks > state["penalties_count"]:
                     send_telegram(
-                        f"<b>RIGORI 🥅</b>\n\n"
+                        f"<b>RIGORI {E_KICK}</b>\n\n"
                         f"{home_name}: " + ("".join(home_pen_icons) if home_pen_icons else "—") + "\n"
                         f"{away_name}: " + ("".join(away_pen_icons) if away_pen_icons else "—") + f"\n\n{e_comp} {hashtag}"
                     )
@@ -1367,7 +1371,7 @@ def avvia_ciclo_partita():
 
             elif total_goals_now < state["goals_detected"]:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 📺 GOAL ANNULLATO → Telegram inviato")
-                send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                send_telegram(f"<b>GOAL ANNULLATO {E_CANCEL}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
                 state_changed = True
                 state["prev_home_goals"] = g_home
@@ -1526,7 +1530,7 @@ def avvia_ciclo_partita():
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🟥 ROSSO {e['minute']}' {p_name} → Telegram inviato")
                         send_telegram(
                             f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n"
-                            f"🔚 <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
+                            f"{E_EXIT} <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
                         )
                         state["sent_cards"].append(card_id)
                         state_changed = True
@@ -1541,7 +1545,7 @@ def avvia_ciclo_partita():
                         team_name = home_name if e["team_id"] == home_id else away_name
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🥅 RIGORE SBAGLIATO {team_name.upper()} {e['minute']}' {fmt_player(e['player_name'])} → Telegram inviato")
                         send_telegram(
-                            f"<b>RIGORE SBAGLIATO {team_name.upper()} 🥅</b>\n\n"
+                            f"<b>RIGORE SBAGLIATO {team_name.upper()} {E_KICK}</b>\n\n"
                             f"{E_PEN_KO} <i>{e['minute']}' {fmt_player(e['player_name'])}</i>\n\n"
                             f"{e_comp} {hashtag}"
                         )
