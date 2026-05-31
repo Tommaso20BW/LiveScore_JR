@@ -11,7 +11,7 @@ from playwright.sync_api import sync_playwright
 try:
     from nacl import encoding, public
 except ImportError:
-    print("⚠️ pynacl non installata. Aggiornamento Secrets GitHub non disponibile.")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  pynacl non installata — aggiornamento Secrets GitHub non disponibile")
 
 # ==============================================================================
 # CONFIGURAZIONE
@@ -157,14 +157,14 @@ def fmt_player(full_name: str) -> str:
 # ==============================================================================
 def send_telegram(text: str):
     if not BOT_TOKEN or not CHAT_ID:
-        print("⚠️ BOT_TOKEN o CHAT_ID mancanti.")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  BOT_TOKEN o CHAT_ID mancanti")
         return
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
         r = requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}, timeout=10)
         r.raise_for_status()
     except Exception as e:
-        print(f"❌ Errore Telegram: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore send_telegram: {e}")
 
 def send_telegram_edit(message_id: int, text: str):
     """Edita un messaggio Telegram già inviato."""
@@ -178,12 +178,12 @@ def send_telegram_edit(message_id: int, text: str):
         }, timeout=10)
         r.raise_for_status()
     except Exception as e:
-        print(f"❌ Errore editMessageText: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore editMessageText: {e}")
 
 def send_telegram_get_id(text: str) -> int | None:
     """Invia un messaggio Telegram e restituisce il message_id."""
     if not BOT_TOKEN or not CHAT_ID:
-        print("⚠️ BOT_TOKEN o CHAT_ID mancanti.")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  BOT_TOKEN o CHAT_ID mancanti")
         return None
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
@@ -192,7 +192,7 @@ def send_telegram_get_id(text: str) -> int | None:
         msg_id = r.json().get("result", {}).get("message_id")
         return msg_id
     except Exception as e:
-        print(f"❌ Errore Telegram: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore send_telegram_get_id: {e}")
         return None
 
 def send_telegram_with_photo(text: str, photo_bytes):
@@ -216,7 +216,7 @@ def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str):
             requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"},
                           files={"photo": ("stats.png", f, "image/png")}, timeout=25)
     except Exception as e:
-        print(f"❌ Errore invio foto statistiche: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore invio foto statistiche: {e}")
 
 # ==============================================================================
 # GITHUB SECRETS
@@ -239,7 +239,7 @@ def update_github_secret(secret_name: str, new_value: str):
         if r.status_code in [201, 204]:
             return True
     except Exception as e:
-        print(f"❌ Errore update secret: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore update GitHub secret: {e}")
     return False
 
 # ==============================================================================
@@ -261,7 +261,7 @@ def leggi_stato_da_gist():
             return None
         return json.loads(content)
     except Exception as e:
-        print(f"❌ Errore lettura Gist: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore lettura Gist: {e}")
         return None
 
 def salva_stato_su_gist(state: dict):
@@ -274,7 +274,7 @@ def salva_stato_su_gist(state: dict):
         if r.status_code == 200:
             pass
     except Exception as e:
-        print(f"❌ Eccezione salvataggio Gist: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore salvataggio Gist: {e}")
 
 def resetta_gist():
     if not GH_PAT or not GIST_ID:
@@ -284,14 +284,14 @@ def resetta_gist():
         requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
                        json=payload, timeout=10)
     except Exception as e:
-        print(f"❌ Eccezione reset Gist: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore reset Gist: {e}")
 
 # ==============================================================================
 # CANVA
 # ==============================================================================
 def get_valid_token():
     if not CANVA_REFRESH_TOKEN:
-        print("❌ CANVA_REFRESH_TOKEN mancante.")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ CANVA_REFRESH_TOKEN mancante")
         return None
     try:
         r = requests.post("https://api.canva.com/rest/v1/oauth/token", data={
@@ -303,9 +303,9 @@ def get_valid_token():
             if "refresh_token" in tokens and tokens["refresh_token"] != CANVA_REFRESH_TOKEN:
                 update_github_secret("CANVA_REFRESH_TOKEN", tokens["refresh_token"])
             return tokens["access_token"]
-        print(f"❌ Errore token Canva: {r.text}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore token Canva: {r.text}")
     except Exception as e:
-        print(f"❌ Errore connessione Canva: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore connessione Canva: {e}")
     return None
 
 def get_canva_image(access_token: str):
@@ -339,7 +339,7 @@ def get_canva_image(access_token: str):
                 elif stato == "failed":
                     return None
     except Exception as e:
-        print(f"❌ Errore Canva: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore export Canva: {e}")
     return None
 
 # ==============================================================================
@@ -447,7 +447,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             team_id = _extract_team_id_from_commentary(item, home_name, away_name, home_id, away_id)
             add_event(ev_type, minute, team_id, player, assist, uid)
         except Exception as e:
-            print(f"⚠️ Errore parsing commentary: {e}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing commentary: {e}")
 
     # --- FONTE 2: keyEvents[] ---
     for item in data.get("keyEvents", []):
@@ -476,7 +476,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                 t_id = home_id if t_name.lower() == home_name.lower() else away_id
             add_event(ev_type, minute, t_id, player, assist, uid)
         except Exception as e:
-            print(f"⚠️ Errore parsing keyEvent: {e}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing keyEvent: {e}")
 
     # --- FONTE 3: scoringPlays[] (fallback) ---
     for item in data.get("scoringPlays", []):
@@ -491,7 +491,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             uid     = str(item.get("id", f"sp_{minute}_{player}"))
             add_event(ev_type, minute, team_id, player, assist, uid)
         except Exception as e:
-            print(f"⚠️ Errore parsing scoringPlay: {e}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing scoringPlay: {e}")
 
     # --- FONTE 4: shootout[] (rigori dal dischetto) ---
     # Struttura reale ESPN: .id=team_id, .team=stringa nome, .shots[]=calci con .didScore e .player
@@ -520,7 +520,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     ev_type = "shootout miss"
                 add_event(ev_type, 120, t_id, player, "", uid)
         except Exception as e:
-            print(f"⚠️ Errore parsing shootout: {e}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing shootout: {e}")
 
     return events
 
@@ -539,7 +539,7 @@ def _estrai_stats_espn(data: dict) -> dict:
                 if key:
                     raw[side][key] = val
     except Exception as e:
-        print(f"⚠️ Errore parsing boxscore.teams: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing boxscore.teams: {e}")
 
     try:
         for comp in data.get("header", {}).get("competitions", [{}]):
@@ -551,7 +551,7 @@ def _estrai_stats_espn(data: dict) -> dict:
                     if key and key not in raw[side]:
                         raw[side][key] = str(val)
     except Exception as e:
-        print(f"⚠️ Errore parsing header competitors stats: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing header competitors: {e}")
 
     return raw
 
@@ -780,7 +780,7 @@ body {{
             Image.alpha_composite(base_img, texture).convert("RGB").save(path_final_png, "PNG")
             return path_final_png
         except Exception as e:
-            print(f"⚠️ Errore texture: {e}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore texture stats: {e}")
 
     return path_raw_png
 
@@ -834,7 +834,7 @@ def fetch_evento(event_id: str, league_slug: str):
             return r.json()
         return None
     except Exception as e:
-        print(f"❌ Errore fetch evento: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore fetch evento: {e}")
         return None
 
 
@@ -904,7 +904,7 @@ def parse_status(data: dict):
 
         return "1H", elapsed
     except Exception as e:
-        print(f"⚠️ Errore parse_status: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parse_status: {e}")
         return "NS", 0
 
 
@@ -942,7 +942,7 @@ def avvia_ciclo_partita():
         test_r = requests.get(f"{ESPN_BASE}/ita.1/scoreboard",
                                params={"dates": datetime.now(timezone.utc).strftime("%Y%m%d")}, timeout=10)
     except Exception as e:
-        print(f"⚠️ Test API fallito: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Test connettività API fallito: {e}")
 
     partita = trova_partita_oggi(team_id)
     if not partita:
@@ -994,8 +994,7 @@ def avvia_ciclo_partita():
             events = parse_events(data, home_name, away_name, home_id, away_id)
 
             if "_intro_logged" not in state:
-                print(f"\n🚀 [{datetime.now().strftime('%H:%M:%S')}] PARTITA TROVATA: {league_name}")
-                print(f"   {home_name} vs {away_name} | event_id={event_id}")
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
                 state["_intro_logged"] = True
 
             # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s)
@@ -1023,7 +1022,7 @@ def avvia_ciclo_partita():
                             print(f"[{datetime.now().strftime('%H:%M:%S')}] ⏳ In attesa del calcio d'inizio ({minutes_to_kickoff:.0f} min al via)")
                             state["_ns_logged"] = True
                 except Exception as e:
-                    print(f"⚠️ Impossibile leggere orario partita: {e}")
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Impossibile leggere orario partita: {e}")
                 time.sleep(6)
                 continue
 
@@ -1530,7 +1529,6 @@ def avvia_ciclo_partita():
                     if pen_id not in state["sent_failed_penalties"]:
                         state["sent_failed_penalties"].append(pen_id)
                         state_changed = True
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🥅 RIGORE FALLITO: {e['player_name']} {e['minute']}'")
                         team_name = home_name if e["team_id"] == home_id else away_name
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🥅 RIGORE SBAGLIATO {team_name.upper()} {e['minute']}' {fmt_player(e['player_name'])} → Telegram inviato")
                         send_telegram(
