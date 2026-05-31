@@ -1370,14 +1370,46 @@ def avvia_ciclo_partita():
                 state_changed = True
 
             elif total_goals_now < state["goals_detected"]:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 📺 GOAL ANNULLATO → Telegram inviato")
-                send_telegram(f"<b>GOAL ANNULLATO {E_CANCEL}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
-                state["goals_detected"] = total_goals_now
-                state_changed = True
-                state["prev_home_goals"] = g_home
-                state_changed = True
-                state["prev_away_goals"] = g_away
-                state_changed = True
+                # Controlla se è una correzione autogol (ESPN ridistribuisce i goal tra le squadre)
+                # e non un vero annullamento: in tal caso goals_detected rimane invariato
+                n_saved_goals = len(state.get("goal_messages", {}))
+                if total_goals_now == n_saved_goals:
+                    # Il numero totale di goal non è cambiato davvero, è solo una ridistribuzione
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️  Punteggio ridistribuito (autogol?), nessun annullamento reale — ignorato")
+                    state["prev_home_goals"] = g_home
+                    state["prev_away_goals"] = g_away
+                    state_changed = True
+                else:
+                    # Aspetta 15s e riconferma il calo prima di mandare GOAL ANNULLATO
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Possibile annullamento, attendo conferma...")
+                    time.sleep(15)
+                    data_cancel = fetch_evento(event_id, league_slug) or data
+                    try:
+                        competitors_cancel = data_cancel["header"]["competitions"][0]["competitors"]
+                    except Exception:
+                        competitors_cancel = competitors
+                    _, _, _, _, g_home_c, g_away_c = parse_score(competitors_cancel)
+                    if g_home_c + g_away_c < state["goals_detected"]:
+                        g_home = g_home_c
+                        g_away = g_away_c
+                        score_str = build_score_str(home_name, away_name, g_home, g_away)
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 📺 GOAL ANNULLATO → Telegram inviato")
+                        send_telegram(f"<b>GOAL ANNULLATO {E_CANCEL}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                        state["goals_detected"] = g_home_c + g_away_c
+                        state["prev_home_goals"] = g_home_c
+                        state["prev_away_goals"] = g_away_c
+                        state_changed = True
+                    else:
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️  Punteggio tornato stabile ({g_home_c}-{g_away_c}), annullamento ignorato — aggiorno eventi per correzione marcatori")
+                        # Aggiorna events con i dati freschi: il blocco correzione marcatori
+                        # al prossimo giro troverà il marcatore cambiato e editerà il messaggio
+                        data = data_cancel
+                        events = parse_events(data, home_name, away_name, home_id, away_id)
+                        g_home = g_home_c
+                        g_away = g_away_c
+                        state["prev_home_goals"] = g_home_c
+                        state["prev_away_goals"] = g_away_c
+                        state_changed = True
 
             # --- Correzione marcatori (controllo ogni ciclo sui goal già inviati) ---
             # ESPN a volte pubblica il marcatore sbagliato e lo corregge dopo 30-60s.
@@ -1425,17 +1457,21 @@ def avvia_ciclo_partita():
                 current_scorer = current.get("player_name", "")
                 current_assist = current.get("assist_name", "")
 
-                # Se marcatore o assist sono cambiati (o arrivati per la prima volta) → edit
-                if (current_scorer != saved.get("scorer")) or                    (current_assist != saved.get("assist", "")):
+                current_type = current.get("type", saved.get("type", "goal"))
+
+                # Se marcatore, assist o tipo sono cambiati (o arrivati per la prima volta) → edit
+                if (current_scorer != saved.get("scorer")) or \
+                   (current_assist != saved.get("assist", "")) or \
+                   (current_type != saved.get("type", "goal")):
 
                     # Ricostruiamo il testo del messaggio aggiornato
                     if current_scorer:
                         ps_new = fmt_player(current_scorer)
-                        if current["type"] == "own goal":
+                        if current_type == "own goal":
                             ps_new += " (Autogol)"
-                        elif current["type"] == "penalty goal":
+                        elif current_type == "penalty goal":
                             ps_new += " (Rig.)"
-                        scorer_line_new = f"{E_BALL} <i>{current['minute']}' {ps_new}</i>\n"
+                        scorer_line_new = f"{E_BALL} <i>{ps_new}</i>\n"
                     else:
                         scorer_line_new = ""
 
@@ -1443,14 +1479,20 @@ def avvia_ciclo_partita():
                     if current_assist and current_assist != current_scorer:
                         assist_line_new = f"{E_ASSIST} <i>{fmt_player(current_assist)}</i>\n"
 
-                    if s_tid == s_home_id:
+                    # Se è diventato autogol, la squadra creditata si inverte
+                    if current_type == "own goal":
+                        actual_tid = s_away_id if s_tid == s_home_id else s_home_id
+                    else:
+                        actual_tid = s_tid
+
+                    if actual_tid == s_home_id:
                         goal_score_new = f"<b>{s_home_n} {gh}</b>-{ga} {s_away_n}"
                     else:
                         goal_score_new = f"{s_home_n} {gh}-<b>{ga} {s_away_n}</b>"
 
                     e_comp_saved = get_league_emoji(league_slug)
                     hashtag_saved = build_hashtag(s_home_n, s_away_n)
-                    goal_text_new = f"<b>GOAL {E_MIC}</b>\n\n{goal_score_new}\n{scorer_line_new}{assist_line_new}\n{e_comp_saved} {hashtag_saved}"
+                    goal_text_new = f"<b>GOAL · {current['minute']}' {E_MIC}</b>\n\n{goal_score_new}\n{scorer_line_new}{assist_line_new}\n{e_comp_saved} {hashtag_saved}"
 
                     changes = []
                     if current_scorer != saved.get("scorer"):
@@ -1459,12 +1501,16 @@ def avvia_ciclo_partita():
                         old_a = saved.get("assist", "—") or "—"
                         new_a = current_assist or "—"
                         changes.append(f"assist: {old_a} → {new_a}")
+                    if current_type != saved.get("type", "goal"):
+                        changes.append(f"tipo: {saved.get('type', 'goal')} → {current_type}")
 
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CORREZIONE goal {goal_key}: {', '.join(changes)} → messaggio editato")
                     send_telegram_edit(msg_id, goal_text_new)
 
-                    state["goal_messages"][goal_key]["scorer"] = current_scorer
-                    state["goal_messages"][goal_key]["assist"] = current_assist
+                    state["goal_messages"][goal_key]["scorer"]    = current_scorer
+                    state["goal_messages"][goal_key]["assist"]    = current_assist
+                    state["goal_messages"][goal_key]["type"]      = current_type
+                    state["goal_messages"][goal_key]["score_tid"] = actual_tid
                     state_changed = True
 
             # --- Cambi ---
