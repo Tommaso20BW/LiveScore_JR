@@ -107,6 +107,7 @@ E_DOWN   = '🔽'
 E_RED    = '🟥'
 E_PEN_OK = '✅'
 E_PEN_KO = '❌'
+E_ASSIST = '🅰️'
 
 # Mapping testo ESPN → tipo interno normalizzato
 EVENT_TYPE_MAP = {
@@ -1301,23 +1302,26 @@ def avvia_ciclo_partita():
                         time.sleep(sleep_time)
                         continue
 
-                    if not last["player_name"]:
-                        time.sleep(sleep_time)
-                        continue
-
-                    ps = fmt_player(last["player_name"])
+                    # Se il marcatore c'è, costruiamo la riga; altrimenti la omettiamo
+                    # e il blocco correzioni la aggiungerà appena ESPN la pubblica
+                    player_name = last.get("player_name", "")
+                    assist_name = last.get("assist_name", "")
                     actual_scoring_tid = scoring_tid
-                    if last["type"] == "own goal":
-                        ps += " (Autogol)"
-                        actual_scoring_tid = away_id if last["team_id"] == home_id else home_id
-                    elif last["type"] == "penalty goal":
-                        ps += " (Rig.)"
-                    scorer_line = f"{E_BALL} <i>{last['minute']}' {ps}</i>\n"
+
+                    if player_name:
+                        ps = fmt_player(player_name)
+                        if last["type"] == "own goal":
+                            ps += " (Autogol)"
+                            actual_scoring_tid = away_id if last["team_id"] == home_id else home_id
+                        elif last["type"] == "penalty goal":
+                            ps += " (Rig.)"
+                        scorer_line = f"{E_BALL} <i>{last['minute']}' {ps}</i>\n"
+                    else:
+                        scorer_line = ""
 
                     # Assist (se presente e diverso dal marcatore)
-                    assist_name = last.get("assist_name", "")
-                    if assist_name and assist_name != last["player_name"]:
-                        assist_line = f"🅰️ {fmt_player(assist_name)}\n"
+                    if assist_name and assist_name != player_name:
+                        assist_line = f"{E_ASSIST} <i>{fmt_player(assist_name)}</i>\n"
                     else:
                         assist_line = ""
 
@@ -1332,22 +1336,25 @@ def avvia_ciclo_partita():
                     goal_key = f"{g_home}_{g_away}"
 
                     if not state.get("goal_messages", {}).get(goal_key, {}).get("msg_id"):
-                        # Primo invio: salva msg_id e marcatore per il controllo correzioni futuro
-                        _assist_log = f" | assist: {fmt_player(assist_name)}" if assist_name and assist_name != last["player_name"] else ""
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  GOAL {last['minute']}' {fmt_player(last['player_name'])}{_assist_log} ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+                        # Primo invio immediato (dopo conferma punteggio):
+                        # anche senza marcatore, così la notifica arriva subito.
+                        # Il blocco correzioni penserà ad aggiungere/correggere marcatore e assist.
+                        _scorer_log = f" {fmt_player(player_name)}" if player_name else " (marcatore in attesa)"
+                        _assist_log = f" | assist: {fmt_player(assist_name)}" if assist_name and assist_name != player_name else ""
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  GOAL{_scorer_log}{_assist_log} ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                         msg_id = send_telegram_get_id(goal_text)
                         state.setdefault("goal_messages", {})[goal_key] = {
-                            "msg_id":   msg_id,
-                            "scorer":   last["player_name"],
-                            "assist":   assist_name,
-                            "minute":   last["minute"],
-                            "type":     last["type"],
-                            "home_n":   home_name,
-                            "away_n":   away_name,
-                            "g_home":   g_home,
-                            "g_away":   g_away,
-                            "home_id":  home_id,
-                            "away_id":  away_id,
+                            "msg_id":    msg_id,
+                            "scorer":    player_name,
+                            "assist":    assist_name,
+                            "minute":    last["minute"],
+                            "type":      last["type"],
+                            "home_n":    home_name,
+                            "away_n":    away_name,
+                            "g_home":    g_home,
+                            "g_away":    g_away,
+                            "home_id":   home_id,
+                            "away_id":   away_id,
                             "score_tid": actual_scoring_tid,
                         }
                         state_changed = True
@@ -1415,20 +1422,23 @@ def avvia_ciclo_partita():
                 current_scorer = current.get("player_name", "")
                 current_assist = current.get("assist_name", "")
 
-                # Se marcatore o assist sono cambiati → edit del messaggio Telegram
-                if (current_scorer and current_scorer != saved.get("scorer")) or                    (current_assist != saved.get("assist", "")):
+                # Se marcatore o assist sono cambiati (o arrivati per la prima volta) → edit
+                if (current_scorer != saved.get("scorer")) or                    (current_assist != saved.get("assist", "")):
 
                     # Ricostruiamo il testo del messaggio aggiornato
-                    ps_new = fmt_player(current_scorer)
-                    if current["type"] == "own goal":
-                        ps_new += " (Autogol)"
-                    elif current["type"] == "penalty goal":
-                        ps_new += " (Rig.)"
-                    scorer_line_new = f"{E_BALL} <i>{current['minute']}' {ps_new}</i>\n"
+                    if current_scorer:
+                        ps_new = fmt_player(current_scorer)
+                        if current["type"] == "own goal":
+                            ps_new += " (Autogol)"
+                        elif current["type"] == "penalty goal":
+                            ps_new += " (Rig.)"
+                        scorer_line_new = f"{E_BALL} <i>{current['minute']}' {ps_new}</i>\n"
+                    else:
+                        scorer_line_new = ""
 
                     assist_line_new = ""
                     if current_assist and current_assist != current_scorer:
-                        assist_line_new = f"🅰️ {fmt_player(current_assist)}\n"
+                        assist_line_new = f"{E_ASSIST} <i>{fmt_player(current_assist)}</i>\n"
 
                     if s_tid == s_home_id:
                         goal_score_new = f"<b>{s_home_n} {gh}</b>-{ga} {s_away_n}"
