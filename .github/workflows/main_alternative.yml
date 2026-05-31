@@ -2,6 +2,13 @@ name: Juventus Live Score - ESPN
  
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: juve-live-bot
+  cancel-in-progress: false
  
 jobs:
   live-score:
