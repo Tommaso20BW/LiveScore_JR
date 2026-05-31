@@ -998,10 +998,10 @@ def avvia_ciclo_partita():
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
                 state["_intro_logged"] = True
 
-            # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s)
+            # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s), silenziato in NS
             _now_ts = int(time.time())
             _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
-            if state.get("_last_log_key") != _log_key or (_now_ts - state.get("_last_log_ts", 0)) >= 60:
+            if status != "NS" and (state.get("_last_log_key") != _log_key or (_now_ts - state.get("_last_log_ts", 0)) >= 60):
                 _ts = datetime.now().strftime("%H:%M:%S")
                 print(f"[{_ts}] 📡 {status} {elapsed}' | {home_name} {g_home}-{g_away} {away_name}")
                 state["_last_log_key"] = _log_key
