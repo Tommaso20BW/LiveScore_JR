@@ -1016,7 +1016,7 @@ def avvia_ciclo_partita():
                         start_time         = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                         now_utc            = datetime.now(timezone.utc)
                         minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
-                        if minutes_to_kickoff > 30:
+                        if minutes_to_kickoff > 60:
                             print(f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
                             sys.exit(0)
                         if "_ns_logged" not in state:
