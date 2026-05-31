@@ -1001,6 +1001,47 @@ def avvia_ciclo_partita():
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
                 state["_intro_logged"] = True
 
+            # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s), silenziato in NS
+            _now_ts = int(time.time())
+            _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
+            if status != "NS" and (state.get("_last_log_key") != _log_key or (_now_ts - state.get("_last_log_ts", 0)) >= 60):
+                _ts = datetime.now().strftime("%H:%M:%S")
+                print(f"[{_ts}] 📡 {status} {elapsed}' | {home_name} {g_home}-{g_away} {away_name}")
+                state["_last_log_key"] = _log_key
+                state["_last_log_ts"] = _now_ts
+
+            # --- Non ancora iniziata ---
+            if status == "NS":
+                try:
+                    comp       = data["header"]["competitions"][0]
+                    start_str  = comp.get("date", "")
+                    if start_str:
+                        start_time         = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+                        now_utc            = datetime.now(timezone.utc)
+                        minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
+                        if minutes_to_kickoff > 60:
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
+                            sys.exit(0)
+                        if "_ns_logged" not in state:
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⏳ In attesa del calcio d'inizio ({minutes_to_kickoff:.0f} min al via)")
+                            state["_ns_logged"] = True
+                except Exception as e:
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Impossibile leggere orario partita: {e}")
+                time.sleep(6)
+                continue
+
+            # Rigori: polling ancora più rapido
+            if status == "PEN":
+                sleep_time = 6
+
+            # --- Inizio primo tempo ---
+            if status == "1H" and "1H" not in state["sent_periods"]:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚡️ INIZIO PARTITA → Telegram inviato")
+                send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
+                state["sent_periods"].append("1H")
+                salva_stato_su_gist(state)
+                state_changed = True
+
             # --- Catchup: partita già in corso con gist vuoto ---
             # Se ci sono goal già segnati ma lo stato non ne ha traccia, li invia tutti
             # in ordine cronologico con il punteggio progressivo corretto.
@@ -1046,7 +1087,7 @@ def avvia_ciclo_partita():
                     goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
                     goal_key  = f"{ch}_{ca}"
 
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  CATCHUP GOAL {ge['minute']}\'  {home_name} {ch}-{ca} {away_name} → Telegram inviato")
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  CATCHUP GOAL {ge['minute']}\' {home_name} {ch}-{ca} {away_name} → Telegram inviato")
                     msg_id = send_telegram_get_id(goal_text)
                     state.setdefault("goal_messages", {})[goal_key] = {
                         "msg_id":    msg_id,
@@ -1067,47 +1108,6 @@ def avvia_ciclo_partita():
                 state["goals_detected"]  = g_home + g_away
                 state["prev_home_goals"] = g_home
                 state["prev_away_goals"] = g_away
-                state_changed = True
-
-            # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s), silenziato in NS
-            _now_ts = int(time.time())
-            _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
-            if status != "NS" and (state.get("_last_log_key") != _log_key or (_now_ts - state.get("_last_log_ts", 0)) >= 60):
-                _ts = datetime.now().strftime("%H:%M:%S")
-                print(f"[{_ts}] 📡 {status} {elapsed}' | {home_name} {g_home}-{g_away} {away_name}")
-                state["_last_log_key"] = _log_key
-                state["_last_log_ts"] = _now_ts
-
-            # --- Non ancora iniziata ---
-            if status == "NS":
-                try:
-                    comp       = data["header"]["competitions"][0]
-                    start_str  = comp.get("date", "")
-                    if start_str:
-                        start_time         = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
-                        now_utc            = datetime.now(timezone.utc)
-                        minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
-                        if minutes_to_kickoff > 60:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
-                            sys.exit(0)
-                        if "_ns_logged" not in state:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⏳ In attesa del calcio d'inizio ({minutes_to_kickoff:.0f} min al via)")
-                            state["_ns_logged"] = True
-                except Exception as e:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Impossibile leggere orario partita: {e}")
-                time.sleep(6)
-                continue
-
-            # Rigori: polling ancora più rapido
-            if status == "PEN":
-                sleep_time = 6
-
-            # --- Inizio primo tempo ---
-            if status == "1H" and "1H" not in state["sent_periods"]:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚡️ INIZIO PARTITA → Telegram inviato")
-                send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
-                state["sent_periods"].append("1H")
-                salva_stato_su_gist(state)
                 state_changed = True
 
             # --- Fine primo tempo ---
@@ -1449,8 +1449,8 @@ def avvia_ciclo_partita():
                     state_changed = True
                 else:
                     # Aspetta 15s e riconferma il calo prima di mandare GOAL ANNULLATO
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Possibile annullamento, attendo conferma...")
-                    time.sleep(15)
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Possibile annullamento, attendo conferma (90s)...")
+                    time.sleep(90)
                     data_cancel = fetch_evento(event_id, league_slug) or data
                     try:
                         competitors_cancel = data_cancel["header"]["competitions"][0]["competitors"]
