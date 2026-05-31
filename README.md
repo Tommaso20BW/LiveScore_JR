@@ -26,7 +26,7 @@ LiveScore_JR/
 ├── texture.png               # Overlay grafico applicato alle stats
 └── .github/workflows/
     ├── main_api.yml          # Workflow API-Football (4h timeout)
-    ├── main_espn.yml         # Workflow ESPN (200min timeout)
+    ├── main_espn.yml         # Workflow ESPN (4h timeout)
     └── canva_keep_alive.yml  # Rinnovo automatico token Canva
 ```
 
