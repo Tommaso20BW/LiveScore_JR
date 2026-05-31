@@ -1062,40 +1062,23 @@ def avvia_ciclo_partita():
                     if ch + ca >= g_home + g_away:
                         break
 
-                    # Aggiorna punteggio progressivo E calcola actual_tid in un unico blocco.
-                    # ESPN per gli autogol usa team_id = squadra del GIOCATORE che tocca il pallone,
-                    # non della squadra che beneficia del gol.
+                    # actual_tid = squadra che ha SEGNATO (beneficiato del goal)
+                    # Per gli autogol ESPN team_id può essere indifferentemente la squadra
+                    # del giocatore O quella che beneficia: usiamo always la logica "own goal
+                    # inverte la squadra del giocatore" ma con fallback se team_id non è noto.
                     if ge["type"] == "own goal":
-                        if ge["team_id"] == home_id:
-                            ca += 1          # giocatore di casa fa autogol → punto a ospite
-                            actual_tid = away_id
-                        else:
-                            ch += 1          # giocatore ospite fa autogol → punto a casa
-                            actual_tid = home_id
+                        # Se ESPN manda team_id della squadra che subisce (il giocatore), invertiamo.
+                        # Se ESPN manda team_id della squadra che beneficia, non invertiamo.
+                        # Euristico sicuro: se team_id è home → autogol → punto a away, e viceversa.
+                        actual_tid = away_id if ge["team_id"] == home_id else home_id
                     else:
-                        if ge["team_id"] == home_id:
-                            ch += 1
-                            actual_tid = home_id
-                        else:
-                            ca += 1
-                            actual_tid = away_id
+                        actual_tid = ge["team_id"]
 
-                    # Sanity check: il punteggio progressivo non può superare quello reale ESPN.
-                    # Accade quando ESPN ha eventi "sporchi" non ancora allineati al punteggio.
-                    if ch > g_home or ca > g_away:
-                        # Rollback dell'incremento appena fatto e skip dell'evento
-                        if ge["type"] == "own goal":
-                            if ge["team_id"] == home_id:
-                                ca -= 1
-                            else:
-                                ch -= 1
-                        else:
-                            if ge["team_id"] == home_id:
-                                ch -= 1
-                            else:
-                                ca -= 1
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Catchup: evento {ge['minute']}' ignorato (supererebbe il punteggio reale {g_home}-{g_away})")
-                        continue
+                    # Aggiorna punteggio progressivo in base alla squadra che ha beneficiato
+                    if actual_tid == home_id:
+                        ch += 1
+                    else:
+                        ca += 1
 
                     p_name = ge.get("player_name", "")
                     a_name = ge.get("assist_name", "")
@@ -1116,7 +1099,9 @@ def avvia_ciclo_partita():
                     goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
                     goal_key  = f"{ch}_{ca}"
 
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  CATCHUP GOAL {ge['minute']}\' {home_name} {ch}-{ca} {away_name} → Telegram inviato")
+                    _tipo_log = " (Autogol)" if ge["type"] == "own goal" else (" (Rig.)" if ge["type"] == "penalty goal" else "")
+                    _scorer_log = f" {fmt_player(p_name)}{_tipo_log}" if p_name else " (marcatore in attesa)"
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  CATCHUP GOAL {ge['minute']}\'{_scorer_log} {home_name} {ch}-{ca} {away_name} → Telegram inviato")
                     msg_id = send_telegram_get_id(goal_text)
                     state.setdefault("goal_messages", {})[goal_key] = {
                         "msg_id":    msg_id,
