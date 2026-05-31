@@ -91,12 +91,6 @@ LEAGUE_EMOJIS = {
 
 def get_league_emoji(slug): return LEAGUE_EMOJIS.get(slug, "⚽️")
 
-MOMENTI_CONFIG = {
-    "HT":     {"titolo": f"<b>STATS PRIMO TEMPO</b> {E_STATS}",   "badge": "FINE PRIMO TEMPO"},
-    "2H_END": {"titolo": f"<b>STATS SECONDO TEMPO</b> {E_STATS}", "badge": "FINE SECONDO TEMPO"},
-    "FT":     {"titolo": f"<b>STATS FINE PARTITA</b> {E_STATS}",  "badge": "FINE PARTITA"},
-}
-
 E_BOLT   = '⚡️'
 E_FLAG   = '🏁'
 E_MIC    = '🎙'
@@ -112,6 +106,12 @@ E_KICK   = '🥅'
 E_EXIT   = '🔚'
 E_STATS  = '📊'
 E_CANCEL = '📺'
+
+MOMENTI_CONFIG = {
+    "HT":     {"titolo": f"<b>STATS PRIMO TEMPO</b> {E_STATS}",   "badge": "FINE PRIMO TEMPO"},
+    "2H_END": {"titolo": f"<b>STATS SECONDO TEMPO</b> {E_STATS}", "badge": "FINE SECONDO TEMPO"},
+    "FT":     {"titolo": f"<b>STATS FINE PARTITA</b> {E_STATS}",  "badge": "FINE PARTITA"},
+}
 
 # Mapping testo ESPN → tipo interno normalizzato
 EVENT_TYPE_MAP = {
@@ -1318,7 +1318,7 @@ def avvia_ciclo_partita():
                             actual_scoring_tid = away_id if last["team_id"] == home_id else home_id
                         elif last["type"] == "penalty goal":
                             ps += " (Rig.)"
-                        scorer_line = f"{E_BALL} <i>{last['minute']}' {ps}</i>\n"
+                        scorer_line = f"{E_BALL} <i>{ps}</i>\n"
                     else:
                         scorer_line = ""
 
@@ -1333,7 +1333,7 @@ def avvia_ciclo_partita():
                     else:
                         goal_score = f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
 
-                    goal_text = f"<b>GOAL {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
+                    goal_text = f"<b>GOAL · {last['minute']}' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
 
                     # Chiave univoca per questo goal (es. "1_0", "2_0", "1_1" ...)
                     goal_key = f"{g_home}_{g_away}"
