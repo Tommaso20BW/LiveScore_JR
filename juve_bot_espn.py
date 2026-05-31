@@ -794,7 +794,7 @@ def trova_partita_oggi(team_id: str):
         now_utc.strftime("%Y%m%d"),
         (now_utc + timedelta(days=1)).strftime("%Y%m%d"),
     ]
-    print(f"🔍 Cerco partita per team_id={team_id}...")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔍 Cerco partita per team_id={team_id}...")
 
     for date_str in dates_to_try:
         for slug in LEAGUE_SLUGS:
@@ -812,7 +812,7 @@ def trova_partita_oggi(team_id: str):
                     competitors = competitions[0].get("competitors", [])
                     ids = [c.get("team", {}).get("id", "") for c in competitors]
                     if team_id in ids:
-                        print(f"✅ Partita trovata: {league_name} — event_id={event['id']}")
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Partita trovata: {league_name} — event_id={event['id']}")
                         return {
                             "event_id":    event["id"],
                             "league_slug": slug,
@@ -822,7 +822,7 @@ def trova_partita_oggi(team_id: str):
             except Exception:
                 pass
 
-    print(f"📭 Nessun evento trovato per team_id={team_id}.")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 📭 Nessun evento trovato per team_id={team_id}.")
     return None
 
 
@@ -946,7 +946,7 @@ def avvia_ciclo_partita():
 
     partita = trova_partita_oggi(team_id)
     if not partita:
-        print(f"📭 Nessun evento trovato per team_id={team_id}.")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 📭 Nessun evento trovato per team_id={team_id}.")
         return
 
     event_id    = partita["event_id"]
@@ -967,6 +967,7 @@ def avvia_ciclo_partita():
             "sent_stats":             [],
             "sent_failed_penalties":  [],
             "shootout_message_id":    None,
+            "goal_messages":          {},
         }
 
     while True:
@@ -993,13 +994,18 @@ def avvia_ciclo_partita():
             events = parse_events(data, home_name, away_name, home_id, away_id)
 
             if "_intro_logged" not in state:
-                print(f"📅 {league_name} — {home_name} vs {away_name}")
+                print(f"\n🚀 [{datetime.now().strftime('%H:%M:%S')}] PARTITA TROVATA: {league_name}")
+                print(f"   {home_name} vs {away_name} | event_id={event_id}")
                 state["_intro_logged"] = True
 
+            # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s)
+            _now_ts = int(time.time())
             _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
-            if state.get("_last_log_key") != _log_key:
-                print(f"[{status} {elapsed}'] {home_name} {g_home}-{g_away} {away_name}")
+            if state.get("_last_log_key") != _log_key or (_now_ts - state.get("_last_log_ts", 0)) >= 60:
+                _ts = datetime.now().strftime("%H:%M:%S")
+                print(f"[{_ts}] 📡 {status} {elapsed}' | {home_name} {g_home}-{g_away} {away_name}")
                 state["_last_log_key"] = _log_key
+                state["_last_log_ts"] = _now_ts
 
             # --- Non ancora iniziata ---
             if status == "NS":
@@ -1011,10 +1017,10 @@ def avvia_ciclo_partita():
                         now_utc            = datetime.now(timezone.utc)
                         minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
                         if minutes_to_kickoff > 30:
-                            print(f"🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
                             sys.exit(0)
                         if "_ns_logged" not in state:
-                            print(f"⏳ Partita non ancora iniziata (ESPN) — in attesa")
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⏳ In attesa del calcio d'inizio ({minutes_to_kickoff:.0f} min al via)")
                             state["_ns_logged"] = True
                 except Exception as e:
                     print(f"⚠️ Impossibile leggere orario partita: {e}")
@@ -1027,6 +1033,7 @@ def avvia_ciclo_partita():
 
             # --- Inizio primo tempo ---
             if status == "1H" and "1H" not in state["sent_periods"]:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚡️ INIZIO PARTITA → Telegram inviato")
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
                 salva_stato_su_gist(state)
@@ -1034,6 +1041,7 @@ def avvia_ciclo_partita():
 
             # --- Fine primo tempo ---
             if status == "HT" and "HT" not in state["sent_periods"]:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏁 FINE 1° TEMPO ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
                 salva_stato_su_gist(state)
@@ -1043,12 +1051,14 @@ def avvia_ciclo_partita():
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
                                                          "HT", league_name)
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 📊 STATS 1° TEMPO → foto Telegram inviata")
                 send_telegram_stats_photo(png_path, "HT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("HT")
                 state_changed = True
 
             # --- Inizio secondo tempo ---
             if status == "2H" and "2H" not in state["sent_periods"]:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚡️ INIZIO 2° TEMPO → Telegram inviato")
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
                 salva_stato_su_gist(state)
@@ -1057,6 +1067,7 @@ def avvia_ciclo_partita():
             # --- Fine regolamentari → supplementari ---
             # Copre sia la transizione live ET che il caso in cui ESPN salti direttamente a PEN/AET
             if status in ("ET", "PEN", "AET") and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏁 FINE REGOLAMENTARI ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
                 salva_stato_su_gist(state)
@@ -1222,12 +1233,13 @@ def avvia_ciclo_partita():
                                                          home_name, away_name, g_home, g_away,
                                                          "FT", league_name,
                                                          pen_home=ft_pen_home, pen_away=ft_pen_away)
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 📊 STATS FINE PARTITA → foto Telegram inviata")
                 send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("FT")
                 state_changed = True
                 state["_reset_done"] = True
                 resetta_gist()
-                print("🏁 Partita terminata")
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏆 FINE PARTITA ({home_name} {g_home}-{g_away} {away_name}) — bot terminato")
                 sys.exit(0)
 
             # --- Rilevamento goal ---
@@ -1245,7 +1257,7 @@ def avvia_ciclo_partita():
                     competitors_confirm = competitors
                 _, _, _, _, g_home_c, g_away_c = parse_score(competitors_confirm)
                 if g_home_c + g_away_c != total_goals_now:
-                    print(f"⚠️ Punteggio instabile ({g_home}-{g_away} → {g_home_c}-{g_away_c}), attendo")
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Punteggio instabile ({g_home}-{g_away} → {g_home_c}-{g_away_c}), attendo conferma...")
                     time.sleep(sleep_time)
                     continue
                 # Usa i dati confermati
@@ -1303,12 +1315,43 @@ def avvia_ciclo_partita():
                         ps += " (Rig.)"
                     scorer_line = f"{E_BALL} <i>{last['minute']}' {ps}</i>\n"
 
+                    # Assist (se presente e diverso dal marcatore)
+                    assist_name = last.get("assist_name", "")
+                    if assist_name and assist_name != last["player_name"]:
+                        assist_line = f"🅰️ {fmt_player(assist_name)}\n"
+                    else:
+                        assist_line = ""
+
                     if actual_scoring_tid == home_id:
                         goal_score = f"<b>{home_name} {g_home}</b>-{g_away} {away_name}"
                     else:
                         goal_score = f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
 
-                    send_telegram(f"<b>GOAL {E_MIC}</b>\n\n{goal_score}\n{scorer_line}\n{e_comp} {hashtag}")
+                    goal_text = f"<b>GOAL {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
+
+                    # Chiave univoca per questo goal (es. "1_0", "2_0", "1_1" ...)
+                    goal_key = f"{g_home}_{g_away}"
+
+                    if not state.get("goal_messages", {}).get(goal_key, {}).get("msg_id"):
+                        # Primo invio: salva msg_id e marcatore per il controllo correzioni futuro
+                        _assist_log = f" | assist: {fmt_player(assist_name)}" if assist_name and assist_name != last["player_name"] else ""
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  GOAL {last['minute']}' {fmt_player(last['player_name'])}{_assist_log} ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+                        msg_id = send_telegram_get_id(goal_text)
+                        state.setdefault("goal_messages", {})[goal_key] = {
+                            "msg_id":   msg_id,
+                            "scorer":   last["player_name"],
+                            "assist":   assist_name,
+                            "minute":   last["minute"],
+                            "type":     last["type"],
+                            "home_n":   home_name,
+                            "away_n":   away_name,
+                            "g_home":   g_home,
+                            "g_away":   g_away,
+                            "home_id":  home_id,
+                            "away_id":  away_id,
+                            "score_tid": actual_scoring_tid,
+                        }
+                        state_changed = True
 
                 state["goals_detected"] = total_goals_now
                 state_changed = True
@@ -1318,6 +1361,7 @@ def avvia_ciclo_partita():
                 state_changed = True
 
             elif total_goals_now < state["goals_detected"]:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 📺 GOAL ANNULLATO → Telegram inviato")
                 send_telegram(f"<b>GOAL ANNULLATO 📺</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["goals_detected"] = total_goals_now
                 state_changed = True
@@ -1325,6 +1369,91 @@ def avvia_ciclo_partita():
                 state_changed = True
                 state["prev_away_goals"] = g_away
                 state_changed = True
+
+            # --- Correzione marcatori (controllo ogni ciclo sui goal già inviati) ---
+            # ESPN a volte pubblica il marcatore sbagliato e lo corregge dopo 30-60s.
+            # Qui confrontiamo, per ogni goal già inviato, se il marcatore negli eventi
+            # ESPN è cambiato rispetto a quello che abbiamo salvato. Se sì, edit silenzioso.
+            for goal_key, saved in list(state.get("goal_messages", {}).items()):
+                msg_id = saved.get("msg_id")
+                if not msg_id:
+                    continue
+
+                # Ricostruiamo il punteggio progressivo dalla chiave (es. "1_0" → gh=1, ga=0)
+                try:
+                    gh, ga = map(int, goal_key.split("_"))
+                except ValueError:
+                    continue
+
+                # Troviamo quale squadra ha segnato quel goal confrontando con il punteggio precedente
+                # es. "1_0": home ha 1 goal → è il suo 1° goal in ordine cronologico
+                s_home_id = saved.get("home_id", home_id)
+                s_away_id = saved.get("away_id", away_id)
+                s_home_n  = saved.get("home_n", home_name)
+                s_away_n  = saved.get("away_n", away_name)
+                s_tid     = saved.get("score_tid")
+
+                # Tra tutti i goal negli eventi, troviamo quello corrispondente a questo punteggio
+                goal_events_all = [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")]
+
+                if s_tid == s_home_id:
+                    # Era un goal della squadra di casa: prendiamo il gh-esimo goal della casa
+                    team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_home_id]
+                    own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_away_id]
+                    candidates   = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
+                    idx = gh - 1
+                else:
+                    # Era un goal della squadra ospite
+                    team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_away_id]
+                    own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_home_id]
+                    candidates   = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
+                    idx = ga - 1
+
+                if idx < 0 or idx >= len(candidates):
+                    continue  # evento non ancora disponibile in ESPN, saltiamo
+
+                current = candidates[idx]
+                current_scorer = current.get("player_name", "")
+                current_assist = current.get("assist_name", "")
+
+                # Se marcatore o assist sono cambiati → edit del messaggio Telegram
+                if (current_scorer and current_scorer != saved.get("scorer")) or                    (current_assist != saved.get("assist", "")):
+
+                    # Ricostruiamo il testo del messaggio aggiornato
+                    ps_new = fmt_player(current_scorer)
+                    if current["type"] == "own goal":
+                        ps_new += " (Autogol)"
+                    elif current["type"] == "penalty goal":
+                        ps_new += " (Rig.)"
+                    scorer_line_new = f"{E_BALL} <i>{current['minute']}' {ps_new}</i>\n"
+
+                    assist_line_new = ""
+                    if current_assist and current_assist != current_scorer:
+                        assist_line_new = f"🅰️ {fmt_player(current_assist)}\n"
+
+                    if s_tid == s_home_id:
+                        goal_score_new = f"<b>{s_home_n} {gh}</b>-{ga} {s_away_n}"
+                    else:
+                        goal_score_new = f"{s_home_n} {gh}-<b>{ga} {s_away_n}</b>"
+
+                    e_comp_saved = get_league_emoji(league_slug)
+                    hashtag_saved = build_hashtag(s_home_n, s_away_n)
+                    goal_text_new = f"<b>GOAL {E_MIC}</b>\n\n{goal_score_new}\n{scorer_line_new}{assist_line_new}\n{e_comp_saved} {hashtag_saved}"
+
+                    changes = []
+                    if current_scorer != saved.get("scorer"):
+                        changes.append(f"marcatore: {saved.get('scorer')} → {current_scorer}")
+                    if current_assist != saved.get("assist", ""):
+                        old_a = saved.get("assist", "—") or "—"
+                        new_a = current_assist or "—"
+                        changes.append(f"assist: {old_a} → {new_a}")
+
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CORREZIONE goal {goal_key}: {', '.join(changes)} → messaggio editato")
+                    send_telegram_edit(msg_id, goal_text_new)
+
+                    state["goal_messages"][goal_key]["scorer"] = current_scorer
+                    state["goal_messages"][goal_key]["assist"] = current_assist
+                    state_changed = True
 
             # --- Cambi ---
             # Se ci sono cambi nuovi, attende 60s e rilegge per raggruppare
@@ -1336,7 +1465,7 @@ def avvia_ciclo_partita():
                         new_subs_check.append({**e, "sub_id": sub_id})
 
             if new_subs_check:
-                print(f"🔄 Cambio rilevato, raggruppo...")
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 Cambio rilevato, raggruppo per 60s...")
                 # Poll ogni 6 sec per 60 sec per accumulare tutti i cambi
                 data_subs = data
                 for _ in range(10):
@@ -1369,6 +1498,8 @@ def avvia_ciclo_partita():
                     team_title = home_name.upper() if g["team_id"] == home_id else away_name.upper()
                     ins  = ", ".join(fmt_player(s["assist_name"]) for s in g["subs"])
                     outs = ", ".join(fmt_player(s["player_name"]) for s in g["subs"])
+                    _min_cambio = g["subs"][0]["minute"]
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 CAMBIO {team_title} {_min_cambio}' | ↑ {ins} / ↓ {outs} → Telegram inviato")
                     send_telegram(
                         f"<b>CAMBIO {team_title} {E_SUB}</b>\n\n"
                         f"{E_UP} {ins}\n"
@@ -1384,6 +1515,7 @@ def avvia_ciclo_partita():
                     p_name  = fmt_player(e["player_name"])
                     card_id = f"card_{e['minute']}_{e['player_name']}".replace(" ", "_")
                     if card_id not in state["sent_cards"]:
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🟥 ROSSO {e['minute']}' {p_name} → Telegram inviato")
                         send_telegram(
                             f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n"
                             f"🔚 <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
@@ -1398,8 +1530,9 @@ def avvia_ciclo_partita():
                     if pen_id not in state["sent_failed_penalties"]:
                         state["sent_failed_penalties"].append(pen_id)
                         state_changed = True
-                        print(f"🥅 Rigore fallito: {e['player_name']} {e['minute']}'")
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🥅 RIGORE FALLITO: {e['player_name']} {e['minute']}'")
                         team_name = home_name if e["team_id"] == home_id else away_name
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🥅 RIGORE SBAGLIATO {team_name.upper()} {e['minute']}' {fmt_player(e['player_name'])} → Telegram inviato")
                         send_telegram(
                             f"<b>RIGORE SBAGLIATO {team_name.upper()} 🥅</b>\n\n"
                             f"{E_PEN_KO} <i>{e['minute']}' {fmt_player(e['player_name'])}</i>\n\n"
@@ -1407,7 +1540,7 @@ def avvia_ciclo_partita():
                         )
 
         except Exception as e:
-            print(f"❌ Errore ciclo live: {e}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore ciclo live: {e}")
             sleep_time = 6
 
         finally:
@@ -1420,7 +1553,7 @@ def avvia_ciclo_partita():
 # MAIN
 # ==============================================================================
 def main():
-    print("🚀 Bot avviato")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Bot avviato")
 
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
         get_valid_token()
