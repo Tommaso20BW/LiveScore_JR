@@ -823,7 +823,6 @@ def trova_partita_oggi(team_id: str):
             except Exception:
                 pass
 
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] 📭 Nessun evento trovato per team_id={team_id}.")
     return None
 
 
