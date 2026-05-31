@@ -1327,7 +1327,7 @@ def avvia_ciclo_partita():
                 state_changed = True
 
             # --- Cambi ---
-            # ✅ FIX: se ci sono cambi nuovi, attende 30s e rilegge per raggruppare
+            # ✅ FIX: se ci sono cambi nuovi, attende 60s e rilegge per raggruppare
             new_subs_check = []
             for e in events:
                 if e["type"] == "substitution":
@@ -1337,7 +1337,7 @@ def avvia_ciclo_partita():
 
             if new_subs_check:
                 print(f"🔄 Cambio rilevato, raggruppo...")
-                time.sleep(30)
+                time.sleep(60)
                 # Rileggi i dati aggiornati
                 data_subs = fetch_evento(event_id, league_slug) or data
                 events_subs = parse_events(data_subs, home_name, away_name, home_id, away_id)
