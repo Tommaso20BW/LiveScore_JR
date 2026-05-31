@@ -1001,6 +1001,74 @@ def avvia_ciclo_partita():
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
                 state["_intro_logged"] = True
 
+            # --- Catchup: partita già in corso con gist vuoto ---
+            # Se ci sono goal già segnati ma lo stato non ne ha traccia, li invia tutti
+            # in ordine cronologico con il punteggio progressivo corretto.
+            if state["goals_detected"] == 0 and (g_home + g_away) > 0 and not state.get("goal_messages"):
+                goal_events_all = sorted(
+                    [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")],
+                    key=lambda x: x["minute"]
+                )
+                ch, ca = 0, 0  # punteggio progressivo
+                for ge in goal_events_all:
+                    # Aggiorna punteggio progressivo
+                    if ge["type"] == "own goal":
+                        # autogol: segna la squadra avversaria
+                        if ge["team_id"] == home_id:
+                            ca += 1
+                        else:
+                            ch += 1
+                    else:
+                        if ge["team_id"] == home_id:
+                            ch += 1
+                        else:
+                            ca += 1
+
+                    p_name = ge.get("player_name", "")
+                    a_name = ge.get("assist_name", "")
+                    ps = fmt_player(p_name) if p_name else ""
+                    if ge["type"] == "own goal" and ps:
+                        ps += " (Autogol)"
+                    elif ge["type"] == "penalty goal" and ps:
+                        ps += " (Rig.)"
+
+                    scorer_line = f"{E_BALL} <i>{ps}</i>\n" if ps else ""
+                    assist_line = f"{E_ASSIST} <i>{fmt_player(a_name)}</i>\n" if a_name and a_name != p_name else ""
+
+                    actual_tid = (away_id if ge["type"] == "own goal" and ge["team_id"] == home_id
+                                  else home_id if ge["type"] == "own goal"
+                                  else ge["team_id"])
+                    if actual_tid == home_id:
+                        goal_score = f"<b>{home_name} {ch}</b>-{ca} {away_name}"
+                    else:
+                        goal_score = f"{home_name} {ch}-<b>{ca} {away_name}</b>"
+
+                    goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
+                    goal_key  = f"{ch}_{ca}"
+
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  CATCHUP GOAL {ge['minute']}\'  {home_name} {ch}-{ca} {away_name} → Telegram inviato")
+                    msg_id = send_telegram_get_id(goal_text)
+                    state.setdefault("goal_messages", {})[goal_key] = {
+                        "msg_id":    msg_id,
+                        "scorer":    p_name,
+                        "assist":    a_name,
+                        "minute":    ge["minute"],
+                        "type":      ge["type"],
+                        "home_n":    home_name,
+                        "away_n":    away_name,
+                        "g_home":    ch,
+                        "g_away":    ca,
+                        "home_id":   home_id,
+                        "away_id":   away_id,
+                        "score_tid": actual_tid,
+                    }
+                    time.sleep(2)  # piccola pausa tra un goal e l'altro
+
+                state["goals_detected"]  = g_home + g_away
+                state["prev_home_goals"] = g_home
+                state["prev_away_goals"] = g_away
+                state_changed = True
+
             # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s), silenziato in NS
             _now_ts = int(time.time())
             _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
