@@ -1052,13 +1052,17 @@ def avvia_ciclo_partita():
                 )
                 ch, ca = 0, 0  # punteggio progressivo
                 for ge in goal_events_all:
+                    # Stop se abbiamo già raggiunto il punteggio reale
+                    if ch + ca >= g_home + g_away:
+                        break
                     # Aggiorna punteggio progressivo
+                    # Per gli autogol ESPN team_id è la squadra del giocatore (che subisce),
+                    # quindi il punto va alla squadra AVVERSARIA
                     if ge["type"] == "own goal":
-                        # autogol: segna la squadra avversaria
                         if ge["team_id"] == home_id:
-                            ca += 1
+                            ca += 1  # autogol giocatore casa → punto a ospite
                         else:
-                            ch += 1
+                            ch += 1  # autogol giocatore ospite → punto a casa
                     else:
                         if ge["team_id"] == home_id:
                             ch += 1
@@ -1076,9 +1080,11 @@ def avvia_ciclo_partita():
                     scorer_line = f"{E_BALL} <i>{ps}</i>\n" if ps else ""
                     assist_line = f"{E_ASSIST} <i>{fmt_player(a_name)}</i>\n" if a_name and a_name != p_name else ""
 
-                    actual_tid = (away_id if ge["type"] == "own goal" and ge["team_id"] == home_id
-                                  else home_id if ge["type"] == "own goal"
-                                  else ge["team_id"])
+                    # actual_tid = squadra che ha SEGNATO (beneficiato del goal)
+                    if ge["type"] == "own goal":
+                        actual_tid = away_id if ge["team_id"] == home_id else home_id
+                    else:
+                        actual_tid = ge["team_id"]
                     if actual_tid == home_id:
                         goal_score = f"<b>{home_name} {ch}</b>-{ca} {away_name}"
                     else:
