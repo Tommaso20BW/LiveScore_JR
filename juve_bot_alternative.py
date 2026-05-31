@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = '209'
+TEAM_ID             = '111'
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
@@ -1327,7 +1327,7 @@ def avvia_ciclo_partita():
                 state_changed = True
 
             # --- Cambi ---
-            # ✅ FIX: se ci sono cambi nuovi, attende 60s e rilegge per raggruppare
+            # Se ci sono cambi nuovi, attende 60s e rilegge per raggruppare
             new_subs_check = []
             for e in events:
                 if e["type"] == "substitution":
@@ -1337,9 +1337,13 @@ def avvia_ciclo_partita():
 
             if new_subs_check:
                 print(f"🔄 Cambio rilevato, raggruppo...")
-                time.sleep(60)
-                # Rileggi i dati aggiornati
-                data_subs = fetch_evento(event_id, league_slug) or data
+                # Poll ogni 6 sec per 60 sec per accumulare tutti i cambi
+                data_subs = data
+                for _ in range(10):
+                    time.sleep(6)
+                    fresh = fetch_evento(event_id, league_slug)
+                    if fresh:
+                        data_subs = fresh
                 events_subs = parse_events(data_subs, home_name, away_name, home_id, away_id)
 
                 new_subs = []
