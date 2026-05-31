@@ -1071,11 +1071,16 @@ def avvia_ciclo_partita():
                     if ch + ca >= g_home + g_away:
                         break  # raggiunto il totale reale, stop
 
+                    # DEBUG TEMPORANEO
+                    print(f"[DEBUG] minuto={ge['minute']} type={ge['type']!r} team_id={ge['team_id']!r} home_id={home_id!r} away_id={away_id!r} player={ge.get('player_name','')!r}")
+
                     # actual_tid = squadra che ha BENEFICIATO del gol
                     if ge["type"] == "own goal":
                         actual_tid = away_id if ge["team_id"] == home_id else home_id
                     else:
                         actual_tid = ge["team_id"]
+
+                    print(f"[DEBUG] actual_tid={actual_tid!r} home_id={home_id!r} → {'HOME' if actual_tid == home_id else 'AWAY'} ch={ch} ca={ca}")
 
                     # Verifica che il contatore non superi il punteggio reale ESPN
                     if actual_tid == home_id:
@@ -1570,11 +1575,14 @@ def avvia_ciclo_partita():
                     if current_assist and current_assist != current_scorer:
                         assist_line_new = f"{E_ASSIST} <i>{fmt_player(current_assist)}</i>\n"
 
-                    # Se è diventato autogol, la squadra creditata si inverte
+                    # Ricalcola la squadra creditata in base al tipo AGGIORNATO e al team_id
+                    # dell'evento corrente (non dello state salvato, che potrebbe essere già invertito).
+                    # autogol → punto all'avversaria del team_id del giocatore.
+                    # goal/penalty goal → punto alla squadra del team_id del giocatore.
                     if current_type == "own goal":
-                        actual_tid = s_away_id if s_tid == s_home_id else s_home_id
+                        actual_tid = s_away_id if current.get("team_id") == s_home_id else s_home_id
                     else:
-                        actual_tid = s_tid
+                        actual_tid = current.get("team_id") or s_tid
 
                     if actual_tid == s_home_id:
                         goal_score_new = f"<b>{s_home_n} {gh}</b>-{ga} {s_away_n}"
