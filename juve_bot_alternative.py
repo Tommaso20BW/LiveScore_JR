@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = '203'
+TEAM_ID             = '627'
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
@@ -79,9 +79,9 @@ LEAGUE_EMOJIS = {
     "caf.champions": "🌍",
     "friendly.club": "🤝",
     "usa.nwsl": "🇺🇸", "eng.w.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "fra.w.1": "🇫🇷", "ger.w.1": "🇩🇪", "esp.w.1": "🇪🇸",
-    "uefa.w.champions": "🇪🇺", "fifa.w.world": "🏆", "fifa.w.world.q": "🌍",
+    "uefa.w.champions": "🇪🇺", "fifa.w.world": "🌍", "fifa.w.world.q": "🌍",
     "uefa.w.euro": "🇪🇺", "uefa.w.nations": "🇪🇺", "olympics.w.soccer": "🏅",
-    "fifa.world": "🏆", "fifa.world.q": "🌍", "fifa.confed": "🏆", "fifa.friendly": "🌍", "olympics.m.soccer": "🏅",
+    "fifa.world": "🌍", "fifa.world.q": "🌍", "fifa.confed": "🌍", "fifa.friendly": "🤝", "olympics.m.soccer": "🏅",
     "uefa.euro": "🇪🇺", "uefa.euro.q": "🇪🇺", "uefa.nations": "🇪🇺",
     "conmebol.america": "🌎", "conmebol.america.q": "🌎",
     "concacaf.gold": "🌎", "concacaf.nations": "🌎",
