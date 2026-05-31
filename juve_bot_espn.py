@@ -1038,7 +1038,7 @@ def avvia_ciclo_partita():
                 state["sent_periods"].append("HT")
                 salva_stato_su_gist(state)
                 state_changed = True
-                time.sleep(60)
+                time.sleep(120)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
@@ -1063,7 +1063,7 @@ def avvia_ciclo_partita():
                 state_changed = True
                 if status == "ET":
                     # Le stats le mandiamo solo se siamo davvero a fine 2° tempo, non già ai rigori
-                    time.sleep(60)
+                    time.sleep(120)
                     data_fresh = fetch_evento(event_id, league_slug) or data
                     png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                              home_name, away_name, g_home, g_away,
@@ -1214,7 +1214,7 @@ def avvia_ciclo_partita():
                 else:
                     send_telegram(msg_finale)
 
-                time.sleep(60)
+                time.sleep(120)
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 ft_pen_home = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
                 ft_pen_away = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
