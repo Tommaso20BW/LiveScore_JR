@@ -113,7 +113,6 @@ MOMENTI_CONFIG = {
     "FT":     {"titolo": f"<b>STATS FINE PARTITA</b> {E_STATS}",  "badge": "FINE PARTITA"},
 }
 
-# Mapping testo ESPN → tipo interno normalizzato
 EVENT_TYPE_MAP = {
     "goal":                     "goal",
     "own goal":                 "own goal",
@@ -143,7 +142,6 @@ def normalize_event_type(raw: str) -> str:
     if not raw:
         return ""
     low = raw.strip().lower()
-    # Ordina per lunghezza decrescente: le chiavi piu specifiche hanno precedenza
     for k, v in sorted(EVENT_TYPE_MAP.items(), key=lambda x: len(x[0]), reverse=True):
         if k in low:
             return v
@@ -172,7 +170,6 @@ def send_telegram(text: str):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore send_telegram: {e}")
 
 def send_telegram_edit(message_id: int, text: str):
-    """Edita un messaggio Telegram già inviato."""
     if not BOT_TOKEN or not CHAT_ID or not message_id:
         return
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
@@ -186,7 +183,6 @@ def send_telegram_edit(message_id: int, text: str):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore editMessageText: {e}")
 
 def send_telegram_get_id(text: str) -> int | None:
-    """Invia un messaggio Telegram e restituisce il message_id."""
     if not BOT_TOKEN or not CHAT_ID:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  BOT_TOKEN o CHAT_ID mancanti")
         return None
@@ -369,7 +365,6 @@ def _extract_team_id_from_commentary(item: dict, home_name: str, away_name: str,
         return away_id
     return ""
 
-
 def parse_events(data: dict, home_name: str = "", away_name: str = "",
                  home_id: str = "", away_id: str = "") -> list:
     events    = []
@@ -378,14 +373,12 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
     def safe_minute(clock_val) -> int:
         try:
             s = str(clock_val).strip()
-            # Gestisce "45'+7'" → base=45, extra=7 → 52
             if "+" in s:
                 parts_plus = s.split("+")
                 base  = int(float(parts_plus[0].replace("'", "").strip()))
                 extra = int(float(parts_plus[1].replace("'", "").strip()))
                 return base + extra
             s = s.replace("'", "").strip()
-            # Gestisce "MM:SS"
             if ":" in s:
                 return int(float(s.split(":")[0]))
             return int(float(s))
@@ -414,7 +407,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             "uid":         uid,
         })
 
-    # --- FONTE 1: commentary[].play ---
     for item in data.get("commentary", []):
         play = item.get("play")
         if not play:
@@ -429,15 +421,13 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             minute  = safe_minute(clock)
             parts   = play.get("participants", [])
 
-            # ✅ FIX: per le sostituzioni participants[0]=entra, participants[1]=esce
             if normalize_event_type(ev_type) == "substitution":
-                player = extract_athlete(parts, 1)  # esce
-                assist = extract_athlete(parts, 0)  # entra
+                player = extract_athlete(parts, 1)
+                assist = extract_athlete(parts, 0)
             else:
                 player = extract_athlete(parts, 0)
                 assist = extract_athlete(parts, 1)
 
-            # ✅ FIX ESPN: period=5 = shootout; "Penalty - Scored/Missed/Saved" va rimappato
             period_num = play.get("period", {}).get("number", 0)
             if period_num == 5:
                 raw_type = play.get("type", {}).get("type", "")
@@ -454,7 +444,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         except Exception as e:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing commentary: {e}")
 
-    # --- FONTE 2: keyEvents[] ---
     for item in data.get("keyEvents", []):
         try:
             play    = item if "type" in item else item.get("play", item)
@@ -467,10 +456,9 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             minute  = safe_minute(clock)
             parts   = play.get("participants", [])
 
-            # ✅ FIX: per le sostituzioni participants[0]=entra, participants[1]=esce
             if normalize_event_type(ev_type) == "substitution":
-                player = extract_athlete(parts, 1)  # esce
-                assist = extract_athlete(parts, 0)  # entra
+                player = extract_athlete(parts, 1)
+                assist = extract_athlete(parts, 0)
             else:
                 player = extract_athlete(parts, 0)
                 assist = extract_athlete(parts, 1)
@@ -483,7 +471,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         except Exception as e:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing keyEvent: {e}")
 
-    # --- FONTE 3: scoringPlays[] (fallback) ---
     for item in data.get("scoringPlays", []):
         try:
             ev_type = item.get("type", {}).get("text", "goal")
@@ -498,8 +485,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         except Exception as e:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing scoringPlay: {e}")
 
-    # --- FONTE 4: shootout[] (rigori dal dischetto) ---
-    # Struttura reale ESPN: .id=team_id, .team=stringa nome, .shots[]=calci con .didScore e .player
     for team_shootout in data.get("shootout", []):
         try:
             t_id_raw = str(team_shootout.get("id", ""))
@@ -510,7 +495,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                 t_id = home_id if t_name.lower() == home_name.lower() else away_id
             else:
                 t_id = ""
-            # Supporta sia shots (ESPN reale) che shootoutAttempts (schema alternativo)
             kicks = team_shootout.get("shots") or team_shootout.get("shootoutAttempts", [])
             for kick in kicks:
                 did_score = kick.get("didScore", kick.get("scored", False))
@@ -534,7 +518,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
 # ==============================================================================
 def _estrai_stats_espn(data: dict) -> dict:
     raw = {"home": {}, "away": {}}
-
     try:
         for team_data in data.get("boxscore", {}).get("teams", []):
             side = "home" if team_data.get("homeAway") == "home" else "away"
@@ -560,13 +543,11 @@ def _estrai_stats_espn(data: dict) -> dict:
 
     return raw
 
-
 def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   home_name: str, away_name: str,
                                   home_goals: int, away_goals: int,
                                   momento: str, league_name: str = "SERIE A",
                                   pen_home: int = 0, pen_away: int = 0):
-
     JUVE_ID     = '111'
     JUVE_LOGO   = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
     h_logo      = JUVE_LOGO if str(home_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
@@ -720,7 +701,6 @@ body {{
 .logo {{ width: 150px; height: 150px; object-fit: contain; display: block; margin: 0 auto 20px; }}
 .team-name {{ color: white; font-weight: 800; font-size: 34px; }}
 .score-wrap {{ text-align: center; }}
-.score-wrap {{ text-align: center; }}
 .score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
 .pen-score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 40px; line-height: 1.1; font-weight: 700; color: #8fa1c7; text-align: center; margin-top: 8px; }}
 .match-status {{ margin-top: 16px; color: #8fa1c7; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
@@ -826,9 +806,7 @@ def trova_partita_oggi(team_id: str):
                         }
             except Exception:
                 pass
-
     return None
-
 
 def fetch_evento(event_id: str, league_slug: str):
     try:
@@ -841,7 +819,6 @@ def fetch_evento(event_id: str, league_slug: str):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore fetch evento: {e}")
         return None
 
-
 def parse_score(competitors):
     home = next((c for c in competitors if c.get("homeAway") == "home"), competitors[0])
     away = next((c for c in competitors if c.get("homeAway") == "away"), competitors[1])
@@ -853,7 +830,6 @@ def parse_score(competitors):
         int(home.get("score", 0) or 0),
         int(away.get("score", 0) or 0),
     )
-
 
 def parse_status(data: dict):
     try:
@@ -872,7 +848,6 @@ def parse_status(data: dict):
         except Exception:
             elapsed = 0
 
-
         if state == "pre":
             return "NS", 0
 
@@ -883,7 +858,6 @@ def parse_status(data: dict):
                 return "AET", 120
             return "FT", 90
 
-        # In gioco — usa name come riferimento principale
         if "HALFTIME" in name or "HALF_TIME" in name:
             return "HT", 45
         if "EXTRA_TIME_HALF" in name or "HALFTIME_ET" in name:
@@ -893,7 +867,6 @@ def parse_status(data: dict):
         if "EXTRA" in name or "OT" in name:
             return "ET", elapsed
         if "END_PERIOD" in name:
-            # Fine di un periodo — determina quale
             if period <= 2:
                 return "HT", 45
             return "ET", elapsed
@@ -911,7 +884,6 @@ def parse_status(data: dict):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parse_status: {e}")
         return "NS", 0
 
-
 def build_score_str(home_name, away_name, g_home, g_away):
     if g_home > g_away:
         return f"<b>{home_name} {g_home}</b>-{g_away} {away_name}"
@@ -919,7 +891,6 @@ def build_score_str(home_name, away_name, g_home, g_away):
         return f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
     else:
         return f"{home_name} {g_home}-{g_away} {away_name}"
-
 
 TEAM_ABBREVIATIONS = {
     "juventus": "Juve", "inter": "Inter", "ac milan": "Milan", "as roma": "Roma",
@@ -941,7 +912,6 @@ def build_hashtag(home_name, away_name):
 def avvia_ciclo_partita():
     team_id = str(TEAM_ID).strip()
 
-    # Test connettività API
     try:
         test_r = requests.get(f"{ESPN_BASE}/ita.1/scoreboard",
                                params={"dates": datetime.now(timezone.utc).strftime("%Y%m%d")}, timeout=10)
@@ -1001,7 +971,6 @@ def avvia_ciclo_partita():
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
                 state["_intro_logged"] = True
 
-            # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s), silenziato in NS
             _now_ts = int(time.time())
             _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
             if status != "NS" and (state.get("_last_log_key") != _log_key or (_now_ts - state.get("_last_log_ts", 0)) >= 60):
@@ -1010,7 +979,6 @@ def avvia_ciclo_partita():
                 state["_last_log_key"] = _log_key
                 state["_last_log_ts"] = _now_ts
 
-            # --- Non ancora iniziata ---
             if status == "NS":
                 try:
                     comp       = data["header"]["competitions"][0]
@@ -1030,11 +998,9 @@ def avvia_ciclo_partita():
                 time.sleep(6)
                 continue
 
-            # Rigori: polling ancora più rapido
             if status == "PEN":
                 sleep_time = 6
 
-            # --- Inizio primo tempo ---
             if status == "1H" and "1H" not in state["sent_periods"]:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚡️ INIZIO PARTITA → Telegram inviato")
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
@@ -1042,124 +1008,13 @@ def avvia_ciclo_partita():
                 salva_stato_su_gist(state)
                 state_changed = True
 
-            # --- Catchup: partita già in corso con gist vuoto ---
-            # Se ci sono goal già segnati ma lo stato non ne ha traccia, li invia tutti
-            # in ordine cronologico con il punteggio progressivo corretto.
+            # --- Sincronizzazione base contatore goal senza messaggi storici massivi (Catchup rimosso) ---
             if state["goals_detected"] == 0 and (g_home + g_away) > 0 and not state.get("goal_messages"):
-                # Deduplica eventi ESPN per uid, poi ordina per minuto
-                _seen_uids = set()
-                _deduped = []
-                for e in events:
-                    if e["type"] in ("goal", "own goal", "penalty goal"):
-                        uid = e.get("uid", f"{e['minute']}_{e.get('player_name','')}")
-                        if uid not in _seen_uids:
-                            _seen_uids.add(uid)
-                            _deduped.append(e)
-                goal_events_all = sorted(_deduped, key=lambda x: x["minute"])
-
-                # ---------------------------------------------------------------
-                # RICOSTRUZIONE PUNTEGGIO PROGRESSIVO
-                #
-                # ESPN manda team_id = squadra del giocatore che segna.
-                # Per gli autogol il giocatore è della squadra che SUBISCE, quindi
-                # il punto va all'avversaria (invertiamo).
-                # Usiamo g_home/g_away come ground truth: saltiamo eventi che
-                # porterebbero un contatore oltre il punteggio reale (duplicati/fantasma).
-                # ---------------------------------------------------------------
-                ch, ca = 0, 0  # punteggio progressivo
-                for ge in goal_events_all:
-                    if ch + ca >= g_home + g_away:
-                        break  # raggiunto il totale reale, stop
-
-                    # actual_tid = squadra che ha BENEFICIATO del gol.
-                    # ESPN per gli autogol manda team_id in modo inconsistente:
-                    # a volte è la squadra del giocatore (va invertito),
-                    # a volte è la squadra che beneficia (va usato direttamente).
-                    # Disambiguiamo confrontando i gol RIMANENTI di ciascuna squadra:
-                    # se team_id è la squadra che ha ancora gol da coprire nel punteggio
-                    # finale, allora ESPN sta usando "direct" (beneficiaria); altrimenti inverte.
-                    if ge["type"] == "own goal":
-                        tid_direct   = ge["team_id"]
-                        tid_inverted = away_id if ge["team_id"] == home_id else home_id
-                        # Gol ancora da coprire per ciascuna squadra DOPO questo evento
-                        remaining_direct   = (g_home - ch - 1) if tid_direct   == home_id else (g_away - ca - 1)
-                        remaining_inverted = (g_home - ch - 1) if tid_inverted == home_id else (g_away - ca - 1)
-                        ok_dir = remaining_direct   >= 0
-                        ok_inv = remaining_inverted >= 0
-                        if ok_dir and not ok_inv:
-                            actual_tid = tid_direct
-                        elif ok_inv and not ok_dir:
-                            actual_tid = tid_inverted
-                        elif ok_dir and ok_inv:
-                            # Entrambi compatibili numericamente.
-                            # Tiebreak: scegliamo la squadra che ha PIÙ gol rimanenti
-                            # (più probabile che questo gol le appartenga).
-                            rem_dir_val = (g_home - ch - 1) if tid_direct == home_id else (g_away - ca - 1)
-                            rem_inv_val = (g_home - ch - 1) if tid_inverted == home_id else (g_away - ca - 1)
-                            actual_tid = tid_direct if rem_dir_val >= rem_inv_val else tid_inverted
-                        else:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  CATCHUP autogol {ge['minute']}' incompatibile col punteggio reale, saltato")
-                            continue
-                    else:
-                        actual_tid = ge["team_id"]
-
-                    # Verifica che il contatore non superi il punteggio reale ESPN
-                    if actual_tid == home_id:
-                        if ch + 1 > g_home:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  CATCHUP goal {ge['minute']}' supererebbe g_home ({g_home}), saltato")
-                            continue
-                        ch += 1
-                    else:
-                        if ca + 1 > g_away:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  CATCHUP goal {ge['minute']}' supererebbe g_away ({g_away}), saltato")
-                            continue
-                        ca += 1
-
-                    p_name = ge.get("player_name", "")
-                    a_name = ge.get("assist_name", "")
-                    ps = fmt_player(p_name) if p_name else ""
-                    if ge["type"] == "own goal" and ps:
-                        ps += " (Autogol)"
-                    elif ge["type"] == "penalty goal" and ps:
-                        ps += " (Rig.)"
-
-                    scorer_line = f"{E_BALL} <i>{ps}</i>\n" if ps else ""
-                    assist_line = f"{E_ASSIST} <i>{fmt_player(a_name)}</i>\n" if a_name and a_name != p_name else ""
-
-                    if actual_tid == home_id:
-                        goal_score = f"<b>{home_name} {ch}</b>-{ca} {away_name}"
-                    else:
-                        goal_score = f"{home_name} {ch}-<b>{ca} {away_name}</b>"
-
-                    goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
-                    goal_key  = f"{ch}_{ca}"
-
-                    _tipo_log = " (Autogol)" if ge["type"] == "own goal" else (" (Rig.)" if ge["type"] == "penalty goal" else "")
-                    _scorer_log = f" {fmt_player(p_name)}{_tipo_log}" if p_name else " (marcatore in attesa)"
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  CATCHUP GOAL {ge['minute']}\'{_scorer_log} {home_name} {ch}-{ca} {away_name} → Telegram inviato")
-                    msg_id = send_telegram_get_id(goal_text)
-                    state.setdefault("goal_messages", {})[goal_key] = {
-                        "msg_id":    msg_id,
-                        "scorer":    p_name,
-                        "assist":    a_name,
-                        "minute":    ge["minute"],
-                        "type":      ge["type"],
-                        "home_n":    home_name,
-                        "away_n":    away_name,
-                        "g_home":    ch,
-                        "g_away":    ca,
-                        "home_id":   home_id,
-                        "away_id":   away_id,
-                        "score_tid": actual_tid,
-                    }
-                    time.sleep(2)  # piccola pausa tra un goal e l'altro
-
                 state["goals_detected"]  = g_home + g_away
                 state["prev_home_goals"] = g_home
                 state["prev_away_goals"] = g_away
                 state_changed = True
 
-            # --- Fine primo tempo ---
             if status == "HT" and "HT" not in state["sent_periods"]:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏁 FINE 1° TEMPO ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
@@ -1176,7 +1031,6 @@ def avvia_ciclo_partita():
                 state["sent_stats"].append("HT")
                 state_changed = True
 
-            # --- Inizio secondo tempo ---
             if status == "2H" and "2H" not in state["sent_periods"]:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚡️ INIZIO 2° TEMPO → Telegram inviato")
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
@@ -1184,8 +1038,6 @@ def avvia_ciclo_partita():
                 salva_stato_su_gist(state)
                 state_changed = True
 
-            # --- Fine regolamentari → supplementari ---
-            # Copre sia la transizione live ET che il caso in cui ESPN salti direttamente a PEN/AET
             if status in ("ET", "PEN", "AET") and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏁 FINE REGOLAMENTARI ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
@@ -1193,7 +1045,6 @@ def avvia_ciclo_partita():
                 salva_stato_su_gist(state)
                 state_changed = True
                 if status == "ET":
-                    # Le stats le mandiamo solo se siamo davvero a fine 2° tempo, non già ai rigori
                     time.sleep(120)
                     data_fresh = fetch_evento(event_id, league_slug) or data
                     png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
@@ -1203,9 +1054,7 @@ def avvia_ciclo_partita():
                     state["sent_stats"].append("2H_END")
                     state_changed = True
 
-            # --- Supplementari ---
             if status == "ET":
-                # Leggi stato ESPN preciso per determinare intervallo/2°ET
                 try:
                     comp_status = data["header"]["competitions"][0].get("status", {})
                     stype_name  = comp_status.get("type", {}).get("name", "").upper()
@@ -1218,7 +1067,6 @@ def avvia_ciclo_partita():
                                      ("HALFTIME", "HALF_TIME", "HT_ET", "EXTRA_TIME_HALF"))
                 is_second_et = (et_period >= 4 or (elapsed >= 106 and et_period >= 3))
 
-                # Inizio 1°ET — solo se non siamo già all'intervallo o al 2°ET
                 if "1ET_START" not in state["sent_periods"] and not is_et_halftime and not is_second_et:
                     send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
@@ -1237,7 +1085,6 @@ def avvia_ciclo_partita():
                     salva_stato_su_gist(state)
                     state_changed = True
 
-            # --- Intervallo supplementari (ESPN manda HT_ET esplicitamente) ---
             if status == "HT_ET":
                 if "1ET_START" not in state["sent_periods"]:
                     state["sent_periods"].append("1ET_START")
@@ -1248,10 +1095,8 @@ def avvia_ciclo_partita():
                     salva_stato_su_gist(state)
                     state_changed = True
 
-            # --- Rigori ---
             if status == "PEN":
                 if "ET_END_PENS" not in state["sent_periods"]:
-                    # Manda "FINE SUPPLEMENTARI" solo se non già inviato con altro trigger
                     if "2ET_START" in state["sent_periods"] or "1ET_START" in state["sent_periods"]:
                         send_telegram(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("ET_END_PENS")
@@ -1274,7 +1119,6 @@ def avvia_ciclo_partita():
                     state["penalties_count"] = total_kicks
                     state_changed = True
 
-            # --- Fine partita ---
             comp_state_espn = (
                 data.get("header", {}).get("competitions", [{}])[0]
                     .get("status", {}).get("type", {}).get("state", "")
@@ -1308,7 +1152,6 @@ def avvia_ciclo_partita():
                 else:
                     scorers_line = ""
 
-                # Rigori: conta i gol dal dischetto per costruire il punteggio
                 has_shootout = (
                     "ET_END_PENS" in state["sent_periods"] or
                     status == "PEN" or
@@ -1362,13 +1205,12 @@ def avvia_ciclo_partita():
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏆 FINE PARTITA ({home_name} {g_home}-{g_away} {away_name}) — bot terminato")
                 sys.exit(0)
 
-            # --- Rilevamento goal ---
+            # --- Rilevamento goal (LIVE) ---
             total_goals_now = g_home + g_away
             prev_home = state.get("prev_home_goals", 0)
             prev_away = state.get("prev_away_goals", 0)
 
             if total_goals_now > state["goals_detected"]:
-                # Conferma il punteggio aspettando 15s e rileggendo
                 time.sleep(15)
                 data_confirm = fetch_evento(event_id, league_slug) or data
                 try:
@@ -1380,50 +1222,34 @@ def avvia_ciclo_partita():
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Punteggio instabile ({g_home}-{g_away} → {g_home_c}-{g_away_c}), attendo conferma...")
                     time.sleep(sleep_time)
                     continue
-                # Usa i dati confermati
+
                 data   = data_confirm
                 g_home = g_home_c
                 g_away = g_away_c
                 events = parse_events(data, home_name, away_name, home_id, away_id)
                 score_str = build_score_str(home_name, away_name, g_home, g_away)
-                # La squadra che ha appena segnato è determinata dal punteggio reale ESPN,
-                # non dagli eventi (che possono avere team_id mancante/sbagliato)
+
                 if g_home > prev_home:
                     scoring_tid = home_id
-                    expected_home_goals = g_home
-                    expected_away_goals = prev_away
+                    expected_count = g_home
                 elif g_away > prev_away:
                     scoring_tid = away_id
-                    expected_home_goals = prev_home
-                    expected_away_goals = g_away
+                    expected_count = g_away
                 else:
-                    # Entrambe hanno segnato nello stesso ciclo (raro): gestisci separatamente
                     scoring_tid = None
-                    expected_home_goals = g_home
-                    expected_away_goals = g_away
 
-                goal_events = [e for e in events
-                               if e["type"] in ("goal", "own goal", "penalty goal")]
+                goal_events = [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")]
 
                 if scoring_tid:
-                    # Conta quanti goal ha quella squadra negli eventi
-                    # per trovare quello appena segnato (l'ennesimo)
                     team_goals = [e for e in goal_events if e["type"] != "own goal" and e["team_id"] == scoring_tid]
                     own_goals_vs = [e for e in goal_events if e["type"] == "own goal" and e["team_id"] != scoring_tid]
                     candidates = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
-
-                    # Numero di goal attesi per questa squadra
-                    expected_count = g_home if scoring_tid == home_id else g_away
-
-                    # Prendi il goal corrispondente all'indice atteso (es. 1° goal = index 0)
                     last = candidates[expected_count - 1] if len(candidates) >= expected_count else (candidates[-1] if candidates else None)
 
                     if not last:
                         time.sleep(sleep_time)
                         continue
 
-                    # Se il marcatore c'è, costruiamo la riga; altrimenti la omettiamo
-                    # e il blocco correzioni la aggiungerà appena ESPN la pubblica
                     player_name = last.get("player_name", "")
                     assist_name = last.get("assist_name", "")
                     actual_scoring_tid = scoring_tid
@@ -1439,7 +1265,6 @@ def avvia_ciclo_partita():
                     else:
                         scorer_line = ""
 
-                    # Assist (se presente e diverso dal marcatore)
                     if assist_name and assist_name != player_name:
                         assist_line = f"{E_ASSIST} <i>{fmt_player(assist_name)}</i>\n"
                     else:
@@ -1451,14 +1276,9 @@ def avvia_ciclo_partita():
                         goal_score = f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
 
                     goal_text = f"<b>GOAL · {last['minute']}' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
-
-                    # Chiave univoca per questo goal (es. "1_0", "2_0", "1_1" ...)
                     goal_key = f"{g_home}_{g_away}"
 
                     if not state.get("goal_messages", {}).get(goal_key, {}).get("msg_id"):
-                        # Primo invio immediato (dopo conferma punteggio):
-                        # anche senza marcatore, così la notifica arriva subito.
-                        # Il blocco correzioni penserà ad aggiungere/correggere marcatore e assist.
                         _scorer_log = f" {fmt_player(player_name)}" if player_name else " (marcatore in attesa)"
                         _assist_log = f" | assist: {fmt_player(assist_name)}" if assist_name and assist_name != player_name else ""
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  GOAL{_scorer_log}{_assist_log} ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
@@ -1480,24 +1300,18 @@ def avvia_ciclo_partita():
                         state_changed = True
 
                 state["goals_detected"] = total_goals_now
-                state_changed = True
                 state["prev_home_goals"] = g_home
-                state_changed = True
                 state["prev_away_goals"] = g_away
                 state_changed = True
 
             elif total_goals_now < state["goals_detected"]:
-                # Controlla se è una correzione autogol (ESPN ridistribuisce i goal tra le squadre)
-                # e non un vero annullamento: in tal caso goals_detected rimane invariato
                 n_saved_goals = len(state.get("goal_messages", {}))
                 if total_goals_now == n_saved_goals:
-                    # Il numero totale di goal non è cambiato davvero, è solo una ridistribuzione
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️  Punteggio ridistribuito (autogol?), nessun annullamento reale — ignorato")
                     state["prev_home_goals"] = g_home
                     state["prev_away_goals"] = g_away
                     state_changed = True
                 else:
-                    # Aspetta 15s e riconferma il calo prima di mandare GOAL ANNULLATO
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Possibile annullamento, attendo conferma (90s)...")
                     time.sleep(90)
                     data_cancel = fetch_evento(event_id, league_slug) or data
@@ -1518,8 +1332,6 @@ def avvia_ciclo_partita():
                         state_changed = True
                     else:
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️  Punteggio tornato stabile ({g_home_c}-{g_away_c}), annullamento ignorato — aggiorno eventi per correzione marcatori")
-                        # Aggiorna events con i dati freschi: il blocco correzione marcatori
-                        # al prossimo giro troverà il marcatore cambiato e editerà il messaggio
                         data = data_cancel
                         events = parse_events(data, home_name, away_name, home_id, away_id)
                         g_home = g_home_c
@@ -1528,60 +1340,47 @@ def avvia_ciclo_partita():
                         state["prev_away_goals"] = g_away_c
                         state_changed = True
 
-            # --- Correzione marcatori (controllo ogni ciclo sui goal già inviati) ---
-            # ESPN a volte pubblica il marcatore sbagliato e lo corregge dopo 30-60s.
-            # Qui confrontiamo, per ogni goal già inviato, se il marcatore negli eventi
-            # ESPN è cambiato rispetto a quello che abbiamo salvato. Se sì, edit silenzioso.
+            # --- Correzione marcatori ---
             for goal_key, saved in list(state.get("goal_messages", {}).items()):
                 msg_id = saved.get("msg_id")
                 if not msg_id:
                     continue
-
-                # Ricostruiamo il punteggio progressivo dalla chiave (es. "1_0" → gh=1, ga=0)
                 try:
                     gh, ga = map(int, goal_key.split("_"))
                 except ValueError:
                     continue
 
-                # Troviamo quale squadra ha segnato quel goal confrontando con il punteggio precedente
-                # es. "1_0": home ha 1 goal → è il suo 1° goal in ordine cronologico
                 s_home_id = saved.get("home_id", home_id)
                 s_away_id = saved.get("away_id", away_id)
                 s_home_n  = saved.get("home_n", home_name)
                 s_away_n  = saved.get("away_n", away_name)
                 s_tid     = saved.get("score_tid")
 
-                # Tra tutti i goal negli eventi, troviamo quello corrispondente a questo punteggio
                 goal_events_all = [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")]
 
                 if s_tid == s_home_id:
-                    # Era un goal della squadra di casa: prendiamo il gh-esimo goal della casa
                     team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_home_id]
                     own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_away_id]
                     candidates   = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
                     idx = gh - 1
                 else:
-                    # Era un goal della squadra ospite
                     team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_away_id]
                     own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_home_id]
                     candidates   = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
                     idx = ga - 1
 
                 if idx < 0 or idx >= len(candidates):
-                    continue  # evento non ancora disponibile in ESPN, saltiamo
+                    continue
 
                 current = candidates[idx]
                 current_scorer = current.get("player_name", "")
                 current_assist = current.get("assist_name", "")
-
                 current_type = current.get("type", saved.get("type", "goal"))
 
-                # Se marcatore, assist o tipo sono cambiati (o arrivati per la prima volta) → edit
                 if (current_scorer != saved.get("scorer")) or \
                    (current_assist != saved.get("assist", "")) or \
                    (current_type != saved.get("type", "goal")):
 
-                    # Ricostruiamo il testo del messaggio aggiornato
                     if current_scorer:
                         ps_new = fmt_player(current_scorer)
                         if current_type == "own goal":
@@ -1596,10 +1395,6 @@ def avvia_ciclo_partita():
                     if current_assist and current_assist != current_scorer:
                         assist_line_new = f"{E_ASSIST} <i>{fmt_player(current_assist)}</i>\n"
 
-                    # Ricalcola la squadra creditata in base al tipo AGGIORNATO e al team_id
-                    # dell'evento corrente (non dello state salvato, che potrebbe essere già invertito).
-                    # autogol → punto all'avversaria del team_id del giocatore.
-                    # goal/penalty goal → punto alla squadra del team_id del giocatore.
                     if current_type == "own goal":
                         actual_tid = s_away_id if current.get("team_id") == s_home_id else s_home_id
                     else:
@@ -1634,7 +1429,6 @@ def avvia_ciclo_partita():
                     state_changed = True
 
             # --- Cambi ---
-            # Se ci sono cambi nuovi, attende 60s e rilegge per raggruppare
             new_subs_check = []
             for e in events:
                 if e["type"] == "substitution":
@@ -1644,7 +1438,6 @@ def avvia_ciclo_partita():
 
             if new_subs_check:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 Cambio rilevato, raggruppo per 60s...")
-                # Poll ogni 6 sec per 60 sec per accumulare tutti i cambi
                 data_subs = data
                 for _ in range(10):
                     time.sleep(6)
@@ -1660,7 +1453,6 @@ def avvia_ciclo_partita():
                         if sub_id not in state["sent_subs"]:
                             new_subs.append({**e, "sub_id": sub_id})
 
-                # Raggruppa: stessa squadra, minuto entro ±2
                 groups = []
                 for sub in new_subs:
                     placed = False
@@ -1687,7 +1479,7 @@ def avvia_ciclo_partita():
                     state["sent_subs"].extend(s["sub_id"] for s in g["subs"])
                     state_changed = True
 
-            # --- Cartellini rossi / doppio giallo ---
+            # --- Cartellini rossi ---
             for e in events:
                 if e["type"] in ("red card", "second yellow card"):
                     p_name  = fmt_player(e["player_name"])
@@ -1701,7 +1493,7 @@ def avvia_ciclo_partita():
                         state["sent_cards"].append(card_id)
                         state_changed = True
 
-            # --- Rigori sbagliati (tempo regolamentare / supplementari): esclusa lotteria ---
+            # --- Rigori sbagliati ---
             for e in events:
                 if e["type"] in ("penalty missed", "penalty saved"):
                     pen_id = f"failpen_{e['minute']}_{e['player_name']}".replace(" ", "_")
@@ -1723,7 +1515,6 @@ def avvia_ciclo_partita():
         finally:
             if isinstance(state, dict) and not state.get("_reset_done") and state_changed:
                 salva_stato_su_gist(state)
-
         time.sleep(sleep_time)
 
 # ==============================================================================
@@ -1731,11 +1522,9 @@ def avvia_ciclo_partita():
 # ==============================================================================
 def main():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Bot avviato")
-
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
         get_valid_token()
         return
-
     avvia_ciclo_partita()
 
 if __name__ == "__main__":
