@@ -1071,16 +1071,37 @@ def avvia_ciclo_partita():
                     if ch + ca >= g_home + g_away:
                         break  # raggiunto il totale reale, stop
 
-                    # DEBUG TEMPORANEO
-                    print(f"[DEBUG] minuto={ge['minute']} type={ge['type']!r} team_id={ge['team_id']!r} home_id={home_id!r} away_id={away_id!r} player={ge.get('player_name','')!r}")
-
-                    # actual_tid = squadra che ha BENEFICIATO del gol
+                    # actual_tid = squadra che ha BENEFICIATO del gol.
+                    # ESPN per gli autogol manda team_id in modo inconsistente:
+                    # a volte è la squadra del giocatore (va invertito),
+                    # a volte è la squadra che beneficia (va usato direttamente).
+                    # Disambiguiamo confrontando i gol RIMANENTI di ciascuna squadra:
+                    # se team_id è la squadra che ha ancora gol da coprire nel punteggio
+                    # finale, allora ESPN sta usando "direct" (beneficiaria); altrimenti inverte.
                     if ge["type"] == "own goal":
-                        actual_tid = away_id if ge["team_id"] == home_id else home_id
+                        tid_direct   = ge["team_id"]
+                        tid_inverted = away_id if ge["team_id"] == home_id else home_id
+                        # Gol ancora da coprire per ciascuna squadra DOPO questo evento
+                        remaining_direct   = (g_home - ch - 1) if tid_direct   == home_id else (g_away - ca - 1)
+                        remaining_inverted = (g_home - ch - 1) if tid_inverted == home_id else (g_away - ca - 1)
+                        ok_dir = remaining_direct   >= 0
+                        ok_inv = remaining_inverted >= 0
+                        if ok_dir and not ok_inv:
+                            actual_tid = tid_direct
+                        elif ok_inv and not ok_dir:
+                            actual_tid = tid_inverted
+                        elif ok_dir and ok_inv:
+                            # Entrambi compatibili numericamente.
+                            # Tiebreak: scegliamo la squadra che ha PIÙ gol rimanenti
+                            # (più probabile che questo gol le appartenga).
+                            rem_dir_val = (g_home - ch - 1) if tid_direct == home_id else (g_away - ca - 1)
+                            rem_inv_val = (g_home - ch - 1) if tid_inverted == home_id else (g_away - ca - 1)
+                            actual_tid = tid_direct if rem_dir_val >= rem_inv_val else tid_inverted
+                        else:
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  CATCHUP autogol {ge['minute']}' incompatibile col punteggio reale, saltato")
+                            continue
                     else:
                         actual_tid = ge["team_id"]
-
-                    print(f"[DEBUG] actual_tid={actual_tid!r} home_id={home_id!r} → {'HOME' if actual_tid == home_id else 'AWAY'} ch={ch} ca={ca}")
 
                     # Verifica che il contatore non superi il punteggio reale ESPN
                     if actual_tid == home_id:
