@@ -1046,10 +1046,16 @@ def avvia_ciclo_partita():
             # Se ci sono goal già segnati ma lo stato non ne ha traccia, li invia tutti
             # in ordine cronologico con il punteggio progressivo corretto.
             if state["goals_detected"] == 0 and (g_home + g_away) > 0 and not state.get("goal_messages"):
-                goal_events_all = sorted(
-                    [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")],
-                    key=lambda x: x["minute"]
-                )
+                # Deduplica eventi ESPN per uid, poi ordina per minuto
+                _seen_uids = set()
+                _deduped = []
+                for e in events:
+                    if e["type"] in ("goal", "own goal", "penalty goal"):
+                        uid = e.get("uid", f"{e['minute']}_{e.get('player_name','')}")
+                        if uid not in _seen_uids:
+                            _seen_uids.add(uid)
+                            _deduped.append(e)
+                goal_events_all = sorted(_deduped, key=lambda x: x["minute"])
                 ch, ca = 0, 0  # punteggio progressivo
                 for ge in goal_events_all:
                     # Stop se abbiamo già raggiunto il punteggio reale
