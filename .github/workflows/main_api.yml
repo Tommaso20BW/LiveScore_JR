@@ -43,4 +43,4 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GIST_ID: ${{ secrets.GIST_ID }}
           # Rimosso il riferimento errato a env.ONLY_REFRESH_TOKEN che non esisteva
-        run: python -u juve_bot.py
+        run: python -u juve_bot_api.py
