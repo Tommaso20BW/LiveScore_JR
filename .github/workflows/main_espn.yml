@@ -2,6 +2,11 @@ name: Juventus Live Score - ESPN
  
 on:
   workflow_dispatch:
+    inputs:
+      team_id:
+        description: 'Team ID ESPN (default: 111)'
+        required: false
+        default: '111'
 
 permissions:
   contents: write
@@ -40,4 +45,5 @@ jobs:
           CANVA_CLIENT_ID:      ${{ secrets.CANVA_CLIENT_ID }}
           CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
+          TEAM_ID:              ${{ github.event.inputs.team_id || '111' }}
         run: python -u juve_bot_espn.py
