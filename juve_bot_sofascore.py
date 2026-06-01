@@ -391,50 +391,81 @@ def sofa_get(path: str) -> dict | None:
 # TROVA PARTITA (SofaScore)
 # ==============================================================================
 
+def _build_partita(event: dict) -> dict:
+    """Costruisce il dict partita da un evento SofaScore."""
+    t_id      = event.get("tournament", {}).get("id", 0)
+    t_name    = event.get("tournament", {}).get("name", "Sconosciuto")
+    category  = event.get("tournament", {}).get("category", {}).get("name", "")
+    match_id  = event.get("id")
+    home_team = event.get("homeTeam", {})
+    away_team = event.get("awayTeam", {})
+    start_ts  = event.get("startTimestamp", 0)
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Partita trovata: {t_name} — "
+          f"{home_team.get('name','?')} vs {away_team.get('name','?')} — event_id={match_id}")
+    return {
+        "event_id":        str(match_id),
+        "tournament_id":   t_id,
+        "tournament_name": t_name,
+        "category":        category,
+        "home_id":         str(home_team.get("id", "")),
+        "away_id":         str(away_team.get("id", "")),
+        "home_name":       home_team.get("name", "Home"),
+        "away_name":       away_team.get("name", "Away"),
+        "start_ts":        start_ts,
+    }
+
+
 def trova_partita_oggi(team_id: str) -> dict | None:
     """
-    Cerca eventi del team nei ±1 giorno usando l'endpoint SofaScore
-    /team/{id}/events/next/0  e  /team/{id}/events/last/0
+    Cerca la partita del team con questa priorità:
+      1. /sport/football/team/{id}/events/live  → partita IN CORSO (priorità assoluta)
+      2. /team/{id}/events/next/0               → prossima partita futura (entro 3h)
+
+    Il fallback su last/0 è volutamente assente: rischierebbe di agganciare
+    la partita del giorno precedente se il bot viene avviato a freddo.
     """
     print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔍 Cerco partita per team_id={team_id} su SofaScore...")
 
-    # Prova prima next event, poi last event
-    endpoints = [
-        f"/team/{team_id}/events/next/0",
-        f"/team/{team_id}/events/last/0",
-    ]
+    now_ts = datetime.now(timezone.utc).timestamp()
 
-    now_utc   = datetime.now(timezone.utc)
-    window_s  = 86400  # ±24h
+    # ── 1. LIVE ──────────────────────────────────────────────────────────────
+    live_data = sofa_get(f"/sport/football/team/{team_id}/events/live")
+    print(f"[{{datetime.now().strftime('%H:%M:%S')}}] 🔎 /live → {live_data}")
+    if live_data:
+        for event in live_data.get("events", []):
+            return _build_partita(event)
 
-    for ep in endpoints:
-        data = sofa_get(ep)
-        if not data:
-            continue
-        events = data.get("events", [])
-        for event in events:
+    # ── 2. PROSSIMA (entro 3h nel futuro) ────────────────────────────────────
+    next_data = sofa_get(f"/team/{team_id}/events/next/0")
+    if next_data:
+        events_list = next_data.get("events", [])
+        for event in events_list:
             start_ts = event.get("startTimestamp", 0)
-            diff = abs(now_utc.timestamp() - start_ts)
-            if diff <= window_s:
-                t_id   = event.get("tournament", {}).get("id", 0)
-                t_name = event.get("tournament", {}).get("name", "Sconosciuto")
-                category = event.get("tournament", {}).get("category", {}).get("name", "")
-                match_id   = event.get("id")
-                home_team  = event.get("homeTeam", {})
-                away_team  = event.get("awayTeam", {})
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Partita trovata: {t_name} — "
-                      f"{home_team.get('name','?')} vs {away_team.get('name','?')} — event_id={match_id}")
-                return {
-                    "event_id":       str(match_id),
-                    "tournament_id":  t_id,
-                    "tournament_name": t_name,
-                    "category":       category,
-                    "home_id":        str(home_team.get("id", "")),
-                    "away_id":        str(away_team.get("id", "")),
-                    "home_name":      home_team.get("name", "Home"),
-                    "away_name":      away_team.get("name", "Away"),
-                    "start_ts":       start_ts,
-                }
+            diff = start_ts - now_ts
+            t_name = event.get("tournament", {}).get("name", "?")
+            home = event.get("homeTeam", {}).get("name", "?")
+            away = event.get("awayTeam", {}).get("name", "?")
+            status_code = event.get("status", {}).get("code", "?")
+            print(f"[{{datetime.now().strftime('%H:%M:%S')}}] 🔎 /next event: {t_name} {home} vs {away} | start_ts={start_ts} | diff={diff:.0f}s | status_code={status_code}")
+            if 0 <= diff <= 10800:
+                return _build_partita(event)
+        if not events_list:
+            print(f"[{{datetime.now().strftime('%H:%M:%S')}}] 🔎 /next → lista vuota")
+    else:
+        print(f"[{{datetime.now().strftime('%H:%M:%S')}}] 🔎 /next → None (fetch fallito)")
+
+    # ── 3. LAST (debug only) ─────────────────────────────────────────────────
+    last_data = sofa_get(f"/team/{team_id}/events/last/0")
+    if last_data:
+        for event in last_data.get("events", []):
+            start_ts = event.get("startTimestamp", 0)
+            diff = now_ts - start_ts
+            t_name = event.get("tournament", {}).get("name", "?")
+            home = event.get("homeTeam", {}).get("name", "?")
+            away = event.get("awayTeam", {}).get("name", "?")
+            status_code = event.get("status", {}).get("code", "?")
+            print(f"[{{datetime.now().strftime('%H:%M:%S')}}] 🔎 /last event: {t_name} {home} vs {away} | start_ts={start_ts} | diff_passato={diff:.0f}s | status_code={status_code}")
+
     return None
 
 
