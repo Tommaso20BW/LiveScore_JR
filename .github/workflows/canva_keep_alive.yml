@@ -38,4 +38,4 @@ jobs:
           GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           ONLY_REFRESH_TOKEN: "true"
-        run: python juve_bot.py
+        run: python juve_bot_espn.py
