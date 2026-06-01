@@ -567,7 +567,7 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   momento: str, league_name: str = "SERIE A",
                                   pen_home: int = 0, pen_away: int = 0):
 
-    JUVE_ID     = '205'
+    JUVE_ID     = '111'
     JUVE_LOGO   = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
     h_logo      = JUVE_LOGO if str(home_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
     a_logo      = JUVE_LOGO if str(away_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
@@ -1295,7 +1295,7 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
-                is_juve_match = home_id == '205' or away_id == '205'
+                is_juve_match = home_id == '111' or away_id == '111'
                 if is_juve_match:
                     canva_token = get_valid_token()
                     if canva_token:
