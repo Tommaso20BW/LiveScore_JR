@@ -1516,15 +1516,17 @@ def avvia_ciclo_partita():
                 goal_events_all = [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")]
 
                 if s_tid == s_home_id:
-                    # Era un goal della squadra di casa: prendiamo il gh-esimo goal della casa
+                    # Era un goal della squadra di casa: prendiamo il gh-esimo goal della casa.
+                    # ESPN assegna team_id alla squadra beneficiaria anche per own goal,
+                    # quindi un autogol che vale per la casa ha team_id == s_home_id.
                     team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_home_id]
-                    own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_away_id]
+                    own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_home_id]
                     candidates   = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
                     idx = gh - 1
                 else:
-                    # Era un goal della squadra ospite
+                    # Era un goal della squadra ospite.
                     team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_away_id]
-                    own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_home_id]
+                    own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_away_id]
                     candidates   = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
                     idx = ga - 1
 
@@ -1557,11 +1559,10 @@ def avvia_ciclo_partita():
                     if current_assist and current_assist != current_scorer:
                         assist_line_new = f"{E_ASSIST} <i>{fmt_player(current_assist)}</i>\n"
 
-                    # Se è diventato autogol, la squadra creditata si inverte
-                    if current_type == "own goal":
-                        actual_tid = s_away_id if s_tid == s_home_id else s_home_id
-                    else:
-                        actual_tid = s_tid
+                    # actual_tid = squadra beneficiaria del goal.
+                    # ESPN assegna team_id alla squadra beneficiaria anche per own goal,
+                    # quindi non occorre inversione: s_tid è già corretto.
+                    actual_tid = s_tid
 
                     if actual_tid == s_home_id:
                         goal_score_new = f"<b>{s_home_n} {gh}</b>-{ga} {s_away_n}"
