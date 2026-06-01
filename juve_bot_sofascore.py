@@ -18,7 +18,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
-TEAM_ID             = os.getenv('TEAM_ID', '6081')        # SofaScore ID Juventus = 2697
+TEAM_ID             = os.getenv('TEAM_ID', '2697')        # SofaScore ID Juventus = 2697
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
