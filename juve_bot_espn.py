@@ -1046,14 +1046,18 @@ def avvia_ciclo_partita():
             # Se ci sono goal già segnati ma lo stato non ne ha traccia, li invia tutti
             # in ordine cronologico con il punteggio progressivo corretto.
             if state["goals_detected"] == 0 and (g_home + g_away) > 0 and not state.get("goal_messages"):
-                # Deduplica eventi ESPN per uid, poi ordina per minuto
+                # Deduplica eventi ESPN: prima per uid, poi per (minuto, marcatore).
+                # ESPN a volte crea due entry con uid diversi per lo stesso gol (es. Casemiro 39').
                 _seen_uids = set()
+                _seen_min_player = set()
                 _deduped = []
                 for e in events:
                     if e["type"] in ("goal", "own goal", "penalty goal"):
                         uid = e.get("uid", f"{e['minute']}_{e.get('player_name','')}")
-                        if uid not in _seen_uids:
+                        min_player_key = f"{e['minute']}_{e.get('player_name','').strip().lower()}"
+                        if uid not in _seen_uids and min_player_key not in _seen_min_player:
                             _seen_uids.add(uid)
+                            _seen_min_player.add(min_player_key)
                             _deduped.append(e)
                 goal_events_all = sorted(_deduped, key=lambda x: x["minute"])
                 ch, ca = 0, 0  # punteggio progressivo
@@ -1291,7 +1295,7 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
-                is_juve_match = home_id == '111' or away_id == '111'
+                is_juve_match = home_id == '205' or away_id == '205'
                 if is_juve_match:
                     canva_token = get_valid_token()
                     if canva_token:
