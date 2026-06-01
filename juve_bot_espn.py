@@ -1183,19 +1183,19 @@ def avvia_ciclo_partita():
 
                 # Inizio 1°ET — solo se non siamo già all'intervallo o al 2°ET
                 if "1ET_START" not in state["sent_periods"] and not is_et_halftime and not is_second_et:
-                    send_telegram(f"<b>INIZIO 1° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    send_telegram(f"<b>INIZIO 1T SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_START")
                     salva_stato_su_gist(state)
                     state_changed = True
 
                 if (is_et_halftime or is_second_et) and "1ET_END" not in state["sent_periods"]:
-                    send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    send_telegram(f"<b>FINE 1T SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_END")
                     salva_stato_su_gist(state)
                     state_changed = True
 
                 if is_second_et and "2ET_START" not in state["sent_periods"]:
-                    send_telegram(f"<b>INIZIO 2° TEMPO SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    send_telegram(f"<b>INIZIO 2T SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("2ET_START")
                     salva_stato_su_gist(state)
                     state_changed = True
@@ -1206,7 +1206,7 @@ def avvia_ciclo_partita():
                     state["sent_periods"].append("1ET_START")
                     state_changed = True
                 if "1ET_END" not in state["sent_periods"]:
-                    send_telegram(f"<b>FINE 1° TEMPO SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    send_telegram(f"<b>FINE 1T SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                     state["sent_periods"].append("1ET_END")
                     salva_stato_su_gist(state)
                     state_changed = True
