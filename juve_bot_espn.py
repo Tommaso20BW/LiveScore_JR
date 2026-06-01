@@ -273,7 +273,7 @@ def salva_stato_su_gist(state: dict):
     if not GH_PAT or not GIST_ID:
         return
     try:
-        payload = {"files": {"match_state.json": {"content": json.dumps(state, ensure_ascii=False)}}}
+        payload = {"files": {"match_state.json": {"content": json.dumps(state, ensure_ascii=False, indent=2)}}}
         r = requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
                            json=payload, timeout=10)
         if r.status_code == 200:
