@@ -405,6 +405,14 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         norm = normalize_event_type(ev_type)
         if not norm:
             return
+        # Deduplicazione per contenuto: evita duplicati da fonti diverse (commentary/keyEvents/scoringPlays)
+        # con uid diversi ma stesso evento reale. Tolleranza di ±1 minuto per recuperi (es. "45'+1").
+        for existing in events:
+            if (existing["type"] == norm
+                    and abs(existing["minute"] - minute) <= 1
+                    and existing["team_id"] == str(team_id)
+                    and existing["player_name"] == player_name):
+                return
         events.append({
             "type":        norm,
             "minute":      minute,
@@ -1254,9 +1262,9 @@ def avvia_ciclo_partita():
                         elif e["type"] == "penalty goal":
                             ps += " (Rig.)"
                         entry = f"{e['minute']}' {ps}"
-                        tid   = e["team_id"]
-                        if e["type"] == "own goal":
-                            tid = away_id if tid == home_id else home_id
+                        # ESPN assegna team_id alla squadra beneficiaria anche per gli autogol,
+                        # quindi NON occorre invertire: usiamo e["team_id"] direttamente.
+                        tid = e["team_id"]
                         (home_scorers if tid == home_id else away_scorers).append(entry)
 
                 if home_scorers or away_scorers:
