@@ -1655,8 +1655,8 @@ def avvia_ciclo_partita():
                     if card_id not in state["sent_cards"]:
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🟥 ROSSO {e['minute']}' {p_name} → Telegram inviato")
                         send_telegram(
-                            f"<b>CARTELLINO ROSSO {E_RED}</b>\n\n"
-                            f"{E_EXIT} <i>{e['minute']}' {p_name}</i>\n\n{e_comp} {hashtag}"
+                            f"<b>CARTELLINO ROSSO · {e['minute']}' {E_RED}</b>\n\n"
+                            f"{E_EXIT} <i>{p_name}</i>\n\n{e_comp} {hashtag}"
                         )
                         state["sent_cards"].append(card_id)
                         state_changed = True
@@ -1671,8 +1671,8 @@ def avvia_ciclo_partita():
                         team_name = home_name if e["team_id"] == home_id else away_name
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🥅 RIGORE SBAGLIATO {team_name.upper()} {e['minute']}' {fmt_player(e['player_name'])} → Telegram inviato")
                         send_telegram(
-                            f"<b>RIGORE SBAGLIATO {team_name.upper()} {E_KICK}</b>\n\n"
-                            f"{E_PEN_KO} <i>{e['minute']}' {fmt_player(e['player_name'])}</i>\n\n"
+                            f"<b>RIGORE SBAGLIATO {team_name.upper()} · {e['minute']}' {E_KICK}</b>\n\n"
+                            f"{E_PEN_KO} <i>{fmt_player(e['player_name'])}</i>\n\n"
                             f"{e_comp} {hashtag}"
                         )
 
