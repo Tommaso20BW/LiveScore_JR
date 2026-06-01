@@ -1,43 +1,49 @@
-name: Juve Bot – SofaScore Live
+name: Juventus Live Score - SofaScore
 
 on:
   workflow_dispatch:
+    inputs:
+      team_id:
+        description: 'Team ID SofaScore (Juventus: 2697)'
+        required: false
+        default: '2697'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: juve-live-bot
+  cancel-in-progress: false
 
 jobs:
-  live-bot:
+  live-score:
     runs-on: ubuntu-latest
-    timeout-minutes: 200       # ~3h20min: copre partita + supplementari + rigori
-
-    env:
-      TELEGRAM_TOKEN:      ${{ secrets.TELEGRAM_TOKEN }}
-      TELEGRAM_TO:         ${{ secrets.TELEGRAM_TO }}
-      TEAM_ID:             ${{ secrets.TEAM_ID }}          # SofaScore team ID (Juventus = 2697)
-      GH_PAT:              ${{ secrets.GH_PAT }}
-      GITHUB_REPOSITORY:   ${{ github.repository }}
-      GIST_ID:             ${{ secrets.GIST_ID }}
-      CANVA_CLIENT_ID:     ${{ secrets.CANVA_CLIENT_ID }}
-      CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
-      CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
+    timeout-minutes: 240
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
 
-      - name: Installa dipendenze Python
+      - name: Install dependencies
         run: |
-          pip install --upgrade pip
           pip install requests pillow pynacl playwright
+          playwright install firefox
+          playwright install-deps firefox
 
-      - name: Installa browser Playwright (Firefox)
-        run: |
-          # Installa SOLO Firefox per tenere il build leggero e veloce
-          python -m playwright install firefox
-          python -m playwright install-deps firefox
-
-      - name: Avvia il bot
+      - name: Run Live Score Bot
+        env:
+          TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO:          ${{ secrets.TELEGRAM_TO }}
+          GH_PAT:               ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY:    ${{ github.repository }}
+          GIST_ID:              ${{ secrets.GIST_ID }}
+          CANVA_CLIENT_ID:      ${{ secrets.CANVA_CLIENT_ID }}
+          CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
+          CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
+          TEAM_ID:              ${{ github.event.inputs.team_id || '2697' }}
         run: python -u juve_bot_sofascore.py
