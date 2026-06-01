@@ -1061,19 +1061,14 @@ def avvia_ciclo_partita():
                     # Stop se abbiamo già raggiunto il punteggio reale
                     if ch + ca >= g_home + g_away:
                         break
-                    # Aggiorna punteggio progressivo
-                    # Per gli autogol ESPN team_id è la squadra del giocatore (che subisce),
-                    # quindi il punto va alla squadra AVVERSARIA
-                    if ge["type"] == "own goal":
-                        if ge["team_id"] == home_id:
-                            ca += 1  # autogol giocatore casa → punto a ospite
-                        else:
-                            ch += 1  # autogol giocatore ospite → punto a casa
+                    # Aggiorna punteggio progressivo.
+                    # ESPN assegna team_id alla squadra BENEFICIARIA del goal,
+                    # anche per gli autogol: team_id="Panama" se Panama beneficia
+                    # dell'autogol di un giocatore del Brazil. Non occorre inversione.
+                    if ge["team_id"] == home_id:
+                        ch += 1
                     else:
-                        if ge["team_id"] == home_id:
-                            ch += 1
-                        else:
-                            ca += 1
+                        ca += 1
 
                     p_name = ge.get("player_name", "")
                     a_name = ge.get("assist_name", "")
@@ -1086,11 +1081,10 @@ def avvia_ciclo_partita():
                     scorer_line = f"{E_BALL} <i>{ps}</i>\n" if ps else ""
                     assist_line = f"{E_ASSIST} <i>{fmt_player(a_name)}</i>\n" if a_name and a_name != p_name else ""
 
-                    # actual_tid = squadra che ha SEGNATO (beneficiato del goal)
-                    if ge["type"] == "own goal":
-                        actual_tid = away_id if ge["team_id"] == home_id else home_id
-                    else:
-                        actual_tid = ge["team_id"]
+                    # actual_tid = squadra che ha SEGNATO (beneficiato del goal).
+                    # ESPN assegna team_id alla squadra beneficiaria anche per own goal.
+                    actual_tid = ge["team_id"]
+
                     if actual_tid == home_id:
                         goal_score = f"<b>{home_name} {ch}</b>-{ca} {away_name}"
                     else:
