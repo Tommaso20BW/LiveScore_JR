@@ -1639,7 +1639,7 @@ def avvia_ciclo_partita():
                     _min_cambio = g["subs"][0]["minute"]
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 CAMBIO {team_title} {_min_cambio}' | ↑ {ins} / ↓ {outs} → Telegram inviato")
                     send_telegram(
-                        f"<b>CAMBIO {team_title} {E_SUB}</b>\n\n"
+                        f"<b>CAMBIO {team_title} · {_min_cambio}' {E_SUB}</b>\n\n"
                         f"{E_UP} {ins}\n"
                         f"{E_DOWN} {outs}\n\n"
                         f"{e_comp} {hashtag}"
