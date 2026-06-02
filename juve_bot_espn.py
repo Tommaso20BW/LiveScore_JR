@@ -318,8 +318,22 @@ def get_canva_image(access_token: str):
         return None
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     try:
+        rp = requests.get(
+            f"https://api.canva.com/rest/v1/designs/{CANVA_DESIGN_ID}/pages",
+            headers=headers, timeout=15
+        )
+        pagina_num = None
+        if rp.status_code == 200:
+            for p in rp.json().get("items", []):
+                if p.get("title", "").strip().lower() == "full time":
+                    pagina_num = p["page_number"]
+                    break
+        if not pagina_num:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Pagina 'Full Time' non trovata, uso PAGINA_TARGET={PAGINA_TARGET}")
+            pagina_num = PAGINA_TARGET
+
         r = requests.post("https://api.canva.com/rest/v1/exports", headers=headers, json={
-            "design_id": CANVA_DESIGN_ID, "format": {"type": "png", "pages": [PAGINA_TARGET]}
+            "design_id": CANVA_DESIGN_ID, "format": {"type": "png", "pages": [pagina_num]}
         }, timeout=15)
         if r.status_code not in [200, 201]:
             return None
