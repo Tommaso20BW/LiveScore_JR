@@ -17,5 +17,5 @@ r = requests.get(
     f"https://api.canva.com/rest/v1/designs/{CANVA_DESIGN_ID}/pages",
     headers={"Authorization": f"Bearer {token}"}
 )
-print(r.status_code)
-print(r.json())
+for p in r.json()["items"]:
+    print(p["page_number"], p["thumbnail"]["url"].split("/")[6])
