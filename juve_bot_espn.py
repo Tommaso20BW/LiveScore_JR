@@ -1317,7 +1317,7 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
-                is_juve_match = home_id == '111' or away_id == '111'
+                is_juve_match = home_id == '465' or away_id == '111'
                 if is_juve_match:
                     canva_token = get_valid_token()
                     if canva_token:
