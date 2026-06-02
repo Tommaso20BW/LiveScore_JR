@@ -313,6 +313,8 @@ def get_valid_token():
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore connessione Canva: {e}")
     return None
 
+CANVA_PAGE_THUMB_ID = "1785"  # ID stabile pagina Full Time (nel path del thumbnail)
+
 def get_canva_image(access_token: str):
     if not access_token:
         return None
@@ -325,11 +327,13 @@ def get_canva_image(access_token: str):
         pagina_num = None
         if rp.status_code == 200:
             for p in rp.json().get("items", []):
-                if p.get("title", "").strip().lower() == "full time":
+                thumb_url = p.get("thumbnail", {}).get("url", "")
+                if f"/{CANVA_PAGE_THUMB_ID}/" in thumb_url:
                     pagina_num = p["page_number"]
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Pagina Full Time trovata: pagina {pagina_num}")
                     break
         if not pagina_num:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Pagina 'Full Time' non trovata, uso PAGINA_TARGET={PAGINA_TARGET}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Pagina con thumb_id={CANVA_PAGE_THUMB_ID} non trovata, uso PAGINA_TARGET={PAGINA_TARGET}")
             pagina_num = PAGINA_TARGET
 
         r = requests.post("https://api.canva.com/rest/v1/exports", headers=headers, json={
@@ -1317,7 +1321,7 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
-                is_juve_match = home_id == '465' or away_id == '111'
+                is_juve_match = home_id == '111' or away_id == '111'
                 if is_juve_match:
                     canva_token = get_valid_token()
                     if canva_token:
