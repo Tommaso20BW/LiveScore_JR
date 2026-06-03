@@ -973,7 +973,7 @@ def avvia_ciclo_partita():
             "goals_detected":         0,
             "prev_home_goals":        0,
             "prev_away_goals":        0,
-            "sent_subs":              [],
+            "sent_subs":              {},
             "sent_cards":             [],
             "penalties_count":        0,
             "sent_stats":             [],
@@ -981,6 +981,9 @@ def avvia_ciclo_partita():
             "shootout_message_id":    None,
             "goal_messages":          {},
         }
+    # Retrocompatibilità: se sent_subs è ancora una lista (Gist vecchio), converti in dict vuoto
+    if isinstance(state.get("sent_subs"), list):
+        state["sent_subs"] = {}
 
     while True:
         sleep_time = 6
@@ -1601,57 +1604,75 @@ def avvia_ciclo_partita():
                     state_changed = True
 
             # --- Cambi ---
-            # Se ci sono cambi nuovi, attende 60s e rilegge per raggruppare
-            new_subs_check = []
+            # Ogni cambio nuovo viene inviato subito (send_telegram_get_id).
+            # Se un cambio della stessa squadra entro ±2 minuti ha già un messaggio,
+            # viene fatto un edit per aggiungere i nuovi giocatori.
+            # state["sent_subs"] è un dict:
+            #   chiave = "team_id:minuto_riferimento"
+            #   valore = {"msg_id": int, "minute": int, "ins": [...], "outs": [...], "sub_ids": [...]}
+
             for e in events:
-                if e["type"] == "substitution":
-                    sub_id = e["uid"]
-                    if sub_id not in state["sent_subs"]:
-                        new_subs_check.append({**e, "sub_id": sub_id})
+                if e["type"] != "substitution":
+                    continue
+                sub_id = e["uid"]
 
-            if new_subs_check:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 Cambio rilevato, raggruppo per 60s...")
-                # Poll ogni 6 sec per 60 sec per accumulare tutti i cambi
-                data_subs = data
-                for _ in range(10):
-                    time.sleep(6)
-                    fresh = fetch_evento(event_id, league_slug)
-                    if fresh:
-                        data_subs = fresh
-                events_subs = parse_events(data_subs, home_name, away_name, home_id, away_id)
+                # Controlla se questo sub_id è già stato processato
+                already_sent = any(
+                    sub_id in slot["sub_ids"]
+                    for slot in state["sent_subs"].values()
+                )
+                if already_sent:
+                    continue
 
-                new_subs = []
-                for e in events_subs:
-                    if e["type"] == "substitution":
-                        sub_id = e["uid"]
-                        if sub_id not in state["sent_subs"]:
-                            new_subs.append({**e, "sub_id": sub_id})
+                team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
+                player_in  = fmt_player(e["assist_name"])
+                player_out = fmt_player(e["player_name"])
+                sub_min    = e["minute"]
 
-                # Raggruppa: stessa squadra, minuto entro ±2
-                groups = []
-                for sub in new_subs:
-                    placed = False
-                    for g in groups:
-                        if g["team_id"] == sub["team_id"] and abs(g["minute"] - sub["minute"]) <= 2:
-                            g["subs"].append(sub)
-                            placed = True
-                            break
-                    if not placed:
-                        groups.append({"team_id": sub["team_id"], "minute": sub["minute"], "subs": [sub]})
+                # Cerca uno slot esistente per stessa squadra entro ±2 minuti
+                slot_key = None
+                for k, slot in state["sent_subs"].items():
+                    k_team = k.split(":")[0]
+                    if k_team == e["team_id"] and abs(slot["minute"] - sub_min) <= 2:
+                        slot_key = k
+                        break
 
-                for g in groups:
-                    team_title = home_name.upper() if g["team_id"] == home_id else away_name.upper()
-                    ins  = ", ".join(fmt_player(s["assist_name"]) for s in g["subs"])
-                    outs = ", ".join(fmt_player(s["player_name"]) for s in g["subs"])
-                    _min_cambio = g["subs"][0]["minute"]
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 CAMBIO {team_title} {_min_cambio}' | ↑ {ins} / ↓ {outs} → Telegram inviato")
-                    send_telegram(
-                        f"<b>CAMBIO {team_title} · {_min_cambio}' {E_SUB}</b>\n\n"
-                        f"{E_UP} {ins}\n"
-                        f"{E_DOWN} {outs}\n\n"
+                if slot_key:
+                    # Edit del messaggio esistente aggiungendo il nuovo giocatore
+                    slot = state["sent_subs"][slot_key]
+                    slot["ins"].append(player_in)
+                    slot["outs"].append(player_out)
+                    slot["sub_ids"].append(sub_id)
+                    _min_ref = slot["minute"]
+                    ins_str  = ", ".join(slot["ins"])
+                    outs_str = ", ".join(slot["outs"])
+                    new_text = (
+                        f"<b>CAMBIO {team_title} · {_min_ref}' {E_SUB}</b>\n\n"
+                        f"{E_UP} {ins_str}\n"
+                        f"{E_DOWN} {outs_str}\n\n"
                         f"{e_comp} {hashtag}"
                     )
-                    state["sent_subs"].extend(s["sub_id"] for s in g["subs"])
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CAMBIO EDIT {team_title} {_min_ref}' | ↑ {ins_str} / ↓ {outs_str}")
+                    send_telegram_edit(slot["msg_id"], new_text)
+                    state_changed = True
+                else:
+                    # Nuovo messaggio
+                    new_text = (
+                        f"<b>CAMBIO {team_title} · {sub_min}' {E_SUB}</b>\n\n"
+                        f"{E_UP} {player_in}\n"
+                        f"{E_DOWN} {player_out}\n\n"
+                        f"{e_comp} {hashtag}"
+                    )
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 CAMBIO {team_title} {sub_min}' | ↑ {player_in} / ↓ {player_out} → Telegram inviato")
+                    msg_id = send_telegram_get_id(new_text)
+                    new_key = f"{e['team_id']}:{sub_min}"
+                    state["sent_subs"][new_key] = {
+                        "msg_id":  msg_id,
+                        "minute":  sub_min,
+                        "ins":     [player_in],
+                        "outs":    [player_out],
+                        "sub_ids": [sub_id],
+                    }
                     state_changed = True
 
             # --- Cartellini rossi / doppio giallo ---
