@@ -996,8 +996,43 @@ def italianizza_squadra(nome_espn: str) -> str:
 
         return True
 
+    def _wiki_titolo_canonico(termine: str) -> str | None:
+        """
+        Chiama l'API query di Wikipedia IT per ottenere il titolo canonico
+        della pagina (seguendo i redirect), così "Italy" → "Italia",
+        "Luxembourg" → "Lussemburgo", "FC Barcelona" → "FC Barcelona", ecc.
+        Restituisce None se la pagina non esiste.
+        """
+        try:
+            r2 = requests.get(
+                "https://it.wikipedia.org/w/api.php",
+                params={
+                    "action":      "query",
+                    "titles":      termine,
+                    "redirects":   1,
+                    "format":      "json",
+                    "formatversion": 2,
+                },
+                timeout=5,
+                headers={"User-Agent": "JuveBot/1.0 (Telegram soccer bot)"},
+            )
+            if r2.status_code == 200:
+                pages = r2.json().get("query", {}).get("pages", [])
+                if pages and not pages[0].get("missing"):
+                    return pages[0].get("title")
+        except Exception:
+            pass
+        return None
+
     try:
-        # Cerca con opensearch su Wikipedia IT, recupera i primi 3 risultati
+        # Step 1: prova direttamente il titolo canonico (segue redirect es. "Italy" → "Italia")
+        titolo_diretto = _wiki_titolo_canonico(nome_espn)
+        if titolo_diretto:
+            _wiki_cache[key] = titolo_diretto
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] 🌍 Wikipedia IT: «{nome_espn}» → «{titolo_diretto}»")
+            return titolo_diretto
+
+        # Step 2: fallback opensearch per nomi parziali/abbreviati (es. "Man City" → "Manchester City F.C.")
         r = requests.get(
             "https://it.wikipedia.org/w/api.php",
             params={
@@ -1014,13 +1049,14 @@ def italianizza_squadra(nome_espn: str) -> str:
             data = r.json()
             titles = data[1] if len(data) > 1 else []
             for titolo in titles:
-                if _sembra_club(titolo, nome_espn):
-                    _wiki_cache[key] = titolo
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🌍 Wikipedia IT: «{nome_espn}» → «{titolo}»")
-                    return titolo
-            # Nessun risultato valido tra i candidati
+                # Risolvi anche qui i redirect per avere il titolo canonico
+                titolo_can = _wiki_titolo_canonico(titolo) or titolo
+                if _sembra_club(titolo_can, nome_espn):
+                    _wiki_cache[key] = titolo_can
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🌍 Wikipedia IT: «{nome_espn}» → «{titolo_can}»")
+                    return titolo_can
             if titles:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Wikipedia IT: «{nome_espn}» → nessun titolo club valido {titles}, uso nome ESPN")
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Wikipedia IT: «{nome_espn}» → nessun titolo valido {titles}, uso nome ESPN")
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  italianizza_squadra({nome_espn}): {e}")
 
