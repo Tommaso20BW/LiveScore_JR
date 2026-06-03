@@ -59,7 +59,7 @@ LEAGUE_SLUGS = [
     "uefa.euro", "uefa.euro.q", "uefa.nations",
     "conmebol.america", "conmebol.america.q",
     "concacaf.gold", "concacaf.nations",
-    "caf.nations", "caf.nations.q",
+    "caf.nations", "caf.nations.q", "usa.usl.l1",
     "afc.asian_cup", "afc.asian_cup.q"
 ]
 
