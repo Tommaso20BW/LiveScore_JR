@@ -856,8 +856,8 @@ def parse_score(competitors):
     return (
         home.get("team", {}).get("id", ""),
         away.get("team", {}).get("id", ""),
-        italianizza_squadra(home.get("team", {}).get("displayName", "Home")),
-        italianizza_squadra(away.get("team", {}).get("displayName", "Away")),
+        home.get("team", {}).get("displayName", "Home"),
+        away.get("team", {}).get("displayName", "Away"),
         int(home.get("score", 0) or 0),
         int(away.get("score", 0) or 0),
     )
@@ -940,129 +940,8 @@ TEAM_ABBREVIATIONS = {
 
 def build_hashtag(home_name, away_name):
     def abbr(name):
-        # Cerca prima nel dizionario abbreviazioni con il nome corrente (italiano o ESPN)
-        if name.lower() in TEAM_ABBREVIATIONS:
-            return TEAM_ABBREVIATIONS[name.lower()]
-        # Cerca anche con il nome ESPN originale (prima dell'italianizzazione)
-        for espn_name, it_name in _wiki_cache.items():
-            if it_name.lower() == name.lower() and espn_name in TEAM_ABBREVIATIONS:
-                return TEAM_ABBREVIATIONS[espn_name]
-        return name.replace(" ", "")
+        return TEAM_ABBREVIATIONS.get(name.lower(), name.replace(" ", ""))
     return f"#{abbr(home_name)}{abbr(away_name)}"
-
-# ==============================================================================
-# ITALIANIZZAZIONE NOMI SQUADRE (Wikipedia IT)
-# ==============================================================================
-_wiki_cache: dict[str, str] = {}
-
-def italianizza_squadra(nome_espn: str) -> str:
-    """
-    Restituisce il nome italiano della squadra interrogando Wikipedia IT.
-    Usa una cache in-memory per evitare chiamate ripetute nella stessa sessione.
-    Fallback al nome ESPN originale in caso di errore o nessun risultato.
-    """
-    if not nome_espn:
-        return nome_espn
-    key = nome_espn.strip().lower()
-    if key in _wiki_cache:
-        return _wiki_cache[key]
-
-    # Parole chiave che indicano che il risultato Wikipedia NON è un club calcistico
-    _PAROLE_NON_CLUB = (
-        "championship", "campionato", "federazione", "nazionale", "territory",
-        "territories", "island", "islands", "isola", "isole", "territorio",
-        "gibraltar", "country", "stato", "state", "province", "città", "city",
-        "cup ", "tournament", "league ", "divisione", "district",
-    )
-
-    def _sembra_club(titolo: str, originale: str) -> bool:
-        """
-        Ritorna True solo se il titolo Wikipedia sembra davvero un club calcistico:
-        - deve contenere (o essere molto simile a) parole del nome originale
-        - non deve contenere parole tipiche di pagine geografiche o competizioni
-        """
-        t_low = titolo.strip().lower()
-        o_low = originale.strip().lower()
-
-        # Scarta titoli che contengono parole non-club
-        for parola in _PAROLE_NON_CLUB:
-            if parola in t_low:
-                return False
-
-        # Il titolo deve condividere almeno una parola significativa (>3 lettere) col nome ESPN
-        parole_orig = [w for w in o_low.split() if len(w) > 3]
-        if parole_orig and not any(w in t_low for w in parole_orig):
-            return False
-
-        return True
-
-    def _wiki_titolo_canonico(termine: str) -> str | None:
-        """
-        Chiama l'API query di Wikipedia IT per ottenere il titolo canonico
-        della pagina (seguendo i redirect), così "Italy" → "Italia",
-        "Luxembourg" → "Lussemburgo", "FC Barcelona" → "FC Barcelona", ecc.
-        Restituisce None se la pagina non esiste.
-        """
-        try:
-            r2 = requests.get(
-                "https://it.wikipedia.org/w/api.php",
-                params={
-                    "action":      "query",
-                    "titles":      termine,
-                    "redirects":   1,
-                    "format":      "json",
-                    "formatversion": 2,
-                },
-                timeout=5,
-                headers={"User-Agent": "JuveBot/1.0 (Telegram soccer bot)"},
-            )
-            if r2.status_code == 200:
-                pages = r2.json().get("query", {}).get("pages", [])
-                if pages and not pages[0].get("missing"):
-                    return pages[0].get("title")
-        except Exception:
-            pass
-        return None
-
-    try:
-        # Step 1: prova direttamente il titolo canonico (segue redirect es. "Italy" → "Italia")
-        titolo_diretto = _wiki_titolo_canonico(nome_espn)
-        if titolo_diretto:
-            _wiki_cache[key] = titolo_diretto
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] 🌍 Wikipedia IT: «{nome_espn}» → «{titolo_diretto}»")
-            return titolo_diretto
-
-        # Step 2: fallback opensearch per nomi parziali/abbreviati (es. "Man City" → "Manchester City F.C.")
-        r = requests.get(
-            "https://it.wikipedia.org/w/api.php",
-            params={
-                "action":    "opensearch",
-                "search":    nome_espn,
-                "limit":     3,
-                "namespace": 0,
-                "format":    "json",
-            },
-            timeout=5,
-            headers={"User-Agent": "JuveBot/1.0 (Telegram soccer bot)"},
-        )
-        if r.status_code == 200:
-            data = r.json()
-            titles = data[1] if len(data) > 1 else []
-            for titolo in titles:
-                # Risolvi anche qui i redirect per avere il titolo canonico
-                titolo_can = _wiki_titolo_canonico(titolo) or titolo
-                if _sembra_club(titolo_can, nome_espn):
-                    _wiki_cache[key] = titolo_can
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🌍 Wikipedia IT: «{nome_espn}» → «{titolo_can}»")
-                    return titolo_can
-            if titles:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Wikipedia IT: «{nome_espn}» → nessun titolo valido {titles}, uso nome ESPN")
-    except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  italianizza_squadra({nome_espn}): {e}")
-
-    # Fallback: tieni il nome ESPN originale
-    _wiki_cache[key] = nome_espn
-    return nome_espn
 
 # ==============================================================================
 # CICLO PRINCIPALE
