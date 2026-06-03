@@ -967,16 +967,45 @@ def italianizza_squadra(nome_espn: str) -> str:
     if key in _wiki_cache:
         return _wiki_cache[key]
 
+    # Parole chiave che indicano che il risultato Wikipedia NON è un club calcistico
+    _PAROLE_NON_CLUB = (
+        "championship", "campionato", "federazione", "nazionale", "territory",
+        "territories", "island", "islands", "isola", "isole", "territorio",
+        "gibraltar", "country", "stato", "state", "province", "città", "city",
+        "cup ", "tournament", "league ", "divisione", "district",
+    )
+
+    def _sembra_club(titolo: str, originale: str) -> bool:
+        """
+        Ritorna True solo se il titolo Wikipedia sembra davvero un club calcistico:
+        - deve contenere (o essere molto simile a) parole del nome originale
+        - non deve contenere parole tipiche di pagine geografiche o competizioni
+        """
+        t_low = titolo.strip().lower()
+        o_low = originale.strip().lower()
+
+        # Scarta titoli che contengono parole non-club
+        for parola in _PAROLE_NON_CLUB:
+            if parola in t_low:
+                return False
+
+        # Il titolo deve condividere almeno una parola significativa (>3 lettere) col nome ESPN
+        parole_orig = [w for w in o_low.split() if len(w) > 3]
+        if parole_orig and not any(w in t_low for w in parole_orig):
+            return False
+
+        return True
+
     try:
-        # Cerca prima con opensearch (autocompletamento) per trovare il titolo esatto
+        # Cerca con opensearch su Wikipedia IT, recupera i primi 3 risultati
         r = requests.get(
             "https://it.wikipedia.org/w/api.php",
             params={
-                "action":   "opensearch",
-                "search":   nome_espn,
-                "limit":    1,
+                "action":    "opensearch",
+                "search":    nome_espn,
+                "limit":     3,
                 "namespace": 0,
-                "format":   "json",
+                "format":    "json",
             },
             timeout=5,
             headers={"User-Agent": "JuveBot/1.0 (Telegram soccer bot)"},
@@ -984,12 +1013,14 @@ def italianizza_squadra(nome_espn: str) -> str:
         if r.status_code == 200:
             data = r.json()
             titles = data[1] if len(data) > 1 else []
+            for titolo in titles:
+                if _sembra_club(titolo, nome_espn):
+                    _wiki_cache[key] = titolo
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🌍 Wikipedia IT: «{nome_espn}» → «{titolo}»")
+                    return titolo
+            # Nessun risultato valido tra i candidati
             if titles:
-                titolo = titles[0]
-                # Scarta se il titolo non sembra un club (es. pagine di disambiguazione generiche)
-                _wiki_cache[key] = titolo
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🌍 Wikipedia IT: «{nome_espn}» → «{titolo}»")
-                return titolo
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Wikipedia IT: «{nome_espn}» → nessun titolo club valido {titles}, uso nome ESPN")
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  italianizza_squadra({nome_espn}): {e}")
 
