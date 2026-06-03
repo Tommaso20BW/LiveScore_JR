@@ -6,12 +6,16 @@ import sys
 import base64
 from PIL import Image
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
+
+ITALY_TZ = ZoneInfo('Europe/Rome')
+def now_it(): return datetime.now(ITALY_TZ).strftime('%H:%M:%S')
 from playwright.sync_api import sync_playwright
 
 try:
     from nacl import encoding, public
 except ImportError:
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  pynacl non installata — aggiornamento Secrets GitHub non disponibile")
+    print(f"[{now_it()}] ⚠️  pynacl non installata — aggiornamento Secrets GitHub non disponibile")
 
 # ==============================================================================
 # CONFIGURAZIONE
@@ -162,14 +166,14 @@ def fmt_player(full_name: str) -> str:
 # ==============================================================================
 def send_telegram(text: str):
     if not BOT_TOKEN or not CHAT_ID:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  BOT_TOKEN o CHAT_ID mancanti")
+        print(f"[{now_it()}] ⚠️  BOT_TOKEN o CHAT_ID mancanti")
         return
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
         r = requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}, timeout=10)
         r.raise_for_status()
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore send_telegram: {e}")
+        print(f"[{now_it()}] ❌ Errore send_telegram: {e}")
 
 def send_telegram_edit(message_id: int, text: str):
     """Edita un messaggio Telegram già inviato."""
@@ -183,12 +187,12 @@ def send_telegram_edit(message_id: int, text: str):
         }, timeout=10)
         r.raise_for_status()
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore editMessageText: {e}")
+        print(f"[{now_it()}] ❌ Errore editMessageText: {e}")
 
 def send_telegram_get_id(text: str) -> int | None:
     """Invia un messaggio Telegram e restituisce il message_id."""
     if not BOT_TOKEN or not CHAT_ID:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  BOT_TOKEN o CHAT_ID mancanti")
+        print(f"[{now_it()}] ⚠️  BOT_TOKEN o CHAT_ID mancanti")
         return None
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
@@ -197,7 +201,7 @@ def send_telegram_get_id(text: str) -> int | None:
         msg_id = r.json().get("result", {}).get("message_id")
         return msg_id
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore send_telegram_get_id: {e}")
+        print(f"[{now_it()}] ❌ Errore send_telegram_get_id: {e}")
         return None
 
 def send_telegram_with_photo(text: str, photo_bytes):
@@ -221,7 +225,7 @@ def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str):
             requests.post(url, data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"},
                           files={"photo": ("stats.png", f, "image/png")}, timeout=25)
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore invio foto statistiche: {e}")
+        print(f"[{now_it()}] ❌ Errore invio foto statistiche: {e}")
 
 # ==============================================================================
 # GITHUB SECRETS
@@ -244,7 +248,7 @@ def update_github_secret(secret_name: str, new_value: str):
         if r.status_code in [201, 204]:
             return True
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore update GitHub secret: {e}")
+        print(f"[{now_it()}] ❌ Errore update GitHub secret: {e}")
     return False
 
 # ==============================================================================
@@ -266,7 +270,7 @@ def leggi_stato_da_gist():
             return None
         return json.loads(content)
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore lettura Gist: {e}")
+        print(f"[{now_it()}] ❌ Errore lettura Gist: {e}")
         return None
 
 def salva_stato_su_gist(state: dict):
@@ -279,7 +283,7 @@ def salva_stato_su_gist(state: dict):
         if r.status_code == 200:
             pass
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore salvataggio Gist: {e}")
+        print(f"[{now_it()}] ❌ Errore salvataggio Gist: {e}")
 
 def resetta_gist():
     if not GH_PAT or not GIST_ID:
@@ -289,14 +293,14 @@ def resetta_gist():
         requests.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
                        json=payload, timeout=10)
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore reset Gist: {e}")
+        print(f"[{now_it()}] ❌ Errore reset Gist: {e}")
 
 # ==============================================================================
 # CANVA
 # ==============================================================================
 def get_valid_token():
     if not CANVA_REFRESH_TOKEN:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ CANVA_REFRESH_TOKEN mancante")
+        print(f"[{now_it()}] ❌ CANVA_REFRESH_TOKEN mancante")
         return None
     try:
         r = requests.post("https://api.canva.com/rest/v1/oauth/token", data={
@@ -308,9 +312,9 @@ def get_valid_token():
             if "refresh_token" in tokens and tokens["refresh_token"] != CANVA_REFRESH_TOKEN:
                 update_github_secret("CANVA_REFRESH_TOKEN", tokens["refresh_token"])
             return tokens["access_token"]
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore token Canva: {r.text}")
+        print(f"[{now_it()}] ❌ Errore token Canva: {r.text}")
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore connessione Canva: {e}")
+        print(f"[{now_it()}] ❌ Errore connessione Canva: {e}")
     return None
 
 def get_canva_image(access_token: str):
@@ -344,7 +348,7 @@ def get_canva_image(access_token: str):
                 elif stato == "failed":
                     return None
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore export Canva: {e}")
+        print(f"[{now_it()}] ❌ Errore export Canva: {e}")
     return None
 
 # ==============================================================================
@@ -460,7 +464,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             team_id = _extract_team_id_from_commentary(item, home_name, away_name, home_id, away_id)
             add_event(ev_type, minute, team_id, player, assist, uid)
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing commentary: {e}")
+            print(f"[{now_it()}] ⚠️  Errore parsing commentary: {e}")
 
     # --- FONTE 2: keyEvents[] ---
     for item in data.get("keyEvents", []):
@@ -489,7 +493,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                 t_id = home_id if t_name.lower() == home_name.lower() else away_id
             add_event(ev_type, minute, t_id, player, assist, uid)
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing keyEvent: {e}")
+            print(f"[{now_it()}] ⚠️  Errore parsing keyEvent: {e}")
 
     # --- FONTE 3: scoringPlays[] (fallback) ---
     for item in data.get("scoringPlays", []):
@@ -504,7 +508,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             uid     = str(item.get("id", f"sp_{minute}_{player}"))
             add_event(ev_type, minute, team_id, player, assist, uid)
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing scoringPlay: {e}")
+            print(f"[{now_it()}] ⚠️  Errore parsing scoringPlay: {e}")
 
     # --- FONTE 4: shootout[] (rigori dal dischetto) ---
     # Struttura reale ESPN: .id=team_id, .team=stringa nome, .shots[]=calci con .didScore e .player
@@ -533,7 +537,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     ev_type = "shootout miss"
                 add_event(ev_type, 120, t_id, player, "", uid)
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing shootout: {e}")
+            print(f"[{now_it()}] ⚠️  Errore parsing shootout: {e}")
 
     return events
 
@@ -552,7 +556,7 @@ def _estrai_stats_espn(data: dict) -> dict:
                 if key:
                     raw[side][key] = val
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing boxscore.teams: {e}")
+        print(f"[{now_it()}] ⚠️  Errore parsing boxscore.teams: {e}")
 
     try:
         for comp in data.get("header", {}).get("competitions", [{}]):
@@ -564,7 +568,7 @@ def _estrai_stats_espn(data: dict) -> dict:
                     if key and key not in raw[side]:
                         raw[side][key] = str(val)
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parsing header competitors: {e}")
+        print(f"[{now_it()}] ⚠️  Errore parsing header competitors: {e}")
 
     return raw
 
@@ -793,7 +797,7 @@ body {{
             Image.alpha_composite(base_img, texture).convert("RGB").save(path_final_png, "PNG")
             return path_final_png
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore texture stats: {e}")
+            print(f"[{now_it()}] ⚠️  Errore texture stats: {e}")
 
     return path_raw_png
 
@@ -807,7 +811,7 @@ def trova_partita_oggi(team_id: str):
         now_utc.strftime("%Y%m%d"),
         (now_utc + timedelta(days=1)).strftime("%Y%m%d"),
     ]
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔍 Cerco partita per team_id={team_id}...")
+    print(f"[{now_it()}] 🔍 Cerco partita per team_id={team_id}...")
 
     for date_str in dates_to_try:
         for slug in LEAGUE_SLUGS:
@@ -825,7 +829,7 @@ def trova_partita_oggi(team_id: str):
                     competitors = competitions[0].get("competitors", [])
                     ids = [c.get("team", {}).get("id", "") for c in competitors]
                     if team_id in ids:
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Partita trovata: {league_name} — event_id={event['id']}")
+                        print(f"[{now_it()}] ✅ Partita trovata: {league_name} — event_id={event['id']}")
                         return {
                             "event_id":    event["id"],
                             "league_slug": slug,
@@ -846,7 +850,7 @@ def fetch_evento(event_id: str, league_slug: str):
             return r.json()
         return None
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore fetch evento: {e}")
+        print(f"[{now_it()}] ❌ Errore fetch evento: {e}")
         return None
 
 
@@ -916,7 +920,7 @@ def parse_status(data: dict):
 
         return "1H", elapsed
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Errore parse_status: {e}")
+        print(f"[{now_it()}] ⚠️  Errore parse_status: {e}")
         return "NS", 0
 
 
@@ -954,11 +958,11 @@ def avvia_ciclo_partita():
         test_r = requests.get(f"{ESPN_BASE}/ita.1/scoreboard",
                                params={"dates": datetime.now(timezone.utc).strftime("%Y%m%d")}, timeout=10)
     except Exception as e:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Test connettività API fallito: {e}")
+        print(f"[{now_it()}] ⚠️  Test connettività API fallito: {e}")
 
     partita = trova_partita_oggi(team_id)
     if not partita:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] 📭 Nessun evento trovato per team_id={team_id}.")
+        print(f"[{now_it()}] 📭 Nessun evento trovato per team_id={team_id}.")
         return
 
     event_id    = partita["event_id"]
@@ -1009,7 +1013,7 @@ def avvia_ciclo_partita():
             events = parse_events(data, home_name, away_name, home_id, away_id)
 
             if "_intro_logged" not in state:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
+                print(f"[{now_it()}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
                 state["_intro_logged"] = True
 
             # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s), silenziato in NS
@@ -1031,13 +1035,13 @@ def avvia_ciclo_partita():
                         now_utc            = datetime.now(timezone.utc)
                         minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
                         if minutes_to_kickoff > 60:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
+                            print(f"[{now_it()}] 🛑 Troppo presto ({minutes_to_kickoff:.0f} min al via) — bot fermato")
                             sys.exit(0)
                         if "_ns_logged" not in state:
-                            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⏳ In attesa del calcio d'inizio ({minutes_to_kickoff:.0f} min al via)")
+                            print(f"[{now_it()}] ⏳ In attesa del calcio d'inizio ({minutes_to_kickoff:.0f} min al via)")
                             state["_ns_logged"] = True
                 except Exception as e:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Impossibile leggere orario partita: {e}")
+                    print(f"[{now_it()}] ⚠️  Impossibile leggere orario partita: {e}")
                 time.sleep(6)
                 continue
 
@@ -1047,7 +1051,7 @@ def avvia_ciclo_partita():
 
             # --- Inizio primo tempo ---
             if status == "1H" and "1H" not in state["sent_periods"]:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚡️ INIZIO PARTITA → Telegram inviato")
+                print(f"[{now_it()}] ⚡️ INIZIO PARTITA → Telegram inviato")
                 send_telegram(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("1H")
                 salva_stato_su_gist(state)
@@ -1108,7 +1112,7 @@ def avvia_ciclo_partita():
                     goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
                     goal_key  = f"{ch}_{ca}"
 
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  CATCHUP GOAL {ge['minute']}\' {home_name} {ch}-{ca} {away_name} → Telegram inviato")
+                    print(f"[{now_it()}] ⚽️  CATCHUP GOAL {ge['minute']}\' {home_name} {ch}-{ca} {away_name} → Telegram inviato")
                     msg_id = send_telegram_get_id(goal_text)
                     state.setdefault("goal_messages", {})[goal_key] = {
                         "msg_id":    msg_id,
@@ -1133,7 +1137,7 @@ def avvia_ciclo_partita():
 
             # --- Fine primo tempo ---
             if status == "HT" and "HT" not in state["sent_periods"]:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏁 FINE 1° TEMPO ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+                print(f"[{now_it()}] 🏁 FINE 1° TEMPO ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                 send_telegram(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("HT")
                 salva_stato_su_gist(state)
@@ -1143,14 +1147,14 @@ def avvia_ciclo_partita():
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
                                                          "HT", league_name)
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 📊 STATS 1° TEMPO → foto Telegram inviata")
+                print(f"[{now_it()}] 📊 STATS 1° TEMPO → foto Telegram inviata")
                 send_telegram_stats_photo(png_path, "HT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("HT")
                 state_changed = True
 
             # --- Inizio secondo tempo ---
             if status == "2H" and "2H" not in state["sent_periods"]:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚡️ INIZIO 2° TEMPO → Telegram inviato")
+                print(f"[{now_it()}] ⚡️ INIZIO 2° TEMPO → Telegram inviato")
                 send_telegram(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H")
                 salva_stato_su_gist(state)
@@ -1159,7 +1163,7 @@ def avvia_ciclo_partita():
             # --- Fine regolamentari → supplementari ---
             # Copre sia la transizione live ET che il caso in cui ESPN salti direttamente a PEN/AET
             if status in ("ET", "PEN", "AET") and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏁 FINE REGOLAMENTARI ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+                print(f"[{now_it()}] 🏁 FINE REGOLAMENTARI ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                 send_telegram(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 state["sent_periods"].append("2H_END")
                 salva_stato_su_gist(state)
@@ -1325,13 +1329,13 @@ def avvia_ciclo_partita():
                                                          home_name, away_name, g_home, g_away,
                                                          "FT", league_name,
                                                          pen_home=ft_pen_home, pen_away=ft_pen_away)
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 📊 STATS FINE PARTITA → foto Telegram inviata")
+                print(f"[{now_it()}] 📊 STATS FINE PARTITA → foto Telegram inviata")
                 send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("FT")
                 state_changed = True
                 state["_reset_done"] = True
                 resetta_gist()
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🏆 FINE PARTITA ({home_name} {g_home}-{g_away} {away_name}) — bot terminato")
+                print(f"[{now_it()}] 🏆 FINE PARTITA ({home_name} {g_home}-{g_away} {away_name}) — bot terminato")
                 sys.exit(0)
 
             # --- Rilevamento goal ---
@@ -1349,7 +1353,7 @@ def avvia_ciclo_partita():
                     competitors_confirm = competitors
                 _, _, _, _, g_home_c, g_away_c = parse_score(competitors_confirm)
                 if g_home_c + g_away_c != total_goals_now:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Punteggio instabile ({g_home}-{g_away} → {g_home_c}-{g_away_c}), attendo conferma...")
+                    print(f"[{now_it()}] ⚠️  Punteggio instabile ({g_home}-{g_away} → {g_home_c}-{g_away_c}), attendo conferma...")
                     time.sleep(sleep_time)
                     continue
                 # Usa i dati confermati
@@ -1433,7 +1437,7 @@ def avvia_ciclo_partita():
                         # Il blocco correzioni penserà ad aggiungere/correggere marcatore e assist.
                         _scorer_log = f" {fmt_player(player_name)}" if player_name else " (marcatore in attesa)"
                         _assist_log = f" | assist: {fmt_player(assist_name)}" if assist_name and assist_name != player_name else ""
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚽️  GOAL{_scorer_log}{_assist_log} ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+                        print(f"[{now_it()}] ⚽️  GOAL{_scorer_log}{_assist_log} ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                         msg_id = send_telegram_get_id(goal_text)
                         state.setdefault("goal_messages", {})[goal_key] = {
                             "msg_id":    msg_id,
@@ -1464,13 +1468,13 @@ def avvia_ciclo_partita():
                 n_saved_goals = len(state.get("goal_messages", {}))
                 if total_goals_now == n_saved_goals:
                     # Il numero totale di goal non è cambiato davvero, è solo una ridistribuzione
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️  Punteggio ridistribuito (autogol?), nessun annullamento reale — ignorato")
+                    print(f"[{now_it()}] ℹ️  Punteggio ridistribuito (autogol?), nessun annullamento reale — ignorato")
                     state["prev_home_goals"] = g_home
                     state["prev_away_goals"] = g_away
                     state_changed = True
                 else:
                     # Aspetta 15s e riconferma il calo prima di mandare GOAL ANNULLATO
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Possibile annullamento, attendo conferma (90s)...")
+                    print(f"[{now_it()}] ⚠️  Possibile annullamento, attendo conferma (90s)...")
                     time.sleep(90)
                     data_cancel = fetch_evento(event_id, league_slug) or data
                     try:
@@ -1482,14 +1486,14 @@ def avvia_ciclo_partita():
                         g_home = g_home_c
                         g_away = g_away_c
                         score_str = build_score_str(home_name, away_name, g_home, g_away)
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 📺 GOAL ANNULLATO → Telegram inviato")
+                        print(f"[{now_it()}] 📺 GOAL ANNULLATO → Telegram inviato")
                         send_telegram(f"<b>GOAL ANNULLATO {E_CANCEL}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                         state["goals_detected"] = g_home_c + g_away_c
                         state["prev_home_goals"] = g_home_c
                         state["prev_away_goals"] = g_away_c
                         state_changed = True
                     else:
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️  Punteggio tornato stabile ({g_home_c}-{g_away_c}), annullamento ignorato — aggiorno eventi per correzione marcatori")
+                        print(f"[{now_it()}] ℹ️  Punteggio tornato stabile ({g_home_c}-{g_away_c}), annullamento ignorato — aggiorno eventi per correzione marcatori")
                         # Aggiorna events con i dati freschi: il blocco correzione marcatori
                         # al prossimo giro troverà il marcatore cambiato e editerà il messaggio
                         data = data_cancel
@@ -1594,7 +1598,7 @@ def avvia_ciclo_partita():
                     if current_type != saved.get("type", "goal"):
                         changes.append(f"tipo: {saved.get('type', 'goal')} → {current_type}")
 
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CORREZIONE goal {goal_key}: {', '.join(changes)} → messaggio editato")
+                    print(f"[{now_it()}] ✏️  CORREZIONE goal {goal_key}: {', '.join(changes)} → messaggio editato")
                     send_telegram_edit(msg_id, goal_text_new)
 
                     state["goal_messages"][goal_key]["scorer"]    = current_scorer
@@ -1653,13 +1657,13 @@ def avvia_ciclo_partita():
                     f"{E_DOWN} {outs_str}\n\n"
                     f"{e_comp} {hashtag}"
                 )
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CAMBIO EDIT {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
+                print(f"[{now_it()}] ✏️  CAMBIO EDIT {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
                 send_telegram_edit(slot["msg_id"], new_text)
                 state_changed = True
 
             # --- Nuovi cambi: attendi 10s, rileggi, raggruppa e invia ---
             if new_subs_fresh:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 Cambio rilevato, attendo 10s per raggruppare...")
+                print(f"[{now_it()}] 🔄 Cambio rilevato, attendo 10s per raggruppare...")
                 time.sleep(10)
                 data_fresh2 = fetch_evento(event_id, league_slug) or data
                 events_fresh2 = parse_events(data_fresh2, home_name, away_name, home_id, away_id)
@@ -1697,7 +1701,7 @@ def avvia_ciclo_partita():
                             f"{E_DOWN} {outs_str}\n\n"
                             f"{e_comp} {hashtag}"
                         )
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CAMBIO EDIT (post-attesa) {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
+                        print(f"[{now_it()}] ✏️  CAMBIO EDIT (post-attesa) {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
                         send_telegram_edit(slot["msg_id"], new_text)
                         state_changed = True
                     else:
@@ -1726,7 +1730,7 @@ def avvia_ciclo_partita():
                         f"{E_DOWN} {outs_str}\n\n"
                         f"{e_comp} {hashtag}"
                     )
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 CAMBIO {team_title} {_min_ref}' | ↑ {ins_str} / ↓ {outs_str} → Telegram inviato")
+                    print(f"[{now_it()}] 🔄 CAMBIO {team_title} {_min_ref}' | ↑ {ins_str} / ↓ {outs_str} → Telegram inviato")
                     msg_id = send_telegram_get_id(new_text)
                     new_key = f"{g['team_id']}:{_min_ref}"
                     state["sent_subs"][new_key] = {
@@ -1744,7 +1748,7 @@ def avvia_ciclo_partita():
                     p_name  = fmt_player(e["player_name"])
                     card_id = f"card_{e['minute']}_{e['player_name']}".replace(" ", "_")
                     if card_id not in state["sent_cards"]:
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🟥 ROSSO {e['minute']}' {p_name} → Telegram inviato")
+                        print(f"[{now_it()}] 🟥 ROSSO {e['minute']}' {p_name} → Telegram inviato")
                         send_telegram(
                             f"<b>CARTELLINO ROSSO · {e['minute']}' {E_RED}</b>\n\n"
                             f"{E_EXIT} <i>{p_name}</i>\n\n{e_comp} {hashtag}"
@@ -1760,7 +1764,7 @@ def avvia_ciclo_partita():
                         state["sent_failed_penalties"].append(pen_id)
                         state_changed = True
                         team_name = home_name if e["team_id"] == home_id else away_name
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🥅 RIGORE SBAGLIATO {team_name.upper()} {e['minute']}' {fmt_player(e['player_name'])} → Telegram inviato")
+                        print(f"[{now_it()}] 🥅 RIGORE SBAGLIATO {team_name.upper()} {e['minute']}' {fmt_player(e['player_name'])} → Telegram inviato")
                         send_telegram(
                             f"<b>RIGORE SBAGLIATO {team_name.upper()} · {e['minute']}' {E_KICK}</b>\n\n"
                             f"{E_PEN_KO} <i>{fmt_player(e['player_name'])}</i>\n\n"
@@ -1768,7 +1772,7 @@ def avvia_ciclo_partita():
                         )
 
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Errore ciclo live: {e}")
+            print(f"[{now_it()}] ❌ Errore ciclo live: {e}")
             sleep_time = 6
 
         finally:
@@ -1781,7 +1785,7 @@ def avvia_ciclo_partita():
 # MAIN
 # ==============================================================================
 def main():
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Bot avviato")
+    print(f"[{now_it()}] 🚀 Bot avviato")
 
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
         get_valid_token()
