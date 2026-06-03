@@ -1604,74 +1604,137 @@ def avvia_ciclo_partita():
                     state_changed = True
 
             # --- Cambi ---
-            # Ogni cambio nuovo viene inviato subito (send_telegram_get_id).
-            # Se un cambio della stessa squadra entro ±2 minuti ha già un messaggio,
-            # viene fatto un edit per aggiungere i nuovi giocatori.
+            # Logica in due fasi:
+            # 1) Se ci sono cambi nuovi NON ancora in uno slot esistente (±2 min stessa squadra),
+            #    aspetta 10s e rilegge per raccogliere cambi "gemelli" pubblicati in rapida successione.
+            #    Poi invia UN unico messaggio per ogni gruppo (squadra + finestra ±2 min).
+            # 2) Nei cicli successivi, se arriva un cambio della stessa squadra entro ±2 min
+            #    da uno slot già inviato → edit del messaggio esistente.
             # state["sent_subs"] è un dict:
             #   chiave = "team_id:minuto_riferimento"
             #   valore = {"msg_id": int, "minute": int, "ins": [...], "outs": [...], "sub_ids": [...]}
+
+            # Separa i cambi nuovi in: da raggruppare (nessuno slot esistente) vs da editare (slot già presente)
+            new_subs_fresh  = []  # nessuno slot esistente → attendi 10s e manda
+            new_subs_edit   = []  # slot già esistente → edit immediato
 
             for e in events:
                 if e["type"] != "substitution":
                     continue
                 sub_id = e["uid"]
-
-                # Controlla se questo sub_id è già stato processato
-                already_sent = any(
-                    sub_id in slot["sub_ids"]
-                    for slot in state["sent_subs"].values()
-                )
+                already_sent = any(sub_id in slot["sub_ids"] for slot in state["sent_subs"].values())
                 if already_sent:
                     continue
 
-                team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
-                player_in  = fmt_player(e["assist_name"])
-                player_out = fmt_player(e["player_name"])
-                sub_min    = e["minute"]
-
-                # Cerca uno slot esistente per stessa squadra entro ±2 minuti
+                # Cerca slot esistente (stessa squadra, ±2 min)
                 slot_key = None
                 for k, slot in state["sent_subs"].items():
-                    k_team = k.split(":")[0]
-                    if k_team == e["team_id"] and abs(slot["minute"] - sub_min) <= 2:
+                    if k.split(":")[0] == e["team_id"] and abs(slot["minute"] - e["minute"]) <= 2:
                         slot_key = k
                         break
 
                 if slot_key:
-                    # Edit del messaggio esistente aggiungendo il nuovo giocatore
-                    slot = state["sent_subs"][slot_key]
-                    slot["ins"].append(player_in)
-                    slot["outs"].append(player_out)
-                    slot["sub_ids"].append(sub_id)
-                    _min_ref = slot["minute"]
-                    ins_str  = ", ".join(slot["ins"])
-                    outs_str = ", ".join(slot["outs"])
+                    new_subs_edit.append((e, slot_key))
+                else:
+                    new_subs_fresh.append(e)
+
+            # --- Edit immediato per cambi che ampliano uno slot già inviato ---
+            for e, slot_key in new_subs_edit:
+                slot       = state["sent_subs"][slot_key]
+                team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
+                slot["ins"].append(fmt_player(e["assist_name"]))
+                slot["outs"].append(fmt_player(e["player_name"]))
+                slot["sub_ids"].append(e["uid"])
+                ins_str  = ", ".join(slot["ins"])
+                outs_str = ", ".join(slot["outs"])
+                new_text = (
+                    f"<b>CAMBIO {team_title} · {slot['minute']}' {E_SUB}</b>\n\n"
+                    f"{E_UP} {ins_str}\n"
+                    f"{E_DOWN} {outs_str}\n\n"
+                    f"{e_comp} {hashtag}"
+                )
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CAMBIO EDIT {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
+                send_telegram_edit(slot["msg_id"], new_text)
+                state_changed = True
+
+            # --- Nuovi cambi: attendi 10s, rileggi, raggruppa e invia ---
+            if new_subs_fresh:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 Cambio rilevato, attendo 10s per raggruppare...")
+                time.sleep(10)
+                data_fresh2 = fetch_evento(event_id, league_slug) or data
+                events_fresh2 = parse_events(data_fresh2, home_name, away_name, home_id, away_id)
+
+                # Ricostruisci la lista aggiornata dei nuovi cambi (potrebbero esserne arrivati altri)
+                pending = []
+                for e in events_fresh2:
+                    if e["type"] != "substitution":
+                        continue
+                    sub_id = e["uid"]
+                    already_sent = any(sub_id in slot["sub_ids"] for slot in state["sent_subs"].values())
+                    if already_sent:
+                        continue
+                    # Esclude quelli già gestiti nell'edit sopra
+                    if any(sub_id == ex["uid"] for _, _ in new_subs_edit for ex in [e]):
+                        pass
+                    # Verifica che non ci sia già uno slot (potrebbe essere stato creato dall'edit sopra)
+                    slot_key = None
+                    for k, slot in state["sent_subs"].items():
+                        if k.split(":")[0] == e["team_id"] and abs(slot["minute"] - e["minute"]) <= 2:
+                            slot_key = k
+                            break
+                    if slot_key:
+                        # Nel frattempo è arrivato uno slot → edit
+                        slot       = state["sent_subs"][slot_key]
+                        team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
+                        slot["ins"].append(fmt_player(e["assist_name"]))
+                        slot["outs"].append(fmt_player(e["player_name"]))
+                        slot["sub_ids"].append(sub_id)
+                        ins_str  = ", ".join(slot["ins"])
+                        outs_str = ", ".join(slot["outs"])
+                        new_text = (
+                            f"<b>CAMBIO {team_title} · {slot['minute']}' {E_SUB}</b>\n\n"
+                            f"{E_UP} {ins_str}\n"
+                            f"{E_DOWN} {outs_str}\n\n"
+                            f"{e_comp} {hashtag}"
+                        )
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CAMBIO EDIT (post-attesa) {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
+                        send_telegram_edit(slot["msg_id"], new_text)
+                        state_changed = True
+                    else:
+                        pending.append(e)
+
+                # Raggruppa pending per squadra + finestra ±2 min e invia
+                groups = []
+                for sub in pending:
+                    placed = False
+                    for g in groups:
+                        if g["team_id"] == sub["team_id"] and abs(g["minute"] - sub["minute"]) <= 2:
+                            g["subs"].append(sub)
+                            placed = True
+                            break
+                    if not placed:
+                        groups.append({"team_id": sub["team_id"], "minute": sub["minute"], "subs": [sub]})
+
+                for g in groups:
+                    team_title = home_name.upper() if g["team_id"] == home_id else away_name.upper()
+                    ins_str  = ", ".join(fmt_player(s["assist_name"]) for s in g["subs"])
+                    outs_str = ", ".join(fmt_player(s["player_name"]) for s in g["subs"])
+                    _min_ref = g["minute"]
                     new_text = (
                         f"<b>CAMBIO {team_title} · {_min_ref}' {E_SUB}</b>\n\n"
                         f"{E_UP} {ins_str}\n"
                         f"{E_DOWN} {outs_str}\n\n"
                         f"{e_comp} {hashtag}"
                     )
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ✏️  CAMBIO EDIT {team_title} {_min_ref}' | ↑ {ins_str} / ↓ {outs_str}")
-                    send_telegram_edit(slot["msg_id"], new_text)
-                    state_changed = True
-                else:
-                    # Nuovo messaggio
-                    new_text = (
-                        f"<b>CAMBIO {team_title} · {sub_min}' {E_SUB}</b>\n\n"
-                        f"{E_UP} {player_in}\n"
-                        f"{E_DOWN} {player_out}\n\n"
-                        f"{e_comp} {hashtag}"
-                    )
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 CAMBIO {team_title} {sub_min}' | ↑ {player_in} / ↓ {player_out} → Telegram inviato")
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 CAMBIO {team_title} {_min_ref}' | ↑ {ins_str} / ↓ {outs_str} → Telegram inviato")
                     msg_id = send_telegram_get_id(new_text)
-                    new_key = f"{e['team_id']}:{sub_min}"
+                    new_key = f"{g['team_id']}:{_min_ref}"
                     state["sent_subs"][new_key] = {
                         "msg_id":  msg_id,
-                        "minute":  sub_min,
-                        "ins":     [player_in],
-                        "outs":    [player_out],
-                        "sub_ids": [sub_id],
+                        "minute":  _min_ref,
+                        "ins":     [fmt_player(s["assist_name"]) for s in g["subs"]],
+                        "outs":    [fmt_player(s["player_name"]) for s in g["subs"]],
+                        "sub_ids": [s["uid"] for s in g["subs"]],
                     }
                     state_changed = True
 
