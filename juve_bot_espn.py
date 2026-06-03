@@ -856,8 +856,8 @@ def parse_score(competitors):
     return (
         home.get("team", {}).get("id", ""),
         away.get("team", {}).get("id", ""),
-        home.get("team", {}).get("displayName", "Home"),
-        away.get("team", {}).get("displayName", "Away"),
+        italianizza_squadra(home.get("team", {}).get("displayName", "Home")),
+        italianizza_squadra(away.get("team", {}).get("displayName", "Away")),
         int(home.get("score", 0) or 0),
         int(away.get("score", 0) or 0),
     )
@@ -940,8 +940,62 @@ TEAM_ABBREVIATIONS = {
 
 def build_hashtag(home_name, away_name):
     def abbr(name):
-        return TEAM_ABBREVIATIONS.get(name.lower(), name.replace(" ", ""))
+        # Cerca prima nel dizionario abbreviazioni con il nome corrente (italiano o ESPN)
+        if name.lower() in TEAM_ABBREVIATIONS:
+            return TEAM_ABBREVIATIONS[name.lower()]
+        # Cerca anche con il nome ESPN originale (prima dell'italianizzazione)
+        for espn_name, it_name in _wiki_cache.items():
+            if it_name.lower() == name.lower() and espn_name in TEAM_ABBREVIATIONS:
+                return TEAM_ABBREVIATIONS[espn_name]
+        return name.replace(" ", "")
     return f"#{abbr(home_name)}{abbr(away_name)}"
+
+# ==============================================================================
+# ITALIANIZZAZIONE NOMI SQUADRE (Wikipedia IT)
+# ==============================================================================
+_wiki_cache: dict[str, str] = {}
+
+def italianizza_squadra(nome_espn: str) -> str:
+    """
+    Restituisce il nome italiano della squadra interrogando Wikipedia IT.
+    Usa una cache in-memory per evitare chiamate ripetute nella stessa sessione.
+    Fallback al nome ESPN originale in caso di errore o nessun risultato.
+    """
+    if not nome_espn:
+        return nome_espn
+    key = nome_espn.strip().lower()
+    if key in _wiki_cache:
+        return _wiki_cache[key]
+
+    try:
+        # Cerca prima con opensearch (autocompletamento) per trovare il titolo esatto
+        r = requests.get(
+            "https://it.wikipedia.org/w/api.php",
+            params={
+                "action":   "opensearch",
+                "search":   nome_espn,
+                "limit":    1,
+                "namespace": 0,
+                "format":   "json",
+            },
+            timeout=5,
+            headers={"User-Agent": "JuveBot/1.0 (Telegram soccer bot)"},
+        )
+        if r.status_code == 200:
+            data = r.json()
+            titles = data[1] if len(data) > 1 else []
+            if titles:
+                titolo = titles[0]
+                # Scarta se il titolo non sembra un club (es. pagine di disambiguazione generiche)
+                _wiki_cache[key] = titolo
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🌍 Wikipedia IT: «{nome_espn}» → «{titolo}»")
+                return titolo
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  italianizza_squadra({nome_espn}): {e}")
+
+    # Fallback: tieni il nome ESPN originale
+    _wiki_cache[key] = nome_espn
+    return nome_espn
 
 # ==============================================================================
 # CICLO PRINCIPALE
