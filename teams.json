@@ -1,0 +1,2710 @@
+{
+  "Albania": [
+    "Albania",
+    "Albania"
+  ],
+  "Andorra": [
+    "Andorra",
+    "Andorra"
+  ],
+  "Armenia": [
+    "Armenia",
+    "Armenia"
+  ],
+  "Austria": [
+    "Austria",
+    "Austria"
+  ],
+  "Azerbaijan": [
+    "Azerbaigian",
+    "Azerbaigian"
+  ],
+  "Belarus": [
+    "Bielorussia",
+    "Bielorussia"
+  ],
+  "Belgium": [
+    "Belgio",
+    "Belgio"
+  ],
+  "Bosnia and Herzegovina": [
+    "Bosnia ed Erzegovina",
+    "Bosnia"
+  ],
+  "Bulgaria": [
+    "Bulgaria",
+    "Bulgaria"
+  ],
+  "Croatia": [
+    "Croazia",
+    "Croazia"
+  ],
+  "Cyprus": [
+    "Cipro",
+    "Cipro"
+  ],
+  "Czech Republic": [
+    "Repubblica Ceca",
+    "RepCeca"
+  ],
+  "Denmark": [
+    "Danimarca",
+    "Danimarca"
+  ],
+  "England": [
+    "Inghilterra",
+    "Inghilterra"
+  ],
+  "Estonia": [
+    "Estonia",
+    "Estonia"
+  ],
+  "Faroe Islands": [
+    "Isole Faroe",
+    "IsoleFaroe"
+  ],
+  "Finland": [
+    "Finlandia",
+    "Finlandia"
+  ],
+  "France": [
+    "Francia",
+    "Francia"
+  ],
+  "Georgia": [
+    "Georgia",
+    "Georgia"
+  ],
+  "Germany": [
+    "Germania",
+    "Germania"
+  ],
+  "Gibraltar": [
+    "Gibilterra",
+    "Gibilterra"
+  ],
+  "Greece": [
+    "Grecia",
+    "Grecia"
+  ],
+  "Hungary": [
+    "Ungheria",
+    "Ungheria"
+  ],
+  "Iceland": [
+    "Islanda",
+    "Islanda"
+  ],
+  "Israel": [
+    "Israele",
+    "Israele"
+  ],
+  "Italy": [
+    "Italia",
+    "Italia"
+  ],
+  "Kazakhstan": [
+    "Kazakistan",
+    "Kazakistan"
+  ],
+  "Kosovo": [
+    "Kosovo",
+    "Kosovo"
+  ],
+  "Latvia": [
+    "Lettonia",
+    "Lettonia"
+  ],
+  "Liechtenstein": [
+    "Liechtenstein",
+    "Liechtenstein"
+  ],
+  "Lithuania": [
+    "Lituania",
+    "Lituania"
+  ],
+  "Luxembourg": [
+    "Lussemburgo",
+    "Lussemburgo"
+  ],
+  "Malta": [
+    "Malta",
+    "Malta"
+  ],
+  "Moldova": [
+    "Moldavia",
+    "Moldavia"
+  ],
+  "Montenegro": [
+    "Montenegro",
+    "Montenegro"
+  ],
+  "Netherlands": [
+    "Paesi Bassi",
+    "PaesiBassi"
+  ],
+  "North Macedonia": [
+    "Macedonia del Nord",
+    "Macedonia"
+  ],
+  "Northern Ireland": [
+    "Irlanda del Nord",
+    "IrlandaNord"
+  ],
+  "Norway": [
+    "Norvegia",
+    "Norvegia"
+  ],
+  "Poland": [
+    "Polonia",
+    "Polonia"
+  ],
+  "Portugal": [
+    "Portogallo",
+    "Portogallo"
+  ],
+  "Republic of Ireland": [
+    "Repubblica d'Irlanda",
+    "Irlanda"
+  ],
+  "Romania": [
+    "Romania",
+    "Romania"
+  ],
+  "Russia": [
+    "Russia",
+    "Russia"
+  ],
+  "San Marino": [
+    "San Marino",
+    "SanMarino"
+  ],
+  "Scotland": [
+    "Scozia",
+    "Scozia"
+  ],
+  "Serbia": [
+    "Serbia",
+    "Serbia"
+  ],
+  "Slovakia": [
+    "Slovacchia",
+    "Slovacchia"
+  ],
+  "Slovenia": [
+    "Slovenia",
+    "Slovenia"
+  ],
+  "Spain": [
+    "Spagna",
+    "Spagna"
+  ],
+  "Sweden": [
+    "Svezia",
+    "Svezia"
+  ],
+  "Switzerland": [
+    "Svizzera",
+    "Svizzera"
+  ],
+  "Turkey": [
+    "Turchia",
+    "Turchia"
+  ],
+  "Ukraine": [
+    "Ucraina",
+    "Ucraina"
+  ],
+  "Wales": [
+    "Galles",
+    "Galles"
+  ],
+  "Argentina": [
+    "Argentina",
+    "Argentina"
+  ],
+  "Bolivia": [
+    "Bolivia",
+    "Bolivia"
+  ],
+  "Brazil": [
+    "Brasile",
+    "Brasile"
+  ],
+  "Chile": [
+    "Cile",
+    "Cile"
+  ],
+  "Colombia": [
+    "Colombia",
+    "Colombia"
+  ],
+  "Ecuador": [
+    "Ecuador",
+    "Ecuador"
+  ],
+  "Paraguay": [
+    "Paraguay",
+    "Paraguay"
+  ],
+  "Peru": [
+    "Perù",
+    "Peru"
+  ],
+  "Uruguay": [
+    "Uruguay",
+    "Uruguay"
+  ],
+  "Venezuela": [
+    "Venezuela",
+    "Venezuela"
+  ],
+  "Antigua and Barbuda": [
+    "Antigua e Barbuda",
+    "AntiguaBarbuda"
+  ],
+  "Aruba": [
+    "Aruba",
+    "Aruba"
+  ],
+  "Bahamas": [
+    "Bahamas",
+    "Bahamas"
+  ],
+  "Barbados": [
+    "Barbados",
+    "Barbados"
+  ],
+  "Belize": [
+    "Belize",
+    "Belize"
+  ],
+  "Bermuda": [
+    "Bermuda",
+    "Bermuda"
+  ],
+  "Canada": [
+    "Canada",
+    "Canada"
+  ],
+  "Cayman Islands": [
+    "Isole Cayman",
+    "IsoleCayman"
+  ],
+  "Costa Rica": [
+    "Costa Rica",
+    "CostaRica"
+  ],
+  "Cuba": [
+    "Cuba",
+    "Cuba"
+  ],
+  "Curacao": [
+    "Curaçao",
+    "Curacao"
+  ],
+  "Dominican Republic": [
+    "Repubblica Dominicana",
+    "RepDominicana"
+  ],
+  "El Salvador": [
+    "El Salvador",
+    "ElSalvador"
+  ],
+  "Grenada": [
+    "Grenada",
+    "Grenada"
+  ],
+  "Guatemala": [
+    "Guatemala",
+    "Guatemala"
+  ],
+  "Guyana": [
+    "Guyana",
+    "Guyana"
+  ],
+  "Haiti": [
+    "Haiti",
+    "Haiti"
+  ],
+  "Honduras": [
+    "Honduras",
+    "Honduras"
+  ],
+  "Jamaica": [
+    "Giamaica",
+    "Giamaica"
+  ],
+  "Mexico": [
+    "Messico",
+    "Messico"
+  ],
+  "Nicaragua": [
+    "Nicaragua",
+    "Nicaragua"
+  ],
+  "Panama": [
+    "Panama",
+    "Panama"
+  ],
+  "Puerto Rico": [
+    "Porto Rico",
+    "PortoRico"
+  ],
+  "Saint Kitts and Nevis": [
+    "Saint Kitts e Nevis",
+    "StKittsNevis"
+  ],
+  "Saint Lucia": [
+    "Saint Lucia",
+    "StLucia"
+  ],
+  "Saint Vincent and the Grenadines": [
+    "Saint Vincent e Grenadine",
+    "StVincent"
+  ],
+  "Suriname": [
+    "Suriname",
+    "Suriname"
+  ],
+  "Trinidad and Tobago": [
+    "Trinidad e Tobago",
+    "TrinidadTobago"
+  ],
+  "Turks and Caicos Islands": [
+    "Isole Turks e Caicos",
+    "TurksCaicos"
+  ],
+  "United States": [
+    "Stati Uniti",
+    "USA"
+  ],
+  "United States Virgin Islands": [
+    "Isole Vergini Americane",
+    "IsoleVergini"
+  ],
+  "Algeria": [
+    "Algeria",
+    "Algeria"
+  ],
+  "Angola": [
+    "Angola",
+    "Angola"
+  ],
+  "Benin": [
+    "Benin",
+    "Benin"
+  ],
+  "Botswana": [
+    "Botswana",
+    "Botswana"
+  ],
+  "Burkina Faso": [
+    "Burkina Faso",
+    "BurkinaFaso"
+  ],
+  "Burundi": [
+    "Burundi",
+    "Burundi"
+  ],
+  "Cameroon": [
+    "Camerun",
+    "Camerun"
+  ],
+  "Cape Verde": [
+    "Capo Verde",
+    "CapoVerde"
+  ],
+  "Central African Republic": [
+    "Repubblica Centrafricana",
+    "RepCentrafricana"
+  ],
+  "Chad": [
+    "Ciad",
+    "Ciad"
+  ],
+  "Comoros": [
+    "Comore",
+    "Comore"
+  ],
+  "Congo": [
+    "Congo",
+    "Congo"
+  ],
+  "DR Congo": [
+    "Rep. Dem. del Congo",
+    "RDCongo"
+  ],
+  "Djibouti": [
+    "Gibuti",
+    "Gibuti"
+  ],
+  "Egypt": [
+    "Egitto",
+    "Egitto"
+  ],
+  "Equatorial Guinea": [
+    "Guinea Equatoriale",
+    "GuineaEq"
+  ],
+  "Eritrea": [
+    "Eritrea",
+    "Eritrea"
+  ],
+  "Eswatini": [
+    "Eswatini",
+    "Eswatini"
+  ],
+  "Ethiopia": [
+    "Etiopia",
+    "Etiopia"
+  ],
+  "Gabon": [
+    "Gabon",
+    "Gabon"
+  ],
+  "Gambia": [
+    "Gambia",
+    "Gambia"
+  ],
+  "Ghana": [
+    "Ghana",
+    "Ghana"
+  ],
+  "Guinea": [
+    "Guinea",
+    "Guinea"
+  ],
+  "Guinea-Bissau": [
+    "Guinea-Bissau",
+    "GuineaBissau"
+  ],
+  "Ivory Coast": [
+    "Costa d'Avorio",
+    "CostaAvorio"
+  ],
+  "Kenya": [
+    "Kenya",
+    "Kenya"
+  ],
+  "Lesotho": [
+    "Lesotho",
+    "Lesotho"
+  ],
+  "Liberia": [
+    "Liberia",
+    "Liberia"
+  ],
+  "Libya": [
+    "Libia",
+    "Libia"
+  ],
+  "Madagascar": [
+    "Madagascar",
+    "Madagascar"
+  ],
+  "Malawi": [
+    "Malawi",
+    "Malawi"
+  ],
+  "Mali": [
+    "Mali",
+    "Mali"
+  ],
+  "Mauritania": [
+    "Mauritania",
+    "Mauritania"
+  ],
+  "Mauritius": [
+    "Mauritius",
+    "Mauritius"
+  ],
+  "Morocco": [
+    "Marocco",
+    "Marocco"
+  ],
+  "Mozambique": [
+    "Mozambico",
+    "Mozambico"
+  ],
+  "Namibia": [
+    "Namibia",
+    "Namibia"
+  ],
+  "Niger": [
+    "Niger",
+    "Niger"
+  ],
+  "Nigeria": [
+    "Nigeria",
+    "Nigeria"
+  ],
+  "Rwanda": [
+    "Ruanda",
+    "Ruanda"
+  ],
+  "Sao Tome and Principe": [
+    "São Tomé e Príncipe",
+    "SaoTome"
+  ],
+  "Senegal": [
+    "Senegal",
+    "Senegal"
+  ],
+  "Sierra Leone": [
+    "Sierra Leone",
+    "SierraLeone"
+  ],
+  "Somalia": [
+    "Somalia",
+    "Somalia"
+  ],
+  "South Africa": [
+    "Sudafrica",
+    "Sudafrica"
+  ],
+  "South Sudan": [
+    "Sudan del Sud",
+    "SudanSud"
+  ],
+  "Sudan": [
+    "Sudan",
+    "Sudan"
+  ],
+  "Tanzania": [
+    "Tanzania",
+    "Tanzania"
+  ],
+  "Togo": [
+    "Togo",
+    "Togo"
+  ],
+  "Tunisia": [
+    "Tunisia",
+    "Tunisia"
+  ],
+  "Uganda": [
+    "Uganda",
+    "Uganda"
+  ],
+  "Zambia": [
+    "Zambia",
+    "Zambia"
+  ],
+  "Zimbabwe": [
+    "Zimbabwe",
+    "Zimbabwe"
+  ],
+  "Afghanistan": [
+    "Afghanistan",
+    "Afghanistan"
+  ],
+  "Australia": [
+    "Australia",
+    "Australia"
+  ],
+  "Bahrain": [
+    "Bahrein",
+    "Bahrein"
+  ],
+  "Bangladesh": [
+    "Bangladesh",
+    "Bangladesh"
+  ],
+  "Bhutan": [
+    "Bhutan",
+    "Bhutan"
+  ],
+  "Brunei": [
+    "Brunei",
+    "Brunei"
+  ],
+  "Cambodia": [
+    "Cambogia",
+    "Cambogia"
+  ],
+  "China": [
+    "Cina",
+    "Cina"
+  ],
+  "China PR": [
+    "Cina",
+    "Cina"
+  ],
+  "Chinese Taipei": [
+    "Taipei cinese",
+    "ChineseTaipei"
+  ],
+  "Guam": [
+    "Guam",
+    "Guam"
+  ],
+  "Hong Kong": [
+    "Hong Kong",
+    "HongKong"
+  ],
+  "India": [
+    "India",
+    "India"
+  ],
+  "Indonesia": [
+    "Indonesia",
+    "Indonesia"
+  ],
+  "Iran": [
+    "Iran",
+    "Iran"
+  ],
+  "Iraq": [
+    "Iraq",
+    "Iraq"
+  ],
+  "Japan": [
+    "Giappone",
+    "Giappone"
+  ],
+  "Jordan": [
+    "Giordania",
+    "Giordania"
+  ],
+  "Kuwait": [
+    "Kuwait",
+    "Kuwait"
+  ],
+  "Kyrgyzstan": [
+    "Kirghizistan",
+    "Kirghizistan"
+  ],
+  "Laos": [
+    "Laos",
+    "Laos"
+  ],
+  "Lebanon": [
+    "Libano",
+    "Libano"
+  ],
+  "Macau": [
+    "Macao",
+    "Macao"
+  ],
+  "Malaysia": [
+    "Malaysia",
+    "Malaysia"
+  ],
+  "Maldives": [
+    "Maldive",
+    "Maldive"
+  ],
+  "Mongolia": [
+    "Mongolia",
+    "Mongolia"
+  ],
+  "Myanmar": [
+    "Myanmar",
+    "Myanmar"
+  ],
+  "Nepal": [
+    "Nepal",
+    "Nepal"
+  ],
+  "North Korea": [
+    "Corea del Nord",
+    "CoreaNord"
+  ],
+  "Oman": [
+    "Oman",
+    "Oman"
+  ],
+  "Pakistan": [
+    "Pakistan",
+    "Pakistan"
+  ],
+  "Palestine": [
+    "Palestina",
+    "Palestina"
+  ],
+  "Philippines": [
+    "Filippine",
+    "Filippine"
+  ],
+  "Qatar": [
+    "Qatar",
+    "Qatar"
+  ],
+  "Saudi Arabia": [
+    "Arabia Saudita",
+    "ArabiaSaudita"
+  ],
+  "Singapore": [
+    "Singapore",
+    "Singapore"
+  ],
+  "South Korea": [
+    "Corea del Sud",
+    "CoreaSud"
+  ],
+  "Sri Lanka": [
+    "Sri Lanka",
+    "SriLanka"
+  ],
+  "Syria": [
+    "Siria",
+    "Siria"
+  ],
+  "Tajikistan": [
+    "Tagikistan",
+    "Tagikistan"
+  ],
+  "Thailand": [
+    "Thailandia",
+    "Thailandia"
+  ],
+  "Timor-Leste": [
+    "Timor Est",
+    "TimorEst"
+  ],
+  "Turkmenistan": [
+    "Turkmenistan",
+    "Turkmenistan"
+  ],
+  "United Arab Emirates": [
+    "Emirati Arabi Uniti",
+    "EAU"
+  ],
+  "Uzbekistan": [
+    "Uzbekistan",
+    "Uzbekistan"
+  ],
+  "Vietnam": [
+    "Vietnam",
+    "Vietnam"
+  ],
+  "Yemen": [
+    "Yemen",
+    "Yemen"
+  ],
+  "American Samoa": [
+    "Samoa Americane",
+    "SamoaAmer"
+  ],
+  "Cook Islands": [
+    "Isole Cook",
+    "IsoleCook"
+  ],
+  "Fiji": [
+    "Figi",
+    "Figi"
+  ],
+  "New Caledonia": [
+    "Nuova Caledonia",
+    "NuovaCaledonia"
+  ],
+  "New Zealand": [
+    "Nuova Zelanda",
+    "NuovaZelanda"
+  ],
+  "Papua New Guinea": [
+    "Papua Nuova Guinea",
+    "PapuaNuovaGuinea"
+  ],
+  "Samoa": [
+    "Samoa",
+    "Samoa"
+  ],
+  "Solomon Islands": [
+    "Isole Salomone",
+    "IsoleSalomone"
+  ],
+  "Tahiti": [
+    "Tahiti",
+    "Tahiti"
+  ],
+  "Tonga": [
+    "Tonga",
+    "Tonga"
+  ],
+  "Vanuatu": [
+    "Vanuatu",
+    "Vanuatu"
+  ],
+  "Arsenal": [
+    "Arsenal",
+    "Arsenal"
+  ],
+  "Aston Villa": [
+    "Aston Villa",
+    "AstonVilla"
+  ],
+  "Bournemouth": [
+    "Bournemouth",
+    "Bournemouth"
+  ],
+  "Brentford": [
+    "Brentford",
+    "Brentford"
+  ],
+  "Brighton & Hove Albion": [
+    "Brighton",
+    "Brighton"
+  ],
+  "Chelsea": [
+    "Chelsea",
+    "Chelsea"
+  ],
+  "Crystal Palace": [
+    "Crystal Palace",
+    "CrystalPalace"
+  ],
+  "Everton": [
+    "Everton",
+    "Everton"
+  ],
+  "Fulham": [
+    "Fulham",
+    "Fulham"
+  ],
+  "Ipswich Town": [
+    "Ipswich",
+    "Ipswich"
+  ],
+  "Leicester City": [
+    "Leicester",
+    "Leicester"
+  ],
+  "Liverpool": [
+    "Liverpool",
+    "Liverpool"
+  ],
+  "Manchester City": [
+    "Manchester City",
+    "ManCity"
+  ],
+  "Manchester United": [
+    "Manchester United",
+    "ManUnited"
+  ],
+  "Newcastle United": [
+    "Newcastle",
+    "Newcastle"
+  ],
+  "Nottingham Forest": [
+    "Nottingham Forest",
+    "NottmForest"
+  ],
+  "Southampton": [
+    "Southampton",
+    "Southampton"
+  ],
+  "Tottenham Hotspur": [
+    "Tottenham",
+    "Tottenham"
+  ],
+  "West Ham United": [
+    "West Ham",
+    "WestHam"
+  ],
+  "Wolverhampton Wanderers": [
+    "Wolverhampton",
+    "Wolves"
+  ],
+  "Leeds United": [
+    "Leeds United",
+    "Leeds"
+  ],
+  "Sunderland": [
+    "Sunderland",
+    "Sunderland"
+  ],
+  "Sheffield United": [
+    "Sheffield United",
+    "SheffieldUtd"
+  ],
+  "Burnley": [
+    "Burnley",
+    "Burnley"
+  ],
+  "Middlesbrough": [
+    "Middlesbrough",
+    "Middlesbrough"
+  ],
+  "Coventry City": [
+    "Coventry",
+    "Coventry"
+  ],
+  "Bristol City": [
+    "Bristol City",
+    "BristolCity"
+  ],
+  "Stoke City": [
+    "Stoke City",
+    "Stoke"
+  ],
+  "West Bromwich Albion": [
+    "West Brom",
+    "WestBrom"
+  ],
+  "Millwall": [
+    "Millwall",
+    "Millwall"
+  ],
+  "Preston North End": [
+    "Preston",
+    "Preston"
+  ],
+  "Swansea City": [
+    "Swansea",
+    "Swansea"
+  ],
+  "Hull City": [
+    "Hull City",
+    "HullCity"
+  ],
+  "Cardiff City": [
+    "Cardiff",
+    "Cardiff"
+  ],
+  "Blackburn Rovers": [
+    "Blackburn",
+    "Blackburn"
+  ],
+  "Norwich City": [
+    "Norwich",
+    "Norwich"
+  ],
+  "Queens Park Rangers": [
+    "QPR",
+    "QPR"
+  ],
+  "Plymouth Argyle": [
+    "Plymouth",
+    "Plymouth"
+  ],
+  "Derby County": [
+    "Derby County",
+    "Derby"
+  ],
+  "Oxford United": [
+    "Oxford United",
+    "OxfordUtd"
+  ],
+  "Luton Town": [
+    "Luton",
+    "Luton"
+  ],
+  "Portsmouth": [
+    "Portsmouth",
+    "Portsmouth"
+  ],
+  "Sheffield Wednesday": [
+    "Sheffield Wednesday",
+    "SheffWed"
+  ],
+  "Watford": [
+    "Watford",
+    "Watford"
+  ],
+  "Athletic Club": [
+    "Athletic Club",
+    "AthleticClub"
+  ],
+  "Atletico Madrid": [
+    "Atletico Madrid",
+    "Atletico"
+  ],
+  "Barcelona": [
+    "Barcellona",
+    "Barcellona"
+  ],
+  "Celta Vigo": [
+    "Celta Vigo",
+    "CeltaVigo"
+  ],
+  "Deportivo Alaves": [
+    "Alaves",
+    "Alaves"
+  ],
+  "Espanyol": [
+    "Espanyol",
+    "Espanyol"
+  ],
+  "Getafe": [
+    "Getafe",
+    "Getafe"
+  ],
+  "Girona": [
+    "Girona",
+    "Girona"
+  ],
+  "Las Palmas": [
+    "Las Palmas",
+    "LasPalmas"
+  ],
+  "Leganes": [
+    "Leganes",
+    "Leganes"
+  ],
+  "Mallorca": [
+    "Mallorca",
+    "Mallorca"
+  ],
+  "Osasuna": [
+    "Osasuna",
+    "Osasuna"
+  ],
+  "Rayo Vallecano": [
+    "Rayo Vallecano",
+    "Rayo"
+  ],
+  "Real Betis": [
+    "Real Betis",
+    "Betis"
+  ],
+  "Real Madrid": [
+    "Real Madrid",
+    "RealMadrid"
+  ],
+  "Real Sociedad": [
+    "Real Sociedad",
+    "RealSociedad"
+  ],
+  "Real Valladolid": [
+    "Valladolid",
+    "Valladolid"
+  ],
+  "Sevilla": [
+    "Siviglia",
+    "Siviglia"
+  ],
+  "Valencia": [
+    "Valencia",
+    "Valencia"
+  ],
+  "Villarreal": [
+    "Villarreal",
+    "Villarreal"
+  ],
+  "Real Zaragoza": [
+    "Zaragoza",
+    "Zaragoza"
+  ],
+  "Sporting Gijon": [
+    "Sporting Gijon",
+    "SportingGijon"
+  ],
+  "Racing Club de Santander": [
+    "Racing Santander",
+    "RacingSantander"
+  ],
+  "AC Milan": [
+    "Milan",
+    "Milan"
+  ],
+  "ACF Fiorentina": [
+    "Fiorentina",
+    "Fiorentina"
+  ],
+  "AS Roma": [
+    "Roma",
+    "Roma"
+  ],
+  "Atalanta": [
+    "Atalanta",
+    "Atalanta"
+  ],
+  "Bologna": [
+    "Bologna",
+    "Bologna"
+  ],
+  "Cagliari": [
+    "Cagliari",
+    "Cagliari"
+  ],
+  "Como": [
+    "Como",
+    "Como"
+  ],
+  "Empoli": [
+    "Empoli",
+    "Empoli"
+  ],
+  "Genoa": [
+    "Genoa",
+    "Genoa"
+  ],
+  "Hellas Verona": [
+    "Verona",
+    "Verona"
+  ],
+  "Inter Milan": [
+    "Inter",
+    "Inter"
+  ],
+  "Juventus": [
+    "Juventus",
+    "Juventus"
+  ],
+  "Lazio": [
+    "Lazio",
+    "Lazio"
+  ],
+  "Lecce": [
+    "Lecce",
+    "Lecce"
+  ],
+  "Monza": [
+    "Monza",
+    "Monza"
+  ],
+  "Napoli": [
+    "Napoli",
+    "Napoli"
+  ],
+  "Parma": [
+    "Parma",
+    "Parma"
+  ],
+  "SSC Napoli": [
+    "Napoli",
+    "Napoli"
+  ],
+  "Torino": [
+    "Torino",
+    "Torino"
+  ],
+  "Udinese": [
+    "Udinese",
+    "Udinese"
+  ],
+  "Venezia": [
+    "Venezia",
+    "Venezia"
+  ],
+  "Bari": [
+    "Bari",
+    "Bari"
+  ],
+  "Brescia": [
+    "Brescia",
+    "Brescia"
+  ],
+  "Catanzaro": [
+    "Catanzaro",
+    "Catanzaro"
+  ],
+  "Cesena": [
+    "Cesena",
+    "Cesena"
+  ],
+  "Cremonese": [
+    "Cremonese",
+    "Cremonese"
+  ],
+  "Frosinone": [
+    "Frosinone",
+    "Frosinone"
+  ],
+  "Juve Stabia": [
+    "Juve Stabia",
+    "JuveStabia"
+  ],
+  "Mantova": [
+    "Mantova",
+    "Mantova"
+  ],
+  "Modena": [
+    "Modena",
+    "Modena"
+  ],
+  "Palermo": [
+    "Palermo",
+    "Palermo"
+  ],
+  "Pisa": [
+    "Pisa",
+    "Pisa"
+  ],
+  "Reggiana": [
+    "Reggiana",
+    "Reggiana"
+  ],
+  "Salernitana": [
+    "Salernitana",
+    "Salernitana"
+  ],
+  "Sampdoria": [
+    "Sampdoria",
+    "Sampdoria"
+  ],
+  "Sassuolo": [
+    "Sassuolo",
+    "Sassuolo"
+  ],
+  "Spezia": [
+    "Spezia",
+    "Spezia"
+  ],
+  "Sudtirol": [
+    "Sudtirol",
+    "Sudtirol"
+  ],
+  "Bayer Leverkusen": [
+    "Bayer Leverkusen",
+    "Leverkusen"
+  ],
+  "Bayern Munich": [
+    "Bayern Monaco",
+    "Bayern"
+  ],
+  "Borussia Dortmund": [
+    "Borussia Dortmund",
+    "Dortmund"
+  ],
+  "Borussia Monchengladbach": [
+    "Borussia M'gladbach",
+    "Gladbach"
+  ],
+  "Eintracht Frankfurt": [
+    "Eintracht Francoforte",
+    "Eintracht"
+  ],
+  "FC Augsburg": [
+    "Augsburg",
+    "Augsburg"
+  ],
+  "FC Heidenheim": [
+    "Heidenheim",
+    "Heidenheim"
+  ],
+  "FC St. Pauli": [
+    "St. Pauli",
+    "StPauli"
+  ],
+  "Holstein Kiel": [
+    "Holstein Kiel",
+    "Kiel"
+  ],
+  "Mainz 05": [
+    "Mainz",
+    "Mainz"
+  ],
+  "RB Leipzig": [
+    "RB Lipsia",
+    "RBLeipzig"
+  ],
+  "SC Freiburg": [
+    "Friburgo",
+    "Friburgo"
+  ],
+  "TSG Hoffenheim": [
+    "Hoffenheim",
+    "Hoffenheim"
+  ],
+  "Union Berlin": [
+    "Union Berlino",
+    "UnionBerlino"
+  ],
+  "VfB Stuttgart": [
+    "Stoccarda",
+    "Stoccarda"
+  ],
+  "VfL Bochum": [
+    "Bochum",
+    "Bochum"
+  ],
+  "VfL Wolfsburg": [
+    "Wolfsburg",
+    "Wolfsburg"
+  ],
+  "Werder Bremen": [
+    "Werder Brema",
+    "WerderBrema"
+  ],
+  "Hamburger SV": [
+    "Amburgo",
+    "Amburgo"
+  ],
+  "Hannover 96": [
+    "Hannover",
+    "Hannover"
+  ],
+  "Kaiserslautern": [
+    "Kaiserslautern",
+    "Kaiserslautern"
+  ],
+  "Fortuna Dusseldorf": [
+    "Fortuna Dusseldorf",
+    "Dusseldorf"
+  ],
+  "Karlsruher SC": [
+    "Karlsruhe",
+    "Karlsruhe"
+  ],
+  "Schalke 04": [
+    "Schalke",
+    "Schalke"
+  ],
+  "1. FC Nurnberg": [
+    "Norimberga",
+    "Norimberga"
+  ],
+  "SpVgg Greuther Furth": [
+    "Furth",
+    "Furth"
+  ],
+  "AS Monaco": [
+    "Monaco",
+    "Monaco"
+  ],
+  "AJ Auxerre": [
+    "Auxerre",
+    "Auxerre"
+  ],
+  "Angers SCO": [
+    "Angers",
+    "Angers"
+  ],
+  "Brest": [
+    "Brest",
+    "Brest"
+  ],
+  "Havre AC": [
+    "Le Havre",
+    "LeHavre"
+  ],
+  "Lens": [
+    "Lens",
+    "Lens"
+  ],
+  "Lille": [
+    "Lilla",
+    "Lilla"
+  ],
+  "Lyon": [
+    "Lione",
+    "Lione"
+  ],
+  "Marseille": [
+    "Marsiglia",
+    "Marsiglia"
+  ],
+  "Montpellier": [
+    "Montpellier",
+    "Montpellier"
+  ],
+  "Nantes": [
+    "Nantes",
+    "Nantes"
+  ],
+  "Nice": [
+    "Nizza",
+    "Nizza"
+  ],
+  "Paris Saint-Germain": [
+    "PSG",
+    "PSG"
+  ],
+  "RC Strasbourg Alsace": [
+    "Strasburgo",
+    "Strasburgo"
+  ],
+  "Rennes": [
+    "Rennes",
+    "Rennes"
+  ],
+  "Saint-Etienne": [
+    "Saint-Etienne",
+    "SaintEtienne"
+  ],
+  "Stade de Reims": [
+    "Reims",
+    "Reims"
+  ],
+  "Toulouse": [
+    "Tolosa",
+    "Tolosa"
+  ],
+  "AFC Ajax": [
+    "Ajax",
+    "Ajax"
+  ],
+  "AZ Alkmaar": [
+    "AZ Alkmaar",
+    "AZAlkmaar"
+  ],
+  "Feyenoord": [
+    "Feyenoord",
+    "Feyenoord"
+  ],
+  "FC Groningen": [
+    "Groningen",
+    "Groningen"
+  ],
+  "FC Twente": [
+    "Twente",
+    "Twente"
+  ],
+  "FC Utrecht": [
+    "Utrecht",
+    "Utrecht"
+  ],
+  "Fortuna Sittard": [
+    "Fortuna Sittard",
+    "FortunaSittard"
+  ],
+  "Go Ahead Eagles": [
+    "Go Ahead Eagles",
+    "GoAheadEagles"
+  ],
+  "Heracles Almelo": [
+    "Heracles",
+    "Heracles"
+  ],
+  "NAC Breda": [
+    "NAC Breda",
+    "NACBreda"
+  ],
+  "NEC Nijmegen": [
+    "NEC Nijmegen",
+    "NEC"
+  ],
+  "PEC Zwolle": [
+    "Zwolle",
+    "Zwolle"
+  ],
+  "PSV Eindhoven": [
+    "PSV",
+    "PSV"
+  ],
+  "RKC Waalwijk": [
+    "RKC Waalwijk",
+    "RKCWaalwijk"
+  ],
+  "Sparta Rotterdam": [
+    "Sparta Rotterdam",
+    "Sparta"
+  ],
+  "Heerenveen": [
+    "Heerenveen",
+    "Heerenveen"
+  ],
+  "Willem II": [
+    "Willem II",
+    "WillemII"
+  ],
+  "Benfica": [
+    "Benfica",
+    "Benfica"
+  ],
+  "Boavista": [
+    "Boavista",
+    "Boavista"
+  ],
+  "Braga": [
+    "Braga",
+    "Braga"
+  ],
+  "Casa Pia": [
+    "Casa Pia",
+    "CasaPia"
+  ],
+  "Estoril": [
+    "Estoril",
+    "Estoril"
+  ],
+  "Famalicao": [
+    "Famalicao",
+    "Famalicao"
+  ],
+  "Gil Vicente": [
+    "Gil Vicente",
+    "GilVicente"
+  ],
+  "Moreirense": [
+    "Moreirense",
+    "Moreirense"
+  ],
+  "Nacional": [
+    "Nacional",
+    "Nacional"
+  ],
+  "Porto": [
+    "Porto",
+    "Porto"
+  ],
+  "Rio Ave": [
+    "Rio Ave",
+    "RioAve"
+  ],
+  "Santa Clara": [
+    "Santa Clara",
+    "SantaClara"
+  ],
+  "Sporting CP": [
+    "Sporting CP",
+    "Sporting"
+  ],
+  "Sporting Braga": [
+    "Braga",
+    "Braga"
+  ],
+  "Vitoria de Guimaraes": [
+    "Vitoria Guimaraes",
+    "VitoriaGuim"
+  ],
+  "Anderlecht": [
+    "Anderlecht",
+    "Anderlecht"
+  ],
+  "Club Brugge": [
+    "Club Brugge",
+    "ClubBrugge"
+  ],
+  "Gent": [
+    "Gent",
+    "Gent"
+  ],
+  "KAA Gent": [
+    "Gent",
+    "Gent"
+  ],
+  "KRC Genk": [
+    "Genk",
+    "Genk"
+  ],
+  "Kortrijk": [
+    "Kortrijk",
+    "Kortrijk"
+  ],
+  "OH Leuven": [
+    "OHL Leuven",
+    "OHLeuven"
+  ],
+  "Royal Antwerp": [
+    "Antwerp",
+    "Antwerp"
+  ],
+  "Sint-Truiden": [
+    "Sint-Truiden",
+    "SintTruiden"
+  ],
+  "Standard Liege": [
+    "Standard Liegi",
+    "Standard"
+  ],
+  "Union Saint-Gilloise": [
+    "Union SG",
+    "UnionSG"
+  ],
+  "Westerlo": [
+    "Westerlo",
+    "Westerlo"
+  ],
+  "Cercle Brugge": [
+    "Cercle Brugge",
+    "CercleBrugge"
+  ],
+  "Beerschot": [
+    "Beerschot",
+    "Beerschot"
+  ],
+  "Mechelen": [
+    "Mechelen",
+    "Mechelen"
+  ],
+  "Charleroi": [
+    "Charleroi",
+    "Charleroi"
+  ],
+  "RB Salzburg": [
+    "Red Bull Salisburgo",
+    "RBSalzburg"
+  ],
+  "Rapid Wien": [
+    "Rapid Vienna",
+    "Rapid"
+  ],
+  "FK Austria Wien": [
+    "Austria Vienna",
+    "AustriaWien"
+  ],
+  "LASK": [
+    "LASK",
+    "LASK"
+  ],
+  "Sturm Graz": [
+    "Sturm Graz",
+    "SturmGraz"
+  ],
+  "Wolfsberg": [
+    "Wolfsberg",
+    "Wolfsberg"
+  ],
+  "Hartberg": [
+    "Hartberg",
+    "Hartberg"
+  ],
+  "Aberdeen": [
+    "Aberdeen",
+    "Aberdeen"
+  ],
+  "Celtic": [
+    "Celtic",
+    "Celtic"
+  ],
+  "Dundee": [
+    "Dundee",
+    "Dundee"
+  ],
+  "Dundee United": [
+    "Dundee United",
+    "DundeeUtd"
+  ],
+  "Heart of Midlothian": [
+    "Hearts",
+    "Hearts"
+  ],
+  "Hibernian": [
+    "Hibernian",
+    "Hibernian"
+  ],
+  "Kilmarnock": [
+    "Kilmarnock",
+    "Kilmarnock"
+  ],
+  "Motherwell": [
+    "Motherwell",
+    "Motherwell"
+  ],
+  "Rangers": [
+    "Rangers",
+    "Rangers"
+  ],
+  "Ross County": [
+    "Ross County",
+    "RossCounty"
+  ],
+  "St. Johnstone": [
+    "St. Johnstone",
+    "StJohnstone"
+  ],
+  "St. Mirren": [
+    "St. Mirren",
+    "StMirren"
+  ],
+  "AEK Athens": [
+    "AEK Atene",
+    "AEKAtene"
+  ],
+  "PAOK": [
+    "PAOK",
+    "PAOK"
+  ],
+  "Olympiacos": [
+    "Olympiacos",
+    "Olympiacos"
+  ],
+  "Panathinaikos": [
+    "Panathinaikos",
+    "Panathinaikos"
+  ],
+  "Aris Thessaloniki": [
+    "Aris",
+    "Aris"
+  ],
+  "Atromitos": [
+    "Atromitos",
+    "Atromitos"
+  ],
+  "OFI Crete": [
+    "OFI Creta",
+    "OFICreta"
+  ],
+  "Volos NFC": [
+    "Volos",
+    "Volos"
+  ],
+  "Besiktas": [
+    "Besiktas",
+    "Besiktas"
+  ],
+  "Fenerbahce": [
+    "Fenerbahce",
+    "Fenerbahce"
+  ],
+  "Galatasaray": [
+    "Galatasaray",
+    "Galatasaray"
+  ],
+  "Trabzonspor": [
+    "Trabzonspor",
+    "Trabzonspor"
+  ],
+  "Basaksehir": [
+    "Basaksehir",
+    "Basaksehir"
+  ],
+  "Antalyaspor": [
+    "Antalyaspor",
+    "Antalyaspor"
+  ],
+  "Kayserispor": [
+    "Kayserispor",
+    "Kayserispor"
+  ],
+  "Sivasspor": [
+    "Sivasspor",
+    "Sivasspor"
+  ],
+  "Konyaspor": [
+    "Konyaspor",
+    "Konyaspor"
+  ],
+  "Alanyaspor": [
+    "Alanyaspor",
+    "Alanyaspor"
+  ],
+  "FC Copenhagen": [
+    "Copenaghen",
+    "Copenaghen"
+  ],
+  "FC Midtjylland": [
+    "Midtjylland",
+    "Midtjylland"
+  ],
+  "Brondby IF": [
+    "Brondby",
+    "Brondby"
+  ],
+  "AGF": [
+    "AGF",
+    "AGF"
+  ],
+  "Silkeborg IF": [
+    "Silkeborg",
+    "Silkeborg"
+  ],
+  "Nordsjaelland": [
+    "Nordsjaelland",
+    "Nordsjaelland"
+  ],
+  "OB Odense": [
+    "Odense",
+    "Odense"
+  ],
+  "Viborg FF": [
+    "Viborg",
+    "Viborg"
+  ],
+  "Bodo/Glimt": [
+    "Bodo/Glimt",
+    "BodoGlimt"
+  ],
+  "Molde": [
+    "Molde",
+    "Molde"
+  ],
+  "Rosenborg": [
+    "Rosenborg",
+    "Rosenborg"
+  ],
+  "Brann": [
+    "Brann",
+    "Brann"
+  ],
+  "Viking FK": [
+    "Viking",
+    "Viking"
+  ],
+  "Valerenga": [
+    "Valerenga",
+    "Valerenga"
+  ],
+  "Djurgarden": [
+    "Djurgarden",
+    "Djurgarden"
+  ],
+  "Hammarby": [
+    "Hammarby",
+    "Hammarby"
+  ],
+  "IFK Goteborg": [
+    "Goteborg",
+    "Goteborg"
+  ],
+  "IFK Norrkoping": [
+    "Norrkoping",
+    "Norrkoping"
+  ],
+  "AIK": [
+    "AIK",
+    "AIK"
+  ],
+  "Malmo FF": [
+    "Malmo",
+    "Malmo"
+  ],
+  "CSKA Moscow": [
+    "CSKA Mosca",
+    "CSKAMosca"
+  ],
+  "Dynamo Moscow": [
+    "Dynamo Mosca",
+    "DynamoMosca"
+  ],
+  "Lokomotiv Moscow": [
+    "Lokomotiv Mosca",
+    "LokomotivMosca"
+  ],
+  "Spartak Moscow": [
+    "Spartak Mosca",
+    "SpartakMosca"
+  ],
+  "Zenit St. Petersburg": [
+    "Zenit",
+    "Zenit"
+  ],
+  "Krasnodar": [
+    "Krasnodar",
+    "Krasnodar"
+  ],
+  "Atlanta United": [
+    "Atlanta United",
+    "AtlantaUtd"
+  ],
+  "Austin FC": [
+    "Austin FC",
+    "AustinFC"
+  ],
+  "Charlotte FC": [
+    "Charlotte FC",
+    "CharlotteFC"
+  ],
+  "Chicago Fire": [
+    "Chicago Fire",
+    "ChicagoFire"
+  ],
+  "FC Cincinnati": [
+    "FC Cincinnati",
+    "Cincinnati"
+  ],
+  "Colorado Rapids": [
+    "Colorado Rapids",
+    "Colorado"
+  ],
+  "Columbus Crew": [
+    "Columbus Crew",
+    "Columbus"
+  ],
+  "D.C. United": [
+    "DC United",
+    "DCUnited"
+  ],
+  "FC Dallas": [
+    "FC Dallas",
+    "FCDallas"
+  ],
+  "Houston Dynamo": [
+    "Houston Dynamo",
+    "Houston"
+  ],
+  "Inter Miami": [
+    "Inter Miami",
+    "InterMiami"
+  ],
+  "LA Galaxy": [
+    "LA Galaxy",
+    "LAGalaxy"
+  ],
+  "LAFC": [
+    "LAFC",
+    "LAFC"
+  ],
+  "Minnesota United": [
+    "Minnesota United",
+    "Minnesota"
+  ],
+  "CF Montreal": [
+    "CF Montreal",
+    "Montreal"
+  ],
+  "Nashville SC": [
+    "Nashville SC",
+    "Nashville"
+  ],
+  "New England Revolution": [
+    "New England",
+    "NewEngland"
+  ],
+  "New York City FC": [
+    "New York City",
+    "NYCFC"
+  ],
+  "New York Red Bulls": [
+    "NY Red Bulls",
+    "NYRedBulls"
+  ],
+  "Orlando City": [
+    "Orlando City",
+    "Orlando"
+  ],
+  "Philadelphia Union": [
+    "Philadelphia Union",
+    "Philadelphia"
+  ],
+  "Portland Timbers": [
+    "Portland Timbers",
+    "Portland"
+  ],
+  "Real Salt Lake": [
+    "Real Salt Lake",
+    "RealSaltLake"
+  ],
+  "San Jose Earthquakes": [
+    "San Jose",
+    "SanJose"
+  ],
+  "Seattle Sounders": [
+    "Seattle Sounders",
+    "Seattle"
+  ],
+  "Sporting Kansas City": [
+    "Sporting KC",
+    "SportingKC"
+  ],
+  "St. Louis City SC": [
+    "St. Louis City",
+    "StLouisCity"
+  ],
+  "Toronto FC": [
+    "Toronto FC",
+    "Toronto"
+  ],
+  "Vancouver Whitecaps": [
+    "Vancouver Whitecaps",
+    "Vancouver"
+  ],
+  "America": [
+    "Club America",
+    "America"
+  ],
+  "Atlas": [
+    "Atlas",
+    "Atlas"
+  ],
+  "Atletico San Luis": [
+    "Atletico San Luis",
+    "AtleticoSL"
+  ],
+  "Club Leon": [
+    "Leon",
+    "Leon"
+  ],
+  "Cruz Azul": [
+    "Cruz Azul",
+    "CruzAzul"
+  ],
+  "Deportivo Toluca": [
+    "Toluca",
+    "Toluca"
+  ],
+  "FC Juarez": [
+    "FC Juarez",
+    "Juarez"
+  ],
+  "Guadalajara": [
+    "Chivas",
+    "Chivas"
+  ],
+  "Mazatlan FC": [
+    "Mazatlan",
+    "Mazatlan"
+  ],
+  "Monterrey": [
+    "Monterrey",
+    "Monterrey"
+  ],
+  "Necaxa": [
+    "Necaxa",
+    "Necaxa"
+  ],
+  "Pachuca": [
+    "Pachuca",
+    "Pachuca"
+  ],
+  "Pumas UNAM": [
+    "Pumas UNAM",
+    "Pumas"
+  ],
+  "Queretaro": [
+    "Queretaro",
+    "Queretaro"
+  ],
+  "Santos Laguna": [
+    "Santos Laguna",
+    "Santos"
+  ],
+  "Tigres UANL": [
+    "Tigres",
+    "Tigres"
+  ],
+  "Tijuana": [
+    "Club Tijuana",
+    "Tijuana"
+  ],
+  "Puebla": [
+    "Puebla",
+    "Puebla"
+  ],
+  "Argentinos Juniors": [
+    "Argentinos Juniors",
+    "ArgJuniors"
+  ],
+  "Arsenal de Sarandi": [
+    "Arsenal Sarandi",
+    "ArsenalSar"
+  ],
+  "Atletico Tucuman": [
+    "Atletico Tucuman",
+    "AtlTucuman"
+  ],
+  "Banfield": [
+    "Banfield",
+    "Banfield"
+  ],
+  "Belgrano": [
+    "Belgrano",
+    "Belgrano"
+  ],
+  "Boca Juniors": [
+    "Boca Juniors",
+    "Boca"
+  ],
+  "Central Cordoba": [
+    "Central Cordoba",
+    "CentralCba"
+  ],
+  "Colon": [
+    "Colon",
+    "Colon"
+  ],
+  "Defensa y Justicia": [
+    "Defensa y Justicia",
+    "DefensaJus"
+  ],
+  "Estudiantes": [
+    "Estudiantes",
+    "Estudiantes"
+  ],
+  "Godoy Cruz": [
+    "Godoy Cruz",
+    "GodoyCruz"
+  ],
+  "Gimnasia La Plata": [
+    "Gimnasia LP",
+    "GimnasiaLP"
+  ],
+  "Huracan": [
+    "Huracan",
+    "Huracan"
+  ],
+  "Independiente": [
+    "Independiente",
+    "Independiente"
+  ],
+  "Instituto": [
+    "Instituto",
+    "Instituto"
+  ],
+  "Lanus": [
+    "Lanus",
+    "Lanus"
+  ],
+  "Newells Old Boys": [
+    "Newell's Old Boys",
+    "Newells"
+  ],
+  "Platense": [
+    "Platense",
+    "Platense"
+  ],
+  "Racing Club": [
+    "Racing Club",
+    "Racing"
+  ],
+  "River Plate": [
+    "River Plate",
+    "River"
+  ],
+  "Rosario Central": [
+    "Rosario Central",
+    "RosarioCen"
+  ],
+  "San Lorenzo": [
+    "San Lorenzo",
+    "SanLorenzo"
+  ],
+  "San Martin de San Juan": [
+    "San Martin SJ",
+    "SanMartinSJ"
+  ],
+  "Sarmiento": [
+    "Sarmiento",
+    "Sarmiento"
+  ],
+  "Talleres": [
+    "Talleres",
+    "Talleres"
+  ],
+  "Tigre": [
+    "Tigre",
+    "Tigre"
+  ],
+  "Union Santa Fe": [
+    "Union SF",
+    "UnionSF"
+  ],
+  "Velez Sarsfield": [
+    "Velez",
+    "Velez"
+  ],
+  "America Mineiro": [
+    "America MG",
+    "AmericaMG"
+  ],
+  "Athletico Paranaense": [
+    "Athletico-PR",
+    "AthleticoPR"
+  ],
+  "Atletico Goianiense": [
+    "Atletico GO",
+    "AtleticoGO"
+  ],
+  "Atletico Mineiro": [
+    "Atletico MG",
+    "AtleticoMG"
+  ],
+  "Bahia": [
+    "Bahia",
+    "Bahia"
+  ],
+  "Botafogo": [
+    "Botafogo",
+    "Botafogo"
+  ],
+  "Bragantino": [
+    "Bragantino",
+    "Bragantino"
+  ],
+  "Corinthians": [
+    "Corinthians",
+    "Corinthians"
+  ],
+  "Criciuma": [
+    "Criciuma",
+    "Criciuma"
+  ],
+  "Cruzeiro": [
+    "Cruzeiro",
+    "Cruzeiro"
+  ],
+  "Cuiaba": [
+    "Cuiaba",
+    "Cuiaba"
+  ],
+  "Flamengo": [
+    "Flamengo",
+    "Flamengo"
+  ],
+  "Fluminense": [
+    "Fluminense",
+    "Fluminense"
+  ],
+  "Fortaleza": [
+    "Fortaleza",
+    "Fortaleza"
+  ],
+  "Goias": [
+    "Goias",
+    "Goias"
+  ],
+  "Gremio": [
+    "Gremio",
+    "Gremio"
+  ],
+  "Internacional": [
+    "Internacional",
+    "Internacional"
+  ],
+  "Juventude": [
+    "Juventude",
+    "Juventude"
+  ],
+  "Palmeiras": [
+    "Palmeiras",
+    "Palmeiras"
+  ],
+  "Santos": [
+    "Santos",
+    "SantosBR"
+  ],
+  "Sao Paulo": [
+    "San Paolo",
+    "SaoPaulo"
+  ],
+  "Sport Recife": [
+    "Sport Recife",
+    "SportRecife"
+  ],
+  "Vasco da Gama": [
+    "Vasco da Gama",
+    "Vasco"
+  ],
+  "Vitoria": [
+    "Vitoria",
+    "Vitoria"
+  ],
+  "Cobresal": [
+    "Cobresal",
+    "Cobresal"
+  ],
+  "Colo Colo": [
+    "Colo Colo",
+    "ColoColo"
+  ],
+  "Deportes Antofagasta": [
+    "Antofagasta",
+    "Antofagasta"
+  ],
+  "Deportes Iquique": [
+    "Iquique",
+    "Iquique"
+  ],
+  "Deportes La Serena": [
+    "La Serena",
+    "LaSerena"
+  ],
+  "Everton de Vina del Mar": [
+    "Everton Vina",
+    "EvertonVina"
+  ],
+  "Huachipato": [
+    "Huachipato",
+    "Huachipato"
+  ],
+  "Nublense": [
+    "Nublense",
+    "Nublense"
+  ],
+  "O'Higgins": [
+    "OHiggins",
+    "OHiggins"
+  ],
+  "Palestino": [
+    "Palestino",
+    "Palestino"
+  ],
+  "San Luis de Quillota": [
+    "San Luis",
+    "SanLuisQ"
+  ],
+  "U. de Chile": [
+    "Universidad de Chile",
+    "UCHile"
+  ],
+  "U. de Concepcion": [
+    "Universidad Concepcion",
+    "UConcepcion"
+  ],
+  "Union La Calera": [
+    "Union La Calera",
+    "LaCalera"
+  ],
+  "Universidad Catolica": [
+    "U. Catolica",
+    "UCatolica"
+  ],
+  "Atletico Nacional": [
+    "Atletico Nacional",
+    "AtlNacional"
+  ],
+  "Boyaca Chico": [
+    "Boyaca Chico",
+    "BoyacaChico"
+  ],
+  "Deportes Tolima": [
+    "Tolima",
+    "Tolima"
+  ],
+  "Deportivo Cali": [
+    "Deportivo Cali",
+    "DepCali"
+  ],
+  "Deportivo Pasto": [
+    "Deportivo Pasto",
+    "DepPasto"
+  ],
+  "Envigado": [
+    "Envigado",
+    "Envigado"
+  ],
+  "Independiente Medellin": [
+    "Ind. Medellin",
+    "IndMedellin"
+  ],
+  "Independiente Santa Fe": [
+    "Santa Fe",
+    "SantaFe"
+  ],
+  "Junior": [
+    "Junior Barranquilla",
+    "Junior"
+  ],
+  "La Equidad": [
+    "La Equidad",
+    "LaEquidad"
+  ],
+  "Millonarios": [
+    "Millonarios",
+    "Millonarios"
+  ],
+  "Once Caldas": [
+    "Once Caldas",
+    "OnceCaldas"
+  ],
+  "Pereira": [
+    "Deportivo Pereira",
+    "Pereira"
+  ],
+  "Alianza Lima": [
+    "Alianza Lima",
+    "AlianzaLima"
+  ],
+  "Binacional": [
+    "Binacional",
+    "Binacional"
+  ],
+  "Cajamarca": [
+    "Cajamarca",
+    "Cajamarca"
+  ],
+  "Cienciano": [
+    "Cienciano",
+    "Cienciano"
+  ],
+  "Cusco FC": [
+    "Cusco FC",
+    "CuscoFC"
+  ],
+  "Sporting Cristal": [
+    "Sporting Cristal",
+    "SCristal"
+  ],
+  "Universitario": [
+    "Universitario",
+    "Universitario"
+  ],
+  "Melgar": [
+    "Melgar",
+    "Melgar"
+  ],
+  "Club Nacional de Football": [
+    "Nacional",
+    "NacionalURU"
+  ],
+  "Club Atletico Penarol": [
+    "Penarol",
+    "Penarol"
+  ],
+  "Club Atletico River Plate": [
+    "River Plate URU",
+    "RiverURU"
+  ],
+  "Defensor Sporting": [
+    "Defensor Sporting",
+    "Defensor"
+  ],
+  "Danubio": [
+    "Danubio",
+    "Danubio"
+  ],
+  "Fenix": [
+    "Fenix",
+    "Fenix"
+  ],
+  "Liverpool Montevideo": [
+    "Liverpool MVD",
+    "LiverpoolMVD"
+  ],
+  "Rentistas": [
+    "Rentistas",
+    "Rentistas"
+  ],
+  "Al Ahli": [
+    "Al Ahli",
+    "AlAhli"
+  ],
+  "Al Ittihad": [
+    "Al Ittihad",
+    "AlIttihad"
+  ],
+  "Al Hilal": [
+    "Al Hilal",
+    "AlHilal"
+  ],
+  "Al Nassr": [
+    "Al Nassr",
+    "AlNassr"
+  ],
+  "Al Qadsiah": [
+    "Al Qadsiah",
+    "AlQadsiah"
+  ],
+  "Al Shabab": [
+    "Al Shabab",
+    "AlShabab"
+  ],
+  "Al Tai": [
+    "Al Tai",
+    "AlTai"
+  ],
+  "Al Ettifaq": [
+    "Al Ettifaq",
+    "AlEttifaq"
+  ],
+  "Al Fayha": [
+    "Al Fayha",
+    "AlFayha"
+  ],
+  "Al Fateh": [
+    "Al Fateh",
+    "AlFateh"
+  ],
+  "Al Hazem": [
+    "Al Hazem",
+    "AlHazem"
+  ],
+  "Al Khaleej": [
+    "Al Khaleej",
+    "AlKhaleej"
+  ],
+  "Al Okhdood": [
+    "Al Okhdood",
+    "AlOkhdood"
+  ],
+  "Al Raed": [
+    "Al Raed",
+    "AlRaed"
+  ],
+  "Al Riyadh": [
+    "Al Riyadh",
+    "AlRiyadh"
+  ],
+  "Al Wahda": [
+    "Al Wahda",
+    "AlWahda"
+  ],
+  "Gamba Osaka": [
+    "Gamba Osaka",
+    "GambaOsaka"
+  ],
+  "Kashima Antlers": [
+    "Kashima Antlers",
+    "Kashima"
+  ],
+  "Kashiwa Reysol": [
+    "Kashiwa Reysol",
+    "Kashiwa"
+  ],
+  "Kawasaki Frontale": [
+    "Kawasaki",
+    "Kawasaki"
+  ],
+  "Nagoya Grampus": [
+    "Nagoya Grampus",
+    "Nagoya"
+  ],
+  "Sanfrecce Hiroshima": [
+    "Hiroshima",
+    "Hiroshima"
+  ],
+  "Urawa Red Diamonds": [
+    "Urawa Reds",
+    "UrawaReds"
+  ],
+  "Vissel Kobe": [
+    "Vissel Kobe",
+    "VisselKobe"
+  ],
+  "Yokohama F. Marinos": [
+    "Yokohama FM",
+    "YokohamaFM"
+  ],
+  "Cerezo Osaka": [
+    "Cerezo Osaka",
+    "CerezoOsaka"
+  ],
+  "FC Tokyo": [
+    "FC Tokyo",
+    "FCTokyo"
+  ],
+  "Beijing Guoan": [
+    "Beijing Guoan",
+    "BeijingGuoan"
+  ],
+  "Guangzhou FC": [
+    "Guangzhou FC",
+    "Guangzhou"
+  ],
+  "Shanghai Port": [
+    "Shanghai Port",
+    "ShanghaiPort"
+  ],
+  "Shandong Taishan": [
+    "Shandong Taishan",
+    "Shandong"
+  ],
+  "Wuhan Three Towns": [
+    "Wuhan Three Towns",
+    "Wuhan"
+  ],
+  "ATK Mohun Bagan": [
+    "Mohun Bagan",
+    "MohunBagan"
+  ],
+  "Bengaluru FC": [
+    "Bengaluru",
+    "Bengaluru"
+  ],
+  "Chennaiyin FC": [
+    "Chennaiyin",
+    "Chennaiyin"
+  ],
+  "FC Goa": [
+    "FC Goa",
+    "FCGoa"
+  ],
+  "Hyderabad FC": [
+    "Hyderabad",
+    "Hyderabad"
+  ],
+  "Jamshedpur FC": [
+    "Jamshedpur",
+    "Jamshedpur"
+  ],
+  "Kerala Blasters": [
+    "Kerala Blasters",
+    "Kerala"
+  ],
+  "Mumbai City": [
+    "Mumbai City",
+    "MumbaiCity"
+  ],
+  "NorthEast United": [
+    "NorthEast United",
+    "NEUnited"
+  ],
+  "Odisha FC": [
+    "Odisha",
+    "Odisha"
+  ],
+  "Punjab FC": [
+    "Punjab FC",
+    "PunjabFC"
+  ],
+  "Adelaide United": [
+    "Adelaide United",
+    "Adelaide"
+  ],
+  "Brisbane Roar": [
+    "Brisbane Roar",
+    "Brisbane"
+  ],
+  "Central Coast Mariners": [
+    "Central Coast",
+    "CentralCoast"
+  ],
+  "MacArthur FC": [
+    "MacArthur FC",
+    "MacArthur"
+  ],
+  "Melbourne City": [
+    "Melbourne City",
+    "MelbourneCity"
+  ],
+  "Melbourne Victory": [
+    "Melbourne Victory",
+    "MelbVictory"
+  ],
+  "Newcastle Jets": [
+    "Newcastle Jets",
+    "NewcastleJets"
+  ],
+  "Perth Glory": [
+    "Perth Glory",
+    "PerthGlory"
+  ],
+  "Sydney FC": [
+    "Sydney FC",
+    "SydneyFC"
+  ],
+  "Wellington Phoenix": [
+    "Wellington Phoenix",
+    "Wellington"
+  ],
+  "Western Sydney Wanderers": [
+    "Western Sydney",
+    "WesternSydney"
+  ],
+  "Western United": [
+    "Western United",
+    "WesternUtd"
+  ],
+  "Cape Town City": [
+    "Cape Town City",
+    "CapeTownCity"
+  ],
+  "Kaizer Chiefs": [
+    "Kaizer Chiefs",
+    "KaizerChiefs"
+  ],
+  "Mamelodi Sundowns": [
+    "Mamelodi Sundowns",
+    "Sundowns"
+  ],
+  "Orlando Pirates": [
+    "Orlando Pirates",
+    "OrlandoPirates"
+  ],
+  "SuperSport United": [
+    "SuperSport United",
+    "SuperSport"
+  ],
+  "Stellenbosch FC": [
+    "Stellenbosch",
+    "Stellenbosch"
+  ],
+  "Enyimba": [
+    "Enyimba",
+    "Enyimba"
+  ],
+  "Kano Pillars": [
+    "Kano Pillars",
+    "KanoPillars"
+  ],
+  "Rangers International": [
+    "Rangers Intl",
+    "RangersNGA"
+  ],
+  "Rivers United": [
+    "Rivers United",
+    "RiversUtd"
+  ],
+  "Asante Kotoko": [
+    "Asante Kotoko",
+    "Kotoko"
+  ],
+  "Hearts of Oak": [
+    "Hearts of Oak",
+    "HeartsOfOak"
+  ]
+}
