@@ -1587,6 +1587,13 @@ def avvia_ciclo_partita():
                 already_sent = any(sub_id in slot["sub_ids"] for slot in state["sent_subs"].values())
                 if already_sent:
                     continue
+                # Bug 1: stesso cambio ma ESPN ha corretto il minuto → uid diverso ma giocatore uguale
+                already_sent_by_name = any(
+                    k.split(":")[0] == e["team_id"] and fmt_player(e["player_name"]) in slot["outs"]
+                    for k, slot in state["sent_subs"].items()
+                )
+                if already_sent_by_name:
+                    continue
 
                 slot_key = None
                 for k, slot in state["sent_subs"].items():
@@ -1602,10 +1609,12 @@ def avvia_ciclo_partita():
             for e, slot_key in new_subs_edit:
                 slot       = state["sent_subs"][slot_key]
                 team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
+                # Bug 2: ESPN restituisce gli stessi sub più volte, evita duplicati nello slot
+                if fmt_player(e["player_name"]) in slot["outs"]:
+                    continue
                 slot["ins"].append(fmt_player(e["assist_name"]))
                 slot["outs"].append(fmt_player(e["player_name"]))
                 slot["sub_ids"].append(e["uid"])
-                slot["minute"] = e["minute"]  # aggiorna il minuto se ESPN lo ha corretto
                 ins_str  = ", ".join(slot["ins"])
                 outs_str = ", ".join(slot["outs"])
                 new_text = (
@@ -1645,7 +1654,6 @@ def avvia_ciclo_partita():
                         slot["ins"].append(fmt_player(e["assist_name"]))
                         slot["outs"].append(fmt_player(e["player_name"]))
                         slot["sub_ids"].append(sub_id)
-                        slot["minute"] = e["minute"]  # aggiorna il minuto se ESPN lo ha corretto
                         ins_str  = ", ".join(slot["ins"])
                         outs_str = ", ".join(slot["outs"])
                         new_text = (
