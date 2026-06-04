@@ -767,7 +767,6 @@ body {{
 def trova_partita_oggi(team_id: str):
     now_utc       = datetime.now(timezone.utc)
     dates_to_try  = [
-        (now_utc - timedelta(days=1)).strftime("%Y%m%d"),
         now_utc.strftime("%Y%m%d"),
         (now_utc + timedelta(days=1)).strftime("%Y%m%d"),
     ]
