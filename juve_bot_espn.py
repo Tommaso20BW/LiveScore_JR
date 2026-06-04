@@ -45,7 +45,6 @@ def _load_leagues() -> dict:
     try:
         with open(_LEAGUES_JSON_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-        print(f"[{now_it()}] 📋 leagues.json caricato: {len(data)} slug")
         return data
     except FileNotFoundError:
         print(f"[{now_it()}] ⚠️  leagues.json non trovato — emoji leghe disabilitate")
@@ -273,6 +272,7 @@ def get_valid_token():
         print(f"[{now_it()}] ❌ CANVA_REFRESH_TOKEN mancante")
         return None
     try:
+        print(f"[{now_it()}] 🔑 Richiedo access token Canva tramite refresh token...")
         r = requests.post("https://api.canva.com/rest/v1/oauth/token", data={
             "grant_type": "refresh_token", "refresh_token": CANVA_REFRESH_TOKEN,
             "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET
@@ -280,7 +280,11 @@ def get_valid_token():
         if r.status_code == 200:
             tokens = r.json()
             if "refresh_token" in tokens and tokens["refresh_token"] != CANVA_REFRESH_TOKEN:
+                print(f"[{now_it()}] 🔄 Nuovo refresh token ricevuto — aggiorno GitHub Secret...")
                 update_github_secret("CANVA_REFRESH_TOKEN", tokens["refresh_token"])
+                print(f"[{now_it()}] ✅ GitHub Secret CANVA_REFRESH_TOKEN aggiornato")
+            else:
+                print(f"[{now_it()}] ✅ Access token Canva ottenuto (refresh token invariato)")
             return tokens["access_token"]
         print(f"[{now_it()}] ❌ Errore token Canva: {r.text}")
     except Exception as e:
@@ -292,15 +296,19 @@ def get_canva_image(access_token: str):
         return None
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     try:
+        print(f"[{now_it()}] 🎨 Avvio export Canva (design={CANVA_DESIGN_ID}, pagina={PAGINA_TARGET})...")
         r = requests.post("https://api.canva.com/rest/v1/exports", headers=headers, json={
             "design_id": CANVA_DESIGN_ID, "format": {"type": "png", "pages": [PAGINA_TARGET]}
         }, timeout=15)
         if r.status_code not in [200, 201]:
+            print(f"[{now_it()}] ❌ Errore avvio export Canva: HTTP {r.status_code} — {r.text}")
             return None
         job_data = r.json()
         job_id = job_data.get("id") or job_data.get("job", {}).get("id")
         if not job_id:
+            print(f"[{now_it()}] ❌ Export Canva: job_id non trovato nella risposta")
             return None
+        print(f"[{now_it()}] ⏳ Export Canva avviato (job_id={job_id}), attendo completamento...")
         status_url = f"https://api.canva.com/rest/v1/exports/{job_id}"
         time.sleep(3)
         for i in range(60):
@@ -313,9 +321,13 @@ def get_canva_image(access_token: str):
                     urls = d.get("urls") or d.get("job", {}).get("urls")
                     url_dl = urls[0] if urls else (d.get("url") or d.get("job", {}).get("url"))
                     if url_dl:
+                        print(f"[{now_it()}] ✅ Export Canva completato, scarico immagine...")
                         time.sleep(10)
-                        return requests.get(url_dl, timeout=30).content
+                        img = requests.get(url_dl, timeout=30).content
+                        print(f"[{now_it()}] 🖼️  Immagine Canva scaricata ({len(img) // 1024} KB)")
+                        return img
                 elif stato == "failed":
+                    print(f"[{now_it()}] ❌ Export Canva fallito (job_id={job_id})")
                     return None
     except Exception as e:
         print(f"[{now_it()}] ❌ Errore export Canva: {e}")
@@ -898,7 +910,6 @@ def _load_teams() -> dict:
     try:
         with open(_TEAMS_JSON_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-        print(f"[{now_it()}] 📋 teams.json caricato: {len(data)} squadre")
         return data
     except FileNotFoundError:
         print(f"[{now_it()}] ⚠️  teams.json non trovato in {_TEAMS_JSON_PATH} — nomi squadre non tradotti")
