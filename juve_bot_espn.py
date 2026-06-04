@@ -1282,8 +1282,7 @@ def avvia_ciclo_partita():
             _now_ts = int(time.time())
             _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
             if status != "NS" and (state.get("_last_log_key") != _log_key or (_now_ts - state.get("_last_log_ts", 0)) >= 60):
-                _ts = datetime.now().strftime("%H:%M:%S")
-                print(f"[{_ts}] 📡 {status} {elapsed}' | {home_name} {g_home}-{g_away} {away_name}")
+                print(f"[{now_it()}] 📡 {status} {elapsed}' | {home_name} {g_home}-{g_away} {away_name}")
                 state["_last_log_key"] = _log_key
                 state["_last_log_ts"] = _now_ts
 
