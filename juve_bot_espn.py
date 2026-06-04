@@ -35,296 +35,29 @@ PAGINA_TARGET   = 11
 
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
-LEAGUE_SLUGS = [
-    # ——— ITALIA ———
-    "ita.1", "ita.coppa_italia", "ita.super_cup", "ita.2", "ita.3",
+# ==============================================================================
+# LEGHE — caricato da leagues.json
+# Formato: { "slug": { "emoji": "🇮🇹" } }
+# ==============================================================================
+_LEAGUES_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "leagues.json")
 
-    # ——— UEFA CLUB ———
-    "uefa.champions", "uefa.europa", "uefa.europa_conf", "uefa.super_cup", "uefa.youth.champions",
+def _load_leagues() -> dict:
+    try:
+        with open(_LEAGUES_JSON_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        print(f"[{now_it()}] 📋 leagues.json caricato: {len(data)} slug")
+        return data
+    except FileNotFoundError:
+        print(f"[{now_it()}] ⚠️  leagues.json non trovato — emoji leghe disabilitate")
+        return {}
+    except Exception as e:
+        print(f"[{now_it()}] ⚠️  Errore caricamento leagues.json: {e}")
+        return {}
 
-    # ——— INGHILTERRA ———
-    "eng.1", "eng.fa", "eng.league_cup", "eng.community",
-    "eng.2", "eng.3", "eng.4",
+LEAGUE_MAP: dict = _load_leagues()
+LEAGUE_SLUGS: list = list(LEAGUE_MAP.keys())
 
-    # ——— SPAGNA ———
-    "esp.1", "esp.copa_del_rey", "esp.super_cup", "esp.2",
-
-    # ——— GERMANIA ———
-    "ger.1", "ger.dfb_pokal", "ger.super_cup", "ger.2", "ger.3",
-
-    # ——— FRANCIA ———
-    "fra.1", "fra.coupe_de_france", "fra.coupe_de_la_ligue", "fra.super_cup", "fra.2",
-
-    # ——— PORTOGALLO ———
-    "por.1", "por.cup", "por.super_cup", "por.2",
-
-    # ——— OLANDA ———
-    "ned.1", "ned.cup", "ned.super_cup", "ned.2",
-
-    # ——— BELGIO ———
-    "bel.1", "bel.cup", "bel.super_cup", "bel.2",
-
-    # ——— TURCHIA ———
-    "tur.1", "tur.cup", "tur.super_cup", "tur.2",
-
-    # ——— SCOZIA ———
-    "sco.1", "sco.cup", "sco.league_cup", "sco.2",
-
-    # ——— RUSSIA ———
-    "rus.1", "rus.cup", "rus.super_cup", "rus.2",
-
-    # ——— UCRAINA ———
-    "ukr.1", "ukr.cup", "ukr.super_cup",
-
-    # ——— GRECIA ———
-    "gre.1", "gre.cup", "gre.super_cup",
-
-    # ——— AUSTRIA ———
-    "aut.1", "aut.cup",
-
-    # ——— SVIZZERA ———
-    "sui.1", "sui.cup",
-
-    # ——— DANIMARCA ———
-    "den.1", "den.cup", "den.super_cup",
-
-    # ——— NORVEGIA ———
-    "nor.1", "nor.cup",
-
-    # ——— SVEZIA ———
-    "swe.1", "swe.cup", "swe.super_cup",
-
-    # ——— ALTRI EUROPA ———
-    "isr.1", "isr.cup",
-    "rou.1", "rou.cup",
-    "cro.1", "cro.cup",
-    "srb.1", "srb.cup",
-    "cze.1", "cze.cup",
-    "pol.1", "pol.cup",
-    "hun.1", "hun.cup",
-    "svk.1",
-    "svn.1",
-    "bul.1", "bul.cup",
-    "fin.1", "fin.cup",
-    "irl.1", "irl.cup",
-    "cyp.1", "cyp.cup",
-    "alb.1",
-    "bih.1",
-    "mne.1",
-    "mkd.1",
-    "kos.1",
-    "wal.1", "wal.cup",
-    "nir.1",
-    "lux.1",
-    "kaz.1",
-    "aze.1",
-    "geo.1",
-    "arm.1",
-    "blr.1",
-
-    # ——— USA / CANADA ———
-    "usa.1", "usa.open", "usa.leagues_cup", "usa.mls.is.back", "usa.2",
-    "can.1",
-
-    # ——— MESSICO ———
-    "mex.1", "mex.copa_mx", "mex.campeon_campeones",
-
-    # ——— CONCACAF ———
-    "concacaf.champions", "concacaf.gold", "concacaf.nations", "concacaf.nations.q",
-
-    # ——— SUD AMERICA ———
-    "bra.1", "bra.copa_brasil", "bra.2",
-    "arg.1", "arg.2",
-    "col.1",
-    "chi.1",
-    "ecu.1",
-    "per.1",
-    "uru.1",
-    "ven.1",
-    "bol.1",
-    "par.1",
-    "conmebol.libertadores", "conmebol.sudamericana", "conmebol.recopa",
-    "conmebol.america", "conmebol.america.q",
-
-    # ——— ASIA ———
-    "jpn.1", "jpn.cup", "jpn.emperor_cup", "jpn.2",
-    "kor.1", "kor.cup",
-    "chn.1", "chn.cup",
-    "sau.1", "sau.cup", "sau.super_cup",
-    "uae.1", "uae.cup",
-    "qat.1", "qat.cup",
-    "ind.1",
-    "afc.champions", "afc.champions.elite", "afc.cup",
-    "afc.asian_cup", "afc.asian_cup.q",
-
-    # ——— AFRICA ———
-    "rsa.1",
-    "mar.1",
-    "nga.1",
-    "egy.1",
-    "tun.1",
-    "caf.champions", "caf.confederation",
-    "caf.nations", "caf.nations.q",
-
-    # ——— OCEANIA ———
-    "aus.1", "aus.2",
-
-    # ——— AMICHEVOLI ———
-    "friendly.club", "fifa.friendly",
-
-    # ——— FEMMINILE ———
-    "usa.nwsl",
-    "eng.w.1", "fra.w.1", "ger.w.1", "esp.w.1", "ita.w.1",
-    "ned.w.1", "swe.w.1", "nor.w.1", "den.w.1",
-    "aus.w.1", "jpn.w.1",
-    "bra.w.1",
-    "uefa.w.champions", "uefa.w.euro", "uefa.w.euro.q", "uefa.w.nations",
-    "fifa.w.world", "fifa.w.world.q",
-    "concacaf.w.champions", "concacaf.w.gold",
-    "conmebol.w.copa",
-    "caf.w.nations",
-    "afc.w.asian_cup",
-    "olympics.w.soccer",
-
-    # ——— MONDIALI / NAZIONALI ———
-    "fifa.world", "fifa.world.q", "fifa.confed", "fifa.cwc",
-    "fifa.u20.world", "fifa.u17.world",
-    "olympics.m.soccer",
-    "uefa.euro", "uefa.euro.q", "uefa.nations",
-    "uefa.u21", "uefa.u19", "uefa.u17",
-]
-
-LEAGUE_EMOJIS = {
-    # Italia
-    "ita.1": "🇮🇹", "ita.coppa_italia": "🇮🇹", "ita.super_cup": "🇮🇹", "ita.2": "🇮🇹", "ita.3": "🇮🇹",
-    "ita.w.1": "🇮🇹",
-    # UEFA club
-    "uefa.champions": "🇪🇺", "uefa.europa": "🇪🇺", "uefa.europa_conf": "🇪🇺",
-    "uefa.super_cup": "🇪🇺", "uefa.youth.champions": "🇪🇺",
-    # Inghilterra
-    "eng.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.fa": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.league_cup": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.community": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    "eng.2": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.3": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.4": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "eng.w.1": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    # Spagna
-    "esp.1": "🇪🇸", "esp.copa_del_rey": "🇪🇸", "esp.super_cup": "🇪🇸", "esp.2": "🇪🇸", "esp.w.1": "🇪🇸",
-    # Germania
-    "ger.1": "🇩🇪", "ger.dfb_pokal": "🇩🇪", "ger.super_cup": "🇩🇪", "ger.2": "🇩🇪", "ger.3": "🇩🇪", "ger.w.1": "🇩🇪",
-    # Francia
-    "fra.1": "🇫🇷", "fra.coupe_de_france": "🇫🇷", "fra.coupe_de_la_ligue": "🇫🇷",
-    "fra.super_cup": "🇫🇷", "fra.2": "🇫🇷", "fra.w.1": "🇫🇷",
-    # Portogallo
-    "por.1": "🇵🇹", "por.cup": "🇵🇹", "por.super_cup": "🇵🇹", "por.2": "🇵🇹",
-    # Olanda
-    "ned.1": "🇳🇱", "ned.cup": "🇳🇱", "ned.super_cup": "🇳🇱", "ned.2": "🇳🇱", "ned.w.1": "🇳🇱",
-    # Belgio
-    "bel.1": "🇧🇪", "bel.cup": "🇧🇪", "bel.super_cup": "🇧🇪", "bel.2": "🇧🇪",
-    # Turchia
-    "tur.1": "🇹🇷", "tur.cup": "🇹🇷", "tur.super_cup": "🇹🇷", "tur.2": "🇹🇷",
-    # Scozia
-    "sco.1": "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "sco.cup": "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "sco.league_cup": "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "sco.2": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-    # Russia
-    "rus.1": "🇷🇺", "rus.cup": "🇷🇺", "rus.super_cup": "🇷🇺", "rus.2": "🇷🇺",
-    # Ucraina
-    "ukr.1": "🇺🇦", "ukr.cup": "🇺🇦", "ukr.super_cup": "🇺🇦",
-    # Grecia
-    "gre.1": "🇬🇷", "gre.cup": "🇬🇷", "gre.super_cup": "🇬🇷",
-    # Austria
-    "aut.1": "🇦🇹", "aut.cup": "🇦🇹",
-    # Svizzera
-    "sui.1": "🇨🇭", "sui.cup": "🇨🇭",
-    # Danimarca
-    "den.1": "🇩🇰", "den.cup": "🇩🇰", "den.super_cup": "🇩🇰", "den.w.1": "🇩🇰",
-    # Norvegia
-    "nor.1": "🇳🇴", "nor.cup": "🇳🇴", "nor.w.1": "🇳🇴",
-    # Svezia
-    "swe.1": "🇸🇪", "swe.cup": "🇸🇪", "swe.super_cup": "🇸🇪", "swe.w.1": "🇸🇪",
-    # Altri Europa
-    "isr.1": "🇮🇱", "isr.cup": "🇮🇱",
-    "rou.1": "🇷🇴", "rou.cup": "🇷🇴",
-    "cro.1": "🇭🇷", "cro.cup": "🇭🇷",
-    "srb.1": "🇷🇸", "srb.cup": "🇷🇸",
-    "cze.1": "🇨🇿", "cze.cup": "🇨🇿",
-    "pol.1": "🇵🇱", "pol.cup": "🇵🇱",
-    "hun.1": "🇭🇺", "hun.cup": "🇭🇺",
-    "svk.1": "🇸🇰",
-    "svn.1": "🇸🇮",
-    "bul.1": "🇧🇬", "bul.cup": "🇧🇬",
-    "fin.1": "🇫🇮", "fin.cup": "🇫🇮",
-    "irl.1": "🇮🇪", "irl.cup": "🇮🇪",
-    "cyp.1": "🇨🇾", "cyp.cup": "🇨🇾",
-    "alb.1": "🇦🇱",
-    "bih.1": "🇧🇦",
-    "mne.1": "🇲🇪",
-    "mkd.1": "🇲🇰",
-    "kos.1": "🇽🇰",
-    "wal.1": "🏴󠁧󠁢󠁷󠁬󠁳󠁿", "wal.cup": "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
-    "nir.1": "🇬🇧",
-    "lux.1": "🇱🇺",
-    "kaz.1": "🇰🇿",
-    "aze.1": "🇦🇿",
-    "geo.1": "🇬🇪",
-    "arm.1": "🇦🇲",
-    "blr.1": "🇧🇾",
-    # USA / Canada
-    "usa.1": "🇺🇸", "usa.open": "🇺🇸", "usa.leagues_cup": "🌎", "usa.mls.is.back": "🇺🇸", "usa.2": "🇺🇸",
-    "usa.nwsl": "🇺🇸",
-    "can.1": "🇨🇦",
-    # Messico
-    "mex.1": "🇲🇽", "mex.copa_mx": "🇲🇽", "mex.campeon_campeones": "🇲🇽",
-    # CONCACAF
-    "concacaf.champions": "🌎", "concacaf.gold": "🌎", "concacaf.nations": "🌎", "concacaf.nations.q": "🌎",
-    "concacaf.w.champions": "🌎", "concacaf.w.gold": "🌎",
-    # Sud America
-    "bra.1": "🇧🇷", "bra.copa_brasil": "🇧🇷", "bra.2": "🇧🇷", "bra.w.1": "🇧🇷",
-    "arg.1": "🇦🇷", "arg.2": "🇦🇷",
-    "col.1": "🇨🇴", "col.w.1": "🇨🇴",
-    "chi.1": "🇨🇱",
-    "ecu.1": "🇪🇨",
-    "per.1": "🇵🇪",
-    "uru.1": "🇺🇾",
-    "ven.1": "🇻🇪",
-    "bol.1": "🇧🇴",
-    "par.1": "🇵🇾",
-    "conmebol.libertadores": "🌎", "conmebol.sudamericana": "🌎", "conmebol.recopa": "🌎",
-    "conmebol.america": "🌎", "conmebol.america.q": "🌎",
-    "conmebol.w.copa": "🌎",
-    # Asia
-    "jpn.1": "🇯🇵", "jpn.cup": "🇯🇵", "jpn.emperor_cup": "🇯🇵", "jpn.2": "🇯🇵", "jpn.w.1": "🇯🇵",
-    "kor.1": "🇰🇷", "kor.cup": "🇰🇷",
-    "chn.1": "🇨🇳", "chn.cup": "🇨🇳", "chn.w.1": "🇨🇳",
-    "sau.1": "🇸🇦", "sau.cup": "🇸🇦", "sau.super_cup": "🇸🇦",
-    "uae.1": "🇦🇪", "uae.cup": "🇦🇪",
-    "qat.1": "🇶🇦", "qat.cup": "🇶🇦",
-    "ind.1": "🇮🇳",
-    "aus.w.1": "🇦🇺",
-    "afc.champions": "🌏", "afc.champions.elite": "🌏", "afc.cup": "🌏",
-    "afc.asian_cup": "🌏", "afc.asian_cup.q": "🌏",
-    "afc.w.asian_cup": "🌏",
-    # Africa
-    "rsa.1": "🇿🇦",
-    "mar.1": "🇲🇦",
-    "nga.1": "🇳🇬",
-    "egy.1": "🇪🇬",
-    "tun.1": "🇹🇳",
-    "caf.champions": "🌍", "caf.confederation": "🌍",
-    "caf.nations": "🌍", "caf.nations.q": "🌍",
-    "caf.w.nations": "🌍",
-    # Oceania
-    "aus.1": "🇦🇺", "aus.2": "🇦🇺",
-    # Amichevoli
-    "friendly.club": "🤝", "fifa.friendly": "🤝",
-    # Femminile internazionale
-    "uefa.w.champions": "🇪🇺", "uefa.w.euro": "🇪🇺", "uefa.w.euro.q": "🇪🇺", "uefa.w.nations": "🇪🇺",
-    "fifa.w.world": "🌍", "fifa.w.world.q": "🌍",
-    "olympics.w.soccer": "🏅",
-    # Mondiali / Nazionali
-    "fifa.world": "🌍", "fifa.world.q": "🌍", "fifa.confed": "🌍", "fifa.cwc": "🌍",
-    "fifa.u20.world": "🌍", "fifa.u17.world": "🌍",
-    "olympics.m.soccer": "🏅",
-    "uefa.euro": "🇪🇺", "uefa.euro.q": "🇪🇺", "uefa.nations": "🇪🇺",
-    "uefa.u21": "🇪🇺", "uefa.u19": "🇪🇺", "uefa.u17": "🇪🇺",
-}
-
-def get_league_emoji(slug): return LEAGUE_EMOJIS.get(slug, "⚽️")
+def get_league_emoji(slug): return LEAGUE_MAP.get(slug, {}).get("emoji", "⚽️")
 
 E_BOLT   = '⚡️'
 E_FLAG   = '🏁'
@@ -1747,9 +1480,9 @@ def avvia_ciclo_partita():
                     state["prev_away_goals"] = g_away
                     state_changed = True
                 else:
-                    # Aspetta 15s e riconferma il calo prima di mandare GOAL ANNULLATO
-                    print(f"[{now_it()}] ⚠️  Possibile annullamento, attendo conferma (90s)...")
-                    time.sleep(90)
+                    # Aspetta 120s e riconferma il calo prima di mandare GOAL ANNULLATO
+                    print(f"[{now_it()}] ⚠️  Possibile annullamento, attendo conferma (120s)...")
+                    time.sleep(120)
                     data_cancel = fetch_evento(event_id, league_slug) or data
                     try:
                         competitors_cancel = data_cancel["header"]["competitions"][0]["competitors"]
