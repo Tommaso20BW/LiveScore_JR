@@ -1173,7 +1173,9 @@ _TEAMS_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tea
 def _load_teams() -> dict:
     try:
         with open(_TEAMS_JSON_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        print(f"[{now_it()}] 📋 teams.json caricato: {len(data)} squadre")
+        return data
     except FileNotFoundError:
         print(f"[{now_it()}] ⚠️  teams.json non trovato in {_TEAMS_JSON_PATH} — nomi squadre non tradotti")
         return {}
@@ -1276,6 +1278,17 @@ def avvia_ciclo_partita():
 
             if "_intro_logged" not in state:
                 print(f"[{now_it()}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
+                # Log traduzione squadre da teams.json
+                h_raw, a_raw = home_name_raw, away_name_raw
+                h_it,  a_it  = home_name, away_name
+                if h_raw != h_it:
+                    print(f"[{now_it()}] 📋 Traduzione: '{h_raw}' → '{h_it}'")
+                else:
+                    print(f"[{now_it()}] 📋 '{h_raw}' non in teams.json — usato nome ESPN")
+                if a_raw != a_it:
+                    print(f"[{now_it()}] 📋 Traduzione: '{a_raw}' → '{a_it}'")
+                else:
+                    print(f"[{now_it()}] 📋 '{a_raw}' non in teams.json — usato nome ESPN")
                 state["_intro_logged"] = True
 
             # Log heartbeat: una riga al minuto (non ad ogni ciclo da 6s), silenziato in NS
@@ -2004,14 +2017,23 @@ def avvia_ciclo_partita():
                     state_changed = True
 
             # --- Cartellini rossi / doppio giallo ---
+            # Logica giallo→rosso:
+            # - I gialli vengono tracciati in sent_yellow_cards con chiave "player_name"
+            # - Se arriva un "second yellow card" per un giocatore già ammonito,
+            #   è un upgrade: il rosso viene inviato normalmente
+            # - card_id usa solo player_name (senza minuto) per i rossi diretti,
+            #   così non collide con un eventuale aggiornamento ESPN dello stesso evento
             for e in events:
                 if e["type"] in ("red card", "second yellow card"):
                     p_name  = fmt_player(e["player_name"])
-                    card_id = f"card_{e['minute']}_{e['player_name']}".replace(" ", "_")
+                    # Chiave basata su player_name: evita duplicati se ESPN cambia il minuto
+                    card_id = f"card_{e['player_name']}".replace(" ", "_")
                     if card_id not in state["sent_cards"]:
-                        print(f"[{now_it()}] 🟥 ROSSO {e['minute']}' {p_name} → Telegram inviato")
+                        is_second_yellow = e["type"] == "second yellow card"
+                        label = "DOPPIO GIALLO" if is_second_yellow else "CARTELLINO ROSSO"
+                        print(f"[{now_it()}] 🟥 {label} {e['minute']}' {p_name} → Telegram inviato")
                         send_telegram(
-                            f"<b>CARTELLINO ROSSO · {e['minute']}' {E_RED}</b>\n\n"
+                            f"<b>{label} · {e['minute']}' {E_RED}</b>\n\n"
                             f"{E_EXIT} <i>{p_name}</i>\n\n{e_comp} {hashtag}"
                         )
                         state["sent_cards"].append(card_id)
