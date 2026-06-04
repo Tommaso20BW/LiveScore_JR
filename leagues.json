@@ -1,0 +1,644 @@
+{
+  "ita.1": {
+    "emoji": "🇮🇹"
+  },
+  "ita.coppa_italia": {
+    "emoji": "🇮🇹"
+  },
+  "ita.super_cup": {
+    "emoji": "🇮🇹"
+  },
+  "ita.2": {
+    "emoji": "🇮🇹"
+  },
+  "ita.3": {
+    "emoji": "🇮🇹"
+  },
+  "uefa.champions": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.europa": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.europa_conf": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.super_cup": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.youth.champions": {
+    "emoji": "🇪🇺"
+  },
+  "eng.1": {
+    "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  },
+  "eng.fa": {
+    "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  },
+  "eng.league_cup": {
+    "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  },
+  "eng.community": {
+    "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  },
+  "eng.2": {
+    "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  },
+  "eng.3": {
+    "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  },
+  "eng.4": {
+    "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  },
+  "esp.1": {
+    "emoji": "🇪🇸"
+  },
+  "esp.copa_del_rey": {
+    "emoji": "🇪🇸"
+  },
+  "esp.super_cup": {
+    "emoji": "🇪🇸"
+  },
+  "esp.2": {
+    "emoji": "🇪🇸"
+  },
+  "ger.1": {
+    "emoji": "🇩🇪"
+  },
+  "ger.dfb_pokal": {
+    "emoji": "🇩🇪"
+  },
+  "ger.super_cup": {
+    "emoji": "🇩🇪"
+  },
+  "ger.2": {
+    "emoji": "🇩🇪"
+  },
+  "ger.3": {
+    "emoji": "🇩🇪"
+  },
+  "fra.1": {
+    "emoji": "🇫🇷"
+  },
+  "fra.coupe_de_france": {
+    "emoji": "🇫🇷"
+  },
+  "fra.coupe_de_la_ligue": {
+    "emoji": "🇫🇷"
+  },
+  "fra.super_cup": {
+    "emoji": "🇫🇷"
+  },
+  "fra.2": {
+    "emoji": "🇫🇷"
+  },
+  "por.1": {
+    "emoji": "🇵🇹"
+  },
+  "por.cup": {
+    "emoji": "🇵🇹"
+  },
+  "por.super_cup": {
+    "emoji": "🇵🇹"
+  },
+  "por.2": {
+    "emoji": "🇵🇹"
+  },
+  "ned.1": {
+    "emoji": "🇳🇱"
+  },
+  "ned.cup": {
+    "emoji": "🇳🇱"
+  },
+  "ned.super_cup": {
+    "emoji": "🇳🇱"
+  },
+  "ned.2": {
+    "emoji": "🇳🇱"
+  },
+  "bel.1": {
+    "emoji": "🇧🇪"
+  },
+  "bel.cup": {
+    "emoji": "🇧🇪"
+  },
+  "bel.super_cup": {
+    "emoji": "🇧🇪"
+  },
+  "bel.2": {
+    "emoji": "🇧🇪"
+  },
+  "tur.1": {
+    "emoji": "🇹🇷"
+  },
+  "tur.cup": {
+    "emoji": "🇹🇷"
+  },
+  "tur.super_cup": {
+    "emoji": "🇹🇷"
+  },
+  "tur.2": {
+    "emoji": "🇹🇷"
+  },
+  "sco.1": {
+    "emoji": "🏴󠁧󠁢󠁳󠁣󠁴󠁿"
+  },
+  "sco.cup": {
+    "emoji": "🏴󠁧󠁢󠁳󠁣󠁴󠁿"
+  },
+  "sco.league_cup": {
+    "emoji": "🏴󠁧󠁢󠁳󠁣󠁴󠁿"
+  },
+  "sco.2": {
+    "emoji": "🏴󠁧󠁢󠁳󠁣󠁴󠁿"
+  },
+  "rus.1": {
+    "emoji": "🇷🇺"
+  },
+  "rus.cup": {
+    "emoji": "🇷🇺"
+  },
+  "rus.super_cup": {
+    "emoji": "🇷🇺"
+  },
+  "rus.2": {
+    "emoji": "🇷🇺"
+  },
+  "ukr.1": {
+    "emoji": "🇺🇦"
+  },
+  "ukr.cup": {
+    "emoji": "🇺🇦"
+  },
+  "ukr.super_cup": {
+    "emoji": "🇺🇦"
+  },
+  "gre.1": {
+    "emoji": "🇬🇷"
+  },
+  "gre.cup": {
+    "emoji": "🇬🇷"
+  },
+  "gre.super_cup": {
+    "emoji": "🇬🇷"
+  },
+  "aut.1": {
+    "emoji": "🇦🇹"
+  },
+  "aut.cup": {
+    "emoji": "🇦🇹"
+  },
+  "sui.1": {
+    "emoji": "🇨🇭"
+  },
+  "sui.cup": {
+    "emoji": "🇨🇭"
+  },
+  "den.1": {
+    "emoji": "🇩🇰"
+  },
+  "den.cup": {
+    "emoji": "🇩🇰"
+  },
+  "den.super_cup": {
+    "emoji": "🇩🇰"
+  },
+  "nor.1": {
+    "emoji": "🇳🇴"
+  },
+  "nor.cup": {
+    "emoji": "🇳🇴"
+  },
+  "swe.1": {
+    "emoji": "🇸🇪"
+  },
+  "swe.cup": {
+    "emoji": "🇸🇪"
+  },
+  "swe.super_cup": {
+    "emoji": "🇸🇪"
+  },
+  "isr.1": {
+    "emoji": "🇮🇱"
+  },
+  "isr.cup": {
+    "emoji": "🇮🇱"
+  },
+  "rou.1": {
+    "emoji": "🇷🇴"
+  },
+  "rou.cup": {
+    "emoji": "🇷🇴"
+  },
+  "cro.1": {
+    "emoji": "🇭🇷"
+  },
+  "cro.cup": {
+    "emoji": "🇭🇷"
+  },
+  "srb.1": {
+    "emoji": "🇷🇸"
+  },
+  "srb.cup": {
+    "emoji": "🇷🇸"
+  },
+  "cze.1": {
+    "emoji": "🇨🇿"
+  },
+  "cze.cup": {
+    "emoji": "🇨🇿"
+  },
+  "pol.1": {
+    "emoji": "🇵🇱"
+  },
+  "pol.cup": {
+    "emoji": "🇵🇱"
+  },
+  "hun.1": {
+    "emoji": "🇭🇺"
+  },
+  "hun.cup": {
+    "emoji": "🇭🇺"
+  },
+  "svk.1": {
+    "emoji": "🇸🇰"
+  },
+  "svn.1": {
+    "emoji": "🇸🇮"
+  },
+  "bul.1": {
+    "emoji": "🇧🇬"
+  },
+  "bul.cup": {
+    "emoji": "🇧🇬"
+  },
+  "fin.1": {
+    "emoji": "🇫🇮"
+  },
+  "fin.cup": {
+    "emoji": "🇫🇮"
+  },
+  "irl.1": {
+    "emoji": "🇮🇪"
+  },
+  "irl.cup": {
+    "emoji": "🇮🇪"
+  },
+  "cyp.1": {
+    "emoji": "🇨🇾"
+  },
+  "cyp.cup": {
+    "emoji": "🇨🇾"
+  },
+  "alb.1": {
+    "emoji": "🇦🇱"
+  },
+  "bih.1": {
+    "emoji": "🇧🇦"
+  },
+  "mne.1": {
+    "emoji": "🇲🇪"
+  },
+  "mkd.1": {
+    "emoji": "🇲🇰"
+  },
+  "kos.1": {
+    "emoji": "🇽🇰"
+  },
+  "wal.1": {
+    "emoji": "🏴󠁧󠁢󠁷󠁬󠁳󠁿"
+  },
+  "wal.cup": {
+    "emoji": "🏴󠁧󠁢󠁷󠁬󠁳󠁿"
+  },
+  "nir.1": {
+    "emoji": "🇬🇧"
+  },
+  "lux.1": {
+    "emoji": "🇱🇺"
+  },
+  "kaz.1": {
+    "emoji": "🇰🇿"
+  },
+  "aze.1": {
+    "emoji": "🇦🇿"
+  },
+  "geo.1": {
+    "emoji": "🇬🇪"
+  },
+  "arm.1": {
+    "emoji": "🇦🇲"
+  },
+  "blr.1": {
+    "emoji": "🇧🇾"
+  },
+  "usa.1": {
+    "emoji": "🇺🇸"
+  },
+  "usa.open": {
+    "emoji": "🇺🇸"
+  },
+  "usa.leagues_cup": {
+    "emoji": "🌎"
+  },
+  "usa.mls.is.back": {
+    "emoji": "🇺🇸"
+  },
+  "usa.2": {
+    "emoji": "🇺🇸"
+  },
+  "can.1": {
+    "emoji": "🇨🇦"
+  },
+  "mex.1": {
+    "emoji": "🇲🇽"
+  },
+  "mex.copa_mx": {
+    "emoji": "🇲🇽"
+  },
+  "mex.campeon_campeones": {
+    "emoji": "🇲🇽"
+  },
+  "concacaf.champions": {
+    "emoji": "🌎"
+  },
+  "concacaf.gold": {
+    "emoji": "🌎"
+  },
+  "concacaf.nations": {
+    "emoji": "🌎"
+  },
+  "concacaf.nations.q": {
+    "emoji": "🌎"
+  },
+  "bra.1": {
+    "emoji": "🇧🇷"
+  },
+  "bra.copa_brasil": {
+    "emoji": "🇧🇷"
+  },
+  "bra.2": {
+    "emoji": "🇧🇷"
+  },
+  "arg.1": {
+    "emoji": "🇦🇷"
+  },
+  "arg.2": {
+    "emoji": "🇦🇷"
+  },
+  "col.1": {
+    "emoji": "🇨🇴"
+  },
+  "chi.1": {
+    "emoji": "🇨🇱"
+  },
+  "ecu.1": {
+    "emoji": "🇪🇨"
+  },
+  "per.1": {
+    "emoji": "🇵🇪"
+  },
+  "uru.1": {
+    "emoji": "🇺🇾"
+  },
+  "ven.1": {
+    "emoji": "🇻🇪"
+  },
+  "bol.1": {
+    "emoji": "🇧🇴"
+  },
+  "par.1": {
+    "emoji": "🇵🇾"
+  },
+  "conmebol.libertadores": {
+    "emoji": "🌎"
+  },
+  "conmebol.sudamericana": {
+    "emoji": "🌎"
+  },
+  "conmebol.recopa": {
+    "emoji": "🌎"
+  },
+  "conmebol.america": {
+    "emoji": "🌎"
+  },
+  "conmebol.america.q": {
+    "emoji": "🌎"
+  },
+  "jpn.1": {
+    "emoji": "🇯🇵"
+  },
+  "jpn.cup": {
+    "emoji": "🇯🇵"
+  },
+  "jpn.emperor_cup": {
+    "emoji": "🇯🇵"
+  },
+  "jpn.2": {
+    "emoji": "🇯🇵"
+  },
+  "kor.1": {
+    "emoji": "🇰🇷"
+  },
+  "kor.cup": {
+    "emoji": "🇰🇷"
+  },
+  "chn.1": {
+    "emoji": "🇨🇳"
+  },
+  "chn.cup": {
+    "emoji": "🇨🇳"
+  },
+  "sau.1": {
+    "emoji": "🇸🇦"
+  },
+  "sau.cup": {
+    "emoji": "🇸🇦"
+  },
+  "sau.super_cup": {
+    "emoji": "🇸🇦"
+  },
+  "uae.1": {
+    "emoji": "🇦🇪"
+  },
+  "uae.cup": {
+    "emoji": "🇦🇪"
+  },
+  "qat.1": {
+    "emoji": "🇶🇦"
+  },
+  "qat.cup": {
+    "emoji": "🇶🇦"
+  },
+  "ind.1": {
+    "emoji": "🇮🇳"
+  },
+  "afc.champions": {
+    "emoji": "🌏"
+  },
+  "afc.champions.elite": {
+    "emoji": "🌏"
+  },
+  "afc.cup": {
+    "emoji": "🌏"
+  },
+  "afc.asian_cup": {
+    "emoji": "🌏"
+  },
+  "afc.asian_cup.q": {
+    "emoji": "🌏"
+  },
+  "rsa.1": {
+    "emoji": "🇿🇦"
+  },
+  "mar.1": {
+    "emoji": "🇲🇦"
+  },
+  "nga.1": {
+    "emoji": "🇳🇬"
+  },
+  "egy.1": {
+    "emoji": "🇪🇬"
+  },
+  "tun.1": {
+    "emoji": "🇹🇳"
+  },
+  "caf.champions": {
+    "emoji": "🌍"
+  },
+  "caf.confederation": {
+    "emoji": "🌍"
+  },
+  "caf.nations": {
+    "emoji": "🌍"
+  },
+  "caf.nations.q": {
+    "emoji": "🌍"
+  },
+  "aus.1": {
+    "emoji": "🇦🇺"
+  },
+  "aus.2": {
+    "emoji": "🇦🇺"
+  },
+  "friendly.club": {
+    "emoji": "🤝"
+  },
+  "fifa.friendly": {
+    "emoji": "🤝"
+  },
+  "usa.nwsl": {
+    "emoji": "🇺🇸"
+  },
+  "eng.w.1": {
+    "emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
+  },
+  "fra.w.1": {
+    "emoji": "🇫🇷"
+  },
+  "ger.w.1": {
+    "emoji": "🇩🇪"
+  },
+  "esp.w.1": {
+    "emoji": "🇪🇸"
+  },
+  "ita.w.1": {
+    "emoji": "🇮🇹"
+  },
+  "ned.w.1": {
+    "emoji": "🇳🇱"
+  },
+  "swe.w.1": {
+    "emoji": "🇸🇪"
+  },
+  "nor.w.1": {
+    "emoji": "🇳🇴"
+  },
+  "den.w.1": {
+    "emoji": "🇩🇰"
+  },
+  "aus.w.1": {
+    "emoji": "🇦🇺"
+  },
+  "jpn.w.1": {
+    "emoji": "🇯🇵"
+  },
+  "bra.w.1": {
+    "emoji": "🇧🇷"
+  },
+  "uefa.w.champions": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.w.euro": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.w.euro.q": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.w.nations": {
+    "emoji": "🇪🇺"
+  },
+  "fifa.w.world": {
+    "emoji": "🌍"
+  },
+  "fifa.w.world.q": {
+    "emoji": "🌍"
+  },
+  "concacaf.w.champions": {
+    "emoji": "🌎"
+  },
+  "concacaf.w.gold": {
+    "emoji": "🌎"
+  },
+  "conmebol.w.copa": {
+    "emoji": "🌎"
+  },
+  "caf.w.nations": {
+    "emoji": "🌍"
+  },
+  "afc.w.asian_cup": {
+    "emoji": "🌏"
+  },
+  "olympics.w.soccer": {
+    "emoji": "🏅"
+  },
+  "fifa.world": {
+    "emoji": "🌍"
+  },
+  "fifa.world.q": {
+    "emoji": "🌍"
+  },
+  "fifa.confed": {
+    "emoji": "🌍"
+  },
+  "fifa.cwc": {
+    "emoji": "🌍"
+  },
+  "fifa.u20.world": {
+    "emoji": "🌍"
+  },
+  "fifa.u17.world": {
+    "emoji": "🌍"
+  },
+  "olympics.m.soccer": {
+    "emoji": "🏅"
+  },
+  "uefa.euro": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.euro.q": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.nations": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.u21": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.u19": {
+    "emoji": "🇪🇺"
+  },
+  "uefa.u17": {
+    "emoji": "🇪🇺"
+  }
+}
