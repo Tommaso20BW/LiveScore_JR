@@ -58,6 +58,60 @@ LEAGUE_SLUGS: list = list(LEAGUE_MAP.keys())
 
 def get_league_emoji(slug): return LEAGUE_MAP.get(slug, {}).get("emoji", "⚽️")
 
+# ==============================================================================
+# KIT / TEMA GRAFICA STATS
+#   home    → Juve gioca in casa (campionato)
+#   away    → Juve gioca in trasferta (campionato)
+#   third   → coppe (Coppa Italia, Supercoppa, Champions, Europa, ecc.)
+#   default → partita senza la Juve
+# ==============================================================================
+JUVE_ID = str(TEAM_ID)  # default '111'
+
+def _is_league_slug(slug: str) -> bool:
+    """True se lo slug ESPN è un campionato (es. 'ita.1', 'eng.2'):
+    3 lettere + '.' + numero. Tutto il resto è considerato coppa."""
+    parts = (slug or "").split(".")
+    return (len(parts) == 2 and len(parts[0]) == 3
+            and parts[0].isalpha() and parts[1].isdigit())
+
+# Parole chiave di fallback per riconoscere una coppa dal nome/slug
+_CUP_KEYWORDS = (
+    "copp", "cup", "champions", "europa", "conference", "super",
+    "supercoppa", "mondiale", "club world", "cwc", "shield",
+    "playoff", "play-off",
+)
+
+def is_cup_competition(league_slug: str, league_name: str = "") -> bool:
+    """Determina se la competizione è una coppa.
+    Priorità: override esplicito in leagues.json ({"slug": {"type": "cup"}})
+    → formato slug campionato → keyword di fallback."""
+    slug = (league_slug or "").lower()
+    name = (league_name or "").lower()
+
+    # 1) override esplicito da leagues.json
+    tipo = str(LEAGUE_MAP.get(league_slug, {}).get("type", "")).lower()
+    if tipo in ("cup", "coppa"):
+        return True
+    if tipo in ("league", "campionato"):
+        return False
+
+    # 2) formato slug: i campionati sono "xxx.N"
+    if _is_league_slug(slug):
+        return False
+
+    # 3) fallback per keyword
+    return any(k in slug or k in name for k in _CUP_KEYWORDS)
+
+def determina_kit(home_id, away_id, league_slug: str = "", league_name: str = "") -> str:
+    """Restituisce il tema della maglia da applicare alla grafica stats."""
+    juve_in_casa       = str(home_id) == JUVE_ID
+    juve_in_trasferta  = str(away_id) == JUVE_ID
+    if not (juve_in_casa or juve_in_trasferta):
+        return "default"
+    if is_cup_competition(league_slug, league_name):
+        return "third"
+    return "home" if juve_in_casa else "away"
+
 E_BOLT   = '⚡️'
 E_FLAG   = '🏁'
 E_MIC    = '🎙'
@@ -465,7 +519,11 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             t_name  = play.get("team", {}).get("displayName", "")
             t_id    = play.get("team", {}).get("id", "")
             if not t_id and t_name:
-                t_id = home_id if t_name.lower() == home_name.lower() else away_id
+                tl = t_name.lower()
+                if tl == (home_name or "").lower():
+                    t_id = home_id
+                elif tl == (away_name or "").lower():
+                    t_id = away_id
             add_event(ev_type, minute, t_id, player, assist, uid)
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore parsing keyEvent: {e}")
@@ -550,12 +608,23 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   home_name: str, away_name: str,
                                   home_goals: int, away_goals: int,
                                   momento: str, league_name: str = "SERIE A",
+                                  league_slug: str = "",
                                   pen_home: int = 0, pen_away: int = 0):
 
-    JUVE_ID     = '111'
-    JUVE_LOGO   = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
-    h_logo      = JUVE_LOGO if str(home_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
-    a_logo      = JUVE_LOGO if str(away_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
+    # Tema maglia (home / away / third / default) — calcolato subito perché
+    # determina anche quale logo Juve usare.
+    juve_kit = determina_kit(home_id, away_id, league_slug, league_name)
+    print(f"[{now_it()}] 🎨 Kit grafica stats: {juve_kit} (lega: {league_name} / {league_slug or 'n.d.'})")
+
+    # Logo Juve in base al kit:
+    #   home / away    → logo nero (SVG, 2020)
+    #   third / default → icona bianca quadrata (PNG, 2017)
+    JUVE_LOGO_BLACK = "https://upload.wikimedia.org/wikipedia/commons/e/ed/Juventus_FC_-_logo_black_%28Italy%2C_2020%29.svg"
+    JUVE_LOGO_WHITE = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
+    juve_logo   = JUVE_LOGO_BLACK if juve_kit in ("home", "away") else JUVE_LOGO_WHITE
+
+    h_logo      = juve_logo if str(home_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
+    a_logo      = juve_logo if str(away_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
     badge_label = MOMENTI_CONFIG[momento]["badge"]
     if momento == "FT" and (pen_home > 0 or pen_away > 0):
         badge_label = "FINE PARTITA d.c.r."
@@ -675,8 +744,10 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         print(f"[{now_it()}] ❌ stats.html non trovato in {_template_path}")
         return None
 
+    # Determina il tema maglia (home / away / third / default)
     html_content = (
         template
+        .replace("{JUVE_KIT}",    juve_kit)
         .replace("{LEAGUE_NAME}", league_name.upper())
         .replace("{BADGE_LABEL}", badge_label)
         .replace("{H_LOGO}",      h_logo)
@@ -949,7 +1020,7 @@ def avvia_ciclo_partita():
             hashtag   = build_hashtag(home_name_raw, away_name_raw)
             e_comp    = get_league_emoji(league_slug)
 
-            events = parse_events(data, home_name, away_name, home_id, away_id)
+            events = parse_events(data, home_name_raw, away_name_raw, home_id, away_id)
 
             if "_intro_logged" not in state:
                 print(f"[{now_it()}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
@@ -1081,7 +1152,7 @@ def avvia_ciclo_partita():
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
-                                                         "HT", league_name)
+                                                         "HT", league_name, league_slug=league_slug)
                 print(f"[{now_it()}] 📊 STATS 1° TEMPO → foto Telegram inviata")
                 send_telegram_stats_photo(png_path, "HT", f"{e_comp} {hashtag}")
                 state["sent_stats"].append("HT")
@@ -1107,7 +1178,7 @@ def avvia_ciclo_partita():
                     data_fresh = fetch_evento(event_id, league_slug) or data
                     png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                              home_name, away_name, g_home, g_away,
-                                                             "2H_END", league_name)
+                                                             "2H_END", league_name, league_slug=league_slug)
                     send_telegram_stats_photo(png_path, "2H_END", f"{e_comp} {hashtag}")
                     state["sent_stats"].append("2H_END")
                     state_changed = True
@@ -1254,7 +1325,7 @@ def avvia_ciclo_partita():
                 ft_pen_away = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
-                                                         "FT", league_name,
+                                                         "FT", league_name, league_slug=league_slug,
                                                          pen_home=ft_pen_home, pen_away=ft_pen_away)
                 print(f"[{now_it()}] 📊 STATS FINE PARTITA → foto Telegram inviata")
                 send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
@@ -1285,7 +1356,7 @@ def avvia_ciclo_partita():
                 data   = data_confirm
                 g_home = g_home_c
                 g_away = g_away_c
-                events = parse_events(data, home_name, away_name, home_id, away_id)
+                events = parse_events(data, home_name_raw, away_name_raw, home_id, away_id)
                 score_str = build_score_str(home_name, away_name, g_home, g_away)
 
                 if g_home > prev_home:
@@ -1422,7 +1493,7 @@ def avvia_ciclo_partita():
                         state["cancel_msg_id"] = None
 
                     data   = data_cancel
-                    events = parse_events(data, home_name, away_name, home_id, away_id)
+                    events = parse_events(data, home_name_raw, away_name_raw, home_id, away_id)
                     g_home = g_home_c
                     g_away = g_away_c
                     state["prev_home_goals"] = g_home_c
@@ -1571,7 +1642,7 @@ def avvia_ciclo_partita():
                 print(f"[{now_it()}] 🔄 Cambio rilevato, attendo 10s per raggruppare...")
                 time.sleep(10)
                 data_fresh2 = fetch_evento(event_id, league_slug) or data
-                events_fresh2 = parse_events(data_fresh2, home_name, away_name, home_id, away_id)
+                events_fresh2 = parse_events(data_fresh2, home_name_raw, away_name_raw, home_id, away_id)
 
                 pending = []
                 for e in events_fresh2:
