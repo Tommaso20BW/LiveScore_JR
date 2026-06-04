@@ -1605,6 +1605,7 @@ def avvia_ciclo_partita():
                 slot["ins"].append(fmt_player(e["assist_name"]))
                 slot["outs"].append(fmt_player(e["player_name"]))
                 slot["sub_ids"].append(e["uid"])
+                slot["minute"] = e["minute"]  # aggiorna il minuto se ESPN lo ha corretto
                 ins_str  = ", ".join(slot["ins"])
                 outs_str = ", ".join(slot["outs"])
                 new_text = (
@@ -1644,6 +1645,7 @@ def avvia_ciclo_partita():
                         slot["ins"].append(fmt_player(e["assist_name"]))
                         slot["outs"].append(fmt_player(e["player_name"]))
                         slot["sub_ids"].append(sub_id)
+                        slot["minute"] = e["minute"]  # aggiorna il minuto se ESPN lo ha corretto
                         ins_str  = ", ".join(slot["ins"])
                         outs_str = ", ".join(slot["outs"])
                         new_text = (
