@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  width: 1620px; height: 1980px;
+  background:
+    radial-gradient(circle at top left, #1e3a8a 0%, transparent 40%),
+    radial-gradient(circle at bottom right, #7c3aed 0%, transparent 40%),
+    #060816;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card {
+  width: 1500px; height: 1900px;
+  background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(10,14,28,0.96));
+  border-radius: 50px; overflow: hidden;
+  border: 3px solid rgba(255,255,255,0.08);
+  box-shadow: 0 50px 100px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.04);
+  display: flex; flex-direction: column;
+}
+.header {
+  padding: 55px 80px 40px;
+  border-bottom: 2px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.league-row { text-align: center; color: #7c8cb5; font-size: 26px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 25px; }
+.badge { width: fit-content; margin: 0 auto 30px; padding: 12px 36px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 20px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }
+.teams-row { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+.team { width: 320px; text-align: center; }
+.logo { width: 150px; height: 150px; object-fit: contain; display: block; margin: 0 auto 20px; }
+.team-name { color: white; font-weight: 800; font-size: 34px; }
+.score-wrap { text-align: center; }
+.score { font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }
+.pen-score { font-family: 'Barlow Condensed', sans-serif; font-size: 40px; line-height: 1.1; font-weight: 700; color: #8fa1c7; text-align: center; margin-top: 8px; }
+.match-status { margin-top: 16px; color: #8fa1c7; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }
+.stats-body {
+  flex: 1;
+  padding: 0 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+.stats-title { text-align: center; color: #91a4d0; font-size: 24px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; }
+.stat-row { }
+.stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.val { width: 120px; color: white; font-weight: 900; font-size: 40px; font-family: 'Barlow Condensed', sans-serif; }
+.home-val { text-align: left; }
+.away-val { text-align: right; }
+.stat-label { color: #b4c0df; font-size: 26px; font-weight: 700; }
+.bar-track { position: relative; height: 16px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }
+.bar-home, .bar-away { position: absolute; top: 0; height: 100%; }
+.bar-home { left: 0; background: linear-gradient(90deg, #60a5fa, #2563eb); }
+.bar-away { right: 0; background: linear-gradient(90deg, #ef4444, #dc2626); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="league-row">{LEAGUE_NAME}</div>
+    <div class="badge">{BADGE_LABEL}</div>
+    <div class="teams-row">
+      <div class="team"><img src="{H_LOGO}" class="logo"><div class="team-name">{HOME_NAME}</div></div>
+      <div class="score-wrap">{SCORE_BLOCK}<div class="match-status">LIVE STATS</div></div>
+      <div class="team"><img src="{A_LOGO}" class="logo"><div class="team-name">{AWAY_NAME}</div></div>
+    </div>
+  </div>
+  <div class="stats-body">
+    <div class="stats-title">STATISTICHE ANALITICHE</div>
+    {ROWS_HTML}
+  </div>
+</div>
+</body>
+</html>
