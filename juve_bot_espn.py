@@ -643,19 +643,20 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
             str(passpct_h).replace("%",""), str(passpct_a).replace("%",""))),
     ]
 
-    rows_html = "".join([f'''
-<div class="stat-row">
-  <div class="stat-top">
-    <div class="val home-val">{h}</div>
-    <div class="stat-label">{label}</div>
-    <div class="val away-val">{a}</div>
-  </div>
-  <div class="bar-track">
-    <div class="bar-home" style="width:{hp}%"></div>
-    <div class="bar-away" style="width:{100-hp}%"></div>
-  </div>
-</div>
-''' for label, h, a, hp in stats_mappate])
+    rows_html = "".join([
+        f'<div class="stat-row">'
+        f'<div class="stat-top">'
+        f'<div class="val home-val">{h}</div>'
+        f'<div class="stat-label">{label}</div>'
+        f'<div class="val away-val">{a}</div>'
+        f'</div>'
+        f'<div class="bar-track">'
+        f'<div class="bar-home" style="width:{hp}%"></div>'
+        f'<div class="bar-away" style="width:{100-hp}%"></div>'
+        f'</div>'
+        f'</div>'
+        for label, h, a, hp in stats_mappate
+    ])
 
     if pen_home > 0 or pen_away > 0:
         score_block_html = (
@@ -665,87 +666,26 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     else:
         score_block_html = f'<div class="score">{home_goals} \u2013 {away_goals}</div>'
 
-    html_content = f"""<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
-<style>
-* {{ margin:0; padding:0; box-sizing:border-box; }}
-body {{
-  width: 1620px; height: 1980px;
-  background:
-    radial-gradient(circle at top left, #1e3a8a 0%, transparent 40%),
-    radial-gradient(circle at bottom right, #7c3aed 0%, transparent 40%),
-    #060816;
-  font-family: 'Inter', sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}}
-.card {{
-  width: 1500px; height: 1900px;
-  background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(10,14,28,0.96));
-  border-radius: 50px; overflow: hidden;
-  border: 3px solid rgba(255,255,255,0.08);
-  box-shadow: 0 50px 100px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.04);
-  display: flex; flex-direction: column;
-}}
-.header {{
-  padding: 55px 80px 40px;
-  border-bottom: 2px solid rgba(255,255,255,0.06);
-  flex-shrink: 0;
-}}
-.league-row {{ text-align: center; color: #7c8cb5; font-size: 26px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 25px; }}
-.badge {{ width: fit-content; margin: 0 auto 30px; padding: 12px 36px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 20px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }}
-.teams-row {{ display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }}
-.team {{ width: 320px; text-align: center; }}
-.logo {{ width: 150px; height: 150px; object-fit: contain; display: block; margin: 0 auto 20px; }}
-.team-name {{ color: white; font-weight: 800; font-size: 34px; }}
-.score-wrap {{ text-align: center; }}
-.score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }}
-.pen-score {{ font-family: 'Barlow Condensed', sans-serif; font-size: 40px; line-height: 1.1; font-weight: 700; color: #8fa1c7; text-align: center; margin-top: 8px; }}
-.match-status {{ margin-top: 16px; color: #8fa1c7; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
-.stats-body {{
-  flex: 1;
-  padding: 0 80px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-}}
-.stats-title {{ text-align: center; color: #91a4d0; font-size: 24px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; }}
-.stat-row {{ }}
-.stat-top {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }}
-.val {{ width: 120px; color: white; font-weight: 900; font-size: 40px; font-family: 'Barlow Condensed', sans-serif; }}
-.home-val {{ text-align: left; }}
-.away-val {{ text-align: right; }}
-.stat-label {{ color: #b4c0df; font-size: 26px; font-weight: 700; }}
-.bar-track {{ position: relative; height: 16px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }}
-.bar-home, .bar-away {{ position: absolute; top: 0; height: 100%; }}
-.bar-home {{ left: 0; background: linear-gradient(90deg, #60a5fa, #2563eb); }}
-.bar-away {{ right: 0; background: linear-gradient(90deg, #ef4444, #dc2626); }}
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="header">
-    <div class="league-row">{league_name.upper()}</div>
-    <div class="badge">{badge_label}</div>
-    <div class="teams-row">
-      <div class="team"><img src="{h_logo}" class="logo"><div class="team-name">{home_name}</div></div>
-      <div class="score-wrap">{score_block_html}<div class="match-status">LIVE STATS</div></div>
-      <div class="team"><img src="{a_logo}" class="logo"><div class="team-name">{away_name}</div></div>
-    </div>
-  </div>
-  <div class="stats-body">
-    <div class="stats-title">STATISTICHE ANALITICHE</div>
-    {rows_html}
-  </div>
-</div>
-</body>
-</html>"""
+    # Carica il template HTML esterno
+    _template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stats_template.html")
+    try:
+        with open(_template_path, "r", encoding="utf-8") as f:
+            template = f.read()
+    except FileNotFoundError:
+        print(f"[{now_it()}] ❌ stats_template.html non trovato in {_template_path}")
+        return None
+
+    html_content = (
+        template
+        .replace("{LEAGUE_NAME}", league_name.upper())
+        .replace("{BADGE_LABEL}", badge_label)
+        .replace("{H_LOGO}",      h_logo)
+        .replace("{HOME_NAME}",   home_name)
+        .replace("{SCORE_BLOCK}", score_block_html)
+        .replace("{A_LOGO}",      a_logo)
+        .replace("{AWAY_NAME}",   away_name)
+        .replace("{ROWS_HTML}",   rows_html)
+    )
 
     path_html      = "/tmp/stats.html"
     path_raw_png   = "/tmp/stats_raw.png"
