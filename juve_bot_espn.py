@@ -1035,7 +1035,7 @@ def avvia_ciclo_partita():
                 and state.get("goals_detected", 0) == 0
             )
             if match_finished and never_processed:
-                print(f"[{now_it()}] ⏹️  Partita già conclusa all'avvio "
+                print(f"[{now_it()}] ⏹️ Partita già conclusa all'avvio "
                       f"({home_name} {g_home}-{g_away} {away_name}) — nessun messaggio inviato, bot spento")
                 sys.exit(0)
 
