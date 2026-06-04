@@ -7,12 +7,138 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
+
+/* ── TEMA HOME: bianco/nero a strisce, accenti oro ───────────────────── */
+/* Maglia: bianco base, bande nere verticali, logo/dettagli oro #c9a84c  */
+body.kit-home {
+  --body-bg1: #1c1c1c;
+  --body-bg2: #0a0a0a;
+  --body-glow1: #3a3020;
+  --body-glow2: #1a1408;
+  --card-bg1: rgba(248,248,245,0.98);
+  --card-bg2: rgba(228,228,222,0.98);
+  --card-border: rgba(180,150,60,0.30);
+  --card-shine: rgba(255,255,255,0.70);
+  --header-border: rgba(0,0,0,0.10);
+  /* strisce bianconere in header: pattern SVG inline */
+  --header-stripe: repeating-linear-gradient(
+    90deg,
+    #ffffff 0px, #ffffff 38px,
+    #111111 38px, #111111 76px
+  );
+  --league-color: #888880;
+  --badge-bg1: #c9a84c;
+  --badge-bg2: #9a7828;
+  --badge-text: #ffffff;
+  --team-name: #111111;
+  --score-color: #111111;
+  --status-color: #777770;
+  --stats-title: #777770;
+  --val-color: #111111;
+  --label-color: #444440;
+  --bar-track: rgba(0,0,0,0.08);
+  --bar-juve1: #c9a84c;
+  --bar-juve2: #9a7828;
+  --bar-opp1: #555550;
+  --bar-opp2: #333330;
+  --pen-color: #777770;
+}
+
+/* ── TEMA AWAY: rosa pieno, nero e bianco ────────────────────────────── */
+/* Maglia: rosa #f4a7c0 dominante, colletto/dettagli neri, strisce nere  */
+body.kit-away {
+  --body-bg1: #3a0a20;
+  --body-bg2: #1e0410;
+  --body-glow1: #c0306a;
+  --body-glow2: #801040;
+  --card-bg1: rgba(250,185,210,0.97);
+  --card-bg2: rgba(238,160,190,0.97);
+  --card-border: rgba(0,0,0,0.18);
+  --card-shine: rgba(255,255,255,0.40);
+  --header-border: rgba(0,0,0,0.12);
+  --league-color: #8a3055;
+  --badge-bg1: #111111;
+  --badge-bg2: #333333;
+  --badge-text: #f4a7c0;
+  --team-name: #111111;
+  --score-color: #111111;
+  --status-color: #7a2848;
+  --stats-title: #7a2848;
+  --val-color: #111111;
+  --label-color: #3a1020;
+  --bar-track: rgba(0,0,0,0.10);
+  --bar-juve1: #111111;
+  --bar-juve2: #333333;
+  --bar-opp1: #9a3060;
+  --bar-opp2: #6a1840;
+  --pen-color: #7a2848;
+}
+
+/* ── TEMA THIRD: nero con fiamme grigie, accenti oro ─────────────────── */
+/* Maglia: nero #111111, pattern fiamme grigio scuro, Jeep/stelle oro    */
+body.kit-third {
+  --body-bg1: #0d0d0d;
+  --body-bg2: #000000;
+  --body-glow1: #4a3800;
+  --body-glow2: #261e00;
+  --card-bg1: rgba(14,14,14,0.98);
+  --card-bg2: rgba(6,6,6,0.98);
+  --card-border: rgba(201,168,76,0.22);
+  --card-shine: rgba(201,168,76,0.06);
+  --header-border: rgba(201,168,76,0.14);
+  --league-color: #8a7840;
+  --badge-bg1: #c9a84c;
+  --badge-bg2: #9a7828;
+  --badge-text: #0a0800;
+  --team-name: #c9a84c;
+  --score-color: #c9a84c;
+  --status-color: #8a7840;
+  --stats-title: #8a7840;
+  --val-color: #c9a84c;
+  --label-color: #a08838;
+  --bar-track: rgba(201,168,76,0.10);
+  --bar-juve1: #c9a84c;
+  --bar-juve2: #9a7828;
+  --bar-opp1: #484840;
+  --bar-opp2: #282820;
+  --pen-color: #8a7840;
+}
+
+/* ── TEMA DEFAULT: neutro blu/viola — partita senza Juve ─────────────── */
+body.kit-default {
+  --body-bg1: #1e3a8a;
+  --body-bg2: #060816;
+  --body-glow1: #1e3a8a;
+  --body-glow2: #7c3aed;
+  --card-bg1: rgba(17,24,39,0.96);
+  --card-bg2: rgba(10,14,28,0.96);
+  --card-border: rgba(255,255,255,0.08);
+  --card-shine: rgba(255,255,255,0.04);
+  --header-border: rgba(255,255,255,0.06);
+  --league-color: #7c8cb5;
+  --badge-bg1: #facc15;
+  --badge-bg2: #f59e0b;
+  --badge-text: #111827;
+  --team-name: #ffffff;
+  --score-color: #ffffff;
+  --status-color: #8fa1c7;
+  --stats-title: #91a4d0;
+  --val-color: #ffffff;
+  --label-color: #b4c0df;
+  --bar-track: rgba(255,255,255,0.06);
+  --bar-juve1: #60a5fa;
+  --bar-juve2: #2563eb;
+  --bar-opp1: #ef4444;
+  --bar-opp2: #dc2626;
+  --pen-color: #8fa1c7;
+}
+
 body {
   width: 1620px; height: 1980px;
   background:
-    radial-gradient(circle at top left, #1e3a8a 0%, transparent 40%),
-    radial-gradient(circle at bottom right, #7c3aed 0%, transparent 40%),
-    #060816;
+    radial-gradient(circle at top left, var(--body-glow1) 0%, transparent 40%),
+    radial-gradient(circle at bottom right, var(--body-glow2) 0%, transparent 40%),
+    linear-gradient(135deg, var(--body-bg1), var(--body-bg2));
   font-family: 'Inter', sans-serif;
   display: flex;
   align-items: center;
@@ -20,27 +146,28 @@ body {
 }
 .card {
   width: 1500px; height: 1900px;
-  background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(10,14,28,0.96));
+  background: linear-gradient(180deg, var(--card-bg1), var(--card-bg2));
   border-radius: 50px; overflow: hidden;
-  border: 3px solid rgba(255,255,255,0.08);
-  box-shadow: 0 50px 100px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.04);
+  border: 3px solid var(--card-border);
+  box-shadow: 0 50px 100px rgba(0,0,0,0.6), inset 0 2px 0 var(--card-shine);
   display: flex; flex-direction: column;
 }
 .header {
   padding: 55px 80px 40px;
-  border-bottom: 2px solid rgba(255,255,255,0.06);
+  border-bottom: 2px solid var(--header-border);
   flex-shrink: 0;
 }
-.league-row { text-align: center; color: #7c8cb5; font-size: 26px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 25px; }
-.badge { width: fit-content; margin: 0 auto 30px; padding: 12px 36px; border-radius: 999px; background: linear-gradient(135deg, #facc15, #f59e0b); color: #111827; font-size: 20px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }
+
+.league-row { text-align: center; color: var(--league-color); font-size: 26px; letter-spacing: 5px; text-transform: uppercase; font-weight: 700; margin-bottom: 25px; }
+.badge { width: fit-content; margin: 0 auto 30px; padding: 12px 36px; border-radius: 999px; background: linear-gradient(135deg, var(--badge-bg1), var(--badge-bg2)); color: var(--badge-text); font-size: 20px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; }
 .teams-row { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
 .team { width: 320px; text-align: center; }
 .logo { width: 150px; height: 150px; object-fit: contain; display: block; margin: 0 auto 20px; }
-.team-name { color: white; font-weight: 800; font-size: 34px; }
+.team-name { color: var(--team-name); font-weight: 800; font-size: 34px; }
 .score-wrap { text-align: center; }
-.score { font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: white; letter-spacing: -4px; }
-.pen-score { font-family: 'Barlow Condensed', sans-serif; font-size: 40px; line-height: 1.1; font-weight: 700; color: #8fa1c7; text-align: center; margin-top: 8px; }
-.match-status { margin-top: 16px; color: #8fa1c7; font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }
+.score { font-family: 'Barlow Condensed', sans-serif; font-size: 170px; line-height: 0.85; font-weight: 900; color: var(--score-color); letter-spacing: -4px; }
+.pen-score { font-family: 'Barlow Condensed', sans-serif; font-size: 40px; line-height: 1.1; font-weight: 700; color: var(--pen-color); text-align: center; margin-top: 8px; }
+.match-status { margin-top: 16px; color: var(--status-color); font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }
 .stats-body {
   flex: 1;
   padding: 0 80px;
@@ -48,20 +175,23 @@ body {
   flex-direction: column;
   justify-content: space-evenly;
 }
-.stats-title { text-align: center; color: #91a4d0; font-size: 24px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; }
+.stats-title { text-align: center; color: var(--stats-title); font-size: 24px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; }
 .stat-row { }
 .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.val { width: 120px; color: white; font-weight: 900; font-size: 40px; font-family: 'Barlow Condensed', sans-serif; }
+.val { width: 120px; color: var(--val-color); font-weight: 900; font-size: 40px; font-family: 'Barlow Condensed', sans-serif; }
 .home-val { text-align: left; }
 .away-val { text-align: right; }
-.stat-label { color: #b4c0df; font-size: 26px; font-weight: 700; }
-.bar-track { position: relative; height: 16px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }
+.stat-label { color: var(--label-color); font-size: 26px; font-weight: 700; }
+.bar-track { position: relative; height: 16px; border-radius: 999px; overflow: hidden; background: var(--bar-track); }
 .bar-home, .bar-away { position: absolute; top: 0; height: 100%; }
-.bar-home { left: 0; background: linear-gradient(90deg, #60a5fa, #2563eb); }
-.bar-away { right: 0; background: linear-gradient(90deg, #ef4444, #dc2626); }
+/* bar-home = squadra in casa, bar-away = squadra in trasferta.
+   Il bot deve aggiungere la classe .juve-bar alla barra della Juve
+   e .opp-bar all'avversario, oppure lasciare home/away come prima. */
+.bar-home { left: 0; background: linear-gradient(90deg, var(--bar-juve1), var(--bar-juve2)); }
+.bar-away { right: 0; background: linear-gradient(90deg, var(--bar-opp1), var(--bar-opp2)); }
 </style>
 </head>
-<body>
+<body class="kit-{JUVE_KIT}">
 <div class="card">
   <div class="header">
     <div class="league-row">{LEAGUE_NAME}</div>
@@ -77,5 +207,17 @@ body {
     {ROWS_HTML}
   </div>
 </div>
+<script>
+/* fallback: se il placeholder non è stato sostituito, applica kit-home */
+(function(){
+  var b = document.body;
+  if (!b.classList.contains('kit-home') &&
+      !b.classList.contains('kit-away') &&
+      !b.classList.contains('kit-third') &&
+      !b.classList.contains('kit-default')) {
+    b.classList.add('kit-home');
+  }
+})();
+</script>
 </body>
 </html>
