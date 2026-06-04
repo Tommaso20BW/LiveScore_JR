@@ -1308,6 +1308,8 @@ def avvia_ciclo_partita():
 
                 msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
+                print(f"[{now_it()}] 🏁 FINE PARTITA ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+
                 is_juve_match = home_id == '111' or away_id == '111'
                 if is_juve_match:
                     canva_token = get_valid_token()
@@ -1333,7 +1335,7 @@ def avvia_ciclo_partita():
                 state_changed = True
                 state["_reset_done"] = True
                 resetta_gist()
-                print(f"[{now_it()}] 🏆 FINE PARTITA ({home_name} {g_home}-{g_away} {away_name}) — bot terminato")
+                print(f"[{now_it()}] 🏆 LIVE SCORE TERMINATO ({home_name} {g_home}-{g_away} {away_name}) — Spegnimento BOT")
                 sys.exit(0)
 
             # --- Rilevamento goal ---
