@@ -1384,20 +1384,29 @@ def avvia_ciclo_partita():
 
                     last = candidates[expected_count - 1] if len(candidates) >= expected_count else (candidates[-1] if candidates else None)
 
-                    if not last:
-                        time.sleep(sleep_time)
-                        continue
+                    if last:
+                        player_name = last.get("player_name", "")
+                        assist_name = last.get("assist_name", "")
+                        goal_minute = last.get("minute", elapsed)
+                        goal_type   = last.get("type", "goal")
+                    else:
+                        # Feed ESPN incompleto: gol rilevato dal punteggio ma nessun
+                        # evento marcatore associato. Annuncio comunque per non bloccare
+                        # il ciclo (altrimenti goals_detected non avanza mai).
+                        print(f"[{now_it()}] ⚠️  Gol dal punteggio senza marcatore nel feed — invio senza marcatore")
+                        player_name = ""
+                        assist_name = ""
+                        goal_minute = elapsed
+                        goal_type   = "goal"
 
-                    player_name = last.get("player_name", "")
-                    assist_name = last.get("assist_name", "")
                     actual_scoring_tid = scoring_tid
 
                     if player_name:
                         ps = fmt_player(player_name)
-                        if last["type"] == "own goal":
+                        if goal_type == "own goal":
                             ps += " (Autogol)"
                             actual_scoring_tid = away_id if last["team_id"] == home_id else home_id
-                        elif last["type"] == "penalty goal":
+                        elif goal_type == "penalty goal":
                             ps += " (Rig.)"
                         scorer_line = f"{E_BALL} <i>{ps}</i>\n"
                     else:
@@ -1413,7 +1422,7 @@ def avvia_ciclo_partita():
                     else:
                         goal_score = f"{home_name} {g_home}-<b>{g_away} {away_name}</b>"
 
-                    goal_text = f"<b>GOAL · {last['minute']}' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
+                    goal_text = f"<b>GOAL · {goal_minute}' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
                     goal_key = f"{g_home}_{g_away}"
 
                     if not state.get("goal_messages", {}).get(goal_key, {}).get("msg_id"):
@@ -1425,8 +1434,8 @@ def avvia_ciclo_partita():
                             "msg_id":    msg_id,
                             "scorer":    player_name,
                             "assist":    assist_name,
-                            "minute":    last["minute"],
-                            "type":      last["type"],
+                            "minute":    goal_minute,
+                            "type":      goal_type,
                             "home_n":    home_name,
                             "away_n":    away_name,
                             "g_home":    g_home,
