@@ -65,7 +65,10 @@ def get_league_emoji(slug): return LEAGUE_MAP.get(slug, {}).get("emoji", "⚽️
 #   third   → coppe (Coppa Italia, Supercoppa, Champions, Europa, ecc.)
 #   default → partita senza la Juve
 # ==============================================================================
-JUVE_ID = str(TEAM_ID)  # default '111'
+JUVE_ID = '111'  # ID ESPN reale della Juventus — usato SOLO per il branding
+                 # (logo + tema kit). NON legato a TEAM_ID (la squadra monitorata,
+                 # che in test potrebbe essere un'altra): così una partita senza la
+                 # Juve resta sul kit 'default' e usa i loghi ESPN, niente logo Juve.
 
 def _is_league_slug(slug: str) -> bool:
     """True se lo slug ESPN è un campionato (es. 'ita.1', 'eng.2'):
