@@ -667,12 +667,12 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         score_block_html = f'<div class="score">{home_goals} \u2013 {away_goals}</div>'
 
     # Carica il template HTML esterno
-    _template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stats_template.html")
+    _template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stats.html")
     try:
         with open(_template_path, "r", encoding="utf-8") as f:
             template = f.read()
     except FileNotFoundError:
-        print(f"[{now_it()}] ❌ stats_template.html non trovato in {_template_path}")
+        print(f"[{now_it()}] ❌ stats.html non trovato in {_template_path}")
         return None
 
     html_content = (
