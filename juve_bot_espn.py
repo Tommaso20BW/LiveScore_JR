@@ -1023,6 +1023,22 @@ def avvia_ciclo_partita():
             hashtag   = build_hashtag(home_name_raw, away_name_raw)
             e_comp    = get_league_emoji(league_slug)
 
+            # --- Partita GIÀ conclusa all'avvio → spegni subito, non fare nulla ---
+            comp_state_espn = (
+                data.get("header", {}).get("competitions", [{}])[0]
+                    .get("status", {}).get("type", {}).get("state", "")
+            )
+            match_finished  = comp_state_espn == "post" or status in ("FT", "AET")
+            never_processed = (
+                not state.get("sent_periods")
+                and not state.get("goal_messages")
+                and state.get("goals_detected", 0) == 0
+            )
+            if match_finished and never_processed:
+                print(f"[{now_it()}] ⏹️  Partita già conclusa all'avvio "
+                      f"({home_name} {g_home}-{g_away} {away_name}) — nessun messaggio inviato, bot spento")
+                sys.exit(0)
+
             events = parse_events(data, home_name_raw, away_name_raw, home_id, away_id)
 
             if "_intro_logged" not in state:
