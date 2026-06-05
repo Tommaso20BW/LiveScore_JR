@@ -474,6 +474,18 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     and existing["team_id"] == str(team_id)
                     and existing["player_name"] == player_name):
                 return
+        # Dedup specifico sostituzioni: la stessa sostituzione può arrivare da più
+        # feed ESPN (commentary + keyEvents) con uid diversi, minuto leggermente
+        # diverso e participant in ordine invertito (in/out scambiati). La
+        # identifico dalla COPPIA di giocatori coinvolti, indipendente dall'ordine.
+        if norm == "substitution":
+            pair = frozenset((player_name, assist_name))
+            for existing in events:
+                if (existing["type"] == "substitution"
+                        and existing["team_id"] == str(team_id)
+                        and abs(existing["minute"] - minute) <= 2
+                        and frozenset((existing["player_name"], existing["assist_name"])) == pair):
+                    return
         events.append({
             "type":        norm,
             "minute":      minute,
@@ -1714,8 +1726,13 @@ def avvia_ciclo_partita():
                     if slot_key:
                         slot       = state["sent_subs"][slot_key]
                         team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
-                        slot["ins"].append(fmt_player(e["assist_name"]))
-                        slot["outs"].append(fmt_player(e["player_name"]))
+                        # Evita duplicati nello slot (stessa sostituzione da fonti ESPN diverse)
+                        _in_p  = fmt_player(e["assist_name"])
+                        _out_p = fmt_player(e["player_name"])
+                        if _out_p in slot["outs"] or _in_p in slot["ins"]:
+                            continue
+                        slot["ins"].append(_in_p)
+                        slot["outs"].append(_out_p)
                         slot["sub_ids"].append(sub_id)
                         ins_str  = ", ".join(slot["ins"])
                         outs_str = ", ".join(slot["outs"])
@@ -1730,6 +1747,27 @@ def avvia_ciclo_partita():
                         state_changed = True
                     else:
                         pending.append(e)
+
+                # Dedup pending: la stessa sostituzione può arrivare da più fonti
+                # ESPN (commentary + keyEvents) con uid diversi e participant in
+                # ordine differente. Identifico il cambio dalla COPPIA di giocatori
+                # coinvolti (in + out), indipendente dall'ordine, così i doppioni
+                # non finiscono nello stesso messaggio.
+                _seen_pairs = set()
+                _pending_dedup = []
+                for sub in pending:
+                    pair_key = (
+                        sub["team_id"],
+                        frozenset((
+                            fmt_player(sub["player_name"]),
+                            fmt_player(sub["assist_name"]),
+                        )),
+                    )
+                    if pair_key in _seen_pairs:
+                        continue
+                    _seen_pairs.add(pair_key)
+                    _pending_dedup.append(sub)
+                pending = _pending_dedup
 
                 groups = []
                 for sub in pending:
