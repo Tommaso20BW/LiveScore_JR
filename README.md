@@ -26,7 +26,8 @@ LiveScore_JR/
 ├── leagues.json              # 214 leghe ESPN: slug → { emoji, type }
 ├── teams.json                # 677 squadre/nazionali: nome EN → [nome IT, forma breve]
 ├── stats.html                # Template HTML della card statistiche (reso con Playwright)
-├── texture.png               # Overlay grafico applicato alla card stats
+├── texture_black.png         # Overlay texture home/away
+├── texture_white.png         # Overlay texture third/default
 └── .github/workflows/
     ├── main_espn.yml         # Workflow variante ESPN (timeout 240 min)
     ├── main_api.yml          # Workflow variante API-Football (timeout 240 min)
