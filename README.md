@@ -103,16 +103,6 @@ In `Settings → Secrets and variables → Actions` della repository aggiungi:
 
 ---
 
-## ⚠️ Note e limitazioni note
-
-- **Limite 4 ore** — GitHub Actions interrompe il workflow dopo 240 minuti. Per partite che si prolungano (supplementari + rigori), è possibile rilanciare manualmente il workflow: il bot riprende dallo stato salvato sul Gist.
-- **`canva_keep_alive.yml` usa versioni di action non standard** — il workflow usa `actions/checkout@v5` e `actions/setup-python@v6`, che al momento non esistono come versioni stabili (le versioni correnti sono `@v4` e `@v5`). Aggiornare per coerenza con `main_espn.yml`.
-- **`'111'` hardcoded nel ciclo finale** — la verifica `is_juve_match = home_id == '111' or away_id == '111'` usa una stringa letterale invece della costante `JUVE_ID` già definita. Non causa bug, ma è inconsistente con il resto del codice.
-- **Nessun test automatico** — il progetto non include unit test né integration test. Validare localmente con un `team_id` di una squadra con partita imminente prima di usarlo su una gara importante.
-- **API ESPN non ufficiale** — l'endpoint `site.api.espn.com` non ha SLA pubblico e può cambiare senza preavviso.
-
----
-
 ## 🛠️ Stack tecnico
 
 `Python 3.11` · `requests` · `Playwright (Chromium)` · `Pillow` · `pynacl` · `GitHub Actions`
