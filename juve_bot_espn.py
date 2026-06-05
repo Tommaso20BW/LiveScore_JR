@@ -807,7 +807,7 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         page = browser.new_page(viewport={"width": 1620, "height": 4000}, device_scale_factor=1.0)
         page.goto(f"file://{path_html}")
         page.wait_for_timeout(3000)
-        page.screenshot(path=path_raw_png, clip={"x": 0, "y": 0, "width": 1620, "height": 1980}, omit_background=False)
+        page.screenshot(path=path_raw_png, clip={"x": 0, "y": 0, "width": 1620, "height": 2160}, omit_background=False)
         browser.close()
 
     if os.path.exists("texture.png"):
