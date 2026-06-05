@@ -810,11 +810,14 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         page.screenshot(path=path_raw_png, clip={"x": 0, "y": 0, "width": 1620, "height": 2160}, omit_background=False)
         browser.close()
 
-    if os.path.exists("texture.png"):
+    # home/away → texture scura; third/default → texture chiara
+    texture_file = "texture_black.png" if juve_kit in ("home", "away") else "texture_white.png"
+    if os.path.exists(texture_file):
         try:
             base_img = Image.open(path_raw_png).convert("RGBA")
-            texture  = Image.open("texture.png").convert("RGBA").resize(base_img.size, Image.Resampling.LANCZOS)
+            texture  = Image.open(texture_file).convert("RGBA").resize(base_img.size, Image.Resampling.LANCZOS)
             Image.alpha_composite(base_img, texture).convert("RGB").save(path_final_png, "PNG")
+            print(f"[{now_it()}] 🎨 Texture applicata: {texture_file}")
             return path_final_png
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore texture stats: {e}")
