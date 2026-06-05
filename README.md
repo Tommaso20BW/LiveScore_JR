@@ -1,107 +1,120 @@
 # ⚡ LiveScore JR
 
-> Bot Telegram di copertura **live, evento per evento**, delle partite della Juventus — gira interamente su **GitHub Actions**, senza alcun server da mantenere.
+> Bot Telegram che segue **live, evento per evento**, le partite della Juventus — gira interamente su **GitHub Actions**, senza alcun server da mantenere.
 
 ---
 
-## 📌 Panoramica
+## Cos'è
 
-**LiveScore JR** segue in tempo reale ogni partita della Juventus e pubblica in automatico sul canale Telegram **@Juventus_Reborn** tutti gli eventi chiave: fischio d'inizio, gol, assist, sostituzioni, cartellini rossi, rigori sbagliati, cambi di periodo, statistiche grafiche di metà/fine tempo e una slide finale generata via **Canva API**.
+LiveScore JR monitora automaticamente ogni gara della Juventus e pubblica sul canale Telegram **@Juventus_Reborn** tutti gli aggiornamenti in tempo reale: fischio d'inizio, gol (con marcatore e assist), sostituzioni, cartellini rossi, rigori sbagliati, transizioni di stato (intervallo, supplementari, rigori) e card statistiche grafiche a metà e fine partita. Al fischio finale genera e invia una slide personalizzata via **Canva API**.
 
 ---
 
-## 🗂️ Struttura del repository
+## Struttura del repository
 
 ```
 LiveScore_JR/
-├── juve_bot_espn.py          # Bot — variante ESPN (legge le leghe da leagues.json)
-├── leagues.json              # 214 leghe ESPN: slug → { emoji, type }
-├── teams.json                # 677 squadre/nazionali: nome EN → [nome IT, forma breve]
-├── stats.html                # Template HTML della card statistiche (reso con Playwright)
-├── texture_black.png         # Overlay texture kit home/away
-├── texture_white.png         # Overlay texture kit third/default
+├── juve_bot_espn.py             # Logica principale del bot (sorgente ESPN)
+├── leagues.json                 # 214 competizioni ESPN: slug → { emoji, type }
+├── teams.json                   # 677 squadre/nazionali: nome EN → [nome IT, forma breve]
+├── stats.html                   # Template HTML per la card statistiche (renderizzato con Playwright)
+├── texture_black.png            # Overlay texture kit home/away
+├── texture_white.png            # Overlay texture kit third/default
 └── .github/workflows/
-    ├── main_espn.yml         # Workflow variante ESPN (timeout 240 min) — usa Python 3.11
-    └── canva_keep_alive.yml  # Rinnovo periodico del token Canva — usa Python 3.12
+    ├── main_espn.yml            # Workflow principale — Python 3.11, timeout 240 min
+    └── canva_keep_alive.yml     # Rinnovo periodico del token Canva — Python 3.12
+```
 
 ---
 
-## ✨ Funzionalità
+## Funzionalità
 
-- **Rilevamento automatico della partita** — il bot cerca la gara odierna (e quella del giorno successivo) scorrendo tutte le leghe configurate e si aggancia non appena trova un incontro che coinvolge la squadra monitorata. Nessuna configurazione manuale per ogni match.
+### Rilevamento automatico della partita
+Il bot scansiona tutte le 214 leghe configurate in `leagues.json` e intercetta autonomamente la partita odierna (o quella del giorno successivo) che coinvolge la squadra monitorata. Non serve alcuna configurazione manuale per ogni match.
 
-- **Cambi di periodo** — avvisi a ogni transizione di stato: 1° tempo, intervallo, 2° tempo, supplementari e rigori.
+### Aggiornamenti in tempo reale
 
-- **Gol in tempo reale** — il messaggio parte subito dopo la conferma del punteggio (breve attesa di stabilità per evitare falsi positivi). Quando la fonte pubblica marcatore e/o assist, il messaggio già inviato viene **modificato via edit**, senza spammare nuovi messaggi.
+| Evento | Comportamento |
+|---|---|
+| **Gol** | Messaggio immediato al cambio del punteggio. Quando la fonte pubblica marcatore/assist, il messaggio viene **modificato via edit** — nessuno spam. Se la fonte corregge i dati in seguito, il bot li aggiorna silenziosamente. |
+| **Sostituzioni** | Il bot aspetta qualche secondo per raccogliere cambi "gemelli" pubblicati in rapida successione. I cambi della stessa squadra nella stessa finestra vengono raggruppati in un unico messaggio, aggiornato via edit se ne arrivano altri. |
+| **Cartellini rossi** | Notifica immediata con nome del giocatore e minuto. |
+| **Rigori sbagliati** | Rilevamento dei penalty falliti o parati nei tempi regolamentari (esclusa la lotteria finale). |
+| **Cambi di stato** | Avvisi per ogni transizione: inizio 1° tempo, intervallo, inizio 2° tempo, supplementari, rigori, fischio finale. |
 
-- **Correzione automatica del marcatore** — se la fonte corregge marcatore o assist dopo l'invio, il bot aggiorna silenziosamente il messaggio esistente.
+### Card statistiche grafiche
+A fine primo tempo, fine secondo tempo e al fischio finale viene inviata una card visuale (1620×1980 px) renderizzata da `stats.html` tramite Playwright/Chromium, con xG, possesso palla, tiri, tiri in porta, corner, falli, ammonizioni e passaggi.
 
-- **Sostituzioni intelligenti** — al rilevamento di un cambio il bot attende qualche secondo e rilegge la fonte per raccogliere eventuali cambi "gemelli" pubblicati di seguito; i cambi della stessa squadra nella stessa finestra vengono raggruppati in un unico messaggio, aggiornato via edit se ne arrivano altri vicini.
+### Tema maglia dinamico
+La grafica si adatta al contesto della partita:
 
-- **Cartellini rossi** — notifica immediata con nome del giocatore e minuto.
+| Tema | Quando si applica |
+|---|---|
+| `home` | Juventus in casa, campionato |
+| `away` | Juventus in trasferta, campionato |
+| `third` | Coppe (Champions, Europa, Coppa Italia, Supercoppa…) |
+| `default` | Partita senza la Juve o amichevole |
 
-- **Rigori sbagliati** — rilevamento dei penalty falliti o parati nei tempi regolamentari (esclusa la lotteria dei rigori finale).
+Il riconoscimento usa, in ordine: un override esplicito in `leagues.json`, il formato dello slug ESPN (`xxx.N` = campionato), e parole chiave di fallback.
 
-- **Statistiche grafiche** — card renderizzata da `stats.html` con Playwright/Chromium (1620×1980 px) e inviata a fine 1° tempo, fine 2° tempo e al fischio finale: xG, possesso, tiri, tiri in porta, corner, falli, ammonizioni, passaggi e altro.
+### Slide finale Canva
+Al fischio finale viene esportata e inviata una slide dal design Canva del canale. La slide viene inviata **solo se la Juventus è in campo** (controllo su `JUVE_ID = '111'`); per test su altre squadre viene inviato solo il messaggio testuale.
 
-- **Tema maglia dinamico** — la grafica adatta il kit in base al contesto: `home` (Juve in casa, campionato), `away` (Juve in trasferta, campionato), `third` (coppe) o `default` (partita senza la Juve, loghi ESPN). Il riconoscimento campionato/coppa usa un override esplicito in `leagues.json`, poi il formato dello slug, poi parole chiave di fallback.
+### Localizzazione italiana
+I nomi di squadre e nazionali vengono tradotti tramite `teams.json` (677 voci), con forme brevi usate per gli hashtag. Le leghe hanno la propria emoji bandiera.
 
-- **Slide finale Canva** — al fischio finale viene esportata e inviata una slide personalizzata dal design Canva del canale. La slide viene inviata **solo se la Juve è tra le squadre in campo** (controllo su `JUVE_ID = '111'`); per partite di test su altre squadre viene inviato solo il messaggio testuale.
+### Stato persistente su Gist
+Lo stato della partita (gol rilevati, messaggi inviati, sostituzioni, cartellini, ecc.) è salvato su un Gist GitHub, così il bot sopravvive a un eventuale riavvio del workflow a partita in corso.
 
-- **Localizzazione in italiano** — i nomi di squadre e nazionali vengono tradotti tramite `teams.json` (677 voci), con una forma breve usata per gli hashtag; le leghe hanno la propria emoji bandiera.
+### Auto-rinnovo del token Canva
+Il refresh token OAuth viene rigenerato e riscritto automaticamente nei GitHub Secrets ad ogni utilizzo. Il workflow `canva_keep_alive.yml` lo mantiene valido tra una partita e l'altra.
 
-- **Stato persistente su Gist** — lo stato della partita (gol rilevati, messaggi inviati, sostituzioni, cartellini, ecc.) è salvato su un Gist GitHub, così il bot sopravvive a un eventuale riavvio del workflow durante la gara.
-
-- **Auto-rinnovo del token Canva** — il refresh token OAuth viene rigenerato e riscritto automaticamente nei GitHub Secrets a ogni utilizzo; il workflow `canva_keep_alive.yml` (flag `ONLY_REFRESH_TOKEN`) lo mantiene valido tra una partita e l'altra.
-
-- **Protezione da partita già conclusa** — se il workflow viene avviato a gara già terminata e il Gist è vuoto, il bot si spegne immediatamente senza inviare alcun messaggio.
-
-- **Avvio anticipato bloccato** — se il calcio d'inizio è a più di 60 minuti, il bot termina subito (evita run inutili di GitHub Actions).
-
-- **Log leggibili** — ogni riga riporta il timestamp `[HH:MM:SS]` in fuso orario italiano; lo stato della partita viene loggato una volta al minuto invece che a ogni ciclo.
-
----
-
-## ⚙️ Configurazione dei Secrets
-
-In `Settings → Secrets and variables → Actions` della repository aggiungi:
-
-| Secret | Descrizione | Variante |
-|---|---|---|
-| `TELEGRAM_TOKEN` | Token del bot Telegram | entrambe |
-| `TELEGRAM_TO` | Chat ID del canale di destinazione | entrambe |
-| `GIST_ID` | ID del Gist usato come stato persistente | entrambe |
-| `GH_PAT` | Personal Access Token GitHub (scope: `gist` + `repo` per aggiornare Secrets e Gist) | entrambe |
-| `CANVA_CLIENT_ID` | Client ID dell'app Canva | entrambe |
-| `CANVA_CLIENT_SECRET` | Client Secret dell'app Canva | entrambe |
-| `CANVA_REFRESH_TOKEN` | Refresh token OAuth Canva (viene aggiornato automaticamente ad ogni uso) | entrambe |
-
-> La variante ESPN accetta inoltre un input opzionale **`team_id`** al lancio del workflow (default `111`, la Juventus): utile per testare il bot su un'altra squadra senza toccare il codice. La Juve resta comunque il riferimento per logo, tema kit e slide Canva.
+### Protezioni e guard
+- Se il workflow parte a gara già terminata e il Gist è vuoto, il bot si spegne subito senza inviare nulla.
+- Se il calcio d'inizio è a più di 60 minuti, il bot termina immediatamente (evita run inutili su GitHub Actions).
 
 ---
 
-## 🚀 Utilizzo
+## Configurazione
 
-1. **Fai il fork** del repository.
-2. Configura tutti i secret elencati sopra.
-3. Crea un **Gist** con un file `match_state.json` contenente `{}` e copiane l'ID in `GIST_ID`.
-4. Il giorno della partita, avvia il workflow desiderato da **`Actions → Run workflow`**.
-5. Tieni il token Canva valido lanciando occasionalmente **`Canva Token Keep-Alive`**.
+### 1. Fork e Secrets
 
-> Una volta avviato, il bot trova da solo la partita in corso (o la prossima del giorno) e attiva il ciclo di monitoraggio fino al fischio finale, entro il limite di 4 ore del workflow.
+Vai in **Settings → Secrets and variables → Actions** e aggiungi:
+
+| Secret | Descrizione |
+|---|---|
+| `TELEGRAM_TOKEN` | Token del bot Telegram |
+| `TELEGRAM_TO` | Chat ID del canale di destinazione |
+| `GIST_ID` | ID del Gist usato come stato persistente |
+| `GH_PAT` | Personal Access Token GitHub (scope: `gist` + `repo`) |
+| `CANVA_CLIENT_ID` | Client ID dell'app Canva |
+| `CANVA_CLIENT_SECRET` | Client Secret dell'app Canva |
+| `CANVA_REFRESH_TOKEN` | Refresh token OAuth Canva (aggiornato automaticamente ad ogni uso) |
+
+### 2. Crea il Gist di stato
+
+Crea un nuovo Gist con un file chiamato `match_state.json` contenente `{}` e copia l'ID del Gist nella variabile `GIST_ID`.
+
+### 3. Avvia il workflow
+
+Il giorno della partita vai in **Actions → Run workflow** e lancia `main_espn.yml`. Il bot individua autonomamente la partita e rimane attivo fino al fischio finale (massimo 4 ore, limite di GitHub Actions).
+
+> Il workflow accetta un input opzionale **`team_id`** (default `111`, Juventus) per testare il bot su un'altra squadra senza modificare il codice. Logo, tema kit e slide Canva restano comunque legati alla Juventus.
+
+### 4. Mantieni valido il token Canva
+
+Lancia occasionalmente il workflow **Canva Token Keep-Alive** per rinnovare il refresh token tra una partita e l'altra.
 
 ---
 
-## 🛠️ Stack tecnico
+## Stack tecnico
 
 `Python 3.11` · `requests` · `Playwright (Chromium)` · `Pillow` · `pynacl` · `GitHub Actions`
 
----
+## Fonte dati
 
-## 📡 Fonti dati
-
-- **ESPN** — endpoint pubblici `site.api.espn.com`, nessuna API key necessaria; copertura di **214 competizioni** definite in `leagues.json` (campionati e coppe di tutto il mondo).
+**ESPN** — endpoint pubblici `site.api.espn.com`, nessuna API key necessaria. Copertura di **214 competizioni** definite in `leagues.json` (campionati e coppe di tutto il mondo).
 
 ---
 
-*Progetto amatoriale. Non affiliato a Juventus FC, Telegram, Canva, ESPN.*
+*Progetto amatoriale. Non affiliato a Juventus FC, Telegram, Canva o ESPN.*
