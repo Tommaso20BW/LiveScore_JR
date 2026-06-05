@@ -63,7 +63,7 @@ def get_league_emoji(slug): return LEAGUE_MAP.get(slug, {}).get("emoji", "⚽️
 #   home    → Juve gioca in casa (campionato)
 #   away    → Juve gioca in trasferta (campionato)
 #   third   → coppe (Coppa Italia, Supercoppa, Champions, Europa, ecc.)
-#   default → partita senza la Juve
+#   default → partita senza la Juve  /  amichevole
 # ==============================================================================
 JUVE_ID = '111'  # ID ESPN reale della Juventus — usato SOLO per il branding
                  # (logo + tema kit). NON legato a TEAM_ID (la squadra monitorata,
@@ -83,6 +83,10 @@ _CUP_KEYWORDS = (
     "supercoppa", "mondiale", "club world", "cwc", "shield",
     "playoff", "play-off",
 )
+
+# Parole chiave di fallback per riconoscere un'amichevole dal nome/slug
+# (slug ESPN tipici: 'friendly.club', 'fifa.friendly')
+_FRIENDLY_KEYWORDS = ("friendly", "amichev")
 
 def is_cup_competition(league_slug: str, league_name: str = "") -> bool:
     """Determina se la competizione è una coppa.
@@ -105,8 +109,26 @@ def is_cup_competition(league_slug: str, league_name: str = "") -> bool:
     # 3) fallback per keyword
     return any(k in slug or k in name for k in _CUP_KEYWORDS)
 
+def is_friendly_competition(league_slug: str, league_name: str = "") -> bool:
+    """Determina se la competizione è un'amichevole.
+    Priorità: override esplicito in leagues.json ({"slug": {"type": "friendly"}})
+    → keyword di fallback."""
+    slug = (league_slug or "").lower()
+    name = (league_name or "").lower()
+
+    # 1) override esplicito da leagues.json
+    tipo = str(LEAGUE_MAP.get(league_slug, {}).get("type", "")).lower()
+    if tipo in ("friendly", "amichevole"):
+        return True
+
+    # 2) fallback per keyword
+    return any(k in slug or k in name for k in _FRIENDLY_KEYWORDS)
+
 def determina_kit(home_id, away_id, league_slug: str = "", league_name: str = "") -> str:
     """Restituisce il tema della maglia da applicare alla grafica stats."""
+    # Amichevoli → sempre kit 'default' (anche se gioca la Juve)
+    if is_friendly_competition(league_slug, league_name):
+        return "default"
     juve_in_casa       = str(home_id) == JUVE_ID
     juve_in_trasferta  = str(away_id) == JUVE_ID
     if not (juve_in_casa or juve_in_trasferta):
