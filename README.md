@@ -26,12 +26,12 @@ LiveScore_JR/
 ├── leagues.json              # 214 leghe ESPN: slug → { emoji, type }
 ├── teams.json                # 677 squadre/nazionali: nome EN → [nome IT, forma breve]
 ├── stats.html                # Template HTML della card statistiche (reso con Playwright)
-├── texture_black.png         # Overlay texture home/away
-├── texture_white.png         # Overlay texture third/default
+├── texture_black.png         # Overlay texture kit home/away
+├── texture_white.png         # Overlay texture kit third/default
 └── .github/workflows/
-    ├── main_espn.yml         # Workflow variante ESPN (timeout 240 min)
+    ├── main_espn.yml         # Workflow variante ESPN (timeout 240 min) — usa Python 3.11
     ├── main_api.yml          # Workflow variante API-Football (timeout 240 min)
-    └── canva_keep_alive.yml  # Rinnovo periodico del token Canva
+    └── canva_keep_alive.yml  # Rinnovo periodico del token Canva — usa Python 3.12
 ```
 
 ---
@@ -50,19 +50,23 @@ LiveScore_JR/
 
 - **Cartellini rossi** — notifica immediata con nome del giocatore e minuto.
 
-- **Rigori sbagliati** — rilevamento dei penalty falliti o parati nei tempi regolamentari (esclusa la lotteria finale).
+- **Rigori sbagliati** — rilevamento dei penalty falliti o parati nei tempi regolamentari (esclusa la lotteria dei rigori finale).
 
 - **Statistiche grafiche** — card renderizzata da `stats.html` con Playwright/Chromium (1620×1980 px) e inviata a fine 1° tempo, fine 2° tempo e al fischio finale: xG, possesso, tiri, tiri in porta, corner, falli, ammonizioni, passaggi e altro.
 
 - **Tema maglia dinamico** — la grafica adatta il kit in base al contesto: `home` (Juve in casa, campionato), `away` (Juve in trasferta, campionato), `third` (coppe) o `default` (partita senza la Juve, loghi ESPN). Il riconoscimento campionato/coppa usa un override esplicito in `leagues.json`, poi il formato dello slug, poi parole chiave di fallback.
 
-- **Slide finale Canva** — al fischio finale viene esportata e inviata una slide personalizzata dal design Canva del canale.
+- **Slide finale Canva** — al fischio finale viene esportata e inviata una slide personalizzata dal design Canva del canale. La slide viene inviata **solo se la Juve è tra le squadre in campo** (controllo su `JUVE_ID = '111'`); per partite di test su altre squadre viene inviato solo il messaggio testuale.
 
 - **Localizzazione in italiano** — i nomi di squadre e nazionali vengono tradotti tramite `teams.json` (677 voci), con una forma breve usata per gli hashtag; le leghe hanno la propria emoji bandiera.
 
-- **Stato persistente su Gist** — lo stato della partita è salvato su un Gist, così il bot sopravvive a un eventuale riavvio del workflow durante la gara.
+- **Stato persistente su Gist** — lo stato della partita (gol rilevati, messaggi inviati, sostituzioni, cartellini, ecc.) è salvato su un Gist GitHub, così il bot sopravvive a un eventuale riavvio del workflow durante la gara.
 
 - **Auto-rinnovo del token Canva** — il refresh token OAuth viene rigenerato e riscritto automaticamente nei GitHub Secrets a ogni utilizzo; il workflow `canva_keep_alive.yml` (flag `ONLY_REFRESH_TOKEN`) lo mantiene valido tra una partita e l'altra.
+
+- **Protezione da partita già conclusa** — se il workflow viene avviato a gara già terminata e il Gist è vuoto, il bot si spegne immediatamente senza inviare alcun messaggio.
+
+- **Avvio anticipato bloccato** — se il calcio d'inizio è a più di 60 minuti, il bot termina subito (evita run inutili di GitHub Actions).
 
 - **Log leggibili** — ogni riga riporta il timestamp `[HH:MM:SS]` in fuso orario italiano; lo stato della partita viene loggato una volta al minuto invece che a ogni ciclo.
 
@@ -77,13 +81,13 @@ In `Settings → Secrets and variables → Actions` della repository aggiungi:
 | `TELEGRAM_TOKEN` | Token del bot Telegram | entrambe |
 | `TELEGRAM_TO` | Chat ID del canale di destinazione | entrambe |
 | `GIST_ID` | ID del Gist usato come stato persistente | entrambe |
-| `GH_PAT` | Personal Access Token GitHub (per aggiornare Secrets e Gist) | entrambe |
+| `GH_PAT` | Personal Access Token GitHub (scope: `gist` + `repo` per aggiornare Secrets e Gist) | entrambe |
 | `CANVA_CLIENT_ID` | Client ID dell'app Canva | entrambe |
 | `CANVA_CLIENT_SECRET` | Client Secret dell'app Canva | entrambe |
-| `CANVA_REFRESH_TOKEN` | Refresh token OAuth Canva | entrambe |
+| `CANVA_REFRESH_TOKEN` | Refresh token OAuth Canva (viene aggiornato automaticamente ad ogni uso) | entrambe |
 | `API_KEY` | Chiave API-Football | solo variante API |
 
-> La variante ESPN accetta inoltre un input opzionale **`team_id`** al lancio del workflow (default `111`, la Juventus): utile per testare il bot su un'altra squadra senza toccare il codice. La Juve resta comunque il riferimento per logo e tema kit.
+> La variante ESPN accetta inoltre un input opzionale **`team_id`** al lancio del workflow (default `111`, la Juventus): utile per testare il bot su un'altra squadra senza toccare il codice. La Juve resta comunque il riferimento per logo, tema kit e slide Canva.
 
 ---
 
@@ -99,9 +103,19 @@ In `Settings → Secrets and variables → Actions` della repository aggiungi:
 
 ---
 
+## ⚠️ Note e limitazioni note
+
+- **Limite 4 ore** — GitHub Actions interrompe il workflow dopo 240 minuti. Per partite che si prolungano (supplementari + rigori), è possibile rilanciare manualmente il workflow: il bot riprende dallo stato salvato sul Gist.
+- **`canva_keep_alive.yml` usa versioni di action non standard** — il workflow usa `actions/checkout@v5` e `actions/setup-python@v6`, che al momento non esistono come versioni stabili (le versioni correnti sono `@v4` e `@v5`). Aggiornare per coerenza con `main_espn.yml`.
+- **`'111'` hardcoded nel ciclo finale** — la verifica `is_juve_match = home_id == '111' or away_id == '111'` usa una stringa letterale invece della costante `JUVE_ID` già definita. Non causa bug, ma è inconsistente con il resto del codice.
+- **Nessun test automatico** — il progetto non include unit test né integration test. Validare localmente con un `team_id` di una squadra con partita imminente prima di usarlo su una gara importante.
+- **API ESPN non ufficiale** — l'endpoint `site.api.espn.com` non ha SLA pubblico e può cambiare senza preavviso.
+
+---
+
 ## 🛠️ Stack tecnico
 
-`Python 3.11 / 3.12` · `requests` · `Playwright (Chromium)` · `Pillow` · `pynacl` · `GitHub Actions`
+`Python 3.11` · `requests` · `Playwright (Chromium)` · `Pillow` · `pynacl` · `GitHub Actions`
 
 ---
 
