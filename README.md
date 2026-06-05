@@ -8,13 +8,6 @@
 
 **LiveScore JR** segue in tempo reale ogni partita della Juventus e pubblica in automatico sul canale Telegram **@Juventus_Reborn** tutti gli eventi chiave: fischio d'inizio, gol, assist, sostituzioni, cartellini rossi, rigori sbagliati, cambi di periodo, statistiche grafiche di metà/fine tempo e una slide finale generata via **Canva API**.
 
-Il bot esiste in **due varianti intercambiabili**, ciascuna con il proprio workflow GitHub Actions. Condividono la stessa logica di pubblicazione e si distinguono solo per la fonte dati:
-
-| Variante | Script | Workflow | Fonte dati | API key |
-|---|---|---|---|---|
-| **ESPN** *(consigliata)* | `juve_bot_espn.py` | `main_espn.yml` | API pubblica ESPN (`site.api.espn.com`) | ❌ Non richiesta |
-| **API-Football** | `juve_bot_api.py` | `main_api.yml` | API-Football (`v3.football.api-sports.io`) | ✅ Richiesta |
-
 ---
 
 ## 🗂️ Struttura del repository
@@ -22,7 +15,6 @@ Il bot esiste in **due varianti intercambiabili**, ciascuna con il proprio workf
 ```
 LiveScore_JR/
 ├── juve_bot_espn.py          # Bot — variante ESPN (legge le leghe da leagues.json)
-├── juve_bot_api.py           # Bot — variante API-Football (lista leghe interna)
 ├── leagues.json              # 214 leghe ESPN: slug → { emoji, type }
 ├── teams.json                # 677 squadre/nazionali: nome EN → [nome IT, forma breve]
 ├── stats.html                # Template HTML della card statistiche (reso con Playwright)
@@ -30,9 +22,7 @@ LiveScore_JR/
 ├── texture_white.png         # Overlay texture kit third/default
 └── .github/workflows/
     ├── main_espn.yml         # Workflow variante ESPN (timeout 240 min) — usa Python 3.11
-    ├── main_api.yml          # Workflow variante API-Football (timeout 240 min)
     └── canva_keep_alive.yml  # Rinnovo periodico del token Canva — usa Python 3.12
-```
 
 ---
 
@@ -85,7 +75,6 @@ In `Settings → Secrets and variables → Actions` della repository aggiungi:
 | `CANVA_CLIENT_ID` | Client ID dell'app Canva | entrambe |
 | `CANVA_CLIENT_SECRET` | Client Secret dell'app Canva | entrambe |
 | `CANVA_REFRESH_TOKEN` | Refresh token OAuth Canva (viene aggiornato automaticamente ad ogni uso) | entrambe |
-| `API_KEY` | Chiave API-Football | solo variante API |
 
 > La variante ESPN accetta inoltre un input opzionale **`team_id`** al lancio del workflow (default `111`, la Juventus): utile per testare il bot su un'altra squadra senza toccare il codice. La Juve resta comunque il riferimento per logo, tema kit e slide Canva.
 
@@ -96,7 +85,7 @@ In `Settings → Secrets and variables → Actions` della repository aggiungi:
 1. **Fai il fork** del repository.
 2. Configura tutti i secret elencati sopra.
 3. Crea un **Gist** con un file `match_state.json` contenente `{}` e copiane l'ID in `GIST_ID`.
-4. Il giorno della partita, avvia il workflow desiderato da **`Actions → Run workflow`** (ESPN o API-Football).
+4. Il giorno della partita, avvia il workflow desiderato da **`Actions → Run workflow`**.
 5. Tieni il token Canva valido lanciando occasionalmente **`Canva Token Keep-Alive`**.
 
 > Una volta avviato, il bot trova da solo la partita in corso (o la prossima del giorno) e attiva il ciclo di monitoraggio fino al fischio finale, entro il limite di 4 ore del workflow.
@@ -112,8 +101,7 @@ In `Settings → Secrets and variables → Actions` della repository aggiungi:
 ## 📡 Fonti dati
 
 - **ESPN** — endpoint pubblici `site.api.espn.com`, nessuna API key necessaria; copertura di **214 competizioni** definite in `leagues.json` (campionati e coppe di tutto il mondo).
-- **API-Football** — [api-sports.io](https://www.api-sports.io/), richiede un abbonamento e la relativa key.
 
 ---
 
-*Progetto amatoriale. Non affiliato a Juventus FC, Telegram, Canva, ESPN o API-Football.*
+*Progetto amatoriale. Non affiliato a Juventus FC, Telegram, Canva, ESPN.*
