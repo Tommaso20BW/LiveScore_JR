@@ -1314,17 +1314,36 @@ def avvia_ciclo_partita():
                 (status == "PEN" and comp_state_espn == "post")
             )
             if is_finished and "FT" not in state["sent_periods"]:
-                home_scorers, away_scorers = [], []
-                for e in events:
-                    if e["type"] in ("goal", "own goal", "penalty goal"):
+                # Raggruppa i gol per squadra e per giocatore (con suffisso tipo)
+                # Struttura: { team_id: { "chiave_giocatore": {"label": str, "minutes": [int]} } }
+                from collections import OrderedDict
+                def _build_scorers_list(team_id):
+                    """Restituisce lista di stringhe tipo '25', 43' B. Varga' per una squadra."""
+                    grouped = OrderedDict()  # chiave: (player_name, suffix)
+                    for e in events:
+                        if e["type"] not in ("goal", "own goal", "penalty goal"):
+                            continue
+                        if e["team_id"] != team_id:
+                            continue
                         ps = fmt_player(e["player_name"])
                         if e["type"] == "own goal":
-                            ps += " (Autogol)"
+                            suffix = " (Autogol)"
                         elif e["type"] == "penalty goal":
-                            ps += " (Rig.)"
-                        entry = f"{e['minute']}' {ps}"
-                        tid = e["team_id"]
-                        (home_scorers if tid == home_id else away_scorers).append(entry)
+                            suffix = " (Rig.)"
+                        else:
+                            suffix = ""
+                        key = (ps, suffix)
+                        if key not in grouped:
+                            grouped[key] = []
+                        grouped[key].append(e["minute"])
+                    result = []
+                    for (ps, suffix), minutes in grouped.items():
+                        mins_str = ", ".join(f"{m}'" for m in minutes)
+                        result.append(f"{mins_str} {ps}{suffix}")
+                    return result
+
+                home_scorers = _build_scorers_list(home_id)
+                away_scorers = _build_scorers_list(away_id)
 
                 if home_scorers or away_scorers:
                     parts = []
