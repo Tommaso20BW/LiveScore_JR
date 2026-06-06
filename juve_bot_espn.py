@@ -1174,8 +1174,18 @@ def avvia_ciclo_partita():
                     goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
                     goal_key  = f"{ch}_{ca}"
 
-                    print(f"[{now_it()}] ⚽️  CATCHUP GOAL {ge['minute']}\' {home_name} {ch}-{ca} {away_name} → Telegram inviato")
                     msg_id = send_telegram_get_id(goal_text)
+                    if not msg_id:
+                        # Invio non riuscito: interrompo il recupero. Annullo
+                        # l'incremento di questo gol (non annunciato) e lascio che sia
+                        # il rilevamento live a riprovare i gol rimanenti.
+                        print(f"[{now_it()}] ⚠️  CATCHUP invio non riuscito {ge['minute']}\' {home_name} {ch}-{ca} {away_name} — riprovo col rilevamento live")
+                        if ge["team_id"] == home_id:
+                            ch -= 1
+                        else:
+                            ca -= 1
+                        break
+                    print(f"[{now_it()}] ⚽️  CATCHUP GOAL {ge['minute']}\' {home_name} {ch}-{ca} {away_name} → Telegram inviato")
                     state.setdefault("goal_messages", {})[goal_key] = {
                         "msg_id":    msg_id,
                         "scorer":    p_name,
@@ -1192,9 +1202,11 @@ def avvia_ciclo_partita():
                     }
                     time.sleep(2)
 
-                state["goals_detected"]  = g_home + g_away
-                state["prev_home_goals"] = g_home
-                state["prev_away_goals"] = g_away
+                # Avanza solo fino ai gol realmente annunciati (ch/ca): se un invio
+                # è fallito, i gol mancanti li recupera il rilevamento live.
+                state["goals_detected"]  = ch + ca
+                state["prev_home_goals"] = ch
+                state["prev_away_goals"] = ca
                 state_changed = True
 
             # --- Fine primo tempo ---
@@ -1436,21 +1448,33 @@ def avvia_ciclo_partita():
                 events = parse_events(data, home_name_raw, away_name_raw, home_id, away_id)
                 score_str = build_score_str(home_name, away_name, g_home, g_away)
 
-                if g_home > prev_home:
-                    scoring_tid = home_id
-                    expected_home_goals = g_home
-                    expected_away_goals = prev_away
-                elif g_away > prev_away:
-                    scoring_tid = away_id
-                    expected_home_goals = prev_home
-                    expected_away_goals = g_away
-                else:
-                    scoring_tid = None
-                    expected_home_goals = g_home
-                    expected_away_goals = g_away
-
                 goal_events = [e for e in events
                                if e["type"] in ("goal", "own goal", "penalty goal")]
+
+                # Quale squadra ha segnato.
+                # Di norma lo si capisce dall'aumento rispetto all'ultimo punteggio
+                # annunciato (prev_*). Se però lo stato salvato è incoerente
+                # (prev_* gia avanti, p.es. dopo un riavvio del job), questi confronti
+                # fallirebbero e il gol verrebbe perso in silenzio: in quel caso si
+                # ricava il marcatore dall'ultimo evento del feed ESPN.
+                if g_home > prev_home:
+                    scoring_tid = home_id
+                elif g_away > prev_away:
+                    scoring_tid = away_id
+                else:
+                    _gevs = sorted(goal_events, key=lambda x: x["minute"])
+                    if _gevs:
+                        _last_ev = _gevs[-1]
+                        scoring_tid = _last_ev["team_id"]
+                        if _last_ev["type"] == "own goal":
+                            scoring_tid = away_id if _last_ev["team_id"] == home_id else home_id
+                    else:
+                        scoring_tid = home_id if g_home >= g_away else away_id
+                    print(f"[{now_it()}] ⚠️  Stato punteggio incoerente (prev {prev_home}-{prev_away}, ora {g_home}-{g_away}) — marcatore dedotto dal feed")
+
+                # Flag: True solo se il gol è stato realmente annunciato (ora o in passato).
+                # Il contatore avanzerà SOLO in quel caso.
+                goal_announced = False
 
                 if scoring_tid:
                     team_goals = [e for e in goal_events if e["type"] != "own goal" and e["team_id"] == scoring_tid]
@@ -1502,33 +1526,45 @@ def avvia_ciclo_partita():
                     goal_text = f"<b>GOAL · {goal_minute}' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
                     goal_key = f"{g_home}_{g_away}"
 
-                    if not state.get("goal_messages", {}).get(goal_key, {}).get("msg_id"):
+                    if state.get("goal_messages", {}).get(goal_key, {}).get("msg_id"):
+                        # Gol già annunciato davvero in passato: duplicato corretto,
+                        # il contatore può avanzare.
+                        goal_announced = True
+                    else:
                         _scorer_log = f" {fmt_player(player_name)}" if player_name else " (marcatore in attesa)"
                         _assist_log = f" | assist: {fmt_player(assist_name)}" if assist_name and assist_name != player_name else ""
-                        print(f"[{now_it()}] ⚽️  GOAL{_scorer_log}{_assist_log} ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
                         msg_id = send_telegram_get_id(goal_text)
-                        state.setdefault("goal_messages", {})[goal_key] = {
-                            "msg_id":    msg_id,
-                            "scorer":    player_name,
-                            "assist":    assist_name,
-                            "minute":    goal_minute,
-                            "type":      goal_type,
-                            "home_n":    home_name,
-                            "away_n":    away_name,
-                            "g_home":    g_home,
-                            "g_away":    g_away,
-                            "home_id":   home_id,
-                            "away_id":   away_id,
-                            "score_tid": actual_scoring_tid,
-                        }
-                        state_changed = True
+                        if msg_id:
+                            state.setdefault("goal_messages", {})[goal_key] = {
+                                "msg_id":    msg_id,
+                                "scorer":    player_name,
+                                "assist":    assist_name,
+                                "minute":    goal_minute,
+                                "type":      goal_type,
+                                "home_n":    home_name,
+                                "away_n":    away_name,
+                                "g_home":    g_home,
+                                "g_away":    g_away,
+                                "home_id":   home_id,
+                                "away_id":   away_id,
+                                "score_tid": actual_scoring_tid,
+                            }
+                            state_changed = True
+                            goal_announced = True
+                            print(f"[{now_it()}] ⚽️  GOAL{_scorer_log}{_assist_log} ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+                        else:
+                            # Invio NON riuscito: non avanzo il contatore così al ciclo
+                            # successivo il bot rientra qui e riprova (il gol non si perde).
+                            print(f"[{now_it()}] ⚠️  Invio GOAL non riuscito ({home_name} {g_home}-{g_away} {away_name}) — riprovo al prossimo ciclo")
 
-                state["goals_detected"] = total_goals_now
-                state_changed = True
-                state["prev_home_goals"] = g_home
-                state_changed = True
-                state["prev_away_goals"] = g_away
-                state_changed = True
+                # Il contatore avanza SOLO se il gol è stato davvero annunciato.
+                # Se l'invio è fallito (o scoring_tid assente), lo stato resta indietro
+                # e il gol verrà ritentato, invece di sparire.
+                if goal_announced:
+                    state["goals_detected"]  = total_goals_now
+                    state["prev_home_goals"] = g_home
+                    state["prev_away_goals"] = g_away
+                    state_changed = True
 
             elif total_goals_now < state["goals_detected"]:
                 # ======================================================
