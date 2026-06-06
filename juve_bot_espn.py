@@ -1868,7 +1868,8 @@ def avvia_ciclo_partita():
                     card_id = f"card_{e['player_name']}".replace(" ", "_")
                     if card_id not in state["sent_cards"]:
                         is_second_yellow = e["type"] == "second yellow card"
-                        label = "DOPPIO GIALLO" if is_second_yellow else "CARTELLINO ROSSO"
+                        team_name = home_name if e["team_id"] == home_id else away_name
+                        label = f"DOPPIO GIALLO {team_name.upper()}" if is_second_yellow else f"ROSSO {team_name.upper()}"
                         print(f"[{now_it()}] 🟥 {label} {e['minute']}' {p_name} → Telegram inviato")
                         send_telegram(
                             f"<b>{label} · {e['minute']}' {E_RED}</b>\n\n"
