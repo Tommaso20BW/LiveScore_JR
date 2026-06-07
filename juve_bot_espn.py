@@ -652,25 +652,28 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   league_slug: str = "",
                                   pen_home: int = 0, pen_away: int = 0):
 
-    # ── Kit maglia + colori via Gemini (con cascata fallback ESPN → hardcoded) ──
-    # Estrai competitors dai dati ESPN per il fallback colori
+    # ── Kit maglia + colori dal campo 'uniform' ESPN (cascata fallback) ──
+    # boxscore.teams → uniform reale (kit + colore indossato in campo)
+    # competitors    → fallback colori brand (team.color / alternateColor)
     try:
         _competitors = data_espn["header"]["competitions"][0]["competitors"]
     except Exception:
         _competitors = []
+    _boxscore_teams = (data_espn.get("boxscore") or {}).get("teams", [])
 
     # La logica classica (campionato/coppa/amichevole) resta come fallback
-    # nel caso in cui Gemini non risponda o risponda in modo non valido.
+    # nel caso in cui il campo uniform non sia disponibile.
     _fallback_kit = determina_kit(home_id, away_id, league_slug, league_name)
 
     _kit_result = kit_analyzer.analizza(
-        home_name    = home_name,
-        away_name    = away_name,
-        home_id      = home_id,
-        away_id      = away_id,
-        league_name  = league_name,
-        competitors  = _competitors,
-        fallback_kit = _fallback_kit,
+        home_name      = home_name,
+        away_name      = away_name,
+        home_id        = home_id,
+        away_id        = away_id,
+        league_name    = league_name,
+        competitors    = _competitors,
+        boxscore_teams = _boxscore_teams,
+        fallback_kit   = _fallback_kit,
     )
     juve_kit   = _kit_result["kit"]
     home_color = _kit_result["home_color"]
