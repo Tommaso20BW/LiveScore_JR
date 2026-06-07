@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 ITALY_TZ = ZoneInfo('Europe/Rome')
+ESPN_TZ = ZoneInfo('America/New_York')
 def now_it(): return datetime.now(ITALY_TZ).strftime('%H:%M:%S')
 from playwright.sync_api import sync_playwright
 
@@ -828,10 +829,10 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
 # ESPN API
 # ==============================================================================
 def trova_partita_oggi(team_id: str):
-    now_utc       = datetime.now(timezone.utc)
+    now_espn      = datetime.now(ESPN_TZ)
     dates_to_try  = [
-        now_utc.strftime("%Y%m%d"),
-        (now_utc + timedelta(days=1)).strftime("%Y%m%d"),
+        now_espn.strftime("%Y%m%d"),
+        (now_espn + timedelta(days=1)).strftime("%Y%m%d"),
     ]
     print(f"[{now_it()}] 🔍 Cerco partita per team_id={team_id}...")
 
