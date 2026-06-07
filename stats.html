@@ -276,6 +276,9 @@ body::before { opacity: 0.06; mix-blend-mode: screen; }
 .bar-home, .bar-away { position: absolute; top: 0; height: 100%; }
 .bar-home { left: 0; background: linear-gradient(90deg, var(--bar-juve1), var(--bar-juve2)); }
 .bar-away { right: 0; background: linear-gradient(90deg, var(--bar-opp1), var(--bar-opp2)); }
+
+/* ── Override dinamico colori maglie (solo kit-default, iniettato da kit_analyzer) ── */
+{DYNAMIC_STYLE}
 </style>
 </head>
 <body class="kit-{JUVE_KIT}">
