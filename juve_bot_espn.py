@@ -33,7 +33,7 @@ CLIENT_SECRET       = os.getenv('CANVA_CLIENT_SECRET')
 CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
-PAGINA_TARGET   = 11
+PAGINA_TARGET   = 2
 
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
