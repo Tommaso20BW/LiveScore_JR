@@ -10,10 +10,6 @@
 
 /* ── TEMA HOME: bianco/nero a strisce, accenti oro ───────────────────── */
 body.kit-home {
-  --body-bg1: #f5edd0;
-  --body-bg2: #e8dcb0;
-  --body-glow1: #e6cf8a;
-  --body-glow2: #d8be72;
   --card-bg1: rgba(248,248,245,0.98);
   --card-bg2: rgba(228,228,222,0.98);
   --header-border: rgba(0,0,0,0.10);
@@ -33,14 +29,14 @@ body.kit-home {
   --bar-opp1: #2a2a2a;
   --bar-opp2: #0a0a0a;
   --pen-color: #777770;
+  background:
+    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(180,180,175,0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(180,180,175,0.40) 0%, transparent 65%),
+    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
 }
 
 /* ── TEMA AWAY: rosa pieno, nero e bianco ────────────────────────────── */
 body.kit-away {
-  --body-bg1: #3a0a20;
-  --body-bg2: #1e0410;
-  --body-glow1: #c0306a;
-  --body-glow2: #801040;
   --card-bg1: rgba(250,185,210,0.97);
   --card-bg2: rgba(238,160,190,0.97);
   --header-border: rgba(0,0,0,0.12);
@@ -60,41 +56,41 @@ body.kit-away {
   --bar-opp1: #9a3060;
   --bar-opp2: #6a1840;
   --pen-color: #7a2848;
+  background:
+    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(192,48,106,0.42) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(128,16,64,0.30) 0%, transparent 65%),
+    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
 }
 
-/* ── TEMA THIRD: nero con fiamme grigie, accenti oro ─────────────────── */
+/* ── TEMA THIRD: nero, accenti oro, testi tutti oro ──────────────────── */
 body.kit-third {
-  --body-bg1: #0d0d0d;
-  --body-bg2: #000000;
-  --body-glow1: #4a3800;
-  --body-glow2: #261e00;
   --card-bg1: rgba(28,28,28,1);
   --card-bg2: rgba(20,20,20,1);
   --header-border: rgba(201,168,76,0.14);
-  --league-color: #8a7840;
+  --league-color: #c9a84c;
   --badge-bg1: #c9a84c;
   --badge-bg2: #9a7828;
   --badge-text: #0a0800;
   --team-name: #c9a84c;
   --score-color: #c9a84c;
-  --status-color: #8a7840;
-  --stats-title: #8a7840;
+  --status-color: #c9a84c;
+  --stats-title: #c9a84c;
   --val-color: #c9a84c;
-  --label-color: #a08838;
+  --label-color: #c9a84c;
   --bar-track: rgba(201,168,76,0.10);
   --bar-juve1: #c9a84c;
   --bar-juve2: #9a7828;
   --bar-opp1: #484840;
   --bar-opp2: #282820;
-  --pen-color: #8a7840;
+  --pen-color: #c9a84c;
+  background:
+    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(0,0,0,0.60) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(0,0,0,0.40) 0%, transparent 65%),
+    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
 }
 
 /* ── TEMA DEFAULT: neutro blu/viola ─────────────────────────────────── */
 body.kit-default {
-  --body-bg1: #1e3a8a;
-  --body-bg2: #060816;
-  --body-glow1: #1e3a8a;
-  --body-glow2: #7c3aed;
   --card-bg1: rgba(17,24,39,0.96);
   --card-bg2: rgba(10,14,28,0.96);
   --header-border: rgba(255,255,255,0.06);
@@ -114,49 +110,17 @@ body.kit-default {
   --bar-opp1: #ef4444;
   --bar-opp2: #dc2626;
   --pen-color: #8fa1c7;
-}
-
-/* ── LAYOUT PRINCIPALE: body = card, nessun contorno ─────────────────── */
-/* Formato 3:4 → 1620×2160px                                              */
-html, body {
-  width: 1620px;
-  height: 2160px;
-  overflow: hidden;
-}
-
-body {
-  font-family: 'Inter', sans-serif;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ── NUOVI GLOW: ampi, diffusi, non invasivi ── */
-body.kit-home {
   background:
-    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(230,207,138,0.38) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(216,190,114,0.28) 0%, transparent 65%),
-    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
-}
-body.kit-away {
-  background:
-    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(192,48,106,0.42) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(128,16,64,0.30) 0%, transparent 65%),
-    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
-}
-body.kit-third {
-  background:
-    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(74,56,0,0.60) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(38,30,0,0.50) 0%, transparent 65%),
-    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
-}
-body.kit-default {
-  background:
-    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(30,58,138,0.50) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(124,58,237,0.38) 0%, transparent 65%),
+    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(30,58,138,0.30) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(124,58,237,0.22) 0%, transparent 65%),
     linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
 }
 
-/* Effetto grain su tutti i temi (doppio layer: funziona su chiaro e scuro) */
+/* ── LAYOUT ──────────────────────────────────────────────────────────── */
+html, body { width: 1620px; height: 2160px; overflow: hidden; }
+body { font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+
+/* Effetto grain */
 body::after, body::before {
   content: "";
   position: fixed;
@@ -170,13 +134,11 @@ body::after, body::before {
 body::after  { opacity: 0.10; mix-blend-mode: multiply; }
 body::before { opacity: 0.06; mix-blend-mode: screen; }
 
-/* Nessuna card separata — il body stesso è il canvas */
 .header {
   padding: 60px 90px 45px;
   border-bottom: 2px solid var(--header-border);
   flex-shrink: 0;
 }
-
 .league-row {
   text-align: center;
   color: var(--league-color);
@@ -205,12 +167,7 @@ body::before { opacity: 0.06; mix-blend-mode: screen; }
   padding: 0 20px;
 }
 .team { width: 320px; text-align: center; }
-.logo {
-  width: 160px; height: 160px;
-  object-fit: contain;
-  display: block;
-  margin: 0 auto 22px;
-}
+.logo { width: 160px; height: 160px; object-fit: contain; display: block; margin: 0 auto 22px; }
 .team-name { color: var(--team-name); font-weight: 800; font-size: 36px; }
 .score-wrap { text-align: center; }
 .score {
@@ -238,7 +195,6 @@ body::before { opacity: 0.06; mix-blend-mode: screen; }
   text-transform: uppercase;
   letter-spacing: 2px;
 }
-
 .stats-body {
   flex: 1;
   padding: 0 90px;
