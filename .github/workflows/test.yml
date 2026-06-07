@@ -41,4 +41,4 @@ jobs:
           CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           TEAM_ID:              ${{ github.event.inputs.team_id || '111' }}
-        run: python -u test.py --event 401861998 --league fifa.friendly --momento FT
+        run: python -u test.py --event 401870630 --league fifa.friendly --momento FT
