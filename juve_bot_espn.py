@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 ITALY_TZ = ZoneInfo('Europe/Rome')
-ESPN_TZ = ZoneInfo('America/New_York')
+ESPN_TZ  = ZoneInfo('America/New_York')  # ESPN indicizza gli eventi in orario US Eastern
 
 def now_it(): return datetime.now(ITALY_TZ).strftime('%H:%M:%S')
 from playwright.sync_api import sync_playwright
@@ -830,10 +830,14 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
 # ESPN API
 # ==============================================================================
 def trova_partita_oggi(team_id: str):
+    # ESPN archivia le partite secondo l'orario US Eastern, non UTC: le gare serali
+    # americane (es. amichevoli "Road to 26") restano sul giorno locale anche quando
+    # in UTC è gia il giorno dopo. Calcolando "oggi" sull'orologio di ESPN la partita
+    # rientra sempre nella ricerca finche e in diretta — niente cuscinetto su ieri.
     now_espn      = datetime.now(ESPN_TZ)
     dates_to_try  = [
-        now_espn.strftime("%Y%m%d"),
-        (now_espn + timedelta(days=1)).strftime("%Y%m%d"),
+        now_espn.strftime("%Y%m%d"),                        # "oggi" secondo ESPN
+        (now_espn + timedelta(days=1)).strftime("%Y%m%d"),  # "domani" secondo ESPN
     ]
     print(f"[{now_it()}] 🔍 Cerco partita per team_id={team_id}...")
 
@@ -1003,7 +1007,7 @@ def avvia_ciclo_partita():
 
     try:
         test_r = requests.get(f"{ESPN_BASE}/ita.1/scoreboard",
-                               params={"dates": datetime.now(timezone.utc).strftime("%Y%m%d")}, timeout=10)
+                               params={"dates": datetime.now(ESPN_TZ).strftime("%Y%m%d")}, timeout=10)
     except Exception as e:
         print(f"[{now_it()}] ⚠️  Test connettività API fallito: {e}")
 
