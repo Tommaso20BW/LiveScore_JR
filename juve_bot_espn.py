@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 ITALY_TZ = ZoneInfo('Europe/Rome')
 ESPN_TZ = ZoneInfo('America/New_York')
+
 def now_it(): return datetime.now(ITALY_TZ).strftime('%H:%M:%S')
 from playwright.sync_api import sync_playwright
 
