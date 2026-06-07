@@ -150,6 +150,14 @@ body.kit-third {
     linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
 }
 
+/* Default: bagliori maglie reali, raggio ridotto per non risultare troppo estesi */
+body.kit-default {
+  background:
+    radial-gradient(circle at top left, var(--body-glow1) 0%, transparent 25%),
+    radial-gradient(circle at bottom right, var(--body-glow2) 0%, transparent 25%),
+    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
+}
+
 
 /* Effetto grain su tutti i temi (doppio layer: funziona su chiaro e scuro) */
 body::after, body::before {
