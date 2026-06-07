@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: juve-live-bot2
+  group: juve-live-bot
   cancel-in-progress: false
  
 jobs:
