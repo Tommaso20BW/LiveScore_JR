@@ -10,10 +10,10 @@
 
 /* ── TEMA HOME: bianco/nero a strisce, accenti oro ───────────────────── */
 body.kit-home {
-  --body-bg1: #1c1c1c;
-  --body-bg2: #0a0a0a;
-  --body-glow1: #3a3020;
-  --body-glow2: #1a1408;
+  --body-bg1: #f5edd0;
+  --body-bg2: #e8dcb0;
+  --body-glow1: #e6cf8a;
+  --body-glow2: #d8be72;
   --card-bg1: rgba(248,248,245,0.98);
   --card-bg2: rgba(228,228,222,0.98);
   --header-border: rgba(0,0,0,0.10);
@@ -30,8 +30,8 @@ body.kit-home {
   --bar-track: rgba(0,0,0,0.08);
   --bar-juve1: #c9a84c;
   --bar-juve2: #9a7828;
-  --bar-opp1: #555550;
-  --bar-opp2: #333330;
+  --bar-opp1: #2a2a2a;
+  --bar-opp2: #0a0a0a;
   --pen-color: #777770;
 }
 
@@ -68,8 +68,8 @@ body.kit-third {
   --body-bg2: #000000;
   --body-glow1: #4a3800;
   --body-glow2: #261e00;
-  --card-bg1: rgba(14,14,14,0.98);
-  --card-bg2: rgba(6,6,6,0.98);
+  --card-bg1: rgba(28,28,28,1);
+  --card-bg2: rgba(20,20,20,1);
   --header-border: rgba(201,168,76,0.14);
   --league-color: #8a7840;
   --badge-bg1: #c9a84c;
@@ -133,6 +133,23 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* Home: bagliori oro meno estesi e più contenuti */
+body.kit-home {
+  background:
+    radial-gradient(circle at top left, var(--body-glow1) 0%, transparent 20%),
+    radial-gradient(circle at bottom right, var(--body-glow2) 0%, transparent 20%),
+    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
+}
+
+/* Third: bagliori oro più contenuti su nero puro */
+body.kit-third {
+  background:
+    radial-gradient(circle at top left, var(--body-glow1) 0%, transparent 22%),
+    radial-gradient(circle at bottom right, var(--body-glow2) 0%, transparent 22%),
+    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
+}
+
 
 /* Nessuna card separata — il body stesso è il canvas */
 .header {
