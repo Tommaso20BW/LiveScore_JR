@@ -169,39 +169,24 @@ def analizza(
         juve_type = uni.get(juve_side, {}).get("type")
         if juve_type in _VALID_KITS:
             kit = juve_type
-            print(f"[{_now_it()}] ✅ [kit] Kit ESPN uniform: {kit!r}")
-        else:
-            print(
-                f"[{_now_it()}] ⚠️  [kit] uniform.type assente per la Juve "
-                f"→ fallback logica classica: {fallback_kit!r}"
-            )
+        print(f"[{_now_it()}] 🟡 [kit] Juventus: {kit}")
 
     # ── STEP 2: colori maglie da uniform.color ────────────────────────────
     home_color = _norm_hex(uni.get("home", {}).get("color"))
     away_color = _norm_hex(uni.get("away", {}).get("color"))
-    if home_color:
-        print(f"[{_now_it()}] 🎨 [kit] {home_name} color uniform: {home_color}")
-    if away_color:
-        print(f"[{_now_it()}] 🎨 [kit] {away_name} color uniform: {away_color}")
 
     # Fallback 1: colori ufficiali ESPN (team.color / alternateColor)
     espn_h, espn_a = _espn_colors(competitors, home_id, away_id)
     if not home_color:
         home_color = espn_h
-        if home_color:
-            print(f"[{_now_it()}] 🔄 [kit] {home_name} color fallback ESPN: {home_color}")
     if not away_color:
         away_color = espn_a
-        if away_color:
-            print(f"[{_now_it()}] 🔄 [kit] {away_name} color fallback ESPN: {away_color}")
 
     # Fallback 2: costanti hardcoded
     if not home_color:
         home_color = _FALLBACK_HOME_COLOR
-        print(f"[{_now_it()}] 🔄 [kit] {home_name} color fallback hardcoded: {home_color}")
     if not away_color:
         away_color = _FALLBACK_AWAY_COLOR
-        print(f"[{_now_it()}] 🔄 [kit] {away_name} color fallback hardcoded: {away_color}")
 
     return {
         "kit":        kit,
