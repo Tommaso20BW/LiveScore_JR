@@ -125,39 +125,36 @@ html, body {
 }
 
 body {
-  background:
-    radial-gradient(circle at top left, var(--body-glow1) 0%, transparent 40%),
-    radial-gradient(circle at bottom right, var(--body-glow2) 0%, transparent 40%),
-    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
   font-family: 'Inter', sans-serif;
   display: flex;
   flex-direction: column;
 }
 
-/* Home: bagliori oro meno estesi e più contenuti */
+/* ── NUOVI GLOW: ampi, diffusi, non invasivi ── */
 body.kit-home {
   background:
-    radial-gradient(circle at top left, var(--body-glow1) 0%, transparent 20%),
-    radial-gradient(circle at bottom right, var(--body-glow2) 0%, transparent 20%),
+    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(230,207,138,0.38) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(216,190,114,0.28) 0%, transparent 65%),
     linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
 }
-
-/* Third: bagliori oro più contenuti su nero puro */
+body.kit-away {
+  background:
+    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(192,48,106,0.42) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(128,16,64,0.30) 0%, transparent 65%),
+    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
+}
 body.kit-third {
   background:
-    radial-gradient(circle at top left, var(--body-glow1) 0%, transparent 22%),
-    radial-gradient(circle at bottom right, var(--body-glow2) 0%, transparent 22%),
+    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(74,56,0,0.60) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(38,30,0,0.50) 0%, transparent 65%),
     linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
 }
-
-/* Default: bagliori maglie reali, raggio ridotto per non risultare troppo estesi */
 body.kit-default {
   background:
-    radial-gradient(circle at top left, var(--body-glow1) 0%, transparent 25%),
-    radial-gradient(circle at bottom right, var(--body-glow2) 0%, transparent 25%),
+    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(30,58,138,0.50) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(124,58,237,0.38) 0%, transparent 65%),
     linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
 }
-
 
 /* Effetto grain su tutti i temi (doppio layer: funziona su chiaro e scuro) */
 body::after, body::before {
