@@ -8,6 +8,8 @@ from PIL import Image
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
+import kit_analyzer
+
 ITALY_TZ = ZoneInfo('Europe/Rome')
 ESPN_TZ  = ZoneInfo('America/New_York')  # ESPN indicizza gli eventi in orario US Eastern
 
@@ -650,10 +652,34 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   league_slug: str = "",
                                   pen_home: int = 0, pen_away: int = 0):
 
-    # Tema maglia (home / away / third / default) — calcolato subito perché
-    # determina anche quale logo Juve usare.
-    juve_kit = determina_kit(home_id, away_id, league_slug, league_name)
-    print(f"[{now_it()}] 🎨 Kit grafica stats: {juve_kit} (lega: {league_name} / {league_slug or 'n.d.'})")
+    # ── Kit maglia + colori via Gemini (con cascata fallback ESPN → hardcoded) ──
+    # Estrai competitors dai dati ESPN per il fallback colori
+    try:
+        _competitors = data_espn["header"]["competitions"][0]["competitors"]
+    except Exception:
+        _competitors = []
+
+    # La logica classica (campionato/coppa/amichevole) resta come fallback
+    # nel caso in cui Gemini non risponda o risponda in modo non valido.
+    _fallback_kit = determina_kit(home_id, away_id, league_slug, league_name)
+
+    _kit_result = kit_analyzer.analizza(
+        home_name    = home_name,
+        away_name    = away_name,
+        home_id      = home_id,
+        away_id      = away_id,
+        league_name  = league_name,
+        competitors  = _competitors,
+        fallback_kit = _fallback_kit,
+    )
+    juve_kit   = _kit_result["kit"]
+    home_color = _kit_result["home_color"]
+    away_color = _kit_result["away_color"]
+    print(
+        f"[{now_it()}] 🎨 Kit grafica stats: {juve_kit} "
+        f"| {home_name}: {home_color} / {away_name}: {away_color} "
+        f"(lega: {league_name} / {league_slug or 'n.d.'})"
+    )
 
     # Logo Juve in base al kit:
     #   home / away    → logo nero (SVG, 2020)
@@ -783,18 +809,40 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         print(f"[{now_it()}] ❌ stats.html non trovato in {_template_path}")
         return None
 
+    # Genera override CSS per il tema default:
+    # i colori dei bagliori e delle barre diventano i colori reali delle maglie.
+    # Per home/away/third i temi CSS hardcoded restano invariati.
+    if juve_kit == "default":
+        _home_dark = kit_analyzer.darken(home_color)
+        _away_dark = kit_analyzer.darken(away_color)
+        _dynamic_style = (
+            f"\nbody.kit-default {{\n"
+            f"  --body-bg1:   {kit_analyzer.darken(home_color, 0.25)};\n"
+            f"  --body-bg2:   {kit_analyzer.darken(away_color, 0.25)};\n"
+            f"  --body-glow1: {home_color};\n"
+            f"  --body-glow2: {away_color};\n"
+            f"  --bar-juve1:  {home_color};\n"
+            f"  --bar-juve2:  {_home_dark};\n"
+            f"  --bar-opp1:   {away_color};\n"
+            f"  --bar-opp2:   {_away_dark};\n"
+            f"}}"
+        )
+    else:
+        _dynamic_style = ""
+
     # Determina il tema maglia (home / away / third / default)
     html_content = (
         template
-        .replace("{JUVE_KIT}",    juve_kit)
-        .replace("{LEAGUE_NAME}", league_name.upper())
-        .replace("{BADGE_LABEL}", badge_label)
-        .replace("{H_LOGO}",      h_logo)
-        .replace("{HOME_NAME}",   home_name)
-        .replace("{SCORE_BLOCK}", score_block_html)
-        .replace("{A_LOGO}",      a_logo)
-        .replace("{AWAY_NAME}",   away_name)
-        .replace("{ROWS_HTML}",   rows_html)
+        .replace("{JUVE_KIT}",       juve_kit)
+        .replace("{DYNAMIC_STYLE}",  _dynamic_style)
+        .replace("{LEAGUE_NAME}",    league_name.upper())
+        .replace("{BADGE_LABEL}",    badge_label)
+        .replace("{H_LOGO}",         h_logo)
+        .replace("{HOME_NAME}",      home_name)
+        .replace("{SCORE_BLOCK}",    score_block_html)
+        .replace("{A_LOGO}",         a_logo)
+        .replace("{AWAY_NAME}",      away_name)
+        .replace("{ROWS_HTML}",      rows_html)
     )
 
     path_html      = "/tmp/stats.html"
