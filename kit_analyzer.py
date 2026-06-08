@@ -23,11 +23,7 @@ la grafica stats, dentro recupera_e_genera_stats_html().
 Nessuna variabile d'ambiente richiesta.
 """
 
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
 # ── Configurazione ────────────────────────────────────────────────────────────
-ITALY_TZ = ZoneInfo("Europe/Rome")
 JUVE_ID  = "111"
 
 # Colori di ultima istanza (se uniform ed ESPN team color falliscono entrambi)
@@ -38,10 +34,6 @@ _VALID_KITS = ("home", "away", "third")
 
 
 # ── Utilities interne ─────────────────────────────────────────────────────────
-def _now_it() -> str:
-    return datetime.now(ITALY_TZ).strftime("%H:%M:%S")
-
-
 def darken(hex_color: str, factor: float = 0.65) -> str:
     """Restituisce una versione più scura del colore hex fornito."""
     try:
