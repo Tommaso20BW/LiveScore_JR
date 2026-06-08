@@ -169,7 +169,6 @@ def analizza(
         juve_type = uni.get(juve_side, {}).get("type")
         if juve_type in _VALID_KITS:
             kit = juve_type
-        print(f"[{_now_it()}] 🟡 [kit] Juventus: {kit}")
 
     # ── STEP 2: colori maglie da uniform.color ────────────────────────────
     home_color = _norm_hex(uni.get("home", {}).get("color"))
