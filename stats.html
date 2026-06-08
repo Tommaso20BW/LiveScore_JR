@@ -267,6 +267,24 @@ body::before { opacity: 0.06; mix-blend-mode: screen; }
   </div>
 <script>
 (function(){
+  // Rimappa i nomi ESPN (inglese) → nomi italiani corretti
+  var leagueMap = {
+    'ITALIAN SERIE A':           'Serie A',
+    'ITALY SERIE A':             'Serie A',
+    'SERIE A TIM':               'Serie A',
+    'ITALIAN COPPA ITALIA':      'Coppa Italia',
+    'ITALY COPPA ITALIA':        'Coppa Italia',
+    'COPPA ITALIA FRECCIAROSSA': 'Coppa Italia',
+    'ITALIAN SUPERCOPPA':        'Supercoppa Italiana',
+    'ITALY SUPERCOPPA':          'Supercoppa Italiana'
+  };
+  var el = document.querySelector('.league-row');
+  if (el) {
+    var mapped = leagueMap[el.textContent.trim().toUpperCase()];
+    if (mapped) el.textContent = mapped;
+  }
+
+  // Fallback kit se la classe non è stata impostata
   var b = document.body;
   if (!b.classList.contains('kit-home') &&
       !b.classList.contains('kit-away') &&
