@@ -153,7 +153,8 @@ LiveScore_JR/
 ├── teams.json                   # 677 squadre/nazionali: nome EN → [nome IT, forma breve]
 ├── stats.html                   # Template HTML della card statistiche
 ├── texture_black.png            # Overlay texture per i kit home/away
-├── texture_white.png            # Overlay texture per i kit third/default
+├── texture_white.png            # Overlay texture per il kit third
+├── texture_white.png            # Overlay texture per il kit default
 └── .github/workflows/
     ├── main_espn.yml            # Workflow principale (Python 3.11, timeout 240 min)
     └── canva_keep_alive.yml     # Rinnovo del token Canva (Python 3.12)
