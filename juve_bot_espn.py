@@ -869,8 +869,12 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         page.screenshot(path=path_raw_png, clip={"x": 0, "y": 0, "width": 1620, "height": 2160}, omit_background=False)
         browser.close()
 
-    # home/away → texture scura; third/default → texture chiara
-    texture_file = "texture_black.png" if juve_kit in ("home", "away") else "texture_white.png"
+    # home/away → texture scura; third → texture gold; default → texture chiara
+    texture_file = {
+        "home":  "texture_black.png",
+        "away":  "texture_black.png",
+        "third": "texture_gold.png",
+    }.get(juve_kit, "texture_white.png")
     if os.path.exists(texture_file):
         try:
             base_img = Image.open(path_raw_png).convert("RGBA")
