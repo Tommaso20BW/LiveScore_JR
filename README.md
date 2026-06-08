@@ -12,23 +12,6 @@ Gira interamente su **GitHub Actions** — nessun server, nessun database, nessu
 
 -----
 
-## Indice
-
-- [Cos’è](#cosè)
-- [Come funziona](#come-funziona)
-- [Eventi tracciati](#eventi-tracciati)
-- [Card statistiche](#card-statistiche)
-- [Tema maglia dinamico](#tema-maglia-dinamico)
-- [Slide finale Canva](#slide-finale-canva)
-- [Architettura](#architettura)
-- [Struttura del repository](#struttura-del-repository)
-- [Configurazione](#configurazione)
-- [Avvio](#avvio)
-- [Stack tecnico](#stack-tecnico)
-- [Limitazioni note](#limitazioni-note)
-
------
-
 ## Cos’è
 
 LiveScore JR monitora automaticamente la partita della Juventus e pubblica su un canale Telegram tutti gli aggiornamenti in tempo reale: calcio d’inizio, gol (con marcatore e assist), sostituzioni, cartellini rossi, rigori sbagliati, gol annullati dal VAR, transizioni di stato (intervallo, supplementari, lotteria dei rigori) e **card statistiche grafiche** a fine primo tempo e a fine partita. Al fischio finale, se in campo c’è la Juve, invia anche una **slide personalizzata** esportata dalla Canva API.
