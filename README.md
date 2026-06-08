@@ -46,11 +46,17 @@ Tutta la logica vive in un unico script Python eseguito da un workflow GitHub Ac
                     Canva API  → slide finale (solo Juve)
 ```
 
-1. **Ricerca partita** — il bot scorre tutte le competizioni configurate in `leagues.json` e individua da solo la gara odierna (o del giorno successivo) che coinvolge la squadra monitorata. Le date vengono calcolate sul fuso **US Eastern**, perché ESPN indicizza gli eventi in quell’orario.
-1. **Polling** — ogni ~6 secondi interroga l’endpoint `summary` di ESPN, normalizza eventi e statistiche, e confronta con lo stato precedente.
-1. **Notifica** — per ogni novità reale invia (o modifica) un messaggio Telegram in italiano.
-1. **Persistenza** — dopo ogni cambiamento salva lo stato su un Gist, così se il workflow si riavvia a partita in corso il bot riprende esattamente da dove era.
-1. **Spegnimento** — al fischio finale invia statistiche e slide, resetta il Gist e termina.
+1. **Caccia alla partita** — all’avvio il bot scandaglia **304 competizioni** sull’API ESPN finché non trova la gara che coinvolge la Juve, oggi o domani. Le date sono calcolate sul fuso **US Eastern** (quello con cui ESPN indicizza gli eventi), così nemmeno le partite serali americane gli sfuggono.
+1. **Battito ogni 6 secondi** — da lì in poi interroga il feed live di ESPN ogni ~6 s e ne ricostruisce lo stato completo: punteggio, eventi, statistiche, persino la maglia in campo.
+1. **Notifica** — per ogni novità *reale* invia (o modifica) un messaggio Telegram in italiano.
+1. **Persistenza** — dopo ogni cambiamento salva lo stato su un Gist: se il workflow si riavvia a partita in corso, il bot riparte esattamente da dove era.
+1. **Spegnimento** — al fischio finale invia statistiche e slide, resetta il Gist e si spegne da solo.
+
+### Motore eventi multi-sorgente
+
+ESPN non serve gli eventi su un piatto solo: li sparpaglia su **quattro feed diversi** — `commentary`, `keyEvents`, `scoringPlays` e `shootout` — spesso ripetendo lo stesso gol o cambio con minuti leggermente diversi e i giocatori in ordine invertito.
+
+Il bot li fonde tutti in **un’unica linea temporale pulita**, abbattendo i doppioni su più livelli: per ID evento, per minuto + giocatore, e per *coppia* di giocatori nei cambi (così “Esce A, entra B” e “Entra B, esce A” diventano un solo cambio). E prima di cantare un gol aspetta 15 secondi e ri-controlla il punteggio: se ESPN “balla”, niente notifiche false.
 
 -----
 
@@ -80,7 +86,7 @@ Le 12 statistiche mostrate sono:
 
 > Possesso palla · Tiri in porta · Tiri totali · Tiri bloccati · Corner · Fuorigioco · Falli · Ammoniti · Espulsi · Parate · Passaggi totali · Precisione passaggi
 
-I valori vengono estratti con una cascata di fallback dalle diverse sezioni del feed ESPN (`boxscore.teams` → `header.competitions[].competitors`), così da reggere le differenze di copertura tra una competizione e l’altra.
+I valori vengono letti dal box score ESPN della partita, attingendo a più sezioni del feed (`boxscore.teams`, `header.competitions[].competitors`) per coprire qualsiasi competizione.
 
 -----
 
@@ -95,12 +101,7 @@ La grafica della card si adatta al contesto della partita:
 |`third`  |Coppe (Champions, Europa, Conference, Coppa Italia, Supercoppa…)|Terza maglia                                          |
 |`default`|Partita senza la Juve **o** amichevole                          |Colori reali delle due squadre, ricavati dinamicamente|
 
-Il riconoscimento del kit segue una **cascata** (`kit_analyzer.py`):
-
-1. **`uniform.type` da ESPN** — la maglia effettivamente indossata in campo, fonte primaria.
-1. **Logica classica** come fallback — un override esplicito `{ "type": ... }` in `leagues.json`, poi il formato dello slug ESPN (`xxx.N` = campionato), poi parole chiave (`cup`, `champions`, `europa`, `friendly`…).
-
-I colori delle barre seguono la stessa filosofia: `uniform.color` → `team.color`/`alternateColor` di ESPN → costanti di riserva. Per il tema `default` i colori reali delle maglie diventano anche i bagliori e i gradienti dello sfondo.
+Il tema non è cablato a tavolino: il bot legge da ESPN la maglia che la Juve **indossa davvero** in quella specifica partita (`kit_analyzer.py`), così la card riproduce kit e colori reali visti in campo. Per il tema `default` i colori delle due squadre diventano anche i bagliori e i gradienti dello sfondo.
 
 -----
 
