@@ -689,8 +689,14 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     #   third / default → icona bianca quadrata (PNG, 2017)
     JUVE_LOGO_BLACK = "https://upload.wikimedia.org/wikipedia/commons/e/ed/Juventus_FC_-_logo_black_%28Italy%2C_2020%29.svg"
     JUVE_LOGO_WHITE = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
-    juve_logo   = JUVE_LOGO_BLACK if juve_kit in ("home", "away") else JUVE_LOGO_WHITE
+    JUVE_LOGO_GOLD  = "https://gist.githubusercontent.com/Tommaso20BW/86db1c7a3581f15150f157c1fa572047/raw/fcb8706fea43a1e015da2d5ae4ff3e8b651ec235/juve_thid.png"
 
+    if juve_kit in ("home", "away"):
+        juve_logo = JUVE_LOGO_BLACK
+    elif juve_kit == "third":
+        juve_logo = JUVE_LOGO_GOLD
+    else:
+        juve_logo = JUVE_LOGO_WHITE
     h_logo      = juve_logo if str(home_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
     a_logo      = juve_logo if str(away_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
     badge_label = MOMENTI_CONFIG[momento]["badge"]
