@@ -12,6 +12,23 @@ Gira interamente su **GitHub Actions** — nessun server, nessun database, nessu
 
 -----
 
+## Indice
+
+- [Cos’è](#cosè)
+- [Come funziona](#come-funziona)
+- [Eventi tracciati](#eventi-tracciati)
+- [Card statistiche](#card-statistiche)
+- [Tema maglia dinamico](#tema-maglia-dinamico)
+- [Slide finale Canva](#slide-finale-canva)
+- [Architettura](#architettura)
+- [Struttura del repository](#struttura-del-repository)
+- [Configurazione](#configurazione)
+- [Avvio](#avvio)
+- [Stack tecnico](#stack-tecnico)
+- [Limitazioni note](#limitazioni-note)
+
+-----
+
 ## Cos’è
 
 LiveScore JR monitora automaticamente la partita della Juventus e pubblica su un canale Telegram tutti gli aggiornamenti in tempo reale: calcio d’inizio, gol (con marcatore e assist), sostituzioni, cartellini rossi, rigori sbagliati, gol annullati dal VAR, transizioni di stato (intervallo, supplementari, lotteria dei rigori) e **card statistiche grafiche** a fine primo tempo e a fine partita. Al fischio finale, se in campo c’è la Juve, invia anche una **slide personalizzata** esportata dalla Canva API.
@@ -80,7 +97,7 @@ Il bot li fonde tutti in **un’unica linea temporale pulita**, abbattendo i dop
 
 A **fine primo tempo**, a **fine secondo tempo** (quando si va ai supplementari) e a **fine partita**, il bot genera e invia una card grafica.
 
-Il flusso: il template `stats.html` viene riempito con i dati della gara, renderizzato a **1620×2160 px** da **Playwright/Chromium**, e infine sovrapposto a una texture (`texture_black.png` per i kit chiari home/away, `texture_white.png` per third/default) con **Pillow**.
+Il flusso: il template `stats.html` viene riempito con i dati della gara, renderizzato a **1620×2160 px** da **Playwright/Chromium**, e infine sovrapposto a una texture (`texture_black.png` per home/away, `texture_white.png` per third/default) con **Pillow**.
 
 Le 12 statistiche mostrate sono:
 
@@ -94,12 +111,12 @@ I valori vengono letti dal box score ESPN della partita, attingendo a più sezio
 
 La grafica della card si adatta al contesto della partita:
 
-|Tema     |Quando si applica                                               |Stile                                                 |
-|---------|----------------------------------------------------------------|------------------------------------------------------|
-|`home`   |Juventus in casa, in campionato                                 |Bianco/nero a strisce, accenti oro                    |
-|`away`   |Juventus in trasferta, in campionato                            |Maglia da trasferta                                   |
-|`third`  |Coppe (Champions, Europa, Conference, Coppa Italia, Supercoppa…)|Terza maglia                                          |
-|`default`|Partita senza la Juve **o** amichevole                          |Colori reali delle due squadre, ricavati dinamicamente|
+|Tema     |Maglia Juve                             |Stile                             |
+|---------|----------------------------------------|----------------------------------|
+|`home`   |Prima maglia                            |Bianco/nero a strisce, accenti oro|
+|`away`   |Seconda maglia                          |Rosa con dettagli neri            |
+|`third`  |Terza maglia                            |Nero con dettagli oro             |
+|`default`|Partita senza la Juve, oppure amichevole|Colori reali delle due squadre    |
 
 Il tema non è cablato a tavolino: il bot legge da ESPN la maglia che la Juve **indossa davvero** in quella specifica partita (`kit_analyzer.py`), così la card riproduce kit e colori reali visti in campo. Per il tema `default` i colori delle due squadre diventano anche i bagliori e i gradienti dello sfondo.
 
