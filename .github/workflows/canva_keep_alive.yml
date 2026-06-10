@@ -24,11 +24,13 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Per il solo refresh del token bastano requests e pynacl:
+      # Pillow e Playwright (con Chromium) non servono e allungavano
+      # il run di diversi minuti.
       - name: Installa librerie
         run: |
           python -m pip install --upgrade pip
-          pip install requests pynacl Pillow playwright
-          playwright install --with-deps chromium
+          pip install requests pynacl
 
       - name: Esegui script per rinnovo Token
         env:
@@ -37,5 +39,7 @@ jobs:
           CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
           GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
           ONLY_REFRESH_TOKEN: "true"
         run: python juve_bot_espn.py
