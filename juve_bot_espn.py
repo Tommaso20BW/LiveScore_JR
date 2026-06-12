@@ -997,28 +997,59 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     saves_a  = g("away", "saves",           fallback="0")
     offside_h = g("home", "offsides",       fallback="0")
     offside_a = g("away", "offsides",       fallback="0")
-    blk_h    = g("home", "blockedShots",    "blockedshots",    fallback="0")
-    blk_a    = g("away", "blockedShots",    "blockedshots",    fallback="0")
     pass_h   = g("home", "totalPasses",     "totalpasses",     fallback="0")
     pass_a   = g("away", "totalPasses",     "totalpasses",     fallback="0")
     passpct_h = fmt_pct(g("home", "passPct", "passpct",        fallback="0"))
     passpct_a = fmt_pct(g("away", "passPct", "passpct",        fallback="0"))
 
+    # --- xG: recuperato dall'expectedGoalsConceded del portiere avversario ---
+    # boxscore.leaders → categoria "saves" → primo leader (il portiere) →
+    # statistica "expectedGoalsConceded".
+    # Il portiere di CASA subisce i tiri OSPITI → il suo xGC = xG dell'OSPITE,
+    # e viceversa.
+    xg_h_str = None
+    xg_a_str = None
+    try:
+        leaders_section = (data_espn.get("boxscore") or {}).get("leaders", [])
+        for team_entry in leaders_section:
+            team_id_l = str((team_entry.get("team") or {}).get("id", ""))
+            for cat in (team_entry.get("leaders") or []):
+                if cat.get("name") != "saves":
+                    continue
+                for leader in (cat.get("leaders") or []):
+                    for stat in (leader.get("statistics") or []):
+                        if stat.get("name") == "expectedGoalsConceded":
+                            xgc = stat.get("value")
+                            if xgc is not None:
+                                xgc_fmt = f"{float(xgc):.2f}"
+                                # GK di casa → xGC = xG dell'ospite
+                                if team_id_l == str(home_id):
+                                    xg_a_str = xgc_fmt
+                                # GK ospite → xGC = xG della casa
+                                elif team_id_l == str(away_id):
+                                    xg_h_str = xgc_fmt
+                            break
+    except Exception as e:
+        print(f"[{now_it()}] ⚠️  Errore estrazione xG: {e}")
+
     stats_mappate = [
-        ("Possesso palla",    pos_h,      pos_a,      bp_perc),
-        ("Tiri in porta",     sot_h,      sot_a,      perc(sot_h,      sot_a)),
-        ("Tiri totali",       shots_h,    shots_a,    perc(shots_h,    shots_a)),
-        ("Tiri bloccati",     blk_h,      blk_a,      perc(blk_h,      blk_a)),
-        ("Corner",            corner_h,   corner_a,   perc(corner_h,   corner_a)),
-        ("Fuorigioco",        offside_h,  offside_a,  perc(offside_h,  offside_a)),
-        ("Falli",             falli_h,    falli_a,    perc(falli_h,    falli_a)),
-        ("Ammoniti",          gialli_h,   gialli_a,   perc(gialli_h,   gialli_a)),
-        ("Espulsi",           rossi_h,    rossi_a,    perc(rossi_h,    rossi_a)),
-        ("Parate",            saves_h,    saves_a,    perc(saves_h,    saves_a)),
-        ("Passaggi totali",   pass_h,     pass_a,     perc(pass_h,     pass_a)),
-        ("Precisione passaggi", passpct_h, passpct_a, perc(
+        ("Possesso palla",      pos_h,      pos_a,      bp_perc),
+        ("Tiri in porta",       sot_h,      sot_a,      perc(sot_h,      sot_a)),
+        ("Tiri",                shots_h,    shots_a,    perc(shots_h,    shots_a)),
+        ("Corner",              corner_h,   corner_a,   perc(corner_h,   corner_a)),
+        ("Fuorigioco",          offside_h,  offside_a,  perc(offside_h,  offside_a)),
+        ("Falli",               falli_h,    falli_a,    perc(falli_h,    falli_a)),
+        ("Ammoniti",            gialli_h,   gialli_a,   perc(gialli_h,   gialli_a)),
+        ("Espulsi",             rossi_h,    rossi_a,    perc(rossi_h,    rossi_a)),
+        ("Parate",              saves_h,    saves_a,    perc(saves_h,    saves_a)),
+        ("Passaggi totali",     pass_h,     pass_a,     perc(pass_h,     pass_a)),
+        ("Precisione passaggi", passpct_h,  passpct_a,  perc(
             str(passpct_h).replace("%",""), str(passpct_a).replace("%",""))),
     ]
+
+    # xG: inserito in prima posizione solo se disponibile per entrambe le squadre
+    if xg_h_str is not None and xg_a_str is not None:
+        stats_mappate.insert(0, ("xG", xg_h_str, xg_a_str, perc(xg_h_str, xg_a_str)))
 
     rows_html = "".join([
         f'<div class="stat-row">'
