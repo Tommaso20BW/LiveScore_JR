@@ -1003,14 +1003,22 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     passpct_a = fmt_pct(g("away", "passPct", "passpct",        fallback="0"))
 
     # --- xG: recuperato dall'expectedGoalsConceded del portiere avversario ---
-    # boxscore.leaders → categoria "saves" → primo leader (il portiere) →
+    # leaders (ROOT del feed ESPN) → categoria "saves" → primo leader (portiere) →
     # statistica "expectedGoalsConceded".
     # Il portiere di CASA subisce i tiri OSPITI → il suo xGC = xG dell'OSPITE,
     # e viceversa.
+    # BUG FIX: leaders è al livello ROOT della risposta ESPN, NON dentro boxscore.
+    # Il vecchio codice usava (data_espn.get("boxscore") or {}).get("leaders", [])
+    # che restituiva sempre [] → xG mai estratto.
     xg_h_str = None
     xg_a_str = None
     try:
-        leaders_section = (data_espn.get("boxscore") or {}).get("leaders", [])
+        # Fonte primaria: root-level "leaders" (sempre presente)
+        leaders_section = data_espn.get("leaders", [])
+        # Fonte secondaria di fallback: alcuni feed ESPN espongono anche
+        # boxscore.leaders (struttura identica); si usa solo se il root è vuoto.
+        if not leaders_section:
+            leaders_section = (data_espn.get("boxscore") or {}).get("leaders", [])
         for team_entry in leaders_section:
             team_id_l = str((team_entry.get("team") or {}).get("id", ""))
             for cat in (team_entry.get("leaders") or []):
@@ -1047,9 +1055,15 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
             str(passpct_h).replace("%",""), str(passpct_a).replace("%",""))),
     ]
 
-    # xG: inserito in prima posizione solo se disponibile per entrambe le squadre
-    if xg_h_str is not None and xg_a_str is not None:
-        stats_mappate.insert(0, ("xG", xg_h_str, xg_a_str, perc(xg_h_str, xg_a_str)))
+    # xG: inserito in prima posizione se disponibile per almeno una squadra.
+    # Si usa "—" come placeholder se una sola delle due è presente
+    # (es. portiere sostituito prima del calcolo ESPN).
+    if xg_h_str is not None or xg_a_str is not None:
+        _xg_h = xg_h_str if xg_h_str is not None else "—"
+        _xg_a = xg_a_str if xg_a_str is not None else "—"
+        _xg_h_num = xg_h_str if xg_h_str is not None else "0"
+        _xg_a_num = xg_a_str if xg_a_str is not None else "0"
+        stats_mappate.insert(0, ("xG", _xg_h, _xg_a, perc(_xg_h_num, _xg_a_num)))
 
     rows_html = "".join([
         f'<div class="stat-row">'
