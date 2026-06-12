@@ -1452,17 +1452,15 @@ def avvia_ciclo_partita():
 
             if "_intro_logged" not in state:
                 print(f"[{now_it()}] 🚀 PARTITA TROVATA: {league_name} | {home_name} vs {away_name} | event_id={event_id}")
-                h_raw, a_raw = home_name_raw, away_name_raw
-                h_it,  a_it  = home_name, away_name
-                if h_raw != h_it:
-                    print(f"[{now_it()}] 📋 Traduzione: '{h_raw}' → '{h_it}'")
-                else:
-                    print(f"[{now_it()}] 📋 '{h_raw}' non in teams.json — usato nome ESPN")
-                if a_raw != a_it:
-                    print(f"[{now_it()}] 📋 Traduzione: '{a_raw}' → '{a_it}'")
-                else:
-                    print(f"[{now_it()}] 📋 '{a_raw}' non in teams.json — usato nome ESPN")
+                for raw, translated in ((home_name_raw, home_name), (away_name_raw, away_name)):
+                    t = translate_team(raw)
+                    in_map = bool(TEAM_MAP.get(raw) or any(k.lower() == raw.lower() for k in TEAM_MAP))
+                    if raw != t:
+                        print(f"[{now_it()}] 📋 Traduzione: '{raw}' → '{esc(t)}'")
+                    elif not in_map:
+                        print(f"[{now_it()}] 📋 '{raw}' non in teams.json — usato nome ESPN")
                 state["_intro_logged"] = True
+
 
             _now_ts = int(time.time())
             _log_key = f"{status}_{elapsed}_{g_home}_{g_away}"
