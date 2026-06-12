@@ -1,6 +1,7 @@
 import os
 import re
 import html
+import unicodedata
 import requests
 import json
 import time
@@ -218,6 +219,37 @@ def normalize_event_type(raw: str) -> str:
         if k in low:
             return v
     return low
+
+def _norm_name(s: str) -> str:
+    """Confronto nomi tollerante agli accenti (es. 'Erik' == 'Érik').
+    Usata nel dedup di parse_events e nel loop correzione marcatori."""
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', (s or '').strip())
+        if unicodedata.category(c) != 'Mn'
+    ).lower()
+
+# ── Regex FONTE 0: estrazione eventi dal testo del commentary (senza play) ──
+# ESPN pubblica il testo commentato MOLTO prima dei dati strutturati (play,
+# participants). Queste regex pescano il nome del marcatore/ammonito direttamente
+# dal testo, garantendo notifiche immediate. Il dedup normalizzato in add_event
+# impedisce qualsiasi duplicato quando arrivano poi i dati strutturati.
+
+_CT_GOAL_RX   = re.compile(
+    r"Goal!\s*[^.]+?\.\s*(?P<player>[^(\n]+?)\s*\((?P<team>[^)]+)\)",
+    re.IGNORECASE | re.UNICODE,
+)
+_CT_ASSIST_RX = re.compile(
+    r"[Aa]ssisted by\s+(?P<assist>[^.]+?)(?=\s+with\b|\s+following\b|\.|$)",
+    re.UNICODE,
+)
+_CT_YELLOW_RX = re.compile(
+    r"(?P<player>[^(\n]+?)\s*\((?P<team>[^)]+)\)\s+is shown\s+(?:a\s+)?(?P<second>second\s+)?(?:yellow|the yellow)\s+card",
+    re.IGNORECASE | re.UNICODE,
+)
+_CT_RED_RX    = re.compile(
+    r"(?P<player>[^(\n]+?)\s*\((?P<team>[^)]+)\)\s+is shown\s+(?:a\s+)?(?:red|the red)\s+card",
+    re.IGNORECASE | re.UNICODE,
+)
 
 def fmt_player(full_name: str) -> str:
     if not full_name:
@@ -548,19 +580,27 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             if (existing["type"] == norm
                     and abs(existing["minute"] - minute) <= 1
                     and existing["team_id"] == str(team_id)
-                    and existing["player_name"] == player_name):
+                    and _norm_name(existing["player_name"]) == _norm_name(player_name)):
+                # Stesso evento: aggiorna con dati più completi (es. assist
+                # arrivato dopo, o nome da fonte strutturata dopo fonte testuale).
+                if not existing["assist_name"] and assist_name:
+                    existing["assist_name"] = assist_name
+                if not existing["player_name"] and player_name:
+                    existing["player_name"] = player_name
                 return
         # Dedup specifico sostituzioni: la stessa sostituzione può arrivare da più
         # feed ESPN (commentary + keyEvents) con uid diversi, minuto leggermente
         # diverso e participant in ordine invertito (in/out scambiati). La
         # identifico dalla COPPIA di giocatori coinvolti, indipendente dall'ordine.
+        # Confronto normalizzato per tollerare differenze di accenti tra le fonti.
         if norm == "substitution":
-            pair = frozenset((player_name, assist_name))
+            pair = frozenset((_norm_name(player_name), _norm_name(assist_name)))
             for existing in events:
                 if (existing["type"] == "substitution"
                         and existing["team_id"] == str(team_id)
                         and abs(existing["minute"] - minute) <= 2
-                        and frozenset((existing["player_name"], existing["assist_name"])) == pair):
+                        and frozenset((_norm_name(existing["player_name"]),
+                                       _norm_name(existing["assist_name"]))) == pair):
                     return
         events.append({
             "type":        norm,
@@ -570,6 +610,85 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             "assist_name": assist_name,
             "uid":         uid,
         })
+
+    # --- FONTE 0: commentary[] testo senza play strutturato (fonte veloce) ---
+    # ESPN pubblica il testo commentato molto prima dei dati strutturati (play +
+    # participants). Questa fonte estrae gol, cartellini gialli e rossi dal testo
+    # libero appena disponibile. Il dedup normalizzato in add_event garantisce che
+    # quando arrivano i dati strutturati (FONTE 1/2) l'evento non venga duplicato,
+    # ma venga solo aggiornato con eventuali dati mancanti (es. assist).
+    # Le sostituzioni NON vengono parsate qui: il loro testo ESPN è ambiguo riguardo
+    # all'ordine in/out, e i dati strutturati arrivano comunque in tempi brevi.
+    for item in data.get("commentary", []):
+        if item.get("play"):
+            continue  # ha già il play strutturato → gestita da FONTE 1
+        text = item.get("text", "")
+        if not text:
+            continue
+        seq     = str(item.get("sequence", ""))
+        minute  = safe_minute(item.get("time", {}).get("displayValue", "0"))
+        text_low = text.lower()
+
+        try:
+            # ── GOAL ──
+            mg = _CT_GOAL_RX.search(text)
+            if mg:
+                player   = mg.group("player").strip()
+                team_txt = mg.group("team").strip()
+                tl = team_txt.lower()
+                if tl == (home_name or "").lower():
+                    t_id = home_id
+                elif tl == (away_name or "").lower():
+                    t_id = away_id
+                else:
+                    t_id = ""
+                # Tipo gol
+                if "own goal" in text_low:
+                    ev_type = "own goal"
+                elif "penalty" in text_low:
+                    ev_type = "penalty goal"
+                else:
+                    ev_type = "goal"
+                # Assist (può non essere ancora nel testo rapido)
+                ma = _CT_ASSIST_RX.search(text)
+                assist = ma.group("assist").strip() if ma else ""
+                add_event(ev_type, minute, t_id, player, assist, f"txt_g_{seq}")
+                continue
+
+            # ── CARTELLINO GIALLO / DOPPIO GIALLO ──
+            my = _CT_YELLOW_RX.search(text)
+            if my:
+                player   = my.group("player").strip()
+                team_txt = my.group("team").strip()
+                tl = team_txt.lower()
+                if tl == (home_name or "").lower():
+                    t_id = home_id
+                elif tl == (away_name or "").lower():
+                    t_id = away_id
+                else:
+                    t_id = ""
+                second   = bool(my.group("second"))
+                ev_type  = "second yellow card" if second else "yellow card"
+                add_event(ev_type, minute, t_id, player, "", f"txt_y_{seq}")
+                continue
+
+            # ── CARTELLINO ROSSO ──
+            mr = _CT_RED_RX.search(text)
+            if mr:
+                player   = mr.group("player").strip()
+                team_txt = mr.group("team").strip()
+                tl = team_txt.lower()
+                if tl == (home_name or "").lower():
+                    t_id = home_id
+                elif tl == (away_name or "").lower():
+                    t_id = away_id
+                else:
+                    t_id = ""
+                add_event("red card", minute, t_id, player, "", f"txt_r_{seq}")
+                continue
+
+        except Exception as e:
+            print(f"[{now_it()}] ⚠️  Errore FONTE 0 commentary testo: {e}")
 
     # --- FONTE 1: commentary[].play ---
     for item in data.get("commentary", []):
@@ -1928,8 +2047,8 @@ def avvia_ciclo_partita():
                 current_assist = current.get("assist_name", "")
                 current_type = current.get("type", saved.get("type", "goal"))
 
-                if (current_scorer != saved.get("scorer")) or \
-                   (current_assist != saved.get("assist", "")) or \
+                if (_norm_name(current_scorer) != _norm_name(saved.get("scorer", ""))) or \
+                   (_norm_name(current_assist) != _norm_name(saved.get("assist", ""))) or \
                    (current_type != saved.get("type", "goal")):
 
                     if current_scorer:
@@ -1958,9 +2077,9 @@ def avvia_ciclo_partita():
                     goal_text_new = f"<b>GOAL · {current['minute']}' {E_MIC}</b>\n\n{goal_score_new}\n{scorer_line_new}{assist_line_new}\n{e_comp_saved} {hashtag_saved}"
 
                     changes = []
-                    if current_scorer != saved.get("scorer"):
+                    if _norm_name(current_scorer) != _norm_name(saved.get("scorer", "")):
                         changes.append(f"marcatore: {saved.get('scorer')} → {current_scorer}")
-                    if current_assist != saved.get("assist", ""):
+                    if _norm_name(current_assist) != _norm_name(saved.get("assist", "")):
                         old_a = saved.get("assist", "—") or "—"
                         new_a = current_assist or "—"
                         changes.append(f"assist: {old_a} → {new_a}")
