@@ -1040,6 +1040,28 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     except Exception as e:
         print(f"[{now_it()}] ⚠️  Errore estrazione xG: {e}")
 
+    # Fallback xG: se leaders non aveva il portiere di una squadra (es. il GK
+    # della squadra vincente non compare come "leader"), si prova a leggere
+    # expectedGoals direttamente dalle statistiche di squadra nel boxscore.
+    for side, current, setter in (
+        ("home", xg_h_str, "h"),
+        ("away", xg_a_str, "a"),
+    ):
+        if current is not None:
+            continue
+        for key in ("expectedGoals", "expectedgoals", "xG", "xg", "xgoals"):
+            raw_val = raw[side].get(key)
+            if raw_val is not None:
+                try:
+                    fmt_val = f"{float(str(raw_val)):.2f}"
+                    if setter == "h":
+                        xg_h_str = fmt_val
+                    else:
+                        xg_a_str = fmt_val
+                except Exception:
+                    pass
+                break
+
     stats_mappate = [
         ("Possesso palla",      pos_h,      pos_a,      bp_perc),
         ("Tiri in porta",       sot_h,      sot_a,      perc(sot_h,      sot_a)),
@@ -1733,6 +1755,15 @@ def avvia_ciclo_partita():
                         state["penalties_count"] = total_kicks
                         state_changed = True
 
+            # --- Rilevamento goal ---
+            # IMPORTANTE: questo blocco deve stare PRIMA di is_finished.
+            # Se Telegram va in timeout sull'ultimo gol e la partita finisce
+            # nel ciclo successivo, il goal pending viene ritentato qui
+            # prima che sys.exit(0) termini il bot.
+            total_goals_now = g_home + g_away
+            prev_home = state.get("prev_home_goals", 0)
+            prev_away = state.get("prev_away_goals", 0)
+
             # --- Fine partita ---
             comp_state_espn = (
                 data.get("header", {}).get("competitions", [{}])[0]
@@ -1854,11 +1885,7 @@ def avvia_ciclo_partita():
                 print(f"[{now_it()}] 🏆 LIVE SCORE TERMINATO ({home_name} {g_home}-{g_away} {away_name}) — Spegnimento BOT")
                 sys.exit(0)
 
-            # --- Rilevamento goal ---
-            total_goals_now = g_home + g_away
-            prev_home = state.get("prev_home_goals", 0)
-            prev_away = state.get("prev_away_goals", 0)
-
+            # --- Rilevamento goal (spostato in alto, vedi blocco precedente) ---
             if total_goals_now > state["goals_detected"]:
                 time.sleep(15)
                 data_confirm = fetch_evento(event_id, league_slug) or data
