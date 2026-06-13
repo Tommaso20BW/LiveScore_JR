@@ -7,6 +7,14 @@ on:
         description: 'Team ID ESPN (Juventus: 111)'
         required: false
         default: '111'
+      channel:
+        description: 'Canale Telegram'
+        required: true
+        default: 'Juventus Reborn'
+        type: choice
+        options:
+          - Juventus Reborn
+          - Test JR
 
 permissions:
   contents: write
@@ -30,8 +38,6 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # Cache dei browser Playwright: evita di riscaricare Chromium (~150 MB)
-      # a ogni run e accorcia sensibilmente l'avvio del bot.
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v4
@@ -48,7 +54,7 @@ jobs:
       - name: Run Live Score Bot
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO:          ${{ secrets.TELEGRAM_TO }}
+          TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Test JR' && secrets.TELEGRAM_TO_TEST || secrets.TELEGRAM_TO }}
           GH_PAT:               ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
           GIST_ID:              ${{ secrets.GIST_ID }}
