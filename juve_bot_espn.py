@@ -251,12 +251,25 @@ _CT_RED_RX    = re.compile(
     re.IGNORECASE | re.UNICODE,
 )
 
+# Cache displayName.strip().lower() -> shortName ufficiale ESPN.
+# Popolata da extract_athlete() in parse_events() e usata da fmt_player()
+# cosi anche i nomi estratti da testo (FONTE 0) ricevono la forma corretta.
+_ESPN_SHORT_NAMES: dict[str, str] = {}
+
 def fmt_player(full_name: str) -> str:
     if not full_name:
         return "N/A"
+    # Controlla prima il cache ESPN: se presente usa la forma ufficiale
+    # (es. "Viniciius Junior" resta tale, "Ismael Saibari" -> "I. Saibari")
+    cached = _ESPN_SHORT_NAMES.get(full_name.strip().lower())
+    if cached:
+        return esc(cached)
     parts = full_name.strip().split()
     if len(parts) == 1:
         return esc(parts[0])
+    # Se il primo token e' gia' un'iniziale (es. "I. Saibari"), non ri-abbreviare
+    if parts[0].endswith("."):
+        return esc(full_name.strip())
     return esc(parts[0][0].upper() + ". " + " ".join(parts[1:]))
 
 # ==============================================================================
@@ -565,7 +578,17 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
 
     def extract_athlete(participants, index=0) -> str:
         try:
-            return participants[index].get("athlete", {}).get("displayName", "")
+            athlete = participants[index].get("athlete", {})
+            display = (athlete.get("displayName") or "").strip()
+            short   = (athlete.get("shortName")   or "").strip()
+            # Popola il cache globale: displayName -> shortName
+            # (es. "Ismael Saibari" -> "I. Saibari",
+            #       "Vinicius Junior" -> "Vinicius Junior")
+            # cosi fmt_player sa gia la forma corretta anche per i nomi
+            # estratti da testo in FONTE 0.
+            if display and short:
+                _ESPN_SHORT_NAMES[display.lower()] = short
+            return display or short or ""
         except Exception:
             return ""
 
