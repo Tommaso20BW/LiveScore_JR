@@ -576,6 +576,19 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         except Exception:
             return 0
 
+    def safe_minute_disp(clock_val) -> str:
+        """Preserva il formato originale ESPN per la visualizzazione (es. '45+5')."""
+        try:
+            s = str(clock_val).strip().replace("'", "")
+            if "+" in s:
+                a, b = s.split("+", 1)
+                return f"{int(float(a.strip()))}+{int(float(b.strip()))}"
+            if ":" in s:
+                return str(int(float(s.split(":")[0])))
+            return str(int(float(s)))
+        except Exception:
+            return str(safe_minute(clock_val))
+
     def extract_athlete(participants, index=0) -> str:
         try:
             athlete = participants[index].get("athlete", {})
@@ -592,7 +605,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         except Exception:
             return ""
 
-    def add_event(ev_type, minute, team_id, player_name, assist_name, uid):
+    def add_event(ev_type, minute, team_id, player_name, assist_name, uid, minute_disp=""):
         if uid in seen_ids:
             return
         seen_ids.add(uid)
@@ -610,6 +623,9 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     existing["assist_name"] = assist_name
                 if not existing["player_name"] and player_name:
                     existing["player_name"] = player_name
+                # Aggiorna minute_disp se il nuovo ha il formato recupero (contiene "+")
+                if minute_disp and "+" in minute_disp and "+" not in existing.get("minute_disp", ""):
+                    existing["minute_disp"] = minute_disp
                 return
         # Dedup specifico sostituzioni: la stessa sostituzione può arrivare da più
         # feed ESPN (commentary + keyEvents) con uid diversi, minuto leggermente
@@ -628,6 +644,8 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         events.append({
             "type":        norm,
             "minute":      minute,
+            "minute_disp": minute_disp or str(minute),
+            "seq":         len(events),   # ordine cronologico ESPN — tiebreaker nel sort
             "team_id":     str(team_id),
             "player_name": player_name,
             "assist_name": assist_name,
@@ -648,8 +666,10 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         text = item.get("text", "")
         if not text:
             continue
-        seq     = str(item.get("sequence", ""))
-        minute  = safe_minute(item.get("time", {}).get("displayValue", "0"))
+        seq        = str(item.get("sequence", ""))
+        _clock_f0  = item.get("time", {}).get("displayValue", "0")
+        minute     = safe_minute(_clock_f0)
+        _mdisp_f0  = safe_minute_disp(_clock_f0)
         text_low = text.lower()
 
         try:
@@ -675,7 +695,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                 # Assist (può non essere ancora nel testo rapido)
                 ma = _CT_ASSIST_RX.search(text)
                 assist = ma.group("assist").strip() if ma else ""
-                add_event(ev_type, minute, t_id, player, assist, f"txt_g_{seq}")
+                add_event(ev_type, minute, t_id, player, assist, f"txt_g_{seq}", minute_disp=_mdisp_f0)
                 continue
 
             # ── CARTELLINO GIALLO / DOPPIO GIALLO ──
@@ -692,7 +712,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     t_id = ""
                 second   = bool(my.group("second"))
                 ev_type  = "second yellow card" if second else "yellow card"
-                add_event(ev_type, minute, t_id, player, "", f"txt_y_{seq}")
+                add_event(ev_type, minute, t_id, player, "", f"txt_y_{seq}", minute_disp=_mdisp_f0)
                 continue
 
             # ── CARTELLINO ROSSO ──
@@ -707,7 +727,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     t_id = away_id
                 else:
                     t_id = ""
-                add_event("red card", minute, t_id, player, "", f"txt_r_{seq}")
+                add_event("red card", minute, t_id, player, "", f"txt_r_{seq}", minute_disp=_mdisp_f0)
                 continue
 
         except Exception as e:
@@ -726,6 +746,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             clock   = play.get("clock", {}).get("displayValue",
                        play.get("clock", {}).get("value", "0"))
             minute  = safe_minute(clock)
+            _mdisp  = safe_minute_disp(clock)
             parts   = play.get("participants", [])
 
             if normalize_event_type(ev_type) == "substitution":
@@ -747,7 +768,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     ev_type = "shootout saved"
 
             team_id = _extract_team_id_from_commentary(item, home_name, away_name, home_id, away_id)
-            add_event(ev_type, minute, team_id, player, assist, uid)
+            add_event(ev_type, minute, team_id, player, assist, uid, minute_disp=_mdisp)
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore parsing commentary: {e}")
 
@@ -762,6 +783,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             clock   = play.get("clock", {}).get("displayValue",
                        play.get("clock", {}).get("value", "0"))
             minute  = safe_minute(clock)
+            _mdisp  = safe_minute_disp(clock)
             parts   = play.get("participants", [])
 
             if normalize_event_type(ev_type) == "substitution":
@@ -779,7 +801,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     t_id = home_id
                 elif tl == (away_name or "").lower():
                     t_id = away_id
-            add_event(ev_type, minute, t_id, player, assist, uid)
+            add_event(ev_type, minute, t_id, player, assist, uid, minute_disp=_mdisp)
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore parsing keyEvent: {e}")
 
@@ -789,12 +811,13 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             ev_type = item.get("type", {}).get("text", "goal")
             clock   = item.get("clock", {}).get("displayValue", "0")
             minute  = safe_minute(clock)
+            _mdisp  = safe_minute_disp(clock)
             team_id = item.get("team", {}).get("id", "")
             parts   = item.get("participants", [])
             player  = extract_athlete(parts, 0)
             assist  = extract_athlete(parts, 1)
             uid     = str(item.get("id", f"sp_{minute}_{player}"))
-            add_event(ev_type, minute, team_id, player, assist, uid)
+            add_event(ev_type, minute, team_id, player, assist, uid, minute_disp=_mdisp)
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore parsing scoringPlay: {e}")
 
@@ -1958,7 +1981,7 @@ def avvia_ciclo_partita():
                 if scoring_tid:
                     team_goals = [e for e in goal_events if e["type"] != "own goal" and e["team_id"] == scoring_tid]
                     own_goals_vs = [e for e in goal_events if e["type"] == "own goal" and e["team_id"] != scoring_tid]
-                    candidates = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
+                    candidates = sorted(team_goals + own_goals_vs, key=lambda x: (x["minute"], x.get("seq", 0)))
 
                     expected_count = g_home if scoring_tid == home_id else g_away
 
@@ -1967,7 +1990,7 @@ def avvia_ciclo_partita():
                     if last:
                         player_name = last.get("player_name", "")
                         assist_name = last.get("assist_name", "")
-                        goal_minute = last.get("minute", elapsed)
+                        goal_minute = last.get("minute_disp", str(last.get("minute", elapsed)))
                         goal_type   = last.get("type", "goal")
                     else:
                         # Feed ESPN incompleto: gol rilevato dal punteggio ma nessun
@@ -2124,12 +2147,12 @@ def avvia_ciclo_partita():
                 if s_tid == s_home_id:
                     team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_home_id]
                     own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_home_id]
-                    candidates   = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
+                    candidates   = sorted(team_goals + own_goals_vs, key=lambda x: (x["minute"], x.get("seq", 0)))
                     idx = gh - 1
                 else:
                     team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_away_id]
                     own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_away_id]
-                    candidates   = sorted(team_goals + own_goals_vs, key=lambda x: x["minute"])
+                    candidates   = sorted(team_goals + own_goals_vs, key=lambda x: (x["minute"], x.get("seq", 0)))
                     idx = ga - 1
 
                 if idx < 0 or idx >= len(candidates):
@@ -2167,7 +2190,8 @@ def avvia_ciclo_partita():
 
                     e_comp_saved = get_league_emoji(league_slug)
                     hashtag_saved = build_hashtag(s_home_n, s_away_n)
-                    goal_text_new = f"<b>GOAL · {current['minute']}' {E_MIC}</b>\n\n{goal_score_new}\n{scorer_line_new}{assist_line_new}\n{e_comp_saved} {hashtag_saved}"
+                    _min_disp_new = current.get("minute_disp", str(current["minute"]))
+                    goal_text_new = f"<b>GOAL · {_min_disp_new}' {E_MIC}</b>\n\n{goal_score_new}\n{scorer_line_new}{assist_line_new}\n{e_comp_saved} {hashtag_saved}"
 
                     changes = []
                     if _norm_name(current_scorer) != _norm_name(saved.get("scorer", "")):
