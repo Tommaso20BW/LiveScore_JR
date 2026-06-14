@@ -2189,24 +2189,26 @@ def avvia_ciclo_partita():
                     state_changed = True
 
             # --- Cambi ---
-            new_subs_fresh  = []
-            new_subs_edit   = []
+            new_subs_fresh      = []
+            new_subs_edit       = []
+            # Correzioni ESPN: ESPN prima manda il cambio sbagliato, poi corregge il
+            # giocatore (uid diverso, una sola metà della coppia in/out cambia).
+            # { slot_key, field("in"|"out"), idx, old_val, new_val, sub_id, event }
+            new_subs_correction = []
 
             for e in events:
                 if e["type"] != "substitution":
                     continue
                 sub_id = e["uid"]
+                # Dedup per uid: stesso evento ESPN già registrato
                 already_sent = any(sub_id in slot["sub_ids"] for slot in state["sent_subs"].values())
                 if already_sent:
                     continue
-                # Bug 1: stesso cambio ma ESPN ha corretto il minuto → uid diverso ma giocatore uguale
-                already_sent_by_name = any(
-                    k.split(":")[0] == e["team_id"] and fmt_player(e["player_name"]) in slot["outs"]
-                    for k, slot in state["sent_subs"].items()
-                )
-                if already_sent_by_name:
-                    continue
 
+                _e_out = fmt_player(e["player_name"])   # giocatore che esce
+                _e_in  = fmt_player(e["assist_name"])   # giocatore che entra
+
+                # Cerca slot già inviato per questo team + minuto compatibile (±2')
                 slot_key = None
                 for k, slot in state["sent_subs"].items():
                     if k.split(":")[0] == e["team_id"] and abs(slot["minute"] - e["minute"]) <= 2:
@@ -2214,18 +2216,81 @@ def avvia_ciclo_partita():
                         break
 
                 if slot_key:
-                    new_subs_edit.append((e, slot_key))
+                    slot = state["sent_subs"][slot_key]
+                    out_present = _e_out in slot["outs"]
+                    in_present  = _e_in  in slot["ins"]
+
+                    if out_present and in_present:
+                        # Duplicato esatto (uid diverso, stessa coppia) → skip
+                        continue
+                    elif in_present and not out_present:
+                        # L'IN è già nello slot ma l'OUT è diverso:
+                        # ESPN ha corretto il giocatore che esce
+                        idx = slot["ins"].index(_e_in)
+                        new_subs_correction.append({
+                            "slot_key": slot_key, "field": "out",
+                            "idx": idx, "old_val": slot["outs"][idx],
+                            "new_val": _e_out, "sub_id": sub_id, "event": e,
+                        })
+                    elif out_present and not in_present:
+                        # L'OUT è già nello slot ma l'IN è diverso:
+                        # ESPN ha corretto il giocatore che entra
+                        idx = slot["outs"].index(_e_out)
+                        new_subs_correction.append({
+                            "slot_key": slot_key, "field": "in",
+                            "idx": idx, "old_val": slot["ins"][idx],
+                            "new_val": _e_in, "sub_id": sub_id, "event": e,
+                        })
+                    else:
+                        # Nessun giocatore coincide: sub genuinamente nuovo da aggiungere allo slot
+                        new_subs_edit.append((e, slot_key))
                 else:
+                    # Nessuno slot compatibile — controlla duplicato preciso cross-slot
+                    # (Bug 1: stesso cambio, uid diverso, minuto fuori dalla finestra ±2')
+                    already_sent_exact = any(
+                        k.split(":")[0] == e["team_id"]
+                        and _e_out in slot["outs"]
+                        and _e_in  in slot["ins"]
+                        for k, slot in state["sent_subs"].items()
+                    )
+                    if already_sent_exact:
+                        continue
                     new_subs_fresh.append(e)
+
+            # Correzioni ESPN: sostituisce solo il giocatore sbagliato nello slot e re-edita
+            for corr in new_subs_correction:
+                slot       = state["sent_subs"][corr["slot_key"]]
+                e          = corr["event"]
+                team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
+                if corr["field"] == "out":
+                    slot["outs"][corr["idx"]] = corr["new_val"]
+                    log_dir = f"↓ {corr['old_val']} → {corr['new_val']}"
+                else:
+                    slot["ins"][corr["idx"]]  = corr["new_val"]
+                    log_dir = f"↑ {corr['old_val']} → {corr['new_val']}"
+                slot["sub_ids"].append(corr["sub_id"])
+                ins_str  = ", ".join(slot["ins"])
+                outs_str = ", ".join(slot["outs"])
+                new_text = (
+                    f"<b>CAMBIO {team_title} · {slot['minute']}' {E_SUB}</b>\n\n"
+                    f"{E_UP} {ins_str}\n"
+                    f"{E_DOWN} {outs_str}\n\n"
+                    f"{e_comp} {hashtag}"
+                )
+                print(f"[{now_it()}] ✏️  CORREZIONE CAMBIO {team_title} {slot['minute']}' | {log_dir} → messaggio editato")
+                send_telegram_edit(slot["msg_id"], new_text)
+                state_changed = True
 
             for e, slot_key in new_subs_edit:
                 slot       = state["sent_subs"][slot_key]
                 team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
-                # Bug 2: ESPN restituisce gli stessi sub più volte, evita duplicati nello slot
-                if fmt_player(e["player_name"]) in slot["outs"]:
+                _e_out = fmt_player(e["player_name"])
+                _e_in  = fmt_player(e["assist_name"])
+                # Safety: non duplicare se entrambi già presenti (non dovrebbe capitare qui)
+                if _e_out in slot["outs"] and _e_in in slot["ins"]:
                     continue
-                slot["ins"].append(fmt_player(e["assist_name"]))
-                slot["outs"].append(fmt_player(e["player_name"]))
+                slot["ins"].append(_e_in)
+                slot["outs"].append(_e_out)
                 slot["sub_ids"].append(e["uid"])
                 ins_str  = ", ".join(slot["ins"])
                 outs_str = ", ".join(slot["outs"])
@@ -2261,10 +2326,12 @@ def avvia_ciclo_partita():
                     if slot_key:
                         slot       = state["sent_subs"][slot_key]
                         team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
-                        # Evita duplicati nello slot (stessa sostituzione da fonti ESPN diverse)
+                        # Evita duplicati esatti nello slot (stessa coppia in+out da fonti ESPN diverse).
+                        # Con OR si bloccherebbero anche le correzioni; AND lascia passare
+                        # solo il vero duplicato e demanda le correzioni al ciclo successivo.
                         _in_p  = fmt_player(e["assist_name"])
                         _out_p = fmt_player(e["player_name"])
-                        if _out_p in slot["outs"] or _in_p in slot["ins"]:
+                        if _out_p in slot["outs"] and _in_p in slot["ins"]:
                             continue
                         slot["ins"].append(_in_p)
                         slot["outs"].append(_out_p)
