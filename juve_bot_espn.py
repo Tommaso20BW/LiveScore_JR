@@ -448,32 +448,6 @@ def resetta_gist():
         print(f"[{now_it()}] ❌ Errore reset Gist: {e}")
 
 # ==============================================================================
-# GITHUB ACTIONS — rinomina run
-# ==============================================================================
-def rename_workflow_run(run_name: str):
-    """Rinomina il run GitHub Actions corrente con il nome della partita."""
-    run_id = os.getenv('GITHUB_RUN_ID')
-    if not GH_PAT or not GITHUB_REPOSITORY or not run_id:
-        return
-    try:
-        r = SESSION.patch(
-            f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/runs/{run_id}",
-            headers={
-                "Authorization": f"Bearer {GH_PAT}",
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
-            json={"name": run_name},
-            timeout=10,
-        )
-        if r.status_code == 200:
-            print(f"[{now_it()}] ✅ Run rinominato: {run_name}")
-        else:
-            print(f"[{now_it()}] ⚠️  Rinomina run fallita: HTTP {r.status_code}")
-    except Exception as e:
-        print(f"[{now_it()}] ⚠️  Errore rinomina run: {e}")
-
-# ==============================================================================
 # CANVA
 # ==============================================================================
 def get_valid_token():
@@ -1483,13 +1457,6 @@ def avvia_ciclo_partita():
     event_id    = partita["event_id"]
     league_slug = partita["league_slug"]
     league_name = partita["league_name"]
-
-    _comp_early = partita["competitors"]
-    _home_early = next((c for c in _comp_early if c.get("homeAway") == "home"), _comp_early[0])
-    _away_early = next((c for c in _comp_early if c.get("homeAway") == "away"), _comp_early[1])
-    _home_name_early = _home_early.get("team", {}).get("displayName", "Home")
-    _away_name_early = _away_early.get("team", {}).get("displayName", "Away")
-    rename_workflow_run(f"{translate_team(_home_name_early)} vs {translate_team(_away_name_early)} · {league_name}")
 
     gist_ok, state = leggi_stato_da_gist()
     if not gist_ok:
