@@ -1127,8 +1127,8 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     # Si usa "—" come placeholder se una sola delle due è presente
     # (es. portiere sostituito prima del calcolo ESPN).
     if xg_h_str is not None or xg_a_str is not None:
-        _xg_h = xg_h_str if xg_h_str is not None else "—"
-        _xg_a = xg_a_str if xg_a_str is not None else "—"
+        _xg_h = xg_h_str if xg_h_str is not None else "0.00"
+        _xg_a = xg_a_str if xg_a_str is not None else "0.00"
         _xg_h_num = xg_h_str if xg_h_str is not None else "0"
         _xg_a_num = xg_a_str if xg_a_str is not None else "0"
         stats_mappate.insert(0, ("xG", _xg_h, _xg_a, perc(_xg_h_num, _xg_a_num)))
