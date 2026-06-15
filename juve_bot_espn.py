@@ -1048,66 +1048,6 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     passpct_h = fmt_pct(g("home", "passPct", "passpct",        fallback="0"))
     passpct_a = fmt_pct(g("away", "passPct", "passpct",        fallback="0"))
 
-    # --- xG: recuperato dall'expectedGoalsConceded del portiere avversario ---
-    # leaders (ROOT del feed ESPN) → categoria "saves" → primo leader (portiere) →
-    # statistica "expectedGoalsConceded".
-    # Il portiere di CASA subisce i tiri OSPITI → il suo xGC = xG dell'OSPITE,
-    # e viceversa.
-    # BUG FIX: leaders è al livello ROOT della risposta ESPN, NON dentro boxscore.
-    # Il vecchio codice usava (data_espn.get("boxscore") or {}).get("leaders", [])
-    # che restituiva sempre [] → xG mai estratto.
-    xg_h_str = None
-    xg_a_str = None
-    try:
-        # Fonte primaria: root-level "leaders" (sempre presente)
-        leaders_section = data_espn.get("leaders", [])
-        # Fonte secondaria di fallback: alcuni feed ESPN espongono anche
-        # boxscore.leaders (struttura identica); si usa solo se il root è vuoto.
-        if not leaders_section:
-            leaders_section = (data_espn.get("boxscore") or {}).get("leaders", [])
-        for team_entry in leaders_section:
-            team_id_l = str((team_entry.get("team") or {}).get("id", ""))
-            for cat in (team_entry.get("leaders") or []):
-                if cat.get("name") != "saves":
-                    continue
-                for leader in (cat.get("leaders") or []):
-                    for stat in (leader.get("statistics") or []):
-                        if stat.get("name") == "expectedGoalsConceded":
-                            xgc = stat.get("value")
-                            if xgc is not None:
-                                xgc_fmt = f"{float(xgc):.2f}"
-                                # GK di casa → xGC = xG dell'ospite
-                                if team_id_l == str(home_id):
-                                    xg_a_str = xgc_fmt
-                                # GK ospite → xGC = xG della casa
-                                elif team_id_l == str(away_id):
-                                    xg_h_str = xgc_fmt
-                            break
-    except Exception as e:
-        print(f"[{now_it()}] ⚠️  Errore estrazione xG: {e}")
-
-    # Fallback xG: se leaders non aveva il portiere di una squadra (es. il GK
-    # della squadra vincente non compare come "leader"), si prova a leggere
-    # expectedGoals direttamente dalle statistiche di squadra nel boxscore.
-    for side, current, setter in (
-        ("home", xg_h_str, "h"),
-        ("away", xg_a_str, "a"),
-    ):
-        if current is not None:
-            continue
-        for key in ("expectedGoals", "expectedgoals", "xG", "xg", "xgoals"):
-            raw_val = raw[side].get(key)
-            if raw_val is not None:
-                try:
-                    fmt_val = f"{float(str(raw_val)):.2f}"
-                    if setter == "h":
-                        xg_h_str = fmt_val
-                    else:
-                        xg_a_str = fmt_val
-                except Exception:
-                    pass
-                break
-
     stats_mappate = [
         ("Possesso palla",      pos_h,      pos_a,      bp_perc),
         ("Tiri in porta",       sot_h,      sot_a,      perc(sot_h,      sot_a)),
@@ -1122,16 +1062,6 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         ("Precisione passaggi", passpct_h,  passpct_a,  perc(
             str(passpct_h).replace("%",""), str(passpct_a).replace("%",""))),
     ]
-
-    # xG: inserito in prima posizione se disponibile per almeno una squadra.
-    # Si usa "—" come placeholder se una sola delle due è presente
-    # (es. portiere sostituito prima del calcolo ESPN).
-    if xg_h_str is not None or xg_a_str is not None:
-        _xg_h = xg_h_str if xg_h_str is not None else "0.00"
-        _xg_a = xg_a_str if xg_a_str is not None else "0.00"
-        _xg_h_num = xg_h_str if xg_h_str is not None else "0"
-        _xg_a_num = xg_a_str if xg_a_str is not None else "0"
-        stats_mappate.insert(0, ("xG", _xg_h, _xg_a, perc(_xg_h_num, _xg_a_num)))
 
     rows_html = "".join([
         f'<div class="stat-row">'
