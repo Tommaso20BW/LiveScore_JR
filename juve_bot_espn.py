@@ -449,10 +449,12 @@ def resetta_gist():
 
 
 def dispatch_goal_video(scorer, home_n, away_n, g_home, g_away, minute,
-                        league_slug, event_id):
-    """Avvia il workflow del bot video-gol (bot.py) tramite
+                        league_slug, event_id, home_raw="", away_raw=""):
+    """Avvia il workflow del bot video-gol (video_goal.py) tramite
     repository_dispatch. Passa marcatore e punteggio nel client_payload.
-    Si attiva quindi SOLO quando viene segnato un gol."""
+    Si attiva quindi SOLO quando viene segnato un gol.
+    home_n/away_n = nomi tradotti (didascalia);
+    home_raw/away_raw = nomi originali ESPN (match su Reddit)."""
     if not GH_PAT or not GITHUB_REPOSITORY:
         return False
     try:
@@ -463,6 +465,8 @@ def dispatch_goal_video(scorer, home_n, away_n, g_home, g_away, minute,
                 "scorer":      scorer or "",
                 "home_n":      home_n or "",
                 "away_n":      away_n or "",
+                "home_raw":    home_raw or "",
+                "away_raw":    away_raw or "",
                 "g_home":      g_home,
                 "g_away":      g_away,
                 "minute":      minute or "",
@@ -1973,6 +1977,8 @@ def avvia_ciclo_partita():
                                 "type":      goal_type,
                                 "home_n":    home_name,
                                 "away_n":    away_name,
+                                "home_raw":  home_name_raw,
+                                "away_raw":  away_name_raw,
                                 "g_home":    g_home,
                                 "g_away":    g_away,
                                 "home_id":   home_id,
@@ -2413,6 +2419,8 @@ def avvia_ciclo_partita():
                         scorer=_sc,
                         home_n=_gm.get("home_n", ""),
                         away_n=_gm.get("away_n", ""),
+                        home_raw=_gm.get("home_raw", ""),
+                        away_raw=_gm.get("away_raw", ""),
                         g_home=_gm.get("g_home"),
                         g_away=_gm.get("g_away"),
                         minute=_gm.get("minute"),
