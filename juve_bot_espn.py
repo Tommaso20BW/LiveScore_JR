@@ -447,6 +447,38 @@ def resetta_gist():
     except Exception as e:
         print(f"[{now_it()}] ❌ Errore reset Gist: {e}")
 
+
+def dispatch_goal_video(scorer, home_n, away_n, g_home, g_away, minute,
+                        league_slug, event_id):
+    """Avvia il workflow del bot video-gol (bot.py) tramite
+    repository_dispatch. Passa marcatore e punteggio nel client_payload.
+    Si attiva quindi SOLO quando viene segnato un gol."""
+    if not GH_PAT or not GITHUB_REPOSITORY:
+        return False
+    try:
+        url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/dispatches"
+        payload = {
+            "event_type": "goal_scored",
+            "client_payload": {
+                "scorer":      scorer or "",
+                "home_n":      home_n or "",
+                "away_n":      away_n or "",
+                "g_home":      g_home,
+                "g_away":      g_away,
+                "minute":      minute or "",
+                "league_slug": league_slug or "",
+                "event_id":    str(event_id or ""),
+            },
+        }
+        r = SESSION.post(url, headers=_gist_headers(), json=payload, timeout=10)
+        if r.status_code in (200, 204):
+            return True
+        print(f"[{now_it()}] ⚠️  dispatch goal HTTP {r.status_code}: {r.text[:150]}")
+        return False
+    except Exception as e:
+        print(f"[{now_it()}] ❌ dispatch goal error: {e}")
+        return False
+
 # ==============================================================================
 # CANVA
 # ==============================================================================
@@ -1569,6 +1601,7 @@ def avvia_ciclo_partita():
                         "home_id":   home_id,
                         "away_id":   away_id,
                         "score_tid": actual_tid,
+                        "video_dispatched": True,  # catch-up: niente video per gol storici
                     }
                     time.sleep(2)
 
@@ -2367,6 +2400,29 @@ def avvia_ciclo_partita():
             sleep_time = 6
 
         finally:
+            # --- Trigger bot video-gol -----------------------------------
+            # Si attiva SOLO sui gol e SOLO quando ESPN ha pubblicato il
+            # marcatore. Una volta sola per gol (flag video_dispatched).
+            for _gk, _gm in list(state.get("goal_messages", {}).items()):
+                if _gm.get("video_dispatched"):
+                    continue
+                _sc = _gm.get("scorer")
+                if not _sc:
+                    continue  # aspetta il marcatore prima di cercare il video
+                if dispatch_goal_video(
+                        scorer=_sc,
+                        home_n=_gm.get("home_n", ""),
+                        away_n=_gm.get("away_n", ""),
+                        g_home=_gm.get("g_home"),
+                        g_away=_gm.get("g_away"),
+                        minute=_gm.get("minute"),
+                        league_slug=league_slug,
+                        event_id=event_id):
+                    _gm["video_dispatched"] = True
+                    state_changed = True
+                    print(f"[{now_it()}] 🎥 Dispatch video-gol: {_sc} "
+                          f"({_gm.get('g_home')}-{_gm.get('g_away')})")
+
             if isinstance(state, dict) and not state.get("_reset_done") and state_changed:
                 salva_stato_su_gist(state)
 
