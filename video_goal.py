@@ -49,6 +49,11 @@ SEND_TEXT_FALLBACK = os.environ.get("SEND_TEXT_FALLBACK", "1").strip() != "0"
 REDDIT_RETRY_SECONDS = 25
 TELEGRAM_MAX_BYTES = 49 * 1024 * 1024
 
+# Reddit OAuth (app-only): da GitHub Actions le chiamate anonime vengono spesso
+# bloccate (403/429). Con un'app "script" gratuita l'accesso è affidabile.
+REDDIT_CLIENT_ID = os.environ.get("REDDIT_CLIENT_ID", "").strip()
+REDDIT_CLIENT_SECRET = os.environ.get("REDDIT_CLIENT_SECRET", "").strip()
+
 BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 REDDIT_UA = "juve-goal-video-bot/1.0 (by u/anonymous)"
@@ -122,27 +127,62 @@ VIDEO_HOST_HINTS = (
 )
 
 
-def reddit_new_posts(limit=80):
-    url = f"https://www.reddit.com/r/soccer/new.json?limit={limit}"
+_REDDIT_TOKEN = None
+
+
+def reddit_token():
+    """Token app-only di Reddit (se sono configurati i secret). In cache."""
+    global _REDDIT_TOKEN
+    if _REDDIT_TOKEN:
+        return _REDDIT_TOKEN
+    if not (REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET):
+        return None
     try:
-        r = requests.get(url, headers={"User-Agent": REDDIT_UA}, timeout=20)
+        r = requests.post("https://www.reddit.com/api/v1/access_token",
+                          auth=(REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET),
+                          data={"grant_type": "client_credentials"},
+                          headers={"User-Agent": REDDIT_UA}, timeout=20)
         if r.ok:
-            return r.json().get("data", {}).get("children", [])
+            _REDDIT_TOKEN = r.json().get("access_token")
+            log("Reddit OAuth: token ottenuto ✅")
+            return _REDDIT_TOKEN
+        log(f"Reddit OAuth fallito: {r.status_code} {r.text[:120]}")
     except Exception as e:
-        log("reddit new error:", e)
-    return []
+        log("Reddit OAuth error:", e)
+    return None
+
+
+def _reddit_fetch(path, params):
+    """GET su Reddit: usa oauth.reddit.com se c'è il token, altrimenti
+    www.reddit.com (anonimo, spesso bloccato dai server). Logga stato e conteggio."""
+    tok = reddit_token()
+    headers = {"User-Agent": REDDIT_UA}
+    if tok:
+        headers["Authorization"] = f"bearer {tok}"
+        url = "https://oauth.reddit.com" + path
+    else:
+        url = "https://www.reddit.com" + path + ".json"
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=20)
+        if not r.ok:
+            log(f"  reddit {path} -> HTTP {r.status_code}: {r.text[:120]}")
+            return []
+        children = r.json().get("data", {}).get("children", [])
+        log(f"  reddit {path} -> {r.status_code}, {len(children)} post")
+        return children
+    except Exception as e:
+        log(f"  reddit {path} error:", e)
+        return []
+
+
+def reddit_new_posts(limit=80):
+    return _reddit_fetch("/r/soccer/new", {"limit": limit})
 
 
 def reddit_search(query, limit=40):
-    url = ("https://www.reddit.com/r/soccer/search.json"
-           f"?q={requests.utils.quote(query)}&restrict_sr=1&sort=new&t=hour&limit={limit}")
-    try:
-        r = requests.get(url, headers={"User-Agent": REDDIT_UA}, timeout=20)
-        if r.ok:
-            return r.json().get("data", {}).get("children", [])
-    except Exception as e:
-        log("reddit search error:", e)
-    return []
+    return _reddit_fetch("/r/soccer/search",
+                         {"q": query, "restrict_sr": 1, "sort": "new",
+                          "t": "hour", "limit": limit})
 
 
 def candidate_video_url(post):
@@ -228,6 +268,7 @@ def find_goal_post(scorer, since_ts):
     # Scarta i candidati chiaramente sbagliati (score negativo) se ne resta
     # almeno uno valido.
     if not matched:
+        log("  nessun post r/soccer corrispondente (marcatore/recency)")
         return
     best = max(m[0] for m in matched)
     valid = [m for m in matched if m[0] >= 0] or matched
