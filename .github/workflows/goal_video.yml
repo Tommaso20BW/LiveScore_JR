@@ -36,4 +36,4 @@ jobs:
           MINUTE: ${{ github.event.client_payload.minute }}
           GOAL_SEARCH_TIMEOUT: "480"
           SEND_TEXT_FALLBACK: "1"
-        run: python video_goal.py
+        run: python -u video_goal.py
