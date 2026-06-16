@@ -851,45 +851,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
     return events
 
 # ==============================================================================
-# MINUTI DI RECUPERO
-# ==============================================================================
-_EXTRA_TIME_RX       = re.compile(r"(\d+)\s*minut", re.IGNORECASE)
-_EXTRA_TIME_KEYWORDS = ("added time", "injury time", "stoppage time", "recupero")
-
-def parse_extra_time(data: dict) -> dict:
-    """Cerca nel feed ESPN (commentary + keyEvents) gli annunci dei minuti di
-    recupero, es. "4 minutes of added time".
-
-    Ritorna { periodo(str): minuti(int) } — un valore per periodo (1=1T, 2=2T,
-    3/4=supplementari). Se ESPN non espone il periodo dell'annuncio, la voce
-    viene scartata (meglio nessun messaggio che un duplicato)."""
-    found: dict = {}
-    for source in (data.get("commentary", []) or [], data.get("keyEvents", []) or []):
-        for item in source:
-            try:
-                play = item.get("play") if isinstance(item.get("play"), dict) else item
-                play = play or {}
-                type_text = str((play.get("type") or {}).get("text", ""))
-                text      = str(item.get("text", "") or play.get("text", ""))
-                blob      = f"{type_text} {text}".lower()
-                if not any(k in blob for k in _EXTRA_TIME_KEYWORDS):
-                    continue
-                m = _EXTRA_TIME_RX.search(blob)
-                if not m:
-                    continue
-                minutes = int(m.group(1))
-                if minutes <= 0 or minutes > 20:
-                    continue
-                period = (play.get("period") or {}).get("number", 0)
-                if not period:
-                    continue
-                # Primo annuncio valido per periodo (eventuali ripetizioni ignorate)
-                found.setdefault(str(period), minutes)
-            except Exception:
-                continue
-    return found
-
-# ==============================================================================
 # STATISTICHE
 # ==============================================================================
 def _estrai_stats_espn(data: dict) -> dict:
@@ -1410,14 +1371,12 @@ def avvia_ciclo_partita():
             "goal_messages":          {},
             "cancel_msg_id":          None,
             "pending_stats":          [],
-            "sent_extra_time":        {},
         }
     if isinstance(state.get("sent_subs"), list):
         state["sent_subs"] = {}
     # Retrocompatibilità con stati salvati da versioni precedenti
     state.setdefault("cancel_msg_id", None)
     state.setdefault("pending_stats", [])
-    state.setdefault("sent_extra_time", {})
     state.setdefault("sent_stats", [])
     state.setdefault("sent_failed_penalties", [])
 
@@ -2395,24 +2354,6 @@ def avvia_ciclo_partita():
                             "type":   e["type"],
                             "minute": e["minute"],
                         })
-                        state_changed = True
-
-            # --- Minuti di recupero ---
-            # ESPN annuncia il recupero nel commentary (es. "4 minutes of added
-            # time"): un messaggio per periodo, nello stile degli altri.
-            if status not in ("NS",):
-                extra_times = parse_extra_time(data)
-                for _period_key, _minutes in extra_times.items():
-                    if _period_key in state.setdefault("sent_extra_time", {}):
-                        continue
-                    msg_id = send_telegram_get_id(
-                        f"<b>RECUPERO · +{_minutes}' {E_CLOCK}</b>\n\n"
-                        f"{score_str}\n\n"
-                        f"{e_comp} {hashtag}"
-                    )
-                    if msg_id:
-                        print(f"[{now_it()}] ⏱ RECUPERO periodo {_period_key}: +{_minutes}' → Telegram inviato")
-                        state["sent_extra_time"][_period_key] = _minutes
                         state_changed = True
 
         except Exception as e:
