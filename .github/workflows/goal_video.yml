@@ -31,9 +31,11 @@ jobs:
           SCORER: ${{ github.event.client_payload.scorer }}
           HOME_N: ${{ github.event.client_payload.home_n }}
           AWAY_N: ${{ github.event.client_payload.away_n }}
+          HOME_RAW: ${{ github.event.client_payload.home_raw }}
+          AWAY_RAW: ${{ github.event.client_payload.away_raw }}
           G_HOME: ${{ github.event.client_payload.g_home }}
           G_AWAY: ${{ github.event.client_payload.g_away }}
           MINUTE: ${{ github.event.client_payload.minute }}
           GOAL_SEARCH_TIMEOUT: "480"
           SEND_TEXT_FALLBACK: "1"
-        run: python -u video_goal.py
+        run: python video_goal.py
