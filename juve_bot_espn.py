@@ -1358,6 +1358,8 @@ def avvia_ciclo_partita():
     if state is None or state.get("event_id") != event_id:
         state = {
             "event_id":               event_id,
+            "league_slug":            league_slug,
+            "league_name":            league_name,
             "sent_periods":           [],
             "goals_detected":         0,
             "prev_home_goals":        0,
@@ -1374,6 +1376,10 @@ def avvia_ciclo_partita():
         }
     if isinstance(state.get("sent_subs"), list):
         state["sent_subs"] = {}
+    # La lega va sempre tenuta aggiornata nel Gist (anche su stati ripresi da
+    # versioni precedenti): serve ai bot esterni che leggono la partita dal Gist.
+    state["league_slug"] = league_slug
+    state["league_name"] = league_name
     # Retrocompatibilità con stati salvati da versioni precedenti
     state.setdefault("cancel_msg_id", None)
     state.setdefault("pending_stats", [])
