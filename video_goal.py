@@ -37,6 +37,8 @@ TELEGRAM_TO = os.environ.get("TELEGRAM_TO_GOALS", "").strip()   # canale gol!
 SCORER = os.environ.get("SCORER", "").strip()
 HOME_N = os.environ.get("HOME_N", "").strip()
 AWAY_N = os.environ.get("AWAY_N", "").strip()
+HOME_RAW = os.environ.get("HOME_RAW", "").strip()   # nomi originali ESPN (match)
+AWAY_RAW = os.environ.get("AWAY_RAW", "").strip()
 G_HOME = os.environ.get("G_HOME", "").strip()
 G_AWAY = os.environ.get("G_AWAY", "").strip()
 MINUTE = os.environ.get("MINUTE", "").strip()
@@ -153,6 +155,30 @@ def candidate_video_url(post):
     return url or None
 
 
+def _title_score_matches(title):
+    """True se nel titolo compare il punteggio del nostro gol (immune dalla
+    lingua: sono solo numeri, es. '[2] - 1'). Confronto come insieme così
+    l'ordine casa/trasferta non conta."""
+    if not (G_HOME.isdigit() and G_AWAY.isdigit()):
+        return None  # punteggio non disponibile -> non filtrare
+    want = {int(G_HOME), int(G_AWAY)}
+    for a, b in re.findall(r"\[?(\d{1,2})\]?\s*[-–]\s*\[?(\d{1,2})\]?", title):
+        if {int(a), int(b)} == want:
+            return True
+    return False
+
+
+def _title_has_team(title_norm):
+    """True se nel titolo (normalizzato) compare un token significativo di una
+    delle due squadre, usando i nomi ORIGINALI (non tradotti)."""
+    tokens = []
+    for raw in (HOME_RAW, AWAY_RAW):
+        tokens += [t for t in deaccent(raw).split() if len(t) >= 4]
+    if not tokens:
+        return None  # nomi non disponibili -> non filtrare
+    return any(t in title_norm for t in tokens)
+
+
 def find_goal_post(scorer, since_ts):
     surname = deaccent(scorer).split()[-1] if scorer.strip() else ""
     tokens = [t for t in deaccent(scorer).split() if len(t) >= 4]
@@ -169,22 +195,47 @@ def find_goal_post(scorer, since_ts):
             continue
         seen.add(pid)
 
-        title_norm = deaccent(d.get("title", ""))
+        title = d.get("title", "")
+        title_norm = deaccent(title)
         created = d.get("created_utc", 0)
         if created < since_ts - 150:
             continue
+        # marcatore nel titolo
         if surname not in title_norm and not any(t in title_norm for t in tokens):
             continue
+        # sembra un post-gol con video
         url = (d.get("url_overridden_by_dest") or d.get("url") or "").lower()
-        looks_goal = bool(re.search(r"\[\d+\]|\d+\s*-\s*\d+", d.get("title", "")))
+        looks_goal = bool(re.search(r"\[\d+\]|\d+\s*-\s*\d+", title))
         has_host = any(h in url for h in VIDEO_HOST_HINTS) or bool(
             (d.get("secure_media") or d.get("media") or {}).get("reddit_video"))
         if not (looks_goal or has_host):
             continue
-        matched.append((created, p))
 
-    matched.sort(key=lambda x: x[0], reverse=True)
-    for _, p in matched:
+        # punteggio: se disponibile, distingue il gol esatto (es. doppietta)
+        score_ok = _title_score_matches(title)
+        # squadra: se disponibile, evita clip da altre partite (omonimia)
+        team_ok = _title_has_team(title_norm)
+
+        # punteggio del nostro gol = 2 punti forti; squadra = 1 punto.
+        # None significa "informazione non disponibile" -> non penalizza.
+        score = 0
+        score += 2 if score_ok else (-3 if score_ok is False else 0)
+        score += 1 if team_ok else (-1 if team_ok is False else 0)
+
+        matched.append((score, created, p))
+
+    # prima il match più affidabile (punteggio+squadra), poi il più recente.
+    # Scarta i candidati chiaramente sbagliati (score negativo) se ne resta
+    # almeno uno valido.
+    if not matched:
+        return
+    best = max(m[0] for m in matched)
+    valid = [m for m in matched if m[0] >= 0] or matched
+    if best >= 0:
+        valid = [m for m in matched if m[0] == best]
+    valid.sort(key=lambda x: (x[0], x[1]), reverse=True)
+
+    for _, _, p in valid:
         cand = candidate_video_url(p)
         if cand:
             log("  candidato reddit:", p["data"].get("title", "")[:80])
