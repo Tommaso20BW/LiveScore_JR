@@ -1398,6 +1398,7 @@ def avvia_ciclo_partita():
             "league_name":            league_name,
             "sent_periods":           [],
             "goals_detected":         0,
+            "goals_at_start":         None,
             "prev_home_goals":        0,
             "prev_away_goals":        0,
             "sent_subs":              {},
@@ -1441,6 +1442,12 @@ def avvia_ciclo_partita():
             home_id, away_id, home_name_raw, away_name_raw, g_home, g_away = parse_score(competitors)
             home_name = esc(translate_team(home_name_raw))
             away_name = esc(translate_team(away_name_raw))
+            # Punteggio con cui il bot vede la partita la PRIMA volta: serve per
+            # capire se un gol gestito via catch-up è live (partenza 0-0) o
+            # storico (bot avviato a partita già in corso con gol).
+            if state.get("goals_at_start") is None:
+                state["goals_at_start"] = g_home + g_away
+                state_changed = True
             score_str = build_score_str(home_name, away_name, g_home, g_away)
             hashtag   = build_hashtag(home_name_raw, away_name_raw)
             e_comp    = get_league_emoji(league_slug)
@@ -1600,12 +1607,17 @@ def avvia_ciclo_partita():
                         "type":      ge["type"],
                         "home_n":    home_name,
                         "away_n":    away_name,
+                        "home_raw":  home_name_raw,
+                        "away_raw":  away_name_raw,
                         "g_home":    ch,
                         "g_away":    ca,
                         "home_id":   home_id,
                         "away_id":   away_id,
                         "score_tid": actual_tid,
-                        "video_dispatched": True,  # catch-up: niente video per gol storici
+                        # niente video SOLO se il bot è partito a partita già in
+                        # corso con gol (gol storico). Se è partito da 0-0, il
+                        # gol è live → va inviato.
+                        "video_dispatched": (state.get("goals_at_start", 0) or 0) > 0,
                     }
                     time.sleep(2)
 
