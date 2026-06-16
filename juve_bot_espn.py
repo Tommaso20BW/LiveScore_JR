@@ -447,42 +447,6 @@ def resetta_gist():
     except Exception as e:
         print(f"[{now_it()}] ❌ Errore reset Gist: {e}")
 
-
-def dispatch_goal_video(scorer, home_n, away_n, g_home, g_away, minute,
-                        league_slug, event_id, home_raw="", away_raw=""):
-    """Avvia il workflow del bot video-gol (video_goal.py) tramite
-    repository_dispatch. Passa marcatore e punteggio nel client_payload.
-    Si attiva quindi SOLO quando viene segnato un gol.
-    home_n/away_n = nomi tradotti (didascalia);
-    home_raw/away_raw = nomi originali ESPN (match su Reddit)."""
-    if not GH_PAT or not GITHUB_REPOSITORY:
-        return False
-    try:
-        url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/dispatches"
-        payload = {
-            "event_type": "goal_scored",
-            "client_payload": {
-                "scorer":      scorer or "",
-                "home_n":      home_n or "",
-                "away_n":      away_n or "",
-                "home_raw":    home_raw or "",
-                "away_raw":    away_raw or "",
-                "g_home":      g_home,
-                "g_away":      g_away,
-                "minute":      minute or "",
-                "league_slug": league_slug or "",
-                "event_id":    str(event_id or ""),
-            },
-        }
-        r = SESSION.post(url, headers=_gist_headers(), json=payload, timeout=10)
-        if r.status_code in (200, 204):
-            return True
-        print(f"[{now_it()}] ⚠️  dispatch goal HTTP {r.status_code}: {r.text[:150]}")
-        return False
-    except Exception as e:
-        print(f"[{now_it()}] ❌ dispatch goal error: {e}")
-        return False
-
 # ==============================================================================
 # CANVA
 # ==============================================================================
@@ -1398,7 +1362,6 @@ def avvia_ciclo_partita():
             "league_name":            league_name,
             "sent_periods":           [],
             "goals_detected":         0,
-            "goals_at_start":         None,
             "prev_home_goals":        0,
             "prev_away_goals":        0,
             "sent_subs":              {},
@@ -1442,12 +1405,6 @@ def avvia_ciclo_partita():
             home_id, away_id, home_name_raw, away_name_raw, g_home, g_away = parse_score(competitors)
             home_name = esc(translate_team(home_name_raw))
             away_name = esc(translate_team(away_name_raw))
-            # Punteggio con cui il bot vede la partita la PRIMA volta: serve per
-            # capire se un gol gestito via catch-up è live (partenza 0-0) o
-            # storico (bot avviato a partita già in corso con gol).
-            if state.get("goals_at_start") is None:
-                state["goals_at_start"] = g_home + g_away
-                state_changed = True
             score_str = build_score_str(home_name, away_name, g_home, g_away)
             hashtag   = build_hashtag(home_name_raw, away_name_raw)
             e_comp    = get_league_emoji(league_slug)
@@ -1607,17 +1564,11 @@ def avvia_ciclo_partita():
                         "type":      ge["type"],
                         "home_n":    home_name,
                         "away_n":    away_name,
-                        "home_raw":  home_name_raw,
-                        "away_raw":  away_name_raw,
                         "g_home":    ch,
                         "g_away":    ca,
                         "home_id":   home_id,
                         "away_id":   away_id,
                         "score_tid": actual_tid,
-                        # niente video SOLO se il bot è partito a partita già in
-                        # corso con gol (gol storico). Se è partito da 0-0, il
-                        # gol è live → va inviato.
-                        "video_dispatched": (state.get("goals_at_start", 0) or 0) > 0,
                     }
                     time.sleep(2)
 
@@ -1786,7 +1737,9 @@ def avvia_ciclo_partita():
                             key = (ps, suffix)
                             if key not in grouped:
                                 grouped[key] = []
-                            grouped[key].append(e["minute"])
+                            # Usa minute_disp per preservare il formato recupero
+                            # (es. "90+6" invece di 96). Fallback all'intero.
+                            grouped[key].append(e.get("minute_disp") or str(e["minute"]))
                         result = []
                         for (ps, suffix), minutes in grouped.items():
                             mins_str = ", ".join(f"{m}'" for m in minutes)
@@ -1989,8 +1942,6 @@ def avvia_ciclo_partita():
                                 "type":      goal_type,
                                 "home_n":    home_name,
                                 "away_n":    away_name,
-                                "home_raw":  home_name_raw,
-                                "away_raw":  away_name_raw,
                                 "g_home":    g_home,
                                 "g_away":    g_away,
                                 "home_id":   home_id,
@@ -2418,31 +2369,6 @@ def avvia_ciclo_partita():
             sleep_time = 6
 
         finally:
-            # --- Trigger bot video-gol -----------------------------------
-            # Si attiva SOLO sui gol e SOLO quando ESPN ha pubblicato il
-            # marcatore. Una volta sola per gol (flag video_dispatched).
-            for _gk, _gm in list(state.get("goal_messages", {}).items()):
-                if _gm.get("video_dispatched"):
-                    continue
-                _sc = _gm.get("scorer")
-                if not _sc:
-                    continue  # aspetta il marcatore prima di cercare il video
-                if dispatch_goal_video(
-                        scorer=_sc,
-                        home_n=_gm.get("home_n", ""),
-                        away_n=_gm.get("away_n", ""),
-                        home_raw=_gm.get("home_raw", ""),
-                        away_raw=_gm.get("away_raw", ""),
-                        g_home=_gm.get("g_home"),
-                        g_away=_gm.get("g_away"),
-                        minute=_gm.get("minute"),
-                        league_slug=league_slug,
-                        event_id=event_id):
-                    _gm["video_dispatched"] = True
-                    state_changed = True
-                    print(f"[{now_it()}] 🎥 Dispatch video-gol: {_sc} "
-                          f"({_gm.get('g_home')}-{_gm.get('g_away')})")
-
             if isinstance(state, dict) and not state.get("_reset_done") and state_changed:
                 salva_stato_su_gist(state)
 
