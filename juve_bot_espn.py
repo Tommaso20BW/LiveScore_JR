@@ -1697,138 +1697,14 @@ def avvia_ciclo_partita():
                         state_changed = True
 
             # --- Rilevamento goal ---
-            # IMPORTANTE: questo blocco deve stare PRIMA di is_finished.
-            # Se Telegram va in timeout sull'ultimo gol e la partita finisce
-            # nel ciclo successivo, il goal pending viene ritentato qui
-            # prima che sys.exit(0) termini il bot.
+            # IMPORTANTE: questo blocco sta PRIMA di is_finished (fix applicato).
+            # Se un gol arriva nello stesso ciclo in cui la partita passa a FT,
+            # va annunciato qui prima che il blocco is_finished chiami sys.exit(0)
+            # e spenga il bot — altrimenti il gol (es. 4-1 al 90') non parte mai.
             total_goals_now = g_home + g_away
             prev_home = state.get("prev_home_goals", 0)
             prev_away = state.get("prev_away_goals", 0)
 
-            # --- Fine partita ---
-            comp_state_espn = (
-                data.get("header", {}).get("competitions", [{}])[0]
-                    .get("status", {}).get("type", {}).get("state", "")
-            )
-            is_finished = (
-                status in ("FT", "AET") or
-                (status == "PEN" and comp_state_espn == "post")
-            )
-            if is_finished:
-                if "FT" not in state["sent_periods"]:
-                    # Raggruppa i gol per squadra e per giocatore (con suffisso tipo)
-                    # Struttura: { team_id: { "chiave_giocatore": {"label": str, "minutes": [int]} } }
-                    from collections import OrderedDict
-                    def _build_scorers_list(team_id):
-                        """Restituisce lista di stringhe tipo '25', 43' B. Varga' per una squadra."""
-                        grouped = OrderedDict()  # chiave: (player_name, suffix)
-                        for e in events:
-                            if e["type"] not in ("goal", "own goal", "penalty goal"):
-                                continue
-                            if e["team_id"] != team_id:
-                                continue
-                            ps = fmt_player(e["player_name"])
-                            if e["type"] == "own goal":
-                                suffix = " (Autogol)"
-                            elif e["type"] == "penalty goal":
-                                suffix = " (Rig.)"
-                            else:
-                                suffix = ""
-                            key = (ps, suffix)
-                            if key not in grouped:
-                                grouped[key] = []
-                            # Usa minute_disp per preservare il formato recupero
-                            # (es. "90+6" invece di 96). Fallback all'intero.
-                            grouped[key].append(e.get("minute_disp") or str(e["minute"]))
-                        result = []
-                        for (ps, suffix), minutes in grouped.items():
-                            mins_str = ", ".join(f"{m}'" for m in minutes)
-                            result.append(f"{mins_str} {ps}{suffix}")
-                        return result
-
-                    home_scorers = _build_scorers_list(home_id)
-                    away_scorers = _build_scorers_list(away_id)
-
-                    if home_scorers or away_scorers:
-                        parts = []
-                        if home_scorers:
-                            parts.append(", ".join(home_scorers))
-                        if away_scorers:
-                            parts.append(", ".join(away_scorers))
-                        scorers_line = f"{E_BALL} <i>{' // '.join(parts)}</i>\n"
-                    else:
-                        scorers_line = ""
-
-                    has_shootout = (
-                        "ET_END_PENS" in state["sent_periods"] or
-                        status == "PEN" or
-                        len(data.get("shootout", [])) > 0
-                    )
-                    if has_shootout:
-                        home_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
-                        away_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
-                        if home_pen_goals > 0 or away_pen_goals > 0:
-                            if home_pen_goals > away_pen_goals:
-                                pen_score_str = (
-                                    f"<b>{home_name} {g_home} ({home_pen_goals})</b>-({away_pen_goals}) {g_away} {away_name}"
-                                )
-                            elif away_pen_goals > home_pen_goals:
-                                pen_score_str = (
-                                    f"{home_name} {g_home} ({home_pen_goals})-<b>({away_pen_goals}) {g_away} {away_name}</b>"
-                                )
-                            else:
-                                pen_score_str = (
-                                    f"{home_name} {g_home} ({home_pen_goals})-({away_pen_goals}) {g_away} {away_name}"
-                                )
-                            score_str = pen_score_str
-
-                    msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
-
-                    is_juve_match = home_id == '111' or away_id == '111'
-                    if is_juve_match:
-                        canva_token = get_valid_token()
-                        foto = get_canva_image(canva_token) if canva_token else None
-                        ft_sent = send_telegram_with_photo(msg_finale, foto)
-                    else:
-                        ft_sent = send_telegram_get_id(msg_finale) is not None
-
-                    if not ft_sent:
-                        print(f"[{now_it()}] ⚠️  Invio FINE PARTITA non riuscito — riprovo al prossimo ciclo")
-                        time.sleep(sleep_time)
-                        continue
-
-                    print(f"[{now_it()}] 🏁 FINE PARTITA ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
-                    # Persisti SUBITO: se il bot muore durante l'attesa delle stats,
-                    # al riavvio il messaggio finale non verrà reinviato.
-                    state["sent_periods"].append("FT")
-                    salva_stato_su_gist(state)
-                    state_changed = True
-
-                # --- Stats fine partita: 2 minuti dopo il messaggio finale ---
-                # (attesa "a fette": la partita è finita, non c'è altro da monitorare)
-                if "FT" not in state["sent_stats"]:
-                    print(f"[{now_it()}] 🕑 Attendo 120s prima delle stats FT...")
-                    for _ in range(24):
-                        time.sleep(5)
-                    data_fresh = fetch_evento(event_id, league_slug) or data
-                    ft_pen_home = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
-                    ft_pen_away = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
-                    png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
-                                                             home_name, away_name, g_home, g_away,
-                                                             "FT", league_name, league_slug=league_slug,
-                                                             pen_home=ft_pen_home, pen_away=ft_pen_away)
-                    print(f"[{now_it()}] 📊 STATS FINE PARTITA → foto Telegram inviata")
-                    send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
-                    state["sent_stats"].append("FT")
-                    salva_stato_su_gist(state)
-                    state_changed = True
-
-                state["_reset_done"] = True
-                resetta_gist()
-                print(f"[{now_it()}] 🏆 LIVE SCORE TERMINATO ({home_name} {g_home}-{g_away} {away_name}) — Spegnimento BOT")
-                sys.exit(0)
-
-            # --- Rilevamento goal (spostato in alto, vedi blocco precedente) ---
             if total_goals_now > state["goals_detected"]:
                 time.sleep(15)
                 data_confirm = fetch_evento(event_id, league_slug) or data
@@ -2021,6 +1897,149 @@ def avvia_ciclo_partita():
                     state["prev_away_goals"] = g_away_c
                     # goals_detected rimane invariato — corretto
                     state_changed = True
+
+            # --- Fine partita ---
+            comp_state_espn = (
+                data.get("header", {}).get("competitions", [{}])[0]
+                    .get("status", {}).get("type", {}).get("state", "")
+            )
+            is_finished = (
+                status in ("FT", "AET") or
+                (status == "PEN" and comp_state_espn == "post")
+            )
+            if is_finished:
+                # Se un gol è ancora in sospeso (invio fallito per timeout in
+                # QUESTO ciclo, il blocco gol gira prima di qui) NON chiudere subito:
+                # ritenta qualche ciclo così il messaggio del gol non si perde.
+                # Cap di sicurezza per non restare appesi se Telegram è giù a lungo.
+                _goal_pending = (
+                    "FT" not in state["sent_periods"]
+                    and state.get("goals_detected", 0) < (g_home + g_away)
+                )
+                if _goal_pending:
+                    _retries = state.get("ft_pending_goal_retries", 0)
+                    if _retries < 5:
+                        state["ft_pending_goal_retries"] = _retries + 1
+                        state_changed = True
+                        print(f"[{now_it()}] ⏳ Partita finita ma gol in sospeso "
+                              f"({state.get('goals_detected', 0)}/{g_home + g_away}) — "
+                              f"ritento ({_retries + 1}/5) prima di chiudere")
+                        time.sleep(sleep_time)
+                        continue
+                    print(f"[{now_it()}] ⚠️  Gol in sospeso non inviato dopo 5 tentativi — chiudo comunque")
+
+                if "FT" not in state["sent_periods"]:
+                    # Raggruppa i gol per squadra e per giocatore (con suffisso tipo)
+                    # Struttura: { team_id: { "chiave_giocatore": {"label": str, "minutes": [int]} } }
+                    from collections import OrderedDict
+                    def _build_scorers_list(team_id):
+                        """Restituisce lista di stringhe tipo '25', 43' B. Varga' per una squadra."""
+                        grouped = OrderedDict()  # chiave: (player_name, suffix)
+                        for e in events:
+                            if e["type"] not in ("goal", "own goal", "penalty goal"):
+                                continue
+                            if e["team_id"] != team_id:
+                                continue
+                            ps = fmt_player(e["player_name"])
+                            if e["type"] == "own goal":
+                                suffix = " (Autogol)"
+                            elif e["type"] == "penalty goal":
+                                suffix = " (Rig.)"
+                            else:
+                                suffix = ""
+                            key = (ps, suffix)
+                            if key not in grouped:
+                                grouped[key] = []
+                            # Usa minute_disp per preservare il formato recupero
+                            # (es. "90+6" invece di 96). Fallback all'intero.
+                            grouped[key].append(e.get("minute_disp") or str(e["minute"]))
+                        result = []
+                        for (ps, suffix), minutes in grouped.items():
+                            mins_str = ", ".join(f"{m}'" for m in minutes)
+                            result.append(f"{mins_str} {ps}{suffix}")
+                        return result
+
+                    home_scorers = _build_scorers_list(home_id)
+                    away_scorers = _build_scorers_list(away_id)
+
+                    if home_scorers or away_scorers:
+                        parts = []
+                        if home_scorers:
+                            parts.append(", ".join(home_scorers))
+                        if away_scorers:
+                            parts.append(", ".join(away_scorers))
+                        scorers_line = f"{E_BALL} <i>{' // '.join(parts)}</i>\n"
+                    else:
+                        scorers_line = ""
+
+                    has_shootout = (
+                        "ET_END_PENS" in state["sent_periods"] or
+                        status == "PEN" or
+                        len(data.get("shootout", [])) > 0
+                    )
+                    if has_shootout:
+                        home_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
+                        away_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
+                        if home_pen_goals > 0 or away_pen_goals > 0:
+                            if home_pen_goals > away_pen_goals:
+                                pen_score_str = (
+                                    f"<b>{home_name} {g_home} ({home_pen_goals})</b>-({away_pen_goals}) {g_away} {away_name}"
+                                )
+                            elif away_pen_goals > home_pen_goals:
+                                pen_score_str = (
+                                    f"{home_name} {g_home} ({home_pen_goals})-<b>({away_pen_goals}) {g_away} {away_name}</b>"
+                                )
+                            else:
+                                pen_score_str = (
+                                    f"{home_name} {g_home} ({home_pen_goals})-({away_pen_goals}) {g_away} {away_name}"
+                                )
+                            score_str = pen_score_str
+
+                    msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
+
+                    is_juve_match = home_id == '111' or away_id == '111'
+                    if is_juve_match:
+                        canva_token = get_valid_token()
+                        foto = get_canva_image(canva_token) if canva_token else None
+                        ft_sent = send_telegram_with_photo(msg_finale, foto)
+                    else:
+                        ft_sent = send_telegram_get_id(msg_finale) is not None
+
+                    if not ft_sent:
+                        print(f"[{now_it()}] ⚠️  Invio FINE PARTITA non riuscito — riprovo al prossimo ciclo")
+                        time.sleep(sleep_time)
+                        continue
+
+                    print(f"[{now_it()}] 🏁 FINE PARTITA ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+                    # Persisti SUBITO: se il bot muore durante l'attesa delle stats,
+                    # al riavvio il messaggio finale non verrà reinviato.
+                    state["sent_periods"].append("FT")
+                    salva_stato_su_gist(state)
+                    state_changed = True
+
+                # --- Stats fine partita: 2 minuti dopo il messaggio finale ---
+                # (attesa "a fette": la partita è finita, non c'è altro da monitorare)
+                if "FT" not in state["sent_stats"]:
+                    print(f"[{now_it()}] 🕑 Attendo 120s prima delle stats FT...")
+                    for _ in range(24):
+                        time.sleep(5)
+                    data_fresh = fetch_evento(event_id, league_slug) or data
+                    ft_pen_home = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
+                    ft_pen_away = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
+                    png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
+                                                             home_name, away_name, g_home, g_away,
+                                                             "FT", league_name, league_slug=league_slug,
+                                                             pen_home=ft_pen_home, pen_away=ft_pen_away)
+                    print(f"[{now_it()}] 📊 STATS FINE PARTITA → foto Telegram inviata")
+                    send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
+                    state["sent_stats"].append("FT")
+                    salva_stato_su_gist(state)
+                    state_changed = True
+
+                state["_reset_done"] = True
+                resetta_gist()
+                print(f"[{now_it()}] 🏆 LIVE SCORE TERMINATO ({home_name} {g_home}-{g_away} {away_name}) — Spegnimento BOT")
+                sys.exit(0)
 
             # --- Correzione marcatori ---
             for goal_key, saved in list(state.get("goal_messages", {}).items()):
