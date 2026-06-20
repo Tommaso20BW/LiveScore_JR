@@ -1943,10 +1943,8 @@ def avvia_ciclo_partita():
                             ps = fmt_player(e["player_name"])
                             if e["type"] == "own goal":
                                 suffix = " (Autogol)"
-                            elif e["type"] == "penalty goal":
-                                suffix = " (Rig.)"
                             else:
-                                suffix = ""
+                                suffix = ""          # i rigori contano come gol normali
                             key = (ps, suffix)
                             if key not in grouped:
                                 grouped[key] = []
