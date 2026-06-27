@@ -304,17 +304,22 @@ def send_telegram(text: str):
     except Exception as e:
         print(f"[{now_it()}] ❌ Errore send_telegram: {e}")
 
-def send_telegram_edit(message_id: int, text: str):
+def send_telegram_edit(message_id: int, text: str) -> bool:
+    """Modifica un messaggio esistente. Ritorna True solo se l'edit è
+    andato a buon fine, così chi chiama può evitare di salvare lo stato
+    come 'fatto' e ritentare al ciclo successivo in caso di errore."""
     if not BOT_TOKEN or not CHAT_ID or not message_id:
-        return
+        return False
     try:
         r = _tg_post("editMessageText", payload={
             "chat_id": CHAT_ID, "message_id": message_id,
             "text": text, "parse_mode": "HTML"
         })
         r.raise_for_status()
+        return True
     except Exception as e:
         print(f"[{now_it()}] ❌ Errore editMessageText: {e}")
+        return False
 
 def send_telegram_get_id(text: str) -> int | None:
     if not BOT_TOKEN or not CHAT_ID:
@@ -352,18 +357,26 @@ def send_telegram_with_photo(text: str, photo_bytes) -> bool:
     except Exception:
         return send_telegram_get_id(text) is not None
 
-def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str):
+def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str) -> bool:
+    """Invia la foto delle statistiche. Ritorna True solo se l'invio è
+    andato davvero a buon fine, così chi chiama può ritentare invece di
+    segnare l'evento come fatto e perderlo silenziosamente."""
     if not png_path:
         print(f"[{now_it()}] ⚠️  Stats {momento}: nessuna immagine generata — invio saltato")
-        return
+        return False
     caption = f"{MOMENTI_CONFIG[momento]['titolo']}\n\n{hashtag}"
     try:
         with open(png_path, "rb") as f:
-            _tg_post("sendPhoto",
+            r = _tg_post("sendPhoto",
                      data={"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"},
                      files={"photo": ("stats.png", f, "image/png")}, timeout=25)
+        if r is None:
+            return False
+        r.raise_for_status()
+        return True
     except Exception as e:
         print(f"[{now_it()}] ❌ Errore invio foto statistiche: {e}")
+        return False
 
 # ==============================================================================
 # GITHUB SECRETS
@@ -1461,10 +1474,19 @@ def avvia_ciclo_partita():
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                          home_name, away_name, g_home, g_away,
                                                          _momento, league_name, league_slug=league_slug)
-                print(f"[{now_it()}] 📊 STATS {_momento} → foto Telegram inviata")
-                send_telegram_stats_photo(png_path, _momento, f"{e_comp} {hashtag}")
-                state["sent_stats"].append(_momento)
-                salva_stato_su_gist(state)
+                if send_telegram_stats_photo(png_path, _momento, f"{e_comp} {hashtag}"):
+                    print(f"[{now_it()}] 📊 STATS {_momento} → foto Telegram inviata")
+                    state["sent_stats"].append(_momento)
+                    salva_stato_su_gist(state)
+                else:
+                    # Invio non riuscito: rimetto in coda per un nuovo tentativo
+                    # a breve, invece di segnare le stats come inviate e perderle.
+                    print(f"[{now_it()}] ⚠️  Invio STATS {_momento} non riuscito — riprovo tra 30s")
+                    state.setdefault("pending_stats", []).append({
+                        "momento": _momento,
+                        "due": _now_ts + 30,
+                    })
+                    salva_stato_su_gist(state)
 
             # --- Non ancora iniziata ---
             if status == "NS":
@@ -1488,6 +1510,20 @@ def avvia_ciclo_partita():
 
             if status == "PEN":
                 sleep_time = 6
+
+            # --- Retry GOAL ANNULLATO non riuscito in un ciclo precedente ---
+            # Lo stato del punteggio è già stato aggiornato quando l'annullamento è
+            # stato rilevato, quindi qui NON possiamo contare su una ri-rilevazione
+            # naturale: il testo del messaggio resta in coda finché l'invio non va a buon fine.
+            if state.get("pending_goal_annullato"):
+                _retry_cancel_id = send_telegram_get_id(state["pending_goal_annullato"])
+                if _retry_cancel_id:
+                    print(f"[{now_it()}] 📺 GOAL ANNULLATO (retry) → Telegram inviato")
+                    state["cancel_msg_id"] = _retry_cancel_id
+                    state["pending_goal_annullato"] = None
+                    state_changed = True
+                else:
+                    print(f"[{now_it()}] ⚠️  Invio GOAL ANNULLATO non riuscito — riprovo al prossimo ciclo")
 
             # --- Inizio primo tempo ---
             if status == "1H" and "1H" not in state["sent_periods"]:
@@ -1859,12 +1895,17 @@ def avvia_ciclo_partita():
                     g_home = g_home_c
                     g_away = g_away_c
                     score_str = build_score_str(home_name, away_name, g_home, g_away)
-                    print(f"[{now_it()}] 📺 GOAL ANNULLATO → Telegram inviato")
-                    cancel_msg_id = send_telegram_get_id(
-                        f"<b>GOAL ANNULLATO {E_CANCEL}</b>\n\n{score_str}\n\n{e_comp} {hashtag}"
-                    )
-                    # Salva msg_id per eventuale cancellazione futura
-                    state["cancel_msg_id"] = cancel_msg_id
+                    cancel_text = f"<b>GOAL ANNULLATO {E_CANCEL}</b>\n\n{score_str}\n\n{e_comp} {hashtag}"
+                    cancel_msg_id = send_telegram_get_id(cancel_text)
+                    if cancel_msg_id:
+                        print(f"[{now_it()}] 📺 GOAL ANNULLATO → Telegram inviato")
+                        state["cancel_msg_id"] = cancel_msg_id
+                    else:
+                        # Invio non riuscito: lo score sotto va comunque aggiornato (è
+                        # già confermato), ma il messaggio resta in coda e viene
+                        # ritentato a ogni ciclo finché non va a buon fine.
+                        print(f"[{now_it()}] ⚠️  Invio GOAL ANNULLATO non riuscito — riprovo al prossimo ciclo")
+                        state["pending_goal_annullato"] = cancel_text
 
                     # Pulisci goal_messages per le chiavi non più valide
                     keys_to_remove = [
@@ -2028,9 +2069,21 @@ def avvia_ciclo_partita():
                                                              home_name, away_name, g_home, g_away,
                                                              "FT", league_name, league_slug=league_slug,
                                                              pen_home=ft_pen_home, pen_away=ft_pen_away)
-                    print(f"[{now_it()}] 📊 STATS FINE PARTITA → foto Telegram inviata")
-                    send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}")
-                    state["sent_stats"].append("FT")
+                    # Il bot sta per spegnersi: niente "prossimo ciclo" che possa
+                    # ritentare da solo, quindi ritento qui sul posto prima di
+                    # rinunciare, invece di segnare le stats come inviate a prescindere.
+                    ft_stats_ok = False
+                    for _attempt in range(5):
+                        if send_telegram_stats_photo(png_path, "FT", f"{e_comp} {hashtag}"):
+                            ft_stats_ok = True
+                            break
+                        print(f"[{now_it()}] ⚠️  Invio STATS FINE PARTITA non riuscito (tentativo {_attempt + 1}/5) — riprovo tra 10s")
+                        time.sleep(10)
+                    if ft_stats_ok:
+                        print(f"[{now_it()}] 📊 STATS FINE PARTITA → foto Telegram inviata")
+                        state["sent_stats"].append("FT")
+                    else:
+                        print(f"[{now_it()}] ❌ Invio STATS FINE PARTITA fallito dopo 5 tentativi — proseguo comunque con lo spegnimento")
                     salva_stato_su_gist(state)
                     state_changed = True
 
@@ -2117,14 +2170,15 @@ def avvia_ciclo_partita():
                     if current_type != saved.get("type", "goal"):
                         changes.append(f"tipo: {saved.get('type', 'goal')} → {current_type}")
 
-                    print(f"[{now_it()}] ✏️  CORREZIONE goal {goal_key}: {', '.join(changes)} → messaggio editato")
-                    send_telegram_edit(msg_id, goal_text_new)
-
-                    state["goal_messages"][goal_key]["scorer"]    = current_scorer
-                    state["goal_messages"][goal_key]["assist"]    = current_assist
-                    state["goal_messages"][goal_key]["type"]      = current_type
-                    state["goal_messages"][goal_key]["score_tid"] = actual_tid
-                    state_changed = True
+                    if send_telegram_edit(msg_id, goal_text_new):
+                        print(f"[{now_it()}] ✏️  CORREZIONE goal {goal_key}: {', '.join(changes)} → messaggio editato")
+                        state["goal_messages"][goal_key]["scorer"]    = current_scorer
+                        state["goal_messages"][goal_key]["assist"]    = current_assist
+                        state["goal_messages"][goal_key]["type"]      = current_type
+                        state["goal_messages"][goal_key]["score_tid"] = actual_tid
+                        state_changed = True
+                    else:
+                        print(f"[{now_it()}] ⚠️  CORREZIONE goal {goal_key} non riuscita ({', '.join(changes)}) — riprovo al prossimo ciclo")
 
             # --- Cambi ---
             new_subs_fresh      = []
@@ -2200,24 +2254,33 @@ def avvia_ciclo_partita():
                 slot       = state["sent_subs"][corr["slot_key"]]
                 e          = corr["event"]
                 team_title = home_name.upper() if e["team_id"] == home_id else away_name.upper()
+                # Calcolo il nuovo testo SENZA mutare ancora lo slot: se l'edit
+                # fallisce, la correzione deve poter essere ritentata al ciclo
+                # successivo, quindi lo stato va aggiornato solo dopo conferma.
+                tmp_ins  = list(slot["ins"])
+                tmp_outs = list(slot["outs"])
                 if corr["field"] == "out":
-                    slot["outs"][corr["idx"]] = corr["new_val"]
+                    tmp_outs[corr["idx"]] = corr["new_val"]
                     log_dir = f"↓ {corr['old_val']} → {corr['new_val']}"
                 else:
-                    slot["ins"][corr["idx"]]  = corr["new_val"]
+                    tmp_ins[corr["idx"]] = corr["new_val"]
                     log_dir = f"↑ {corr['old_val']} → {corr['new_val']}"
-                slot["sub_ids"].append(corr["sub_id"])
-                ins_str  = ", ".join(slot["ins"])
-                outs_str = ", ".join(slot["outs"])
+                ins_str  = ", ".join(tmp_ins)
+                outs_str = ", ".join(tmp_outs)
                 new_text = (
                     f"<b>CAMBIO {team_title} · {slot['minute']}' {E_SUB}</b>\n\n"
                     f"{E_UP} {ins_str}\n"
                     f"{E_DOWN} {outs_str}\n\n"
                     f"{e_comp} {hashtag}"
                 )
-                print(f"[{now_it()}] ✏️  CORREZIONE CAMBIO {team_title} {slot['minute']}' | {log_dir} → messaggio editato")
-                send_telegram_edit(slot["msg_id"], new_text)
-                state_changed = True
+                if send_telegram_edit(slot["msg_id"], new_text):
+                    slot["ins"]  = tmp_ins
+                    slot["outs"] = tmp_outs
+                    slot["sub_ids"].append(corr["sub_id"])
+                    print(f"[{now_it()}] ✏️  CORREZIONE CAMBIO {team_title} {slot['minute']}' | {log_dir} → messaggio editato")
+                    state_changed = True
+                else:
+                    print(f"[{now_it()}] ⚠️  CORREZIONE CAMBIO {team_title} {slot['minute']}' non riuscita ({log_dir}) — riprovo al prossimo ciclo")
 
             for e, slot_key in new_subs_edit:
                 slot       = state["sent_subs"][slot_key]
@@ -2227,20 +2290,24 @@ def avvia_ciclo_partita():
                 # Safety: non duplicare se entrambi già presenti (non dovrebbe capitare qui)
                 if _e_out in slot["outs"] and _e_in in slot["ins"]:
                     continue
-                slot["ins"].append(_e_in)
-                slot["outs"].append(_e_out)
-                slot["sub_ids"].append(e["uid"])
-                ins_str  = ", ".join(slot["ins"])
-                outs_str = ", ".join(slot["outs"])
+                tmp_ins  = slot["ins"]  + [_e_in]
+                tmp_outs = slot["outs"] + [_e_out]
+                ins_str  = ", ".join(tmp_ins)
+                outs_str = ", ".join(tmp_outs)
                 new_text = (
                     f"<b>CAMBIO {team_title} · {slot['minute']}' {E_SUB}</b>\n\n"
                     f"{E_UP} {ins_str}\n"
                     f"{E_DOWN} {outs_str}\n\n"
                     f"{e_comp} {hashtag}"
                 )
-                print(f"[{now_it()}] ✏️  CAMBIO EDIT {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
-                send_telegram_edit(slot["msg_id"], new_text)
-                state_changed = True
+                if send_telegram_edit(slot["msg_id"], new_text):
+                    slot["ins"]  = tmp_ins
+                    slot["outs"] = tmp_outs
+                    slot["sub_ids"].append(e["uid"])
+                    print(f"[{now_it()}] ✏️  CAMBIO EDIT {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
+                    state_changed = True
+                else:
+                    print(f"[{now_it()}] ⚠️  CAMBIO EDIT {team_title} {slot['minute']}' non riuscito (↑ {_e_in} / ↓ {_e_out}) — riprovo al prossimo ciclo")
 
             if new_subs_fresh:
                 print(f"[{now_it()}] 🔄 Cambio rilevato, attendo 10s per raggruppare...")
@@ -2271,20 +2338,24 @@ def avvia_ciclo_partita():
                         _out_p = fmt_player(e["player_name"])
                         if _out_p in slot["outs"] and _in_p in slot["ins"]:
                             continue
-                        slot["ins"].append(_in_p)
-                        slot["outs"].append(_out_p)
-                        slot["sub_ids"].append(sub_id)
-                        ins_str  = ", ".join(slot["ins"])
-                        outs_str = ", ".join(slot["outs"])
+                        tmp_ins  = slot["ins"]  + [_in_p]
+                        tmp_outs = slot["outs"] + [_out_p]
+                        ins_str  = ", ".join(tmp_ins)
+                        outs_str = ", ".join(tmp_outs)
                         new_text = (
                             f"<b>CAMBIO {team_title} · {slot['minute']}' {E_SUB}</b>\n\n"
                             f"{E_UP} {ins_str}\n"
                             f"{E_DOWN} {outs_str}\n\n"
                             f"{e_comp} {hashtag}"
                         )
-                        print(f"[{now_it()}] ✏️  CAMBIO EDIT (post-attesa) {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
-                        send_telegram_edit(slot["msg_id"], new_text)
-                        state_changed = True
+                        if send_telegram_edit(slot["msg_id"], new_text):
+                            slot["ins"]  = tmp_ins
+                            slot["outs"] = tmp_outs
+                            slot["sub_ids"].append(sub_id)
+                            print(f"[{now_it()}] ✏️  CAMBIO EDIT (post-attesa) {team_title} {slot['minute']}' | ↑ {ins_str} / ↓ {outs_str}")
+                            state_changed = True
+                        else:
+                            print(f"[{now_it()}] ⚠️  CAMBIO EDIT (post-attesa) {team_title} {slot['minute']}' non riuscito (↑ {_in_p} / ↓ {_out_p}) — riprovo al prossimo ciclo")
                     else:
                         pending.append(e)
 
@@ -2331,17 +2402,23 @@ def avvia_ciclo_partita():
                         f"{E_DOWN} {outs_str}\n\n"
                         f"{e_comp} {hashtag}"
                     )
-                    print(f"[{now_it()}] 🔄 CAMBIO {team_title} {_min_ref}' | ↑ {ins_str} / ↓ {outs_str} → Telegram inviato")
                     msg_id = send_telegram_get_id(new_text)
-                    new_key = f"{g['team_id']}:{_min_ref}"
-                    state["sent_subs"][new_key] = {
-                        "msg_id":  msg_id,
-                        "minute":  _min_ref,
-                        "ins":     [fmt_player(s["assist_name"]) for s in g["subs"]],
-                        "outs":    [fmt_player(s["player_name"]) for s in g["subs"]],
-                        "sub_ids": [s["uid"] for s in g["subs"]],
-                    }
-                    state_changed = True
+                    if msg_id:
+                        print(f"[{now_it()}] 🔄 CAMBIO {team_title} {_min_ref}' | ↑ {ins_str} / ↓ {outs_str} → Telegram inviato")
+                        new_key = f"{g['team_id']}:{_min_ref}"
+                        state["sent_subs"][new_key] = {
+                            "msg_id":  msg_id,
+                            "minute":  _min_ref,
+                            "ins":     [fmt_player(s["assist_name"]) for s in g["subs"]],
+                            "outs":    [fmt_player(s["player_name"]) for s in g["subs"]],
+                            "sub_ids": [s["uid"] for s in g["subs"]],
+                        }
+                        state_changed = True
+                    else:
+                        # Invio NON riuscito: non salvo lo slot né i sub_ids, così
+                        # al ciclo successivo il cambio viene rilevato come nuovo
+                        # e ritentato, esattamente come per i gol.
+                        print(f"[{now_it()}] ⚠️  Invio CAMBIO non riuscito ({team_title} {_min_ref}' ↑ {ins_str} / ↓ {outs_str}) — riprovo al prossimo ciclo")
 
             # --- Cartellini rossi / doppio giallo ---
             for e in events:
