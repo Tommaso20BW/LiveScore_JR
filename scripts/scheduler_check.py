@@ -11,7 +11,7 @@ Logica della finestra:
   - il cron esterno (cron-job.org) gira ogni 30 minuti
   - vogliamo che il bot parta 30 minuti prima del kickoff
   - quindi dispatchiamo se il kickoff e' tra 0 e 65 minuti da adesso
-    (65 = intervallo cron 30' + anticipo 30' + margine 5')
+    (60 = intervallo cron 30' + anticipo 30')
   - il workflow principale poi dorme fino a kickoff - 30'
 """
 
@@ -38,7 +38,7 @@ LEAGUES = [
 ]
 
 # Finestra di dispatch in minuti (intervallo cron + anticipo + margine)
-DISPATCH_WINDOW_MIN = 65
+DISPATCH_WINDOW_MIN = 60
 # Quanto prima del kickoff deve partire il bot (informativo, usato dal main workflow)
 LEAD_MINUTES = 30
 
