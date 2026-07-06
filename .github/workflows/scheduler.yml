@@ -1,0 +1,58 @@
+name: Match Scheduler
+
+# Nessun trigger `schedule`: il cron di GitHub e' inaffidabile (ritardi di ore).
+# Questo workflow viene lanciato via API da cron-job.org ogni 30 minuti
+# nella fascia oraria delle partite.
+on:
+  workflow_dispatch:
+
+# Evita check sovrapposti se cron-job.org dovesse fare retry ravvicinati
+concurrency:
+  group: match-scheduler
+  cancel-in-progress: true
+
+permissions:
+  actions: write   # serve per dispatchare il workflow principale
+  contents: read
+
+jobs:
+  check-and-dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Controlla se c'e' una partita della Juve in arrivo
+        id: check
+        run: python3 scripts/scheduler_check.py
+
+      - name: Verifica che il bot non sia gia' in esecuzione
+        id: running
+        if: steps.check.outputs.dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Conta i run attivi/in coda del workflow principale.
+          # NB: sostituisci "livescore.yml" con il nome reale del file
+          # del tuo workflow principale se diverso.
+          ACTIVE=$(gh api \
+            "repos/${{ github.repository }}/actions/workflows/livescore.yml/runs?status=in_progress" \
+            --jq '.total_count')
+          QUEUED=$(gh api \
+            "repos/${{ github.repository }}/actions/workflows/livescore.yml/runs?status=queued" \
+            --jq '.total_count')
+          TOTAL=$((ACTIVE + QUEUED))
+          echo "Run attivi o in coda: $TOTAL"
+          echo "already_running=$([ "$TOTAL" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Lancia il bot LiveScore
+        if: steps.check.outputs.dispatch == 'true' && steps.running.outputs.already_running == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Dispatch per: ${{ steps.check.outputs.match_name }}"
+          echo "Kickoff: ${{ steps.check.outputs.kickoff }}"
+          gh workflow run livescore.yml \
+            --repo "${{ github.repository }}" \
+            -f kickoff="${{ steps.check.outputs.kickoff }}"
