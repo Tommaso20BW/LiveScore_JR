@@ -25,12 +25,16 @@ JUVENTUS_TEAM_ID = "111"  # ID Juventus su ESPN
 
 # Competizioni da controllare (codici lega ESPN)
 LEAGUES = [
-    "ita.1",              # Serie A
-    "uefa.champions",     # Champions League
-    "uefa.europa",        # Europa League
-    "ita.coppa_italia",   # Coppa Italia
-    "ita.super_cup",      # Supercoppa Italiana
-    "fifa.cwc",           # Mondiale per Club
+    "ita.1",                 # Serie A
+    "ita.coppa_italia",      # Coppa Italia
+    "ita.super_cup",         # Supercoppa Italiana
+    "uefa.champions",        # Champions League
+    "uefa.europa",           # Europa League
+    "uefa.europa.conf",      # Conference League
+    "uefa.super_cup",        # Supercoppa UEFA
+    "fifa.cwc",              # Mondiale per Club FIFA
+    "fifa.intercontinental", # Coppa Intercontinentale FIFA
+    "club.friendly",         # Amichevoli di club
 ]
 
 # Finestra di dispatch in minuti (intervallo cron + anticipo + margine)
