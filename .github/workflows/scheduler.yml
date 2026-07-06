@@ -61,7 +61,8 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-          KEEP: "3"   # quanti run recenti dello scheduler tenere in cronologia
+          KEEP: "0"   # 0 = cancella TUTTI i run precedenti; resta visibile solo quello in corso
+                      # (un run non puo' cancellare se' stesso mentre gira: limite di GitHub)
         run: |
           # Cancella i run COMPLETATI di questo stesso workflow (Match Scheduler),
           # tenendo solo gli ultimi $KEEP. Non tocca i run del bot principale.
