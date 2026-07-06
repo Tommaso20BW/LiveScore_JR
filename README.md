@@ -45,7 +45,7 @@ Tutta la logica vive in un unico script Python eseguito da un workflow GitHub Ac
    ┌──────────────────┐   POST /dispatches    ┌──────────────────────┐
    │   cron-job.org    │ ───────────────────▶ │   scheduler.yml       │
    │  (ogni 30 min,    │    (puntuale)         │  c'è una partita      │
-   │   fascia partite) │                       │  Juve entro 65 min?   │
+   │   fascia partite) │                       │  Juve entro 60 min?   │
    └──────────────────┘                       └──────────┬───────────┘
                                                   sì, dispatch │
                                                               ▼
@@ -96,7 +96,7 @@ Il cron nativo di GitHub Actions è inutilizzabile per un bot live: i trigger `s
 
 | Componente | Ruolo |
 |------------|-------|
-| **cron-job.org** | Sveglia esterna puntuale al minuto. Ogni 30 minuti, nella fascia oraria delle partite (11:00–22:30 `Europe/Rome`), chiama l'API GitHub e dispatcha `scheduler.yml`. |
+| **cron-job.org** | Sveglia esterna puntuale al minuto. Ogni 30 minuti, 24 ore su 24, chiama l'API GitHub e dispatcha `scheduler.yml`. |
 | **`scheduler.yml`** | Check leggerissimo (~10 secondi). Esegue `scripts/scheduler_check.py` e, se serve, dispatcha il workflow principale passandogli l'orario del kickoff. |
 | **`scripts/scheduler_check.py`** | Interroga i feed ESPN di **10 competizioni** (Serie A, Coppa Italia, Supercoppa Italiana, Champions, Europa League, Conference League, Supercoppa UEFA, Mondiale per Club, Coppa Intercontinentale, amichevoli) cercando la squadra con ID ESPN `111`. |
 | **`main_espn.yml`** | Riceve l'input `kickoff` e **attende fino a 30 minuti prima** del calcio d'inizio, poi avvia il bot. |
@@ -105,11 +105,11 @@ Il cron nativo di GitHub Actions è inutilizzabile per un bot live: i trigger `s
 
 Tutti i calcoli avvengono in **UTC** (ESPN, GitHub e lo script parlano la stessa lingua oraria: nessun problema di ora legale).
 
-- kickoff a **più di 65 minuti** → nessuna azione, si riprova al check successivo;
-- kickoff **entro 65 minuti** → dispatch del bot, che dorme fino a *kickoff − 30′*;
+- kickoff a **più di 60 minuti** → nessuna azione, si riprova al check successivo;
+- kickoff **entro 60 minuti** → dispatch del bot, che dorme fino a *kickoff − 30′*;
 - partita **già iniziata da meno di 100 minuti** → **recupero d'emergenza**: il bot parte subito (utile se un check precedente è saltato per un downtime).
 
-La finestra di 65 minuti (intervallo cron 30′ + anticipo 30′ + margine 5′) garantisce che almeno un check "catturi" ogni partita, qualunque sia l'orario del kickoff.
+La finestra di 60 minuti (intervallo cron 30′ + anticipo 30′) garantisce che almeno un check "catturi" ogni partita, qualunque sia l'orario del kickoff.
 
 ### Protezioni
 
@@ -241,7 +241,7 @@ Crea un Gist con un file `match_state.json` contenente `{}` e copia l'ID del Gis
    - **URL**: `https://api.github.com/repos/<utente>/LiveScore_JR/actions/workflows/scheduler.yml/dispatches`
    - **Metodo**: `POST` · **Body**: `{"ref":"main"}`
    - **Headers**: `Authorization: Bearer <PAT>` · `Accept: application/vnd.github+json` · `User-Agent: livescore-cron`
-   - **Schedule**: ogni 30 minuti, ore 11–22, timezone `Europe/Rome` (l'ora legale è gestita da cron-job.org)
+   - **Schedule**: ogni 30 minuti, tutto il giorno
 3. **Test** — premi *Test run*: risposta attesa **204** e, entro pochi secondi, il run "Match Scheduler" compare nella tab Actions.
 
 ### 4. (Opzionale) Personalizza design Canva e squadra
