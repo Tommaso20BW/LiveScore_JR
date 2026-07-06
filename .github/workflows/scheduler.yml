@@ -34,13 +34,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Conta i run attivi/in coda del workflow principale.
-          # NB: sostituisci "livescore.yml" con il nome reale del file
+          # NB: sostituisci "main_espn.yml" con il nome reale del file
           # del tuo workflow principale se diverso.
           ACTIVE=$(gh api \
-            "repos/${{ github.repository }}/actions/workflows/livescore.yml/runs?status=in_progress" \
+            "repos/${{ github.repository }}/actions/workflows/main_espn.yml/runs?status=in_progress" \
             --jq '.total_count')
           QUEUED=$(gh api \
-            "repos/${{ github.repository }}/actions/workflows/livescore.yml/runs?status=queued" \
+            "repos/${{ github.repository }}/actions/workflows/main_espn.yml/runs?status=queued" \
             --jq '.total_count')
           TOTAL=$((ACTIVE + QUEUED))
           echo "Run attivi o in coda: $TOTAL"
@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "Dispatch per: ${{ steps.check.outputs.match_name }}"
           echo "Kickoff: ${{ steps.check.outputs.kickoff }}"
-          gh workflow run livescore.yml \
+          gh workflow run main_espn.yml \
             --repo "${{ github.repository }}" \
             -f kickoff="${{ steps.check.outputs.kickoff }}"
 
