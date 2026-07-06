@@ -107,9 +107,10 @@ def main():
     print(f"Kickoff (UTC): {kickoff.isoformat()}  ->  tra {minutes_to_kickoff:.0f} minuti")
 
     # Dispatch se il kickoff e' entro la finestra, oppure se la partita e'
-    # appena iniziata (es. primo check dopo un ritardo): recupero d'emergenza
-    # fino a 100 minuti dopo il kickoff (partita ancora in corso).
-    should_dispatch = -100 <= minutes_to_kickoff <= DISPATCH_WINDOW_MIN
+    # ancora potenzialmente in corso: recupero d'emergenza fino a 140 minuti
+    # dopo il kickoff (copre recuperi lunghi; a partita davvero finita ci
+    # pensa il guard interno del bot a spegnersi subito).
+    should_dispatch = -140 <= minutes_to_kickoff <= DISPATCH_WINDOW_MIN
 
     with open(github_output, "a") as fh:
         fh.write(f"dispatch={'true' if should_dispatch else 'false'}\n")
