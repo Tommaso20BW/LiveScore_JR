@@ -56,3 +56,19 @@ jobs:
           gh workflow run livescore.yml \
             --repo "${{ github.repository }}" \
             -f kickoff="${{ steps.check.outputs.kickoff }}"
+
+      - name: Pulisci la cronologia dei run dello scheduler
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: "3"   # quanti run recenti dello scheduler tenere in cronologia
+        run: |
+          # Cancella i run COMPLETATI di questo stesso workflow (Match Scheduler),
+          # tenendo solo gli ultimi $KEEP. Non tocca i run del bot principale.
+          gh api "repos/${{ github.repository }}/actions/workflows/scheduler.yml/runs?status=completed&per_page=100" \
+            --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
+          while read -r RUN_ID; do
+            echo "Elimino run $RUN_ID"
+            gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$RUN_ID" || true
+          done
+          echo "Pulizia completata."
