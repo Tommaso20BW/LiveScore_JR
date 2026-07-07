@@ -1353,6 +1353,25 @@ def _rigori_icone(data: dict, events: list, home_id: str, away_id: str,
     return home_icons, away_icons
 
 
+def _shootout_deciso(home_icons: list, away_icons: list) -> bool:
+    """True se la lotteria dei rigori è matematicamente decisa, anche se
+    ESPN non ha ancora aggiornato status.type.state a 'post' (può volerci
+    diversi minuti dopo l'ultimo tiro — visto un ritardo di 7' su Svizzera-
+    Colombia 2026: rigore decisivo segnato ma state ancora 'in')."""
+    n_home, n_away = len(home_icons), len(away_icons)
+    if n_home != n_away or n_home == 0:
+        return False  # tiro in sospeso: aspetto che arrivi anche l'altro
+    home_goals = home_icons.count(E_PEN_OK)
+    away_goals = away_icons.count(E_PEN_OK)
+    if n_home >= 5:
+        # oltre il 5° tiro: sudden death, basta rompere la parità
+        return home_goals != away_goals
+    home_left = 5 - n_home
+    away_left = 5 - n_away
+    # entro i primi 5 tiri: decisa se il margine è incolmabile
+    return (home_goals > away_goals + away_left) or (away_goals > home_goals + home_left)
+
+
 def build_score_str(home_name, away_name, g_home, g_away):
     if g_home > g_away:
         return f"<b>{home_name} {g_home}</b>-{g_away} {away_name}"
@@ -1833,7 +1852,7 @@ def avvia_ciclo_partita():
 
             # --- Pausa fine supplementari → rigori ---
             # ESPN espone la pausa pre-rigori (END_OF_EXTRATIME / END_PERIOD con
-            # period=4): FINE SUPPLEMENTARI parte QUI, durante l'intervallo,
+            # period=4): FINE 2T SUPPLEMENTARE parte QUI, durante l'intervallo,
             # invece che insieme al primo aggiornamento della lotteria.
             if status == "BREAK_PEN":
                 if "1ET_END" not in state["sent_periods"]:
@@ -1844,7 +1863,7 @@ def avvia_ciclo_partita():
                 if "ET_END_PENS" not in state["sent_periods"]:
                     _pens_intro_ok = True
                     if "2ET_START" in state["sent_periods"] or "1ET_START" in state["sent_periods"]:
-                        _pens_intro_ok = send_telegram_get_id(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}") is not None
+                        _pens_intro_ok = send_telegram_get_id(f"<b>FINE 2T SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}") is not None
                     if _pens_intro_ok:
                         state["sent_periods"].append("ET_END_PENS")
                         salva_stato_su_gist(state)
@@ -1855,7 +1874,7 @@ def avvia_ciclo_partita():
                 if "ET_END_PENS" not in state["sent_periods"]:
                     _pens_intro_ok = True
                     if "2ET_START" in state["sent_periods"] or "1ET_START" in state["sent_periods"]:
-                        _pens_intro_ok = send_telegram_get_id(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}") is not None
+                        _pens_intro_ok = send_telegram_get_id(f"<b>FINE 2T SUPPLEMENTARE {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}") is not None
                     if _pens_intro_ok:
                         state["sent_periods"].append("ET_END_PENS")
                         salva_stato_su_gist(state)
@@ -2087,9 +2106,20 @@ def avvia_ciclo_partita():
                 data.get("header", {}).get("competitions", [{}])[0]
                     .get("status", {}).get("type", {}).get("state", "")
             )
+            _pen_deciso = False
+            if status == "PEN" and comp_state_espn != "post":
+                _hp_check, _ap_check = _rigori_icone(data, events, home_id, away_id,
+                                                      home_name_raw, away_name_raw)
+                _pen_deciso = _shootout_deciso(_hp_check, _ap_check)
+                if _pen_deciso:
+                    print(f"[{now_it()}] 🏁 Rigori matematicamente decisi "
+                          f"({_hp_check.count(E_PEN_OK)}-{_ap_check.count(E_PEN_OK)}) — "
+                          f"non attendo lo state 'post' di ESPN")
+
             is_finished = (
                 status in ("FT", "AET") or
-                (status == "PEN" and comp_state_espn == "post")
+                (status == "PEN" and comp_state_espn == "post") or
+                (status == "PEN" and _pen_deciso)
             )
             if is_finished:
                 # Se un gol è ancora in sospeso (invio fallito per timeout in
