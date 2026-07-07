@@ -781,6 +781,11 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     ev_type = "shootout saved"
 
             team_id = _extract_team_id_from_commentary(item, home_name, away_name, home_id, away_id)
+            # Calcio della lotteria senza squadra attribuibile: scartato. La
+            # fonte strutturata shootout[] lo fornirà comunque con la squadra
+            # giusta; tenerlo qui lo farebbe contare alla squadra sbagliata.
+            if period_num == 5 and not team_id:
+                continue
             add_event(ev_type, minute, team_id, player, assist, uid, minute_disp=_mdisp)
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore parsing commentary: {e}")
@@ -814,6 +819,24 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                     t_id = home_id
                 elif tl == (away_name or "").lower():
                     t_id = away_id
+
+            # Periodo 5 = lotteria dei rigori. Senza questa rimappatura un calcio
+            # arrivato via keyEvents diventerebbe "penalty goal" (finendo tra i
+            # marcatori del risultato finale) o "penalty missed" (scatenando un
+            # finto messaggio RIGORE SBAGLIATO durante la lotteria).
+            period_num_ke = play.get("period", {}).get("number", 0)
+            if period_num_ke == 5:
+                raw_type = play.get("type", {}).get("type", "")
+                ev_low = ev_type.lower()
+                if "scored" in raw_type or "scored" in ev_low or "goal" in ev_low:
+                    ev_type = "shootout goal"
+                elif "missed" in raw_type or "missed" in ev_low or "miss" in ev_low:
+                    ev_type = "shootout miss"
+                elif "saved" in raw_type or "saved" in ev_low:
+                    ev_type = "shootout saved"
+                if not t_id:
+                    continue  # calcio non attribuibile: lo fornirà shootout[]
+
             add_event(ev_type, minute, t_id, player, assist, uid, minute_disp=_mdisp)
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore parsing keyEvent: {e}")
@@ -1234,18 +1257,37 @@ def parse_status(data: dict):
                 return "AET", 120
             return "FT", 90
 
-        if "HALFTIME" in name or "HALF_TIME" in name:
-            return "HT", 45
+        # NB: HT_ET va controllato PRIMA dell'intervallo generico, perché
+        # "STATUS_HALFTIME_ET" contiene anche la sottostringa "HALFTIME" e
+        # verrebbe altrimenti scambiato per l'intervallo dei tempi regolamentari.
         if "EXTRA_TIME_HALF" in name or "HALFTIME_ET" in name:
             return "HT_ET", 105
+        if "HALFTIME" in name or "HALF_TIME" in name:
+            # Intervallo generico: il periodo distingue quale dei due è.
+            if period >= 3:
+                return "HT_ET", 105
+            return "HT", 45
         if "PENALTY" in name or "SHOOTOUT" in name:
             return "PEN", elapsed
+        # Pausa tra fine supplementari e rigori (es. STATUS_END_OF_EXTRATIME).
+        # Va controllata PRIMA del check generico "EXTRA" qui sotto, altrimenti
+        # verrebbe mappata a "ET" e il bot crederebbe che si stia ancora giocando.
+        if "END_OF_EXTRATIME" in name or "END_EXTRA" in name:
+            return "BREAK_PEN", 120
+        # Pausa tra fine regolamentari e inizio supplementari.
+        if "END_OF_REGULATION" in name:
+            return "BREAK_ET", 90
         if "EXTRA" in name or "OT" in name:
             return "ET", elapsed
         if "END_PERIOD" in name:
-            if period <= 2:
-                return "HT", 45
-            return "ET", elapsed
+            # END_PERIOD è generico: il periodo dice QUALE pausa è.
+            if period <= 1:
+                return "HT", 45          # fine 1° tempo
+            if period == 2:
+                return "BREAK_ET", 90    # fine regolamentari (pausa pre-supplementari)
+            if period == 3:
+                return "HT_ET", 105      # intervallo tra i due supplementari
+            return "BREAK_PEN", 120      # fine supplementari (pausa pre-rigori)
         if period == 1:
             return "1H", elapsed
         if period == 2:
@@ -1259,6 +1301,56 @@ def parse_status(data: dict):
     except Exception as e:
         print(f"[{now_it()}] ⚠️  Errore parse_status: {e}")
         return "NS", 0
+
+
+def _rigori_icone(data: dict, events: list, home_id: str, away_id: str,
+                  home_name_raw: str = "", away_name_raw: str = ""):
+    """Restituisce (home_icons, away_icons) della lotteria dei rigori.
+
+    Preferisce data['shootout'] (fonte strutturata ESPN): è ordinata per
+    battuta e attribuisce ogni calcio alla squadra giusta. Solo se assente
+    ricade sugli eventi parsati, scartando i calci senza squadra attribuita
+    (che altrimenti finirebbero per errore nel conteggio della trasferta).
+    """
+    home_icons, away_icons = [], []
+
+    for team_shootout in (data.get("shootout") or []):
+        try:
+            t_id_raw = str(team_shootout.get("id", ""))
+            t_name   = team_shootout.get("team", "")
+            if t_id_raw:
+                t_id = t_id_raw
+            elif isinstance(t_name, str) and t_name:
+                t_id = home_id if t_name.lower() == (home_name_raw or "").lower() else away_id
+            else:
+                continue
+            if t_id == str(home_id):
+                target = home_icons
+            elif t_id == str(away_id):
+                target = away_icons
+            else:
+                continue
+            for kick in (team_shootout.get("shots") or team_shootout.get("shootoutAttempts", [])):
+                did_score = kick.get("didScore", kick.get("scored", False))
+                target.append(E_PEN_OK if did_score else E_PEN_KO)
+        except Exception as e:
+            print(f"[{now_it()}] ⚠️  Errore lettura shootout strutturato: {e}")
+
+    if home_icons or away_icons:
+        return home_icons, away_icons
+
+    # Fallback: eventi parsati (commentary/keyEvents), in ordine di arrivo (seq)
+    for e in sorted(events, key=lambda x: x.get("seq", 0)):
+        if e["type"] not in ("shootout goal", "shootout miss", "shootout saved"):
+            continue
+        icon = E_PEN_OK if e["type"] == "shootout goal" else E_PEN_KO
+        if e["team_id"] == str(home_id):
+            home_icons.append(icon)
+        elif e["team_id"] == str(away_id):
+            away_icons.append(icon)
+        # team_id sconosciuto → scartato: meglio un calcio in meno nel widget
+        # che un calcio assegnato alla squadra sbagliata.
+    return home_icons, away_icons
 
 
 def build_score_str(home_name, away_name, g_home, g_away):
@@ -1645,6 +1737,36 @@ def avvia_ciclo_partita():
                     print(f"[{now_it()}] ⚠️  Invio INIZIO 2° TEMPO non riuscito — riprovo al prossimo ciclo")
 
             # --- Fine regolamentari → supplementari ---
+            # Fotografie dello stato PRIMA che i blocchi qui sotto lo modifichino:
+            # servono a garantire che due messaggi consecutivi (es. FINE
+            # REGOLAMENTARI e INIZIO 1T SUPPLEMENTARE) non partano mai nello
+            # stesso ciclo di polling, ma ad almeno un ciclo (~6s) di distanza.
+            _2h_end_gia_inviato  = "2H_END"  in state["sent_periods"]
+            _1et_end_gia_inviato = "1ET_END" in state["sent_periods"]
+
+            # Caso normale: ESPN espone la pausa (END_OF_REGULATION / END_PERIOD
+            # con period=2) → il messaggio parte DURANTE l'intervallo, come in TV.
+            # Richiede 2 avvistamenti consecutivi (~12s) per non scattare su un
+            # eventuale END_PERIOD transitorio prima del fischio finale di una
+            # partita senza supplementari.
+            if status == "BREAK_ET" and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
+                state["_break_et_seen"] = state.get("_break_et_seen", 0) + 1
+                if state["_break_et_seen"] >= 2:
+                    msg_id = send_telegram_get_id(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    if msg_id:
+                        print(f"[{now_it()}] 🏁 FINE REGOLAMENTARI ({home_name} {g_home}-{g_away} {away_name}) → Telegram inviato")
+                        state["sent_periods"].append("2H_END")
+                        _schedule_stats(state, "2H_END")
+                        salva_stato_su_gist(state)
+                        state_changed = True
+                    else:
+                        print(f"[{now_it()}] ⚠️  Invio FINE REGOLAMENTARI non riuscito — riprovo al prossimo ciclo")
+            elif status != "BREAK_ET":
+                state["_break_et_seen"] = 0
+
+            # Recovery: ESPN non ha mai esposto la pausa (o il bot era giù) e lo
+            # status è già ET/PEN/AET → invia ora. L'INIZIO 1T SUPPLEMENTARE
+            # partirà comunque al ciclo successivo grazie a _2h_end_gia_inviato.
             if status in ("ET", "PEN", "AET") and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
                 msg_id = send_telegram_get_id(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
                 if msg_id:
@@ -1672,10 +1794,13 @@ def avvia_ciclo_partita():
                     et_period  = 1
 
                 is_et_halftime = any(kw in stype_name for kw in
-                                     ("HALFTIME", "HALF_TIME", "HT_ET", "EXTRA_TIME_HALF"))
+                                     ("HALFTIME", "HALF_TIME", "HT_ET", "EXTRA_TIME_HALF", "END_PERIOD"))
                 is_second_et = (et_period >= 4 or (elapsed >= 106 and et_period >= 3))
 
-                if "1ET_START" not in state["sent_periods"] and not is_et_halftime and not is_second_et:
+                # Gate _2h_end_gia_inviato: se FINE REGOLAMENTARI è partito in
+                # QUESTO ciclo, l'inizio supplementari aspetta il prossimo (~6s).
+                if (_2h_end_gia_inviato and "1ET_START" not in state["sent_periods"]
+                        and not is_et_halftime and not is_second_et):
                     if send_telegram_get_id(f"<b>INIZIO 1T SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}"):
                         state["sent_periods"].append("1ET_START")
                         salva_stato_su_gist(state)
@@ -1687,7 +1812,9 @@ def avvia_ciclo_partita():
                         salva_stato_su_gist(state)
                         state_changed = True
 
-                if is_second_et and "2ET_START" not in state["sent_periods"]:
+                # Gate _1et_end_gia_inviato: stessa logica, FINE 1T SUPPLEMENTARE
+                # e INIZIO 2T SUPPLEMENTARE non partono mai nello stesso ciclo.
+                if is_second_et and _1et_end_gia_inviato and "2ET_START" not in state["sent_periods"]:
                     if send_telegram_get_id(f"<b>INIZIO 2T SUPPLEMENTARE {E_BOLT}</b>\n\n{score_str}\n\n{e_comp} {hashtag}"):
                         state["sent_periods"].append("2ET_START")
                         salva_stato_su_gist(state)
@@ -1704,6 +1831,25 @@ def avvia_ciclo_partita():
                         salva_stato_su_gist(state)
                         state_changed = True
 
+            # --- Pausa fine supplementari → rigori ---
+            # ESPN espone la pausa pre-rigori (END_OF_EXTRATIME / END_PERIOD con
+            # period=4): FINE SUPPLEMENTARI parte QUI, durante l'intervallo,
+            # invece che insieme al primo aggiornamento della lotteria.
+            if status == "BREAK_PEN":
+                if "1ET_END" not in state["sent_periods"]:
+                    # Backfill silenzioso: se il bot non ha mai visto l'intervallo
+                    # dei supplementari, non ha senso annunciarlo ora in ritardo.
+                    state["sent_periods"].append("1ET_END")
+                    state_changed = True
+                if "ET_END_PENS" not in state["sent_periods"]:
+                    _pens_intro_ok = True
+                    if "2ET_START" in state["sent_periods"] or "1ET_START" in state["sent_periods"]:
+                        _pens_intro_ok = send_telegram_get_id(f"<b>FINE SUPPLEMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}") is not None
+                    if _pens_intro_ok:
+                        state["sent_periods"].append("ET_END_PENS")
+                        salva_stato_su_gist(state)
+                        state_changed = True
+
             # --- Rigori ---
             if status == "PEN":
                 if "ET_END_PENS" not in state["sent_periods"]:
@@ -1715,11 +1861,8 @@ def avvia_ciclo_partita():
                         salva_stato_su_gist(state)
                         state_changed = True
 
-                home_pen_icons, away_pen_icons = [], []
-                for e in events:
-                    if e["type"] in ("shootout goal", "shootout miss", "shootout saved"):
-                        icon = E_PEN_OK if e["type"] == "shootout goal" else E_PEN_KO
-                        (home_pen_icons if e["team_id"] == home_id else away_pen_icons).append(icon)
+                home_pen_icons, away_pen_icons = _rigori_icone(data, events, home_id, away_id,
+                                                               home_name_raw, away_name_raw)
 
                 total_kicks = len(home_pen_icons) + len(away_pen_icons)
                 if total_kicks > state["penalties_count"]:
@@ -2017,8 +2160,10 @@ def avvia_ciclo_partita():
                         len(data.get("shootout", [])) > 0
                     )
                     if has_shootout:
-                        home_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
-                        away_pen_goals = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
+                        _hp_icons, _ap_icons = _rigori_icone(data, events, home_id, away_id,
+                                                             home_name_raw, away_name_raw)
+                        home_pen_goals = _hp_icons.count(E_PEN_OK)
+                        away_pen_goals = _ap_icons.count(E_PEN_OK)
                         if home_pen_goals > 0 or away_pen_goals > 0:
                             if home_pen_goals > away_pen_goals:
                                 pen_score_str = (
@@ -2063,8 +2208,10 @@ def avvia_ciclo_partita():
                     for _ in range(24):
                         time.sleep(5)
                     data_fresh = fetch_evento(event_id, league_slug) or data
-                    ft_pen_home = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == home_id)
-                    ft_pen_away = sum(1 for e in events if e["type"] == "shootout goal" and e["team_id"] == away_id)
+                    _ftp_h, _ftp_a = _rigori_icone(data_fresh, events, home_id, away_id,
+                                                   home_name_raw, away_name_raw)
+                    ft_pen_home = _ftp_h.count(E_PEN_OK)
+                    ft_pen_away = _ftp_a.count(E_PEN_OK)
                     png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
                                                              home_name, away_name, g_home, g_away,
                                                              "FT", league_name, league_slug=league_slug,
@@ -2438,8 +2585,9 @@ def avvia_ciclo_partita():
                             state["sent_cards"].append(card_id)
                             state_changed = True
 
-            # --- Rigori sbagliati ---
-            for e in events:
+            # --- Rigori sbagliati (solo durante il gioco: nella lotteria dei
+            # rigori l'esito di ogni calcio lo annuncia già il blocco RIGORI) ---
+            for e in (events if status not in ("PEN", "BREAK_PEN") else []):
                 if e["type"] in ("penalty missed", "penalty saved"):
                     if _failpen_gia_inviato(state, e):
                         continue
