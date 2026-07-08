@@ -9,9 +9,9 @@ possa lanciare il bot principale.
 
 Logica della finestra:
   - il cron esterno (cron-job.org) gira ogni 30 minuti
-  - vogliamo che il bot parta 1 ora prima del kickoff
-  - quindi dispatchiamo se il kickoff e' tra 0 e 90 minuti da adesso
-    (90 = intervallo cron 30' + anticipo 60')
+  - vogliamo che il bot parta 30 minuti prima del kickoff
+  - quindi dispatchiamo se il kickoff e' tra 0 e 60 minuti da adesso
+    (60 = intervallo cron 30' + anticipo 30')
   - il bot principale poi attende internamente fino al kickoff
 """
 
@@ -37,10 +37,10 @@ LEAGUES = [
     "club.friendly",             # Amichevoli di club
 ]
 
-# Finestra di dispatch in minuti (intervallo cron 30' + anticipo 60')
-DISPATCH_WINDOW_MIN = 90
+# Finestra di dispatch in minuti (intervallo cron 30' + anticipo 30')
+DISPATCH_WINDOW_MIN = 60
 # Quanto prima del kickoff deve partire il bot (informativo, usato dal main workflow)
-LEAD_MINUTES = 60
+LEAD_MINUTES = 30
 
 SCOREBOARD_URL = (
     "https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/scoreboard?dates={date}"
