@@ -53,9 +53,11 @@ jobs:
         run: |
           echo "Dispatch per: ${{ steps.check.outputs.match_name }}"
           echo "Kickoff: ${{ steps.check.outputs.kickoff }}"
+          # NB: nessun input extra — main_espn.yml dichiara solo team_id e
+          # channel; passare input non dichiarati fa fallire il dispatch (422).
+          # L'attesa fino al kickoff la gestisce il bot internamente.
           gh workflow run main_espn.yml \
-            --repo "${{ github.repository }}" \
-            -f kickoff="${{ steps.check.outputs.kickoff }}"
+            --repo "${{ github.repository }}"
 
       - name: Pulisci la cronologia dei run dello scheduler
         if: always()
