@@ -2233,12 +2233,17 @@ def avvia_ciclo_partita():
 
                     msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
-                    is_juve_match = home_id == '111' or away_id == '111'
-                    if is_juve_match:
+                    # Foto Canva solo per le partite ufficiali della Juve:
+                    # nelle amichevoli il messaggio finale parte come solo testo.
+                    is_juve_match = home_id == JUVE_ID or away_id == JUVE_ID
+                    is_friendly   = is_friendly_competition(league_slug, league_name)
+                    if is_juve_match and not is_friendly:
                         canva_token = get_valid_token()
                         foto = get_canva_image(canva_token) if canva_token else None
                         ft_sent = send_telegram_with_photo(msg_finale, foto)
                     else:
+                        if is_juve_match and is_friendly:
+                            print(f"[{now_it()}] 🎨 Amichevole — foto Canva saltata, invio solo testo")
                         ft_sent = send_telegram_get_id(msg_finale) is not None
 
                     if not ft_sent:
