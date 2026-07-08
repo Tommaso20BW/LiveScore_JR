@@ -1357,19 +1357,29 @@ def _shootout_deciso(home_icons: list, away_icons: list) -> bool:
     """True se la lotteria dei rigori è matematicamente decisa, anche se
     ESPN non ha ancora aggiornato status.type.state a 'post' (può volerci
     diversi minuti dopo l'ultimo tiro — visto un ritardo di 7' su Svizzera-
-    Colombia 2026: rigore decisivo segnato ma state ancora 'in')."""
+    Colombia 2026: rigore decisivo segnato ma state ancora 'in').
+
+    NB sui conteggi disuguali: quando a chiudere è la squadra che batte per
+    PRIMA, l'ultimo tiro dell'altra non si batte proprio e i conteggi restano
+    disuguali per sempre (es. 5 tiri vs 4). Va quindi accettato uno sbilancio
+    di 1 tiro; oltre 1 il feed è incompleto e non ci si può fidare della
+    matematica (tiri mancanti → falsi positivi)."""
     n_home, n_away = len(home_icons), len(away_icons)
-    if n_home != n_away or n_home == 0:
-        return False  # tiro in sospeso: aspetto che arrivi anche l'altro
+    if n_home == 0 and n_away == 0:
+        return False
+    if abs(n_home - n_away) > 1:
+        return False  # feed incompleto: mancano tiri, matematica inaffidabile
     home_goals = home_icons.count(E_PEN_OK)
     away_goals = away_icons.count(E_PEN_OK)
-    if n_home >= 5:
-        # oltre il 5° tiro: sudden death, basta rompere la parità
-        return home_goals != away_goals
-    home_left = 5 - n_home
-    away_left = 5 - n_away
-    # entro i primi 5 tiri: decisa se il margine è incolmabile
-    return (home_goals > away_goals + away_left) or (away_goals > home_goals + home_left)
+    if n_home <= 5 and n_away <= 5:
+        # Entro i primi 5 tiri: decisa se il margine è incolmabile con i tiri
+        # rimasti (copre anche 5-5 con punteggi diversi: zero tiri rimasti).
+        home_left = 5 - n_home
+        away_left = 5 - n_away
+        return (home_goals > away_goals + away_left) or (away_goals > home_goals + home_left)
+    # Oltre il 5°: sudden death, si decide solo a coppia di tiri completata
+    # (il secondo tiratore batte sempre, quindi conteggi pari) con parità rotta.
+    return n_home == n_away and home_goals != away_goals
 
 
 def build_score_str(home_name, away_name, g_home, g_away):
@@ -2110,11 +2120,23 @@ def avvia_ciclo_partita():
             if status == "PEN" and comp_state_espn != "post":
                 _hp_check, _ap_check = _rigori_icone(data, events, home_id, away_id,
                                                       home_name_raw, away_name_raw)
-                _pen_deciso = _shootout_deciso(_hp_check, _ap_check)
-                if _pen_deciso:
-                    print(f"[{now_it()}] 🏁 Rigori matematicamente decisi "
-                          f"({_hp_check.count(E_PEN_OK)}-{_ap_check.count(E_PEN_OK)}) — "
-                          f"non attendo lo state 'post' di ESPN")
+                _tot_check = len(_hp_check) + len(_ap_check)
+                if (_shootout_deciso(_hp_check, _ap_check)
+                        and state.get("penalties_count", 0) >= _tot_check):
+                    # Gate penalties_count: l'ultimo messaggio RIGORI deve essere
+                    # stato DAVVERO consegnato prima di chiudere (se l'invio è
+                    # fallito il contatore è indietro → si riprova al prossimo
+                    # ciclo, il messaggio non va perso con lo spegnimento).
+                    # Doppia conferma (~12s) contro dati ESPN transitoriamente
+                    # sballati: la chiusura anticipata è irreversibile.
+                    state["_pen_deciso_seen"] = state.get("_pen_deciso_seen", 0) + 1
+                    if state["_pen_deciso_seen"] >= 2:
+                        _pen_deciso = True
+                        print(f"[{now_it()}] 🏁 Rigori matematicamente decisi "
+                              f"({_hp_check.count(E_PEN_OK)}-{_ap_check.count(E_PEN_OK)}) — "
+                              f"non attendo lo state 'post' di ESPN")
+                else:
+                    state["_pen_deciso_seen"] = 0
 
             is_finished = (
                 status in ("FT", "AET") or
