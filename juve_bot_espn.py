@@ -1706,13 +1706,13 @@ def avvia_ciclo_partita():
                         # Invio non riuscito: interrompo il recupero. Annullo
                         # l'incremento di questo gol (non annunciato) e lascio che sia
                         # il rilevamento live a riprovare i gol rimanenti.
-                        print(f"[{now_it()}] ⚠️  CATCHUP invio non riuscito {ge['minute']}\' {home_name} {ch}-{ca} {away_name} — riprovo col rilevamento live")
+                        print(f"[{now_it()}] ⚠️  Invio goal non riuscito {ge['minute']}\' {home_name} {ch}-{ca} {away_name} — riprovo col rilevamento live")
                         if ge["team_id"] == home_id:
                             ch -= 1
                         else:
                             ca -= 1
                         break
-                    print(f"[{now_it()}] ⚽️  CATCHUP GOAL {ge['minute']}\' {home_name} {ch}-{ca} {away_name} → Telegram inviato")
+                    print(f"[{now_it()}] ⚽️  GOAL {ge['minute']}\' {home_name} {ch}-{ca} {away_name} → Telegram inviato")
                     state.setdefault("goal_messages", {})[goal_key] = {
                         "msg_id":    msg_id,
                         "scorer":    p_name,
