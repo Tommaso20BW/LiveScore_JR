@@ -269,18 +269,32 @@ body::before { opacity: 0.06; mix-blend-mode: screen; }
 (function(){
   // Rimappa i nomi ESPN (inglese) → nomi italiani corretti
   var leagueMap = {
-    'ITALIAN SERIE A':           'Serie A',
-    'ITALY SERIE A':             'Serie A',
-    'SERIE A TIM':               'Serie A',
-    'ITALIAN COPPA ITALIA':      'Coppa Italia',
-    'ITALY COPPA ITALIA':        'Coppa Italia',
-    'COPPA ITALIA FRECCIAROSSA': 'Coppa Italia',
-    'ITALIAN SUPERCOPPA':        'Supercoppa Italiana',
-    'ITALY SUPERCOPPA':          'Supercoppa Italiana'
+    'ITALIAN SERIE A':                 'Serie A',
+    'ITALY SERIE A':                   'Serie A',
+    'SERIE A TIM':                     'Serie A',
+    'ITALIAN COPPA ITALIA':            'Coppa Italia',
+    'ITALY COPPA ITALIA':              'Coppa Italia',
+    'COPPA ITALIA FRECCIAROSSA':       'Coppa Italia',
+    'ITALIAN SUPERCOPPA':              'Supercoppa Italiana',
+    'ITALY SUPERCOPPA':                'Supercoppa Italiana',
+
+    'UEFA CHAMPIONS LEAGUE':           'Champions League',
+    'UEFA EUROPA LEAGUE':              'Europa League',
+    'UEFA EUROPA CONFERENCE LEAGUE':   'Conference League',
+    'UEFA SUPER CUP':                  'Supercoppa UEFA',
+    'FIFA CLUB WORLD CUP':             'Mondiale per Club',
+    'FIFA INTERCONTINENTAL CUP':       'Coppa Intercontinentale'
   };
   var el = document.querySelector('.league-row');
   if (el) {
-    var mapped = leagueMap[el.textContent.trim().toUpperCase()];
+    var raw    = el.textContent.trim().toUpperCase();
+    var mapped = leagueMap[raw];
+    // Le amichevoli hanno troppi nomi ESPN diversi (FIFA Friendly, Club
+    // Friendly, International Friendly, ecc.) per un match esatto:
+    // basta la parola chiave "FRIEND" nel nome.
+    if (!mapped && raw.indexOf('FRIEND') !== -1) {
+      mapped = 'Amichevole';
+    }
     if (mapped) el.textContent = mapped;
   }
 
