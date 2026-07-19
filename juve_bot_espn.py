@@ -618,7 +618,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
         except Exception:
             return ""
 
-    def add_event(ev_type, minute, team_id, player_name, assist_name, uid, minute_disp=""):
+    def add_event(ev_type, minute, team_id, player_name, assist_name, uid, minute_disp="", period=0):
         if uid in seen_ids:
             return
         seen_ids.add(uid)
@@ -639,17 +639,26 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                 # Aggiorna minute_disp se il nuovo ha il formato recupero (contiene "+")
                 if minute_disp and "+" in minute_disp and "+" not in existing.get("minute_disp", ""):
                     existing["minute_disp"] = minute_disp
+                # Aggiorna period se prima non era noto (period=0/mancante)
+                if period and not existing.get("period"):
+                    existing["period"] = period
                 return
         # Dedup specifico sostituzioni: la stessa sostituzione può arrivare da più
         # feed ESPN (commentary + keyEvents) con uid diversi, minuto leggermente
         # diverso e participant in ordine invertito (in/out scambiati). La
         # identifico dalla COPPIA di giocatori coinvolti, indipendente dall'ordine.
         # Confronto normalizzato per tollerare differenze di accenti tra le fonti.
+        # IMPORTANTE: il confronto include anche il PERIODO (tempo di gioco), non
+        # solo il minuto: senza questo controllo un cambio al 44' di 1° tempo e uno
+        # al 45' di 2° tempo (minuti "vicini" ma tempi diversi, separati
+        # dall'intervallo) venivano erroneamente considerati lo stesso evento/slot
+        # e raggruppati insieme in un unico messaggio.
         if norm == "substitution":
             pair = frozenset((_norm_name(player_name), _norm_name(assist_name)))
             for existing in events:
                 if (existing["type"] == "substitution"
                         and existing["team_id"] == str(team_id)
+                        and existing.get("period", 0) == period
                         and abs(existing["minute"] - minute) <= 2
                         and frozenset((_norm_name(existing["player_name"]),
                                        _norm_name(existing["assist_name"]))) == pair):
@@ -663,6 +672,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             "player_name": player_name,
             "assist_name": assist_name,
             "uid":         uid,
+            "period":      period,        # 1=1°T, 2=2°T, 3/4=supplementari, 5=rigori
         })
 
     # --- FONTE 0: commentary[] testo senza play strutturato (fonte veloce) ---
@@ -786,7 +796,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
             # giusta; tenerlo qui lo farebbe contare alla squadra sbagliata.
             if period_num == 5 and not team_id:
                 continue
-            add_event(ev_type, minute, team_id, player, assist, uid, minute_disp=_mdisp)
+            add_event(ev_type, minute, team_id, player, assist, uid, minute_disp=_mdisp, period=period_num)
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore parsing commentary: {e}")
 
@@ -837,7 +847,7 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
                 if not t_id:
                     continue  # calcio non attribuibile: lo fornirà shootout[]
 
-            add_event(ev_type, minute, t_id, player, assist, uid, minute_disp=_mdisp)
+            add_event(ev_type, minute, t_id, player, assist, uid, minute_disp=_mdisp, period=period_num_ke)
         except Exception as e:
             print(f"[{now_it()}] ⚠️  Errore parsing keyEvent: {e}")
 
@@ -2404,10 +2414,15 @@ def avvia_ciclo_partita():
                 _e_out = fmt_player(e["player_name"])   # giocatore che esce
                 _e_in  = fmt_player(e["assist_name"])   # giocatore che entra
 
-                # Cerca slot già inviato per questo team + minuto compatibile (±2')
+                # Cerca slot già inviato per questo team + stesso periodo (tempo di
+                # gioco) + minuto compatibile (±2'). Il controllo sul periodo evita
+                # che un cambio al 44' di un tempo venga unito a uno al 45' del tempo
+                # successivo, separati dall'intervallo.
                 slot_key = None
                 for k, slot in state["sent_subs"].items():
-                    if k.split(":")[0] == e["team_id"] and abs(slot["minute"] - e["minute"]) <= 2:
+                    if (k.split(":")[0] == e["team_id"]
+                            and slot.get("period", 1) == e.get("period", 1)
+                            and abs(slot["minute"] - e["minute"]) <= 2):
                         slot_key = k
                         break
 
@@ -2529,7 +2544,9 @@ def avvia_ciclo_partita():
                         continue
                     slot_key = None
                     for k, slot in state["sent_subs"].items():
-                        if k.split(":")[0] == e["team_id"] and abs(slot["minute"] - e["minute"]) <= 2:
+                        if (k.split(":")[0] == e["team_id"]
+                                and slot.get("period", 1) == e.get("period", 1)
+                                and abs(slot["minute"] - e["minute"]) <= 2):
                             slot_key = k
                             break
                     if slot_key:
@@ -2588,12 +2605,15 @@ def avvia_ciclo_partita():
                 for sub in pending:
                     placed = False
                     for g in groups:
-                        if g["team_id"] == sub["team_id"] and abs(g["minute"] - sub["minute"]) <= 2:
+                        if (g["team_id"] == sub["team_id"]
+                                and g.get("period", 1) == sub.get("period", 1)
+                                and abs(g["minute"] - sub["minute"]) <= 2):
                             g["subs"].append(sub)
                             placed = True
                             break
                     if not placed:
-                        groups.append({"team_id": sub["team_id"], "minute": sub["minute"], "subs": [sub]})
+                        groups.append({"team_id": sub["team_id"], "minute": sub["minute"],
+                                        "period": sub.get("period", 1), "subs": [sub]})
 
                 for g in groups:
                     team_title = home_name.upper() if g["team_id"] == home_id else away_name.upper()
@@ -2609,10 +2629,13 @@ def avvia_ciclo_partita():
                     msg_id = send_telegram_get_id(new_text)
                     if msg_id:
                         print(f"[{now_it()}] 🔄 CAMBIO {team_title} {_min_ref}' | ↑ {ins_str} / ↓ {outs_str} → Telegram inviato")
-                        new_key = f"{g['team_id']}:{_min_ref}"
+                        # La chiave include il periodo per evitare collisioni tra
+                        # cambi allo stesso minuto "nominale" ma in tempi diversi.
+                        new_key = f"{g['team_id']}:{g.get('period', 1)}:{_min_ref}"
                         state["sent_subs"][new_key] = {
                             "msg_id":  msg_id,
                             "minute":  _min_ref,
+                            "period":  g.get("period", 1),
                             "ins":     [fmt_player(s["assist_name"]) for s in g["subs"]],
                             "outs":    [fmt_player(s["player_name"]) for s in g["subs"]],
                             "sub_ids": [s["uid"] for s in g["subs"]],
