@@ -484,13 +484,6 @@ def get_valid_token():
                     # nuovo NON è stato salvato: senza intervento manuale tutti i
                     # run futuri falliranno. Avviso subito su Telegram.
                     print(f"[{now_it()}] 🚨 Aggiornamento GitHub Secret FALLITO — il nuovo refresh token va salvato A MANO")
-                    send_telegram(
-                        "🚨 <b>ATTENZIONE — Canva</b>\n\n"
-                        "Il refresh token è stato ruotato ma il salvataggio del "
-                        "GitHub Secret <code>CANVA_REFRESH_TOKEN</code> è fallito.\n"
-                        "Aggiornalo manualmente o i prossimi run non potranno "
-                        "generare la grafica Canva."
-                    )
             else:
                 print(f"[{now_it()}] ✅ Access token Canva ottenuto (refresh token invariato)")
             return tokens["access_token"]
