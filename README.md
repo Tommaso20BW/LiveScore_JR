@@ -73,7 +73,7 @@ Tutta la logica vive in un unico script Python eseguito da un workflow GitHub Ac
                     Canva API  → slide finale (solo Juve)
 ```
 
-1. **Caccia alla partita** — all'avvio il bot scandaglia **304 competizioni** sull'API ESPN finché non trova la gara che coinvolge la Juve, oggi o domani. Le date sono calcolate sul fuso **US Eastern** (quello con cui ESPN indicizza gli eventi), così nemmeno le partite serali americane gli sfuggono.
+1. **Caccia alla partita** — all'avvio il bot scandaglia le **323 competizioni attualmente presenti in `leagues.json`** sull'API ESPN finché non trova la gara che coinvolge la Juve, oggi o domani. Le date sono calcolate sul fuso **US Eastern** (quello con cui ESPN indicizza gli eventi), così nemmeno le partite serali americane gli sfuggono.
 1. **Attesa del kickoff** — se la partita non è ancora iniziata, il bot resta in attesa controllando il feed; se al fischio mancano **più di 60 minuti** si spegne per non sprecare minuti di Actions (ci penserà un dispatch successivo).
 1. **Battito ogni 6 secondi** — dal calcio d'inizio interroga il feed live di ESPN ogni ~6 s e ne ricostruisce lo stato completo: punteggio, eventi, statistiche, persino la maglia in campo.
 1. **Notifica** — per ogni novità *reale* invia (o modifica) un messaggio Telegram in italiano.
@@ -201,8 +201,8 @@ LiveScore_JR/
 ├── juve_bot_espn.py             # Logica principale del bot
 ├── kit_analyzer.py              # Determina kit e colori maglie dai dati ESPN
 ├── scheduler_check.py           # Check partite Juve su 10 competizioni ESPN
-├── leagues.json                 # 304 competizioni: slug → { emoji, type? }
-├── teams.json                   # 677 squadre/nazionali: nome EN → [nome IT, forma breve]
+├── leagues.json                 # 323 competizioni: slug → { emoji, type? }
+├── teams.json                   # 678 squadre/nazionali: nome EN → [nome IT, forma breve]
 ├── stats.html                   # Template HTML della card statistiche
 ├── requirements.txt             # Dipendenze Python (condiviso dai workflow)
 ├── texture_black.png            # Overlay texture per i kit home/away
@@ -286,7 +286,7 @@ Da **Actions → Juventus Live Score - ESPN → Run workflow**:
 
 `Python 3.11` · `requests` · `Playwright (Chromium)` · `Pillow` · `pynacl` · `GitHub Actions` · `cron-job.org`
 
-**Fonte dati:** ESPN — endpoint pubblici `site.api.espn.com`, nessuna API key. Copertura di **304 competizioni** definite in `leagues.json` (campionati e coppe di tutto il mondo). **Localizzazione italiana** di 677 squadre e nazionali tramite `teams.json`, con forme brevi usate per gli hashtag.
+**Fonte dati:** ESPN — endpoint pubblici `site.api.espn.com`, nessuna API key. Copertura di **323 competizioni** definite in `leagues.json` (campionati e coppe di tutto il mondo). **Localizzazione italiana** di 678 squadre e nazionali tramite `teams.json`, con forme brevi usate per gli hashtag.
 
 -----
 
