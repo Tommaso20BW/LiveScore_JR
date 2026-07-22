@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout del codice
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Configura Python
         uses: actions/setup-python@v6
