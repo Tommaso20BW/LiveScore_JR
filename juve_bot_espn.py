@@ -392,6 +392,9 @@ def update_github_secret(secret_name: str, new_value: str):
     try:
         pk = SESSION.get(f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/public-key",
                          headers=headers, timeout=10).json()
+        if "key" not in pk or "key_id" not in pk:
+            print(f"[{now_it()}] ❌ Errore update GitHub secret: risposta inattesa: {pk.get('message', pk)}")
+            return False
         pub_key = public.PublicKey(pk["key"].encode("utf-8"), encoding.Base64Encoder)
         encrypted = base64.b64encode(public.SealedBox(pub_key).encrypt(new_value.encode())).decode()
         r = SESSION.put(f"https://api.github.com/repos/{GITHUB_REPOSITORY}/actions/secrets/{secret_name}",
