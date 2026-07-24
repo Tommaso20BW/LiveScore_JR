@@ -56,7 +56,14 @@ CLIENT_SECRET       = os.getenv('CANVA_CLIENT_SECRET')
 CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
-PAGINA_TARGET   = 2
+PAGINA_TARGET   = 2  # fallback / kit non determinato
+
+# Pagina del design Canva da esportare in base al kit indossato dalla Juve
+PAGINA_PER_KIT = {
+    "home":  2,
+    "away":  6,
+    "third": 10,
+}
 
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
@@ -495,14 +502,14 @@ def get_valid_token():
         print(f"[{now_it()}] ❌ Errore connessione Canva: {e}")
     return None
 
-def get_canva_image(access_token: str):
+def get_canva_image(access_token: str, pagina: int = PAGINA_TARGET):
     if not access_token:
         return None
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     try:
-        print(f"[{now_it()}] 🎨 Avvio export Canva (design={CANVA_DESIGN_ID}, pagina={PAGINA_TARGET})...")
+        print(f"[{now_it()}] 🎨 Avvio export Canva (design={CANVA_DESIGN_ID}, pagina={pagina})...")
         r = SESSION.post("https://api.canva.com/rest/v1/exports", headers=headers, json={
-            "design_id": CANVA_DESIGN_ID, "format": {"type": "png", "pages": [PAGINA_TARGET]}
+            "design_id": CANVA_DESIGN_ID, "format": {"type": "png", "pages": [pagina]}
         }, timeout=15)
         if r.status_code not in [200, 201]:
             print(f"[{now_it()}] ❌ Errore avvio export Canva: HTTP {r.status_code} — {r.text}")
@@ -2244,8 +2251,27 @@ def avvia_ciclo_partita():
                     is_juve_match = home_id == JUVE_ID or away_id == JUVE_ID
                     is_friendly   = is_friendly_competition(league_slug, league_name)
                     if is_juve_match and not is_friendly:
+                        # Kit Juve (home/away/third) dagli stessi dati ESPN già
+                        # disponibili, per scegliere la pagina Canva corretta.
+                        try:
+                            _competitors = data["header"]["competitions"][0]["competitors"]
+                        except Exception:
+                            _competitors = []
+                        _boxscore_teams = (data.get("boxscore") or {}).get("teams", [])
+                        _fallback_kit = determina_kit(home_id, away_id, league_slug, league_name)
+                        _kit_result = kit_analyzer.analizza(
+                            home_name=home_name, away_name=away_name,
+                            home_id=home_id, away_id=away_id,
+                            league_name=league_name,
+                            competitors=_competitors, boxscore_teams=_boxscore_teams,
+                            fallback_kit=_fallback_kit,
+                        )
+                        juve_kit_finale = _kit_result["kit"]
+                        pagina_canva = PAGINA_PER_KIT.get(juve_kit_finale, PAGINA_TARGET)
+                        print(f"[{now_it()}] 🎨 Kit finale rilevato: {juve_kit_finale} → pagina Canva {pagina_canva}")
+
                         canva_token = get_valid_token()
-                        foto = get_canva_image(canva_token) if canva_token else None
+                        foto = get_canva_image(canva_token, pagina_canva) if canva_token else None
                         ft_sent = send_telegram_with_photo(msg_finale, foto)
                     else:
                         if is_juve_match and is_friendly:
