@@ -1017,8 +1017,8 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         try:
             v = float(str(val).replace("%", "").strip())
             if v <= 1.0:
-                return f"{int(v*100)}%"
-            return f"{int(v)}%"
+                return f"{int(round(v*100))}%"
+            return f"{int(round(v))}%"
         except Exception:
             return str(val)
 
@@ -1027,11 +1027,13 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     pos_h     = fmt_pct(pos_h_raw)
     pos_a     = fmt_pct(pos_a_raw)
     try:
-        bp_perc = int(float(str(pos_h_raw).replace("%", "")))
+        bp_perc = float(str(pos_h_raw).replace("%", ""))
         if bp_perc <= 1:
-            bp_perc = int(bp_perc * 100)
+            bp_perc *= 100
+        bp_perc = max(0.0, min(100.0, bp_perc))
     except Exception:
-        bp_perc = 50
+        bp_perc = 50.0
+    pos_right_pct = f"{100.0 - bp_perc:.2f}%"
 
     sot_h    = g("home", "shotsOnTarget",   "shotsontarget",   fallback="0")
     sot_a    = g("away", "shotsOnTarget",   "shotsontarget",   fallback="0")
@@ -1059,7 +1061,6 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     passpct_a = fmt_pct(g("away", "passPct", "passpct",        fallback="0"))
 
     stats_mappate = [
-        ("Possesso palla",      pos_h,      pos_a,      bp_perc),
         ("Tiri in porta",       sot_h,      sot_a,      perc(sot_h,      sot_a)),
         ("Tiri",                shots_h,    shots_a,    perc(shots_h,    shots_a)),
         ("Corner",              corner_h,   corner_a,   perc(corner_h,   corner_a)),
@@ -1074,15 +1075,15 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     ]
 
     rows_html = "".join([
-        f'<div class="stat-row">'
-        f'<div class="stat-top">'
-        f'<div class="val home-val">{h}</div>'
-        f'<div class="stat-label">{label}</div>'
-        f'<div class="val away-val">{a}</div>'
+        f'<div class="row">'
+        f'<div class="row-top">'
+        f'<div class="value">{h}</div>'
+        f'<div class="label">{label}</div>'
+        f'<div class="value right">{a}</div>'
         f'</div>'
-        f'<div class="bar-track">'
-        f'<div class="bar-home" style="width:{hp}%"></div>'
-        f'<div class="bar-away" style="width:{100-hp}%"></div>'
+        f'<div class="track">'
+        f'<div class="bar-left" style="width:{hp}%"></div>'
+        f'<div class="bar-right" style="width:{100-hp}%"></div>'
         f'</div>'
         f'</div>'
         for label, h, a, hp in stats_mappate
@@ -1090,11 +1091,15 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
 
     if pen_home > 0 or pen_away > 0:
         score_block_html = (
-            f'<div class="score">{home_goals} \u2013 {away_goals}</div>'
+            f'<div class="score"><span>{home_goals}</span>'
+            f'<span class="score-separator">-</span><span>{away_goals}</span></div>'
             f'<div class="pen-score">({pen_home} - {pen_away})</div>'
         )
     else:
-        score_block_html = f'<div class="score">{home_goals} \u2013 {away_goals}</div>'
+        score_block_html = (
+            f'<div class="score"><span>{home_goals}</span>'
+            f'<span class="score-separator">-</span><span>{away_goals}</span></div>'
+        )
 
     # Carica il template HTML esterno
     _template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stats.html")
@@ -1105,22 +1110,37 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         print(f"[{now_it()}] ❌ stats.html non trovato in {_template_path}")
         return None
 
-    # Genera override CSS per il tema default:
-    # i colori dei bagliori e delle barre diventano i colori reali delle maglie.
-    # Per home/away/third i temi CSS hardcoded restano invariati.
+    # Il colore principale dei temi Juventus segue il lato reale della squadra.
+    if str(home_id) == JUVE_ID:
+        _juve_side_class = "juve-home"
+    elif str(away_id) == JUVE_ID:
+        _juve_side_class = "juve-away"
+    else:
+        _juve_side_class = "no-juve"
+
+    # Data del rendering in italiano, mostrata nel footer.
+    _mesi_it = (
+        "GENNAIO", "FEBBRAIO", "MARZO", "APRILE", "MAGGIO", "GIUGNO",
+        "LUGLIO", "AGOSTO", "SETTEMBRE", "OTTOBRE", "NOVEMBRE", "DICEMBRE",
+    )
+    _now_match = datetime.now(ITALY_TZ)
+    _match_date = f"{_now_match.day:02d} {_mesi_it[_now_match.month - 1]} {_now_match.year}"
+
+    # Nel tema default i colori delle barre e dei bagliori arrivano dalle
+    # uniform reali ESPN. Home/away/third mantengono la palette del bot.
     if juve_kit == "default":
         _home_dark = kit_analyzer.darken(home_color)
         _away_dark = kit_analyzer.darken(away_color)
         _dynamic_style = (
             f"\nbody.kit-default {{\n"
-            f"  --body-bg1:   {kit_analyzer.darken(home_color, 0.25)};\n"
-            f"  --body-bg2:   {kit_analyzer.darken(away_color, 0.25)};\n"
             f"  --body-glow1: {home_color}4D;\n"
             f"  --body-glow2: {away_color}38;\n"
-            f"  --bar-juve1:  {home_color};\n"
-            f"  --bar-juve2:  {_home_dark};\n"
-            f"  --bar-opp1:   {away_color};\n"
-            f"  --bar-opp2:   {_away_dark};\n"
+            f"  --left:       {home_color};\n"
+            f"  --left-dark:  {_home_dark};\n"
+            f"  --right:      {away_color};\n"
+            f"  --right-soft: {_away_dark};\n"
+            f"  --left-text:  #ffffff;\n"
+            f"  --right-text: #ffffff;\n"
             f"}}"
         )
     else:
@@ -1130,6 +1150,7 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     html_content = (
         template
         .replace("{JUVE_KIT}",       juve_kit)
+        .replace("{JUVE_SIDE_CLASS}", _juve_side_class)
         .replace("{DYNAMIC_STYLE}",  _dynamic_style)
         .replace("{LEAGUE_NAME}",    esc(league_name.upper()))
         .replace("{BADGE_LABEL}",    badge_label)
@@ -1138,7 +1159,11 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         .replace("{SCORE_BLOCK}",    score_block_html)
         .replace("{A_LOGO}",         a_logo)
         .replace("{AWAY_NAME}",      away_name)
+        .replace("{POS_H}",          pos_h)
+        .replace("{POS_A}",          pos_a)
+        .replace("{POS_RIGHT_PCT}",  pos_right_pct)
         .replace("{ROWS_HTML}",      rows_html)
+        .replace("{MATCH_DATE}",     _match_date)
     )
 
     path_html      = "/tmp/stats.html"

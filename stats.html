@@ -1,309 +1,133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1620px;height:2160px;overflow:hidden}
+body{--display-font:'Barlow Condensed',Arial,sans-serif;--left-text:var(--left);--right-text:var(--right);background:var(--bg);color:var(--ink);font-family:'Inter',Arial,sans-serif;position:relative}
 
-/* ── TEMA HOME: bianco/nero a strisce, accenti oro ───────────────────── */
-body.kit-home {
-  --card-bg1: rgba(248,248,245,0.98);
-  --card-bg2: rgba(228,228,222,0.98);
-  --header-border: rgba(0,0,0,0.10);
-  --league-color: #888880;
-  --badge-bg1: #c9a84c;
-  --badge-bg2: #9a7828;
-  --badge-text: #ffffff;
-  --team-name: #111111;
-  --score-color: #111111;
-  --status-color: #777770;
-  --stats-title: #777770;
-  --val-color: #111111;
-  --label-color: #444440;
-  --bar-track: rgba(0,0,0,0.08);
-  --bar-juve1: #c9a84c;
-  --bar-juve2: #9a7828;
-  --bar-opp1: #2a2a2a;
-  --bar-opp2: #0a0a0a;
-  --pen-color: #777770;
-  background:
-    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(180,180,175,0.55) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(180,180,175,0.40) 0%, transparent 65%),
-    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
-}
+/* Background e grain originali del bot. */
+body.kit-home{--bg:#efeee9;--ink:#111111;--muted:#777770;--line:rgba(0,0,0,.10);--juve-color:#c9a84c;--opp-color:#2a2a2a;--juve-text:#c9a84c;--opp-text:#2a2a2a;--card-bg1:rgba(248,248,245,.98);--card-bg2:rgba(228,228,222,.98);background:radial-gradient(ellipse 90% 60% at 10% 5%,rgba(180,180,175,.55) 0%,transparent 65%),radial-gradient(ellipse 80% 55% at 90% 95%,rgba(180,180,175,.40) 0%,transparent 65%),linear-gradient(135deg,var(--card-bg1),var(--card-bg2))}
+body.kit-away{--bg:#f4aec9;--ink:#111111;--muted:#7a2848;--line:rgba(0,0,0,.12);--juve-color:#9a3060;--opp-color:#111111;--juve-text:#8a224f;--opp-text:#111111;--card-bg1:rgba(250,185,210,.97);--card-bg2:rgba(238,160,190,.97);background:radial-gradient(ellipse 90% 60% at 10% 5%,rgba(192,48,106,.42) 0%,transparent 65%),radial-gradient(ellipse 80% 55% at 90% 95%,rgba(128,16,64,.30) 0%,transparent 65%),linear-gradient(135deg,var(--card-bg1),var(--card-bg2))}
+body.kit-third{--bg:#181818;--ink:#c9a84c;--muted:#c9a84c;--line:rgba(201,168,76,.14);--juve-color:#c9a84c;--opp-color:#484840;--juve-text:#c9a84c;--opp-text:#6a6a60;--card-bg1:rgba(28,28,28,1);--card-bg2:rgba(20,20,20,1);background:radial-gradient(ellipse 90% 60% at 10% 5%,rgba(0,0,0,.60) 0%,transparent 65%),radial-gradient(ellipse 80% 55% at 90% 95%,rgba(0,0,0,.40) 0%,transparent 65%),linear-gradient(135deg,var(--card-bg1),var(--card-bg2))}
+body.kit-default{--bg:#111827;--ink:#ffffff;--muted:#8fa1c7;--line:rgba(255,255,255,.06);--left:#1e3a8a;--left-dark:#13265a;--right:#7c3aed;--right-soft:#50269a;--left-text:#ffffff;--right-text:#ffffff;--card-bg1:rgba(17,24,39,.96);--card-bg2:rgba(10,14,28,.96);--body-glow1:#1e3a8a4D;--body-glow2:#7c3aed38;background:radial-gradient(ellipse 90% 60% at 10% 5%,var(--body-glow1) 0%,transparent 65%),radial-gradient(ellipse 80% 55% at 90% 95%,var(--body-glow2) 0%,transparent 65%),linear-gradient(135deg,var(--card-bg1),var(--card-bg2))}
 
-/* ── TEMA AWAY: rosa pieno, nero e bianco ────────────────────────────── */
-body.kit-away {
-  --card-bg1: rgba(250,185,210,0.97);
-  --card-bg2: rgba(238,160,190,0.97);
-  --header-border: rgba(0,0,0,0.12);
-  --league-color: #8a3055;
-  --badge-bg1: #111111;
-  --badge-bg2: #333333;
-  --badge-text: #f4a7c0;
-  --team-name: #111111;
-  --score-color: #111111;
-  --status-color: #7a2848;
-  --stats-title: #7a2848;
-  --val-color: #111111;
-  --label-color: #3a1020;
-  --bar-track: rgba(0,0,0,0.10);
-  --bar-juve1: #111111;
-  --bar-juve2: #333333;
-  --bar-opp1: #9a3060;
-  --bar-opp2: #6a1840;
-  --pen-color: #7a2848;
-  background:
-    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(192,48,106,0.42) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(128,16,64,0.30) 0%, transparent 65%),
-    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
-}
+/* Il colore principale segue sempre il lato in cui si trova la Juventus. */
+body.juve-home:not(.kit-default){--left:var(--juve-color);--left-dark:var(--juve-color);--left-text:var(--juve-text);--right:var(--opp-color);--right-soft:var(--opp-color);--right-text:var(--opp-text)}
+body.juve-away:not(.kit-default){--left:var(--opp-color);--left-dark:var(--opp-color);--left-text:var(--opp-text);--right:var(--juve-color);--right-soft:var(--juve-color);--right-text:var(--juve-text)}
 
-/* ── TEMA THIRD: nero, accenti oro, testi tutti oro ──────────────────── */
-body.kit-third {
-  --card-bg1: rgba(28,28,28,1);
-  --card-bg2: rgba(20,20,20,1);
-  --header-border: rgba(201,168,76,0.14);
-  --league-color: #c9a84c;
-  --badge-bg1: #c9a84c;
-  --badge-bg2: #9a7828;
-  --badge-text: #0a0800;
-  --team-name: #c9a84c;
-  --score-color: #c9a84c;
-  --status-color: #c9a84c;
-  --stats-title: #c9a84c;
-  --val-color: #c9a84c;
-  --label-color: #c9a84c;
-  --bar-track: rgba(201,168,76,0.10);
-  --bar-juve1: #c9a84c;
-  --bar-juve2: #9a7828;
-  --bar-opp1: #484840;
-  --bar-opp2: #282820;
-  --pen-color: #c9a84c;
-  background:
-    radial-gradient(ellipse 90% 60% at 10% 5%, rgba(0,0,0,0.60) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 55% at 90% 95%, rgba(0,0,0,0.40) 0%, transparent 65%),
-    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
-}
-
-/* ── TEMA DEFAULT: neutro blu/viola ─────────────────────────────────── */
-body.kit-default {
-  --card-bg1: rgba(17,24,39,0.96);
-  --card-bg2: rgba(10,14,28,0.96);
-  --header-border: rgba(255,255,255,0.06);
-  --league-color: #7c8cb5;
-  --badge-bg1: #facc15;
-  --badge-bg2: #f59e0b;
-  --badge-text: #111827;
-  --team-name: #ffffff;
-  --score-color: #ffffff;
-  --status-color: #8fa1c7;
-  --stats-title: #91a4d0;
-  --val-color: #ffffff;
-  --label-color: #b4c0df;
-  --bar-track: rgba(255,255,255,0.06);
-  --bar-juve1: #60a5fa;
-  --bar-juve2: #2563eb;
-  --bar-opp1: #ef4444;
-  --bar-opp2: #dc2626;
-  --pen-color: #8fa1c7;
-  background:
-    radial-gradient(ellipse 90% 60% at 10% 5%, var(--body-glow1) 0%, transparent 65%),
-    radial-gradient(ellipse 80% 55% at 90% 95%, var(--body-glow2) 0%, transparent 65%),
-    linear-gradient(135deg, var(--card-bg1), var(--card-bg2));
-}
-
-/* ── LAYOUT ──────────────────────────────────────────────────────────── */
-html, body { width: 1620px; height: 2160px; overflow: hidden; }
-body { font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
-
-/* Effetto grain */
-body::after, body::before {
-  content: "";
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 9999;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
-}
-body::after  { opacity: 0.10; mix-blend-mode: multiply; }
-body::before { opacity: 0.06; mix-blend-mode: screen; }
-
-.header {
-  padding: 60px 90px 45px;
-  border-bottom: 2px solid var(--header-border);
-  flex-shrink: 0;
-}
-.league-row {
-  text-align: center;
-  color: var(--league-color);
-  font-size: 28px;
-  letter-spacing: 5px;
-  text-transform: uppercase;
-  font-weight: 700;
-  margin-bottom: 28px;
-}
-.badge {
-  width: fit-content;
-  margin: 0 auto 32px;
-  padding: 14px 40px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--badge-bg1), var(--badge-bg2));
-  color: var(--badge-text);
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-}
-.teams-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-}
-.team { width: 320px; text-align: center; }
-.logo { width: 160px; height: 160px; object-fit: contain; display: block; margin: 0 auto 22px; }
-.team-name { color: var(--team-name); font-weight: 800; font-size: 36px; }
-.score-wrap { text-align: center; }
-.score {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 180px;
-  line-height: 0.85;
-  font-weight: 900;
-  color: var(--score-color);
-  letter-spacing: -4px;
-}
-.pen-score {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 44px;
-  line-height: 1.1;
-  font-weight: 700;
-  color: var(--pen-color);
-  text-align: center;
-  margin-top: 8px;
-}
-.match-status {
-  margin-top: 18px;
-  color: var(--status-color);
-  font-size: 24px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-.stats-body {
-  flex: 1;
-  padding: 0 90px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-}
-.stats-title {
-  text-align: center;
-  color: var(--stats-title);
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-}
-.stat-row { }
-.stat-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-.val {
-  width: 130px;
-  color: var(--val-color);
-  font-weight: 900;
-  font-size: 42px;
-  font-family: 'Barlow Condensed', sans-serif;
-}
-.home-val { text-align: left; }
-.away-val { text-align: right; }
-.stat-label { color: var(--label-color); font-size: 28px; font-weight: 700; }
-.bar-track {
-  position: relative;
-  height: 18px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--bar-track);
-}
-.bar-home, .bar-away { position: absolute; top: 0; height: 100%; }
-.bar-home { left: 0; background: linear-gradient(90deg, var(--bar-juve1), var(--bar-juve2)); }
-.bar-away { right: 0; background: linear-gradient(90deg, var(--bar-opp1), var(--bar-opp2)); }
-
-/* ── Override dinamico colori maglie (solo kit-default, iniettato da kit_analyzer) ── */
+/* Override dinamico del bot per il tema default. */
 {DYNAMIC_STYLE}
+
+/* Effetto grain originale del bot. */
+body::after,body::before{content:"";position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:180px 180px}
+body::after{opacity:.10;mix-blend-mode:multiply}
+body::before{opacity:.06;mix-blend-mode:screen}
+
+.page{height:100%;padding:64px 82px 70px;position:relative;z-index:2}
+.top{height:86px;display:flex;align-items:center;border-bottom:2px solid var(--line)}
+.league{font-size:23px;font-weight:800;letter-spacing:5px;text-transform:uppercase}
+
+.match{height:260px;display:grid;grid-template-columns:minmax(0,1fr) 330px minmax(0,1fr);align-items:center}
+.team{display:grid;align-items:center;gap:24px;min-width:0}
+.team:first-child{grid-template-columns:126px minmax(0,1fr)}
+.team:last-child{grid-template-columns:minmax(0,1fr) 126px;text-align:right}
+.team>div{min-width:0;overflow:hidden}
+.logo{width:126px;height:134px;object-fit:contain}
+.team-name{font-family:var(--display-font);font-size:50px;font-weight:900;text-transform:uppercase;white-space:nowrap;line-height:1;display:block}
+.side{font-size:15px;font-weight:800;letter-spacing:4px;color:var(--muted);text-transform:uppercase;margin-top:9px}
+.scorebox{text-align:center}
+.score{width:260px;margin:0 auto;font-family:var(--display-font);font-size:136px;line-height:.8;font-weight:900;display:grid;grid-template-columns:1fr 56px 1fr;align-items:center}
+.score>span:first-child{text-align:right}
+.score>span:last-child{text-align:left}
+.score-separator{font-size:.62em;font-weight:900;margin:0;text-align:center;transform:translateY(-2px)}
+.pen-score{font-family:var(--display-font);font-size:34px;line-height:1;font-weight:400;color:var(--muted);margin-top:12px}
+.status{width:260px;margin:16px auto 0;padding-left:4px;font-size:15px;font-weight:900;letter-spacing:4px;color:var(--muted);text-align:center;text-transform:uppercase}
+
+.possession{height:420px;margin-top:-70px;display:grid;grid-template-columns:1fr 360px 1fr;align-items:center;border-bottom:2px solid var(--line)}
+.pos-value{font-family:var(--display-font);font-size:100px;line-height:1;font-weight:400}
+.left-pos{text-align:right;padding-right:32px;color:var(--left-text)}
+.right-pos{padding-left:32px;color:var(--right-text)}
+.ring{--right-pos:{POS_RIGHT_PCT};width:320px;height:320px;border-radius:50%;margin:auto;background:conic-gradient(from 0deg,var(--right) 0 var(--right-pos),var(--left) var(--right-pos) 100%);position:relative}
+.ring::before{content:"";position:absolute;inset:37px;border-radius:50%;background:var(--bg)}
+.ring-label{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:20px;line-height:1.2;font-weight:400;letter-spacing:1px;text-transform:uppercase}
+
+.stats{height:1280px;padding:30px 110px 14px;display:flex;flex-direction:column}
+.stats-title{text-align:center;font-size:19px;font-weight:900;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px}
+.row{flex:1;border-top:1px solid var(--line);display:grid;grid-template-columns:100px minmax(0,928px) 100px;grid-template-rows:auto 64px;column-gap:36px;align-content:center;justify-content:center}
+.row-top{display:contents}
+.value{grid-row:2;align-self:center;font-family:var(--display-font);font-size:52px;line-height:1;font-weight:400;text-align:right;font-variant-numeric:tabular-nums}
+.value:first-child{grid-column:1;color:var(--left-text)}
+.value.right{grid-column:3;text-align:left;color:var(--right-text)}
+.label{grid-column:2;grid-row:1;position:relative;z-index:5;transform:translateY(12px);text-align:center;font-size:25px;line-height:1;font-weight:400}
+.track{grid-column:2;grid-row:2;align-self:center;width:100%;height:10px;background:var(--line);position:relative;overflow:hidden}
+.track::after{content:"";position:absolute;z-index:4;left:50%;top:-5px;width:4px;height:20px;background:var(--bg)}
+.bar-left,.bar-right{position:absolute;top:0;height:100%}
+.bar-left{left:0;background:linear-gradient(90deg,var(--left),var(--left-dark))}
+.bar-right{right:0;background:linear-gradient(90deg,var(--right-soft),var(--right))}
+body.kit-home .bar-left,body.kit-away .bar-left,body.kit-third .bar-left{background:var(--left)}
+body.kit-home .bar-right,body.kit-away .bar-right,body.kit-third .bar-right{background:var(--right)}
+
+.foot{height:50px;display:flex;align-items:end;justify-content:space-between;font-size:12px;font-weight:800;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+
+@media(max-width:1000px){html{width:810px;height:1080px}body{width:1620px;height:2160px;transform:scale(.5);transform-origin:top left}}
 </style>
 </head>
-<body class="kit-{JUVE_KIT}">
-  <div class="header">
-    <div class="league-row">{LEAGUE_NAME}</div>
-    <div class="badge">{BADGE_LABEL}</div>
-    <div class="teams-row">
-      <div class="team">
-        <img src="{H_LOGO}" class="logo">
-        <div class="team-name">{HOME_NAME}</div>
-      </div>
-      <div class="score-wrap">
-        {SCORE_BLOCK}
-        <div class="match-status">LIVE STATS</div>
-      </div>
-      <div class="team">
-        <img src="{A_LOGO}" class="logo">
-        <div class="team-name">{AWAY_NAME}</div>
-      </div>
+<body class="kit-{JUVE_KIT} {JUVE_SIDE_CLASS}">
+<main class="page">
+  <header class="top"><div class="league">{LEAGUE_NAME}</div></header>
+  <section class="match">
+    <div class="team">
+      <img class="logo" src="{H_LOGO}" alt="{HOME_NAME}">
+      <div><div class="team-name">{HOME_NAME}</div><div class="side">Casa</div></div>
     </div>
-  </div>
-  <div class="stats-body">
-    <div class="stats-title">STATISTICHE ANALITICHE</div>
+    <div class="scorebox">{SCORE_BLOCK}<div class="status">{BADGE_LABEL}</div></div>
+    <div class="team">
+      <div><div class="team-name">{AWAY_NAME}</div><div class="side">Trasferta</div></div>
+      <img class="logo" src="{A_LOGO}" alt="{AWAY_NAME}">
+    </div>
+  </section>
+  <section class="possession">
+    <div class="pos-value left-pos">{POS_H}</div>
+    <div class="ring"><div class="ring-label">Possesso<br>palla</div></div>
+    <div class="pos-value right-pos">{POS_A}</div>
+  </section>
+  <section class="stats">
+    <div class="stats-title">Statistiche della partita</div>
     {ROWS_HTML}
-  </div>
+  </section>
+  <footer class="foot"><span>JR - STATS LIVE</span><span>{MATCH_DATE}</span></footer>
+</main>
 <script>
 (function(){
-  // Rimappa i nomi ESPN (inglese) → nomi italiani corretti
-  var leagueMap = {
-    'ITALIAN SERIE A':                 'Serie A',
-    'ITALY SERIE A':                   'Serie A',
-    'SERIE A TIM':                     'Serie A',
-    'ITALIAN COPPA ITALIA':            'Coppa Italia',
-    'ITALY COPPA ITALIA':              'Coppa Italia',
-    'COPPA ITALIA FRECCIAROSSA':       'Coppa Italia',
-    'ITALIAN SUPERCOPPA':              'Supercoppa Italiana',
-    'ITALY SUPERCOPPA':                'Supercoppa Italiana',
-    'UEFA CHAMPIONS LEAGUE':           'Champions League',
-    'UEFA EUROPA LEAGUE':              'Europa League',
-    'UEFA EUROPA CONFERENCE LEAGUE':   'Conference League',
-    'UEFA SUPER CUP':                  'Supercoppa UEFA',
-    'FIFA CLUB WORLD CUP':             'Mondiale per Club',
-    'FIFA INTERCONTINENTAL CUP':       'Coppa Intercontinentale'
+  var leagueMap={
+    'ITALIAN SERIE A':'Serie A','ITALY SERIE A':'Serie A','SERIE A TIM':'Serie A',
+    'ITALIAN COPPA ITALIA':'Coppa Italia','ITALY COPPA ITALIA':'Coppa Italia',
+    'COPPA ITALIA FRECCIAROSSA':'Coppa Italia','ITALIAN SUPERCOPPA':'Supercoppa Italiana',
+    'ITALY SUPERCOPPA':'Supercoppa Italiana','UEFA CHAMPIONS LEAGUE':'Champions League',
+    'UEFA EUROPA LEAGUE':'Europa League','UEFA EUROPA CONFERENCE LEAGUE':'Conference League',
+    'UEFA SUPER CUP':'Supercoppa UEFA','FIFA CLUB WORLD CUP':'Mondiale per Club',
+    'FIFA INTERCONTINENTAL CUP':'Coppa Intercontinentale'
   };
-  var el = document.querySelector('.league-row');
-  if (el) {
-    var raw    = el.textContent.trim().toUpperCase();
-    var mapped = leagueMap[raw];
-    // Le amichevoli hanno troppi nomi ESPN diversi (FIFA Friendly, Club
-    // Friendly, International Friendly, ecc.) per un match esatto:
-    // basta la parola chiave "FRIEND" nel nome.
-    if (!mapped && raw.indexOf('FRIEND') !== -1) {
-      mapped = 'Amichevole';
-    }
-    if (mapped) el.textContent = mapped;
+  var league=document.querySelector('.league');
+  if(league){
+    var raw=league.textContent.trim().toUpperCase();
+    var mapped=leagueMap[raw];
+    if(!mapped&&raw.indexOf('FRIEND')!==-1)mapped='Amichevole';
+    if(mapped)league.textContent=mapped;
   }
 
-  // Fallback kit se la classe non è stata impostata
-  var b = document.body;
-  if (!b.classList.contains('kit-home') &&
-      !b.classList.contains('kit-away') &&
-      !b.classList.contains('kit-third') &&
-      !b.classList.contains('kit-default')) {
-    b.classList.add('kit-home');
+  var names=Array.prototype.slice.call(document.querySelectorAll('.team-name'));
+  var size=50;
+  names.forEach(function(name){name.style.fontSize=size+'px';});
+  while(size>25&&names.some(function(name){return name.scrollWidth>name.parentElement.clientWidth;})){
+    size-=1;
+    names.forEach(function(name){name.style.fontSize=size+'px';});
   }
 })();
 </script>
