@@ -23,9 +23,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Configura Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
       - name: Controlla se c'e' una partita della Juve in arrivo
         id: check
-        run: python3 -u scheduler_check.py
+        run: python -u scheduler_check.py
 
       - name: Verifica che il bot non sia gia' in esecuzione
         id: running
