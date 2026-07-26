@@ -49,7 +49,8 @@ body::before{opacity:.06;mix-blend-mode:screen}
 .pen-score{font-family:var(--display-font);font-size:34px;line-height:1;font-weight:400;color:var(--muted);margin-top:12px}
 .status{width:260px;margin:16px auto 0;padding-left:4px;font-size:15px;font-weight:900;letter-spacing:4px;color:var(--muted);text-align:center;text-transform:uppercase}
 
-.possession{height:420px;margin-top:-70px;display:grid;grid-template-columns:1fr 360px 1fr;align-items:center;border-bottom:2px solid var(--line)}
+.stats-heading{height:70px;padding-bottom:20px;border-top:2px solid var(--line);display:flex;align-items:flex-end;justify-content:center}
+.possession{height:360px;display:grid;grid-template-columns:1fr 360px 1fr;align-items:center}
 .pos-value{font-family:var(--display-font);font-size:100px;line-height:1;font-weight:400}
 .left-pos{text-align:right;padding-right:32px;color:var(--left-text)}
 .right-pos{padding-left:32px;color:var(--right-text)}
@@ -58,8 +59,8 @@ body::before{opacity:.06;mix-blend-mode:screen}
 .ring::before{content:"";position:absolute;inset:37px;border-radius:50%;background:var(--bg)}
 .ring-label{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:20px;line-height:1.2;font-weight:400;letter-spacing:1px;text-transform:uppercase}
 
-.stats{height:1280px;padding:30px 110px 14px;display:flex;flex-direction:column}
-.stats-title{text-align:center;font-size:19px;font-weight:900;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px}
+.stats{height:1200px;padding:0 110px 14px;display:flex;flex-direction:column}
+.stats-title{text-align:center;font-size:19px;font-weight:900;letter-spacing:4px;text-transform:uppercase}
 .row{flex:1;border-top:1px solid var(--line);display:grid;grid-template-columns:100px minmax(0,928px) 100px;grid-template-rows:auto 64px;column-gap:36px;align-content:center;justify-content:center}
 .row-top{display:contents}
 .value{grid-row:2;align-self:center;font-family:var(--display-font);font-size:52px;line-height:1;font-weight:400;text-align:right;font-variant-numeric:tabular-nums}
@@ -94,13 +95,13 @@ body.kit-home .bar-right,body.kit-away .bar-right,body.kit-third .bar-right{back
       <img class="logo" src="{A_LOGO}" alt="{AWAY_NAME}">
     </div>
   </section>
+  <div class="stats-heading"><div class="stats-title">Statistiche della partita</div></div>
   <section class="possession">
     <div class="pos-value left-pos">{POS_H}</div>
     <div class="ring{POS_RING_CLASS}"><div class="ring-label">Possesso<br>palla</div></div>
     <div class="pos-value right-pos">{POS_A}</div>
   </section>
   <section class="stats">
-    <div class="stats-title">Statistiche della partita</div>
     {ROWS_HTML}
   </section>
   <footer class="foot"><span>JR - STATS LIVE</span><span>{MATCH_DATE}</span></footer>
