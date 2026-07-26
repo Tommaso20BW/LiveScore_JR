@@ -1009,9 +1009,10 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         try:
             h = float(str(h_val).replace("%", "").strip())
             a = float(str(a_val).replace("%", "").strip())
-            return 50 if (h + a) == 0 else int(h / (h + a) * 100)
+            total = h + a
+            return None if total == 0 else int(h / total * 100)
         except Exception:
-            return 50
+            return None
 
     def fmt_pct(val):
         try:
@@ -1034,6 +1035,7 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     except Exception:
         bp_perc = 50.0
     pos_right_pct = f"{100.0 - bp_perc:.2f}%"
+    pos_ring_class = " has-split" if 0.0 < bp_perc < 100.0 else ""
 
     sot_h    = g("home", "shotsOnTarget",   "shotsontarget",   fallback="0")
     sot_a    = g("away", "shotsOnTarget",   "shotsontarget",   fallback="0")
@@ -1074,20 +1076,33 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
             str(passpct_h).replace("%",""), str(passpct_a).replace("%",""))),
     ]
 
-    rows_html = "".join([
-        f'<div class="row">'
-        f'<div class="row-top">'
-        f'<div class="value">{h}</div>'
-        f'<div class="label">{label}</div>'
-        f'<div class="value right">{a}</div>'
-        f'</div>'
-        f'<div class="track">'
-        f'<div class="bar-left" style="width:{hp}%"></div>'
-        f'<div class="bar-right" style="width:{100-hp}%"></div>'
-        f'</div>'
-        f'</div>'
+    def render_stat_row(label, h, a, hp):
+        if hp is None:
+            track_html = '<div class="track is-empty"></div>'
+        else:
+            hp = max(0, min(100, hp))
+            split_class = " has-split" if 0 < hp < 100 else ""
+            track_html = (
+                f'<div class="track{split_class}" style="--split:{hp}%">'
+                f'<div class="bar-left" style="width:{hp}%"></div>'
+                f'<div class="bar-right" style="width:{100-hp}%"></div>'
+                f'</div>'
+            )
+        return (
+            f'<div class="row">'
+            f'<div class="row-top">'
+            f'<div class="value">{h}</div>'
+            f'<div class="label">{label}</div>'
+            f'<div class="value right">{a}</div>'
+            f'</div>'
+            f'{track_html}'
+            f'</div>'
+        )
+
+    rows_html = "".join(
+        render_stat_row(label, h, a, hp)
         for label, h, a, hp in stats_mappate
-    ])
+    )
 
     if pen_home > 0 or pen_away > 0:
         score_block_html = (
@@ -1162,6 +1177,7 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         .replace("{POS_H}",          pos_h)
         .replace("{POS_A}",          pos_a)
         .replace("{POS_RIGHT_PCT}",  pos_right_pct)
+        .replace("{POS_RING_CLASS}", pos_ring_class)
         .replace("{ROWS_HTML}",      rows_html)
         .replace("{MATCH_DATE}",     _match_date)
     )
