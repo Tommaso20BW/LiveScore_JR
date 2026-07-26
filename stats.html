@@ -53,7 +53,8 @@ body::before{opacity:.06;mix-blend-mode:screen}
 .pos-value{font-family:var(--display-font);font-size:100px;line-height:1;font-weight:400}
 .left-pos{text-align:right;padding-right:32px;color:var(--left-text)}
 .right-pos{padding-left:32px;color:var(--right-text)}
-.ring{--right-pos:{POS_RIGHT_PCT};width:320px;height:320px;border-radius:50%;margin:auto;background:conic-gradient(from 0deg,var(--right) 0 var(--right-pos),var(--left) var(--right-pos) 100%);position:relative}
+.ring{--right-pos:{POS_RIGHT_PCT};--ring-gap:.24%;width:320px;height:320px;border-radius:50%;margin:auto;background:conic-gradient(from 0deg,var(--right) 0 var(--right-pos),var(--left) var(--right-pos) 100%);position:relative}
+.ring.has-split{background:conic-gradient(from 0deg,var(--bg) 0 var(--ring-gap),var(--right) var(--ring-gap) calc(var(--right-pos) - var(--ring-gap)),var(--bg) calc(var(--right-pos) - var(--ring-gap)) calc(var(--right-pos) + var(--ring-gap)),var(--left) calc(var(--right-pos) + var(--ring-gap)) calc(100% - var(--ring-gap)),var(--bg) calc(100% - var(--ring-gap)) 100%)}
 .ring::before{content:"";position:absolute;inset:37px;border-radius:50%;background:var(--bg)}
 .ring-label{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:20px;line-height:1.2;font-weight:400;letter-spacing:1px;text-transform:uppercase}
 
@@ -66,7 +67,8 @@ body::before{opacity:.06;mix-blend-mode:screen}
 .value.right{grid-column:3;text-align:left;color:var(--right-text)}
 .label{grid-column:2;grid-row:1;position:relative;z-index:5;transform:translateY(12px);text-align:center;font-size:25px;line-height:1;font-weight:400}
 .track{grid-column:2;grid-row:2;align-self:center;width:100%;height:10px;background:var(--line);position:relative;overflow:hidden}
-.track::after{content:"";position:absolute;z-index:4;left:50%;top:-5px;width:4px;height:20px;background:var(--bg)}
+.track.has-split::after{content:"";position:absolute;z-index:4;left:var(--split);top:0;width:3px;height:100%;background:var(--bg);transform:translateX(-50%)}
+.track.is-empty .bar-left,.track.is-empty .bar-right{display:none}
 .bar-left,.bar-right{position:absolute;top:0;height:100%}
 .bar-left{left:0;background:linear-gradient(90deg,var(--left),var(--left-dark))}
 .bar-right{right:0;background:linear-gradient(90deg,var(--right-soft),var(--right))}
@@ -94,7 +96,7 @@ body.kit-home .bar-right,body.kit-away .bar-right,body.kit-third .bar-right{back
   </section>
   <section class="possession">
     <div class="pos-value left-pos">{POS_H}</div>
-    <div class="ring"><div class="ring-label">Possesso<br>palla</div></div>
+    <div class="ring{POS_RING_CLASS}"><div class="ring-label">Possesso<br>palla</div></div>
     <div class="pos-value right-pos">{POS_A}</div>
   </section>
   <section class="stats">
