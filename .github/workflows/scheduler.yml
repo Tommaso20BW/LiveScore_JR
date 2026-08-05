@@ -1,24 +1,25 @@
 name: Match Scheduler
 
-# Nessun trigger `schedule`: il cron di GitHub e' inaffidabile (ritardi di ore).
-# Questo workflow viene lanciato via API da cron-job.org ogni 30 minuti
-# nella fascia oraria delle partite.
+# Nessun trigger schedule: il cron di GitHub può subire ritardi.
+# Questo workflow viene lanciato via API da cron-job.org ogni 30 minuti.
+
 on:
   workflow_dispatch:
 
-# Evita check sovrapposti se cron-job.org dovesse fare retry ravvicinati
+# Evita controlli sovrapposti se cron-job.org effettua retry ravvicinati.
 concurrency:
   group: match-scheduler
   cancel-in-progress: true
 
 permissions:
-  actions: write   # serve per dispatchare il workflow principale
+  actions: write
   contents: read
 
 jobs:
   check-and-dispatch:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -26,7 +27,12 @@ jobs:
       - name: Configura Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.14'
+          python-version: "3.14"
+
+      - name: Installa requests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install requests
 
       - name: Controlla se c'e' una partita della Juve in arrivo
         id: check
@@ -38,45 +44,70 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Conta i run attivi/in coda del workflow principale.
-          # NB: sostituisci "main_espn.yml" con il nome reale del file
-          # del tuo workflow principale se diverso.
+          # Conta i run attivi e in coda del workflow principale.
           ACTIVE=$(gh api \
             "repos/${{ github.repository }}/actions/workflows/main_espn.yml/runs?status=in_progress" \
             --jq '.total_count')
+
           QUEUED=$(gh api \
             "repos/${{ github.repository }}/actions/workflows/main_espn.yml/runs?status=queued" \
             --jq '.total_count')
+
           TOTAL=$((ACTIVE + QUEUED))
+
           echo "Run attivi o in coda: $TOTAL"
-          echo "already_running=$([ "$TOTAL" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+          if [ "$TOTAL" -gt 0 ]; then
+            echo "already_running=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_running=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Lancia il bot LiveScore
-        if: steps.check.outputs.dispatch == 'true' && steps.running.outputs.already_running == 'false'
+        if: >
+          steps.check.outputs.dispatch == 'true' &&
+          steps.running.outputs.already_running == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "Dispatch per: ${{ steps.check.outputs.match_name }}"
           echo "Kickoff: ${{ steps.check.outputs.kickoff }}"
-          # NB: nessun input extra — main_espn.yml dichiara solo team_id e
-          # channel; passare input non dichiarati fa fallire il dispatch (422).
-          # L'attesa fino al kickoff la gestisce il bot internamente.
+          echo "Competizione: ${{ steps.check.outputs.league }}"
+
+          # L'attesa fino al kickoff viene gestita internamente dal bot.
           gh workflow run main_espn.yml \
             --repo "${{ github.repository }}"
+
+      - name: Bot gia' in esecuzione
+        if: >
+          steps.check.outputs.dispatch == 'true' &&
+          steps.running.outputs.already_running == 'true'
+        run: |
+          echo "Il bot LiveScore e' gia' attivo o in coda."
+          echo "Nessun nuovo dispatch necessario."
+
+      - name: Nessuna partita da avviare
+        if: steps.check.outputs.dispatch != 'true'
+        run: |
+          echo "Nessuna partita della Juventus nella finestra di avvio."
 
       - name: Pulisci la cronologia dei run dello scheduler
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-          KEEP: "0"   # 0 = cancella TUTTI i run precedenti; resta visibile solo quello in corso
-                      # (un run non puo' cancellare se' stesso mentre gira: limite di GitHub)
+          KEEP: "0"
         run: |
-          # Cancella i run COMPLETATI di questo stesso workflow (Match Scheduler),
-          # tenendo solo gli ultimi $KEEP. Non tocca i run del bot principale.
-          gh api "repos/${{ github.repository }}/actions/workflows/scheduler.yml/runs?status=completed&per_page=100" \
+          # Cancella i run completati di questo workflow.
+          # Il run attualmente in esecuzione non può cancellare se stesso.
+          gh api \
+            "repos/${{ github.repository }}/actions/workflows/scheduler.yml/runs?status=completed&per_page=100" \
             --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
           while read -r RUN_ID; do
-            echo "Elimino run $RUN_ID"
-            gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$RUN_ID" || true
+            if [ -n "$RUN_ID" ]; then
+              echo "Elimino run $RUN_ID"
+              gh api -X DELETE \
+                "repos/${{ github.repository }}/actions/runs/$RUN_ID" || true
+            fi
           done
+
           echo "Pulizia completata."
