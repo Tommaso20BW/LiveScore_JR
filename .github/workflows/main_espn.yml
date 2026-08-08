@@ -1,5 +1,5 @@
 name: Juventus Live Score - ESPN
- 
+
 on:
   workflow_dispatch:
     inputs:
@@ -23,16 +23,16 @@ permissions:
 concurrency:
   group: juve-live-bot
   cancel-in-progress: false
- 
+
 jobs:
   live-score:
     runs-on: ubuntu-latest
     timeout-minutes: 240
- 
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
- 
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -52,11 +52,12 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
           playwright install-deps chromium
- 
+
       - name: Run Live Score Bot
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Test JR' && secrets.TELEGRAM_TO_TEST || secrets.TELEGRAM_TO }}
+          TELEGRAM_TO_TEST:     ${{ secrets.TELEGRAM_TO_TEST }}
           GH_PAT:               ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
           GIST_ID:              ${{ secrets.GIST_ID }}
@@ -64,7 +65,7 @@ jobs:
           CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           TEAM_ID:              ${{ github.event.inputs.team_id || '111' }}
-        run: python -u juve_bot_espn.py
+        run: python -u livescore_runner.py
 
       - name: Pulisci la cronologia dei run
         if: always()
