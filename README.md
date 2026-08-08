@@ -2,305 +2,244 @@
 
 # ⚡ LiveScore JR
 
-**Bot Telegram che racconta in diretta, evento per evento, le partite della Juventus.**
+**Bot Telegram che segue in diretta le partite della Juventus, evento per evento.**
 
-Gira interamente su **GitHub Actions** — nessun server, nessun database, nessun costo di hosting.
-**Completamente autonomo**: trova da solo le partite e si avvia tra i 30 e i 60 minuti prima del kickoff.
-
-`Python 3.11` · `ESPN API` · `Playwright` · `Canva API` · `GitHub Gist` · `cron-job.org`
+[![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Live score](https://github.com/Tommaso20BW/LiveScore_JR/actions/workflows/main_espn.yml/badge.svg)](https://github.com/Tommaso20BW/LiveScore_JR/actions/workflows/main_espn.yml)
+[![Scheduler](https://github.com/Tommaso20BW/LiveScore_JR/actions/workflows/scheduler.yml/badge.svg)](https://github.com/Tommaso20BW/LiveScore_JR/actions/workflows/scheduler.yml)
 
 </div>
 
------
+## Panoramica
 
-## Indice
+LiveScore JR trova una partita, attende il calcio d'inizio, interroga ESPN durante il live e pubblica su Telegram soltanto gli eventi non ancora notificati.
 
-- [Cos'è](#cosè)
-- [Come funziona](#come-funziona)
-- [Avvio automatico (scheduler)](#avvio-automatico-scheduler)
-- [Eventi tracciati](#eventi-tracciati)
-- [Card statistiche](#card-statistiche)
-- [Tema maglia dinamico](#tema-maglia-dinamico)
-- [Slide finale Canva](#slide-finale-canva)
-- [Architettura](#architettura)
-- [Struttura del repository](#struttura-del-repository)
-- [Configurazione](#configurazione)
-- [Avvio](#avvio)
-- [Stack tecnico](#stack-tecnico)
-- [Limitazioni note](#limitazioni-note)
-
------
-
-## Cos'è
-
-LiveScore JR monitora automaticamente la partita della Juventus e pubblica su un canale Telegram tutti gli aggiornamenti in tempo reale: calcio d'inizio, gol (con marcatore e assist), sostituzioni, cartellini rossi, rigori sbagliati, gol annullati dal VAR, **minuti di recupero**, transizioni di stato (intervallo, supplementari, lotteria dei rigori) e **card statistiche grafiche** a fine primo tempo e a fine partita. Al fischio finale, se in campo c'è la Juve, invia anche una **slide personalizzata** esportata dalla Canva API.
-
-Tutta la logica vive in un unico script Python eseguito da un workflow GitHub Actions: il bot si avvia, trova la partita, la segue fino al triplice fischio e poi si spegne da solo. Grazie allo **scheduler automatico**, non serve nemmeno più avviarlo a mano: il sistema rileva da solo le partite in calendario e accende il bot con un anticipo compreso tra 30 e 60 minuti sul fischio d'inizio.
-
------
-
-## Come funziona
-
-```
-   ┌──────────────────┐   POST /dispatches    ┌──────────────────────┐
-   │   cron-job.org    │ ───────────────────▶ │   scheduler.yml       │
-   │  (ogni 30 min,    │    (puntuale)         │  c'è una partita      │
-   │   :00 e :30)      │                       │  Juve entro 60 min?   │
-   └──────────────────┘                       └──────────┬───────────┘
-                                                  sì, dispatch │
-                                                              ▼
-                ┌──────────────────────┐
-                │   GitHub Actions      │  ← automatico (o manuale)
-                │   main_espn.yml       │  avvia subito il bot
-                └──────────┬───────────┘
-                           │
-                           ▼
-        ┌──────────────────────────────────────┐
-        │           juve_bot_espn.py            │
-        │  1. trova la partita di oggi/domani   │
-        │  2. attende internamente il kickoff   │
-        │  3. polling del feed ESPN ogni ~6 s   │
-        │  4. confronta lo stato e notifica     │
-        └───┬────────────┬───────────┬──────────┘
-            │            │           │
-            ▼            ▼           ▼
-        ┌────────┐  ┌─────────┐  ┌──────────┐
-        │ ESPN   │  │ GitHub  │  │ Telegram │
-        │ API    │  │ Gist    │  │ Bot API  │
-        │ (dati) │  │ (stato) │  │ (output) │
-        └────────┘  └─────────┘  └──────────┘
-                         ▲
-                    Canva API  → slide finale (solo Juve)
+```text
+cron-job.org
+      ↓
+scheduler.yml → scheduler_check.py
+      ↓
+main_espn.yml → livescore_runner.py → juve_bot_espn.py
+                                      ├─ ESPN: calendario e live
+                                      ├─ GitHub Gist: stato
+                                      ├─ Telegram: messaggi e card
+                                      └─ Canva: immagine finale
 ```
 
-1. **Caccia alla partita** — all'avvio il bot scandaglia le **323 competizioni attualmente presenti in `leagues.json`** sull'API ESPN finché non trova la gara che coinvolge la Juve, oggi o domani. Le date sono calcolate sul fuso **US Eastern** (quello con cui ESPN indicizza gli eventi), così nemmeno le partite serali americane gli sfuggono.
-1. **Attesa del kickoff** — se la partita non è ancora iniziata, il bot resta in attesa controllando il feed; se al fischio mancano **più di 60 minuti** si spegne per non sprecare minuti di Actions (ci penserà un dispatch successivo).
-1. **Battito ogni 6 secondi** — dal calcio d'inizio interroga il feed live di ESPN ogni ~6 s e ne ricostruisce lo stato completo: punteggio, eventi, statistiche, persino la maglia in campo.
-1. **Notifica** — per ogni novità *reale* invia (o modifica) un messaggio Telegram in italiano.
-1. **Persistenza** — dopo ogni cambiamento salva lo stato su un Gist: se il workflow si riavvia a partita in corso, il bot riparte esattamente da dove era. Se il Gist è temporaneamente irraggiungibile, il bot si **ferma** invece di ripartire da zero (evitando messaggi duplicati).
-1. **Spegnimento** — al fischio finale invia statistiche e slide, resetta il Gist e si spegne da solo.
+Non richiede un server sempre acceso. Il workflow principale resta attivo per la durata della gara e termina dopo il risultato finale.
 
-### Motore eventi multi-sorgente
+## Ricerca della partita
 
-ESPN non serve gli eventi su un piatto solo: li sparpaglia su **quattro feed diversi** — `commentary`, `keyEvents`, `scoringPlays` e `shootout` — spesso ripetendo lo stesso gol o cambio con minuti leggermente diversi e i giocatori in ordine invertito.
+Il motore principale cerca il `TEAM_ID` configurato nei calendari ESPN di oggi e domani, calcolati nel fuso `America/New_York` usato per indicizzare gli eventi.
 
-Il bot li fonde tutti in **un'unica linea temporale pulita**, abbattendo i doppioni su più livelli: per ID evento, per minuto + giocatore, e per *coppia* di giocatori nei cambi (così "Esce A, entra B" e "Entra B, esce A" diventano un solo cambio). E prima di cantare un gol aspetta 15 secondi e ri-controlla il punteggio: se ESPN "balla", niente notifiche false.
+- `leagues.json` contiene 323 competizioni controllabili dal bot;
+- `teams.json` traduce 678 nomi ESPN in nomi e forme brevi italiane;
+- l'ID predefinito è `111`, corrispondente alla Juventus;
+- se il kickoff è distante più di 60 minuti, il bot termina e lascia il prossimo tentativo allo scheduler;
+- se trova una gara già conclusa con stato ancora vuoto, esce senza inviare messaggi arretrati.
 
-### Affidabilità dei messaggi
-
-Ogni messaggio di periodo (calcio d'inizio, fine primo tempo, fine partita ecc.) viene registrato come inviato **solo dopo la conferma di Telegram** (200 OK + `message_id`). Se l'invio fallisce per un errore di rete o un rate limit (429), il bot riprova al ciclo successivo senza perdere eventi. Il rate limit 429 rispetta il campo `retry_after` restituito da Telegram.
-
------
-
-## Avvio automatico (scheduler)
-
-Il cron nativo di GitHub Actions è inutilizzabile per un bot live: i trigger `schedule` partono con **ritardi anche di ore** (documentati e in peggioramento). Lo scheduler di LiveScore JR aggira il problema spostando la "sveglia" fuori da GitHub:
-
-| Componente | Ruolo |
-|------------|-------|
-| **cron-job.org** | Sveglia esterna puntuale al minuto. Ogni 30 minuti (:00 e :30), 24 ore su 24, chiama l'API GitHub e dispatcha `scheduler.yml`. |
-| **`scheduler.yml`** | Check leggerissimo (~10 secondi). Esegue `scheduler_check.py` e, se serve, dispatcha il workflow principale. |
-| **`scheduler_check.py`** | Interroga i feed ESPN di **10 competizioni** (Serie A, Coppa Italia, Supercoppa Italiana, Champions, Europa League, Conference League, Supercoppa UEFA, Mondiale per Club, Coppa Intercontinentale, amichevoli) cercando la squadra con ID ESPN `111`. |
-| **`main_espn.yml`** | Avvia il bot, che gestisce da solo l'attesa fino al calcio d'inizio. |
-
-### Logica della finestra di dispatch
-
-Tutti i calcoli avvengono in **UTC** (ESPN, GitHub e lo script parlano la stessa lingua oraria: nessun problema di ora legale).
-
-- kickoff a **più di 60 minuti** → nessuna azione, si riprova al check successivo;
-- kickoff **entro 60 minuti** → dispatch del bot, che attende internamente il fischio d'inizio;
-- partita **già iniziata da meno di 140 minuti** → **recupero d'emergenza**: il bot parte subito (utile se un check precedente è saltato per un downtime); a partita davvero finita ci pensa il guard interno del bot a spegnersi senza inviare nulla.
-
-La finestra di 60 minuti (intervallo cron 30′ + anticipo minimo 30′) garantisce che almeno un check "catturi" ogni partita: con il cron a :00/:30 il bot parte sempre **tra 30 e 60 minuti prima** del kickoff, qualunque sia l'orario della gara (caso peggiore teorico: 31 minuti di anticipo, per kickoff a :01 o :31).
-
-### Protezioni
-
-- **Anti-doppio avvio** — prima del dispatch, lo scheduler verifica via API che non ci sia già un run del bot attivo o in coda; in più il workflow principale ha un `concurrency group` dedicato.
-- **Cronologia pulita** — a fine check lo scheduler **cancella automaticamente tutti i propri run precedenti** dalla tab Actions: resta visibile solo l'ultimo (un run non può auto-eliminarsi mentre gira, limite di GitHub). I run del bot principale non vengono toccati.
-- **Feed irraggiungibile** — se un feed ESPN non risponde, lo script lo segnala nei log e prosegue con le altre competizioni.
-
------
+`livescore_runner.py` aggiunge una notifica di servizio nel canale `TELEGRAM_TO_TEST` quando la discovery aggancia una partita. Un errore in questa notifica non blocca il live score.
 
 ## Eventi tracciati
 
-| Evento                  | Comportamento |
-|-------------------------|---------------|
-| **Calcio d'inizio**     | Messaggio all'inizio del primo tempo. |
-| **Gol**                 | Notifica immediata al cambio del punteggio (con conferma a 15 s per evitare falsi positivi). Quando ESPN pubblica marcatore e assist, il messaggio viene **modificato via edit** — niente spam. Se la fonte corregge i dati in seguito, il bot aggiorna il messaggio silenziosamente. Gestisce autogol *(Autogol)* e rigori *(Rig.)*. |
-| **Gol annullato**       | Se il punteggio cala, attende 120 s di conferma: se l'annullamento è reale invia *GOAL ANNULLATO* e ripulisce lo stato; se era un errore di ESPN, cancella l'eventuale messaggio di annullamento già inviato. |
-| **Sostituzioni**        | Attende qualche secondo per raggruppare i cambi "gemelli" della stessa squadra nella stessa finestra di minuti in un unico messaggio, aggiornato via edit se ne arrivano altri. Robusto contro i duplicati provenienti da fonti ESPN diverse. |
-| **Cartellini rossi**    | Notifica immediata (rosso diretto e doppia ammonizione) con giocatore e minuto. |
-| **Rigori sbagliati**    | Rileva penalty falliti o parati nei tempi regolamentari (esclusa la lotteria finale). Dedup per giocatore + esito con tolleranza ±3' sul minuto: cambia ESPN il minuto 44'→45', il bot non manda un secondo messaggio. |
-| **Minuti di recupero**  | Quando ESPN annuncia i minuti di recupero nel commentary (es. *"4 minutes of added time"*), il bot invia un messaggio dedicato per ciascun periodo (1° tempo, 2° tempo, supplementari). Un messaggio per periodo, dedup persistito nel Gist. |
-| **Lotteria dei rigori** | Tracciamento colpo per colpo con sequenza di ✅/❌ per entrambe le squadre. |
-| **Transizioni di stato**| Fine primo tempo, inizio secondo tempo, fine regolamentari, inizio/fine di ciascun tempo supplementare, fine supplementari, rigori, fine partita. |
-| **Recupero (catch-up)** | Se il bot parte a partita già in corso con lo stato vuoto, ricostruisce e annuncia i gol già avvenuti prima di passare al rilevamento live. |
+ESPN distribuisce gli eventi tra commentary, key events, scoring plays e dati della lotteria. Il bot fonde le fonti in una sola linea temporale e deduplica per ID, minuto, giocatore e coppia entrato/uscito.
 
------
+| Evento | Comportamento |
+| --- | --- |
+| Calcio d'inizio e periodi | Primo tempo, intervallo, secondo tempo, supplementari, rigori e fine partita |
+| Gol | Conferma il punteggio dopo 15 secondi; aggiunge marcatore, assist, autogol o rigore quando ESPN li espone |
+| Gol annullato | Conferma il calo del punteggio per 120 secondi prima di notificare e correggere lo stato |
+| Sostituzioni | Raggruppa i cambi della stessa squadra e aggiorna il messaggio quando arrivano eventi gemelli |
+| Cartellini rossi | Gestisce rosso diretto e seconda ammonizione |
+| Rigori sbagliati | Rileva errore o parata durante la partita, con tolleranza sul minuto |
+| Recupero | Legge dal commentary i minuti aggiunti e invia una sola notifica per periodo |
+| Lotteria dei rigori | Aggiorna la sequenza di realizzazioni ed errori per entrambe le squadre |
+
+Se il bot riparte a gara in corso, usa il Gist per riprendere gli eventi già gestiti. Con uno stato vuoto ricostruisce i gol precedenti prima di passare al rilevamento live.
+
+## Affidabilità Telegram
+
+- Lo stato di un messaggio viene segnato come inviato soltanto dopo una risposta valida di Telegram.
+- I rate limit `429` rispettano `retry_after`.
+- Gol e sostituzioni possono essere aggiornati con `editMessageText` invece di generare messaggi duplicati.
+- Le notifiche fallite vengono ritentate nei cicli successivi.
+- Il polling ordinario del feed avviene ogni circa 6 secondi.
+
+## Stato persistente
+
+Lo stato vive in un Gist con un file `match_state.json`. Contiene, tra l'altro:
+
+- partita e competizione correnti;
+- periodi e statistiche già inviati;
+- gol e relativi `message_id`;
+- sostituzioni, cartellini e rigori sbagliati;
+- messaggio della lotteria;
+- card statistiche ancora in coda.
+
+La lettura usa tre tentativi. Se il Gist resta irraggiungibile, il bot si ferma per non ripartire da zero e duplicare gli eventi. Al termine della gara lo stato viene riportato a `{}`.
 
 ## Card statistiche
 
-A **fine primo tempo**, a **fine secondo tempo** (quando si va ai supplementari) e a **fine partita**, il bot genera e invia una card grafica.
+A fine primo tempo, a fine regolamentari quando si va ai supplementari e a fine partita, il bot programma una card con due minuti di ritardo. La coda è non bloccante e persistita nel Gist: durante l'attesa il monitoraggio live continua.
 
-Le statistiche vengono inviate **2 minuti dopo** il cambio di stato (HT / fine regolamentari / FT) tramite una **coda non bloccante** persistita nel Gist: il bot continua a rilevare gol, cambi e cartellini durante l'attesa. Se il bot crasha nel frattempo, al riavvio le stats vengono automaticamente riprogrammate.
+La grafica mostra:
 
-Il flusso di rendering: il template `stats.html` viene riempito con i dati della gara, renderizzato a **1620×2160 px** da **Playwright/Chromium**, e infine sovrapposto a una texture con **Pillow** — `texture_black.png` per i kit home/away, `texture_gold.png` per il third, `texture_white.png` per il tema default.
+- tiri in porta;
+- tiri totali;
+- calci d'angolo;
+- fuorigioco;
+- falli;
+- ammoniti;
+- espulsi;
+- parate.
 
-Le 12 statistiche mostrate sono:
+`stats.html` viene renderizzato con Playwright a **1620 × 2160 px** e rifinito con Pillow.
 
-> Possesso palla · Tiri in porta · Tiri totali · Tiri bloccati · Corner · Fuorigioco · Falli · Ammoniti · Espulsi · Parate · Passaggi totali · Precisione passaggi
+### Tema maglia
 
-I valori vengono letti dal box score ESPN della partita, attingendo a più sezioni del feed (`boxscore.teams`, `header.competitions[].competitors`) per coprire qualsiasi competizione.
+`kit_analyzer.py` legge, quando disponibile, `uniform.type` e `uniform.color` dal box score ESPN.
 
------
+| Tema | Uso | Texture |
+| --- | --- | --- |
+| `home` | Prima maglia Juventus | `texture_black.png` |
+| `away` | Seconda maglia Juventus | `texture_black.png` |
+| `third` | Terza maglia Juventus | `texture_gold.png` |
+| `default` | Amichevole, altra squadra o dati kit assenti | `texture_white.png` |
 
-## Tema maglia dinamico
+Se ESPN non espone la divisa, il codice usa come fallback casa/trasferta nei campionati, third nelle coppe e default nelle amichevoli. I colori delle altre squadre arrivano da `uniform`, poi dai colori del team ESPN e infine da valori di riserva.
 
-La grafica della card si adatta al contesto della partita:
+## Immagine finale Canva
 
-| Tema      | Maglia Juve                              | Texture              | Stile                              |
-|-----------|------------------------------------------|----------------------|------------------------------------|
-| `home`    | Prima maglia                             | `texture_black.png`  | Bianco/nero a strisce, accenti oro |
-| `away`    | Seconda maglia                           | `texture_black.png`  | Rosa con dettagli neri             |
-| `third`   | Terza maglia                             | `texture_gold.png`   | Nero con dettagli oro              |
-| `default` | Partita senza la Juve, oppure amichevole | `texture_white.png`  | Colori reali delle due squadre     |
+Al termine di una partita ufficiale della Juventus il bot:
 
-Il tema non è cablato a tavolino: il bot legge da ESPN la maglia che la Juve **indossa davvero** in quella specifica partita (`kit_analyzer.py`), così la card riproduce kit e colori reali visti in campo. Per il tema `default` i colori delle due squadre diventano anche i bagliori e i gradienti dello sfondo.
+1. rinnova l'access token Canva tramite refresh token;
+2. seleziona la pagina del design associata al kit `home`, `away` o `third`;
+3. esporta la pagina come PNG;
+4. allega l'immagine al messaggio di fine partita.
 
------
+Per amichevoli o test con un'altra squadra invia soltanto il testo. Se Canva restituisce un nuovo refresh token, il bot prova a riscrivere `CANVA_REFRESH_TOKEN` nei GitHub Secrets; un fallimento viene segnalato nei log e richiede un aggiornamento manuale.
 
-## Slide finale Canva
+## Scheduler automatico
 
-Al triplice fischio il bot esporta una slide dal design Canva del canale tramite la **Canva REST API** (OAuth) e la allega al messaggio di fine partita.
+Il repository non usa il trigger `schedule`. Il flusso previsto è una chiamata esterna a `scheduler.yml` ogni 30 minuti, ad esempio tramite cron-job.org.
 
-La slide viene inviata **solo se la Juventus è effettivamente in campo** (controllo sull'ID ESPN `111`). Per i test su altre squadre viene inviato solo il messaggio testuale. Il refresh token OAuth viene **rinnovato e riscritto automaticamente** nei GitHub Secrets a ogni utilizzo, così non scade mai tra una partita e l'altra.
+`scheduler_check.py` controlla dieci competizioni della Juventus:
 
-> **Attenzione:** se il rinnovo del token riesce ma il salvataggio del GitHub Secret fallisce, il bot invia un **avviso immediato su Telegram** con istruzioni per aggiornare il secret a mano. Senza intervento, i run successivi non riuscirebbero a generare la slide.
+- Serie A, Coppa Italia e Supercoppa Italiana;
+- Champions League, Europa League, Conference League e Supercoppa UEFA;
+- Mondiale per Club, Coppa Intercontinentale e amichevoli.
 
------
+La finestra di avvio va da 60 minuti prima del kickoff a 140 minuti dopo. La parte successiva al kickoff è un recupero d'emergenza; il bot principale decide poi se la partita è ancora gestibile.
 
-## Architettura
+Prima del dispatch il workflow verifica che `main_espn.yml` non sia già in esecuzione o in coda. Un ulteriore gruppo `concurrency` impedisce due live score contemporanei.
 
-| Componente              | Ruolo |
-|-------------------------|-------|
-| **cron-job.org**        | Trigger esterno puntuale: ogni 30 minuti dispatcha lo scheduler via API GitHub (il cron nativo di Actions ha ritardi di ore). |
-| **ESPN API**            | Fonte dati. Endpoint pubblici `site.api.espn.com`, **nessuna API key**. `scoreboard` per trovare la partita, `summary` per il live. |
-| **GitHub Gist**         | Stato persistente (`match_state.json`): gol rilevati, ID dei messaggi inviati, sostituzioni, cartellini, coda stats, recuperi annunciati, ecc. Permette al bot di sopravvivere a un riavvio del workflow. Letto con 3 retry automatici; in caso di errore persistente il bot si ferma (non riparte da zero). |
-| **Telegram Bot API**    | Output. Invio, modifica (`editMessageText`) e cancellazione dei messaggi. Rate limit 429 rispettato tramite `retry_after`. |
-| **Canva API**           | Esportazione della slide finale via OAuth. |
-| **Playwright + Pillow** | Rendering della card statistiche da HTML a PNG, con overlay texture. Import lazy: caricati solo quando serve, non dal keep-alive. |
-| **pynacl**              | Cifratura per aggiornare i GitHub Secrets (rotazione del refresh token Canva). |
-| **requests.Session**    | Sessione HTTP condivisa con retry automatici (3×, backoff) sui GET verso ESPN, GitHub e Canva. I POST Telegram non vengono ritentati in automatico per evitare doppi invii. |
+### Esempio cron-job.org
 
------
+Configura una richiesta ogni 30 minuti:
 
-## Struttura del repository
+```text
+POST https://api.github.com/repos/<utente>/LiveScore_JR/actions/workflows/scheduler.yml/dispatches
+Authorization: Bearer <PAT>
+Accept: application/vnd.github+json
+Content-Type: application/json
 
+{"ref":"main"}
 ```
+
+Il token esterno deve poter avviare workflow Actions in questo repository.
+
+## Struttura
+
+```text
 LiveScore_JR/
-├── juve_bot_espn.py             # Logica principale del bot
-├── kit_analyzer.py              # Determina kit e colori maglie dai dati ESPN
-├── scheduler_check.py           # Check partite Juve su 10 competizioni ESPN
-├── leagues.json                 # 323 competizioni: slug → { emoji, type? }
-├── teams.json                   # 678 squadre/nazionali: nome EN → [nome IT, forma breve]
-├── stats.html                   # Template HTML della card statistiche
-├── requirements.txt             # Dipendenze Python (condiviso dai workflow)
-├── texture_black.png            # Overlay texture per i kit home/away
-├── texture_gold.png             # Overlay texture per il kit third
-├── texture_white.png            # Overlay texture per il tema default
+├── juve_bot_espn.py
+├── livescore_runner.py
+├── scheduler_check.py
+├── kit_analyzer.py
+├── stats.html
+├── leagues.json
+├── teams.json
+├── texture_black.png
+├── texture_gold.png
+├── texture_white.png
+├── requirements.txt
 └── .github/workflows/
-    ├── main_espn.yml            # Workflow principale (Python 3.11, timeout 240 min)
-    ├── scheduler.yml            # Scheduler: check + dispatch + pulizia cronologia
-    └── canva_keep_alive.yml     # Rinnovo del token Canva (Python 3.12, solo requests+pynacl)
+    ├── main_espn.yml
+    ├── scheduler.yml
+    └── canva_keep_alive.yml
 ```
 
------
+## Requisiti
+
+I workflow usano Python 3.14.
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+playwright install chromium
+```
+
+Dipendenze principali: Requests, Playwright, Pillow, PyNaCl e `tzdata`.
 
 ## Configurazione
 
-### 1. Fork e Secrets
+Configura in **Settings → Secrets and variables → Actions**:
 
-In **Settings → Secrets and variables → Actions** aggiungi:
+| Secret | Uso |
+| --- | --- |
+| `TELEGRAM_TOKEN` | Token del bot Telegram |
+| `TELEGRAM_TO` | Canale principale |
+| `TELEGRAM_TO_TEST` | Canale di test e notifica partita trovata |
+| `GIST_ID` | ID del Gist contenente `match_state.json` |
+| `GH_PAT` | Lettura/scrittura del Gist e aggiornamento del secret Canva |
+| `CANVA_CLIENT_ID` | Client ID dell'app Canva |
+| `CANVA_CLIENT_SECRET` | Client secret Canva |
+| `CANVA_REFRESH_TOKEN` | Refresh token OAuth Canva |
 
-| Secret                | Descrizione |
-|-----------------------|-------------|
-| `TELEGRAM_TOKEN`      | Token del bot Telegram. |
-| `TELEGRAM_TO`         | Chat ID del canale di destinazione. |
-| `TELEGRAM_TO_TEST`    | Chat ID del canale di test (usato scegliendo il canale "Test JR"). |
-| `GIST_ID`             | ID del Gist usato come stato persistente. |
-| `GH_PAT`              | Personal Access Token GitHub (scope `gist` + `repo`). Serve sia per il Gist sia per riscrivere il refresh token Canva nei Secrets. |
-| `CANVA_CLIENT_ID`     | Client ID dell'app Canva. |
-| `CANVA_CLIENT_SECRET` | Client Secret dell'app Canva. |
-| `CANVA_REFRESH_TOKEN` | Refresh token OAuth Canva (aggiornato automaticamente a ogni uso). |
-
-### 2. Crea il Gist di stato
-
-Crea un Gist con un file `match_state.json` contenente `{}` e copia l'ID del Gist nel secret `GIST_ID`.
-
-### 3. Configura lo scheduler automatico
-
-1. **PAT fine-grained** — crea un token in *Settings → Developer settings → Personal access tokens → Fine-grained tokens*, limitato a questo repository, con permesso **Actions: Read and write** (Contents: Read-only viene aggiunto in automatico). Questo token vive solo su cron-job.org e serve unicamente a "bussare" allo scheduler.
-2. **cron-job.org** — crea un cronjob con:
-   - **URL**: `https://api.github.com/repos/<utente>/LiveScore_JR/actions/workflows/scheduler.yml/dispatches`
-   - **Metodo**: `POST` · **Body**: `{"ref":"main"}`
-   - **Headers**: `Authorization: Bearer <PAT>` · `Accept: application/vnd.github+json` · `User-Agent: livescore-cron`
-   - **Schedule**: ogni 30 minuti (:00 e :30), tutto il giorno
-3. **Test** — premi *Test run*: risposta attesa **204** e, entro pochi secondi, il run "Match Scheduler" compare nella tab Actions.
-
-### 4. (Opzionale) Personalizza design Canva e squadra
-
-Nel codice puoi adattare:
-
-- `CANVA_DESIGN_ID` e `PAGINA_TARGET` — il design e la pagina da esportare come slide finale.
-- `JUVE_ID` — l'ID ESPN usato per il branding (logo + tema kit). È volutamente separato da `TEAM_ID`, così una partita senza la Juve resta sul tema `default` con i loghi ESPN.
-- `LEAGUES` in `scheduler_check.py` — le competizioni controllate dallo scheduler.
-- `DISPATCH_WINDOW_MIN` in `scheduler_check.py` — la finestra di dispatch (60 = cron ogni 30′ + anticipo minimo 30′). Se la allarghi, ricordati di alzare di pari passo il guard "troppo presto" nel bot (`minutes_to_kickoff > 60` in `juve_bot_espn.py`), altrimenti il bot lanciato in anticipo si spegne da solo.
-- `KEEP` in `scheduler.yml` — quanti run dello scheduler tenere in cronologia (default `0`: resta visibile solo l'ultimo).
-
------
+Crea il Gist con un file `match_state.json` inizializzato a `{}`.
 
 ## Avvio
 
-### Automatico (default)
+### GitHub Actions
 
-Non devi fare nulla: nei giorni di partita lo scheduler rileva il match e il bot parte da solo **tra 30 e 60 minuti prima del kickoff**, attende internamente il fischio d'inizio, resta attivo fino al triplice fischio e si spegne. Se un check dovesse saltare (downtime di cron-job.org o di ESPN), il check successivo recupera: il bot viene avviato fino a 140 minuti dopo il kickoff a partita in corso.
+Apri **Actions → Juventus Live Score - ESPN → Run workflow** e scegli:
 
-### Manuale (sempre disponibile)
+- `team_id`: ID ESPN, default `111`;
+- `channel`: `Juventus Reborn` oppure `Test JR`.
 
-Da **Actions → Juventus Live Score - ESPN → Run workflow**:
+### Locale
 
-- Input **`channel`** (default `Juventus Reborn`): il canale Telegram di destinazione; scegli `Test JR` per provare senza pubblicare sul canale ufficiale.
-- Input opzionale **`team_id`** (default `111`, Juventus): permette di testare il bot su un'altra squadra senza toccare il codice. Logo, tema kit e slide Canva restano comunque legati alla Juve.
+Imposta almeno le variabili Telegram. Per persistenza e Canva servono anche le credenziali indicate sopra.
 
-**Guard di sicurezza** (per non sprecare minuti di GitHub Actions):
+```bash
+python livescore_runner.py
+```
 
-- Se il workflow parte a partita **già conclusa** e il Gist è vuoto → si spegne subito senza inviare nulla.
-- Se mancano **più di 60 minuti** al calcio d'inizio → termina immediatamente (con l'avvio automatico non succede: lo scheduler dispatcha solo entro i 60 minuti).
-- Se il **Gist è irraggiungibile** dopo 3 retry → il bot si ferma con `exit(1)` per evitare di reinviare messaggi già pubblicati.
+Per rinnovare soltanto il token Canva:
 
-**Token Canva:** lancia ogni tanto il workflow **Canva Token Keep-Alive** per rinnovare il refresh token nei periodi senza partite. Il keep-alive installa solo `requests` e `pynacl` (niente Playwright/Chromium), quindi gira in pochi secondi.
+```bash
+ONLY_REFRESH_TOKEN=true python juve_bot_espn.py
+```
 
------
+## GitHub Actions
 
-## Stack tecnico
+| Workflow | Comportamento |
+| --- | --- |
+| `main_espn.yml` | Live score manuale o avviato dallo scheduler; timeout 240 minuti |
+| `scheduler.yml` | Controllo leggero, anti-doppio avvio e dispatch del live score |
+| `canva_keep_alive.yml` | Rinnovo manuale del token Canva senza installare browser e librerie grafiche |
 
-`Python 3.11` · `requests` · `Playwright (Chromium)` · `Pillow` · `pynacl` · `GitHub Actions` · `cron-job.org`
+Tutti usano Python 3.14 e sono avviabili con `workflow_dispatch`. Al termine eliminano dalla propria cronologia i run completati.
 
-**Fonte dati:** ESPN — endpoint pubblici `site.api.espn.com`, nessuna API key. Copertura di **323 competizioni** definite in `leagues.json` (campionati e coppe di tutto il mondo). **Localizzazione italiana** di 678 squadre e nazionali tramite `teams.json`, con forme brevi usate per gli hashtag.
+## Limiti noti
 
------
+- Gli endpoint ESPN usati sono pubblici ma non documentati e possono cambiare.
+- Eventi, minuti e giocatori dipendono dalla velocità e dalla qualità del feed ESPN.
+- Il progetto presume un solo live score attivo per volta e un solo file di stato nel Gist.
+- Il workflow principale ha un timeout di quattro ore; gare eccezionalmente lunghe richiedono un nuovo run, che riprenderà dal Gist.
+- Il rinnovo Canva dipende dalla possibilità del token GitHub di aggiornare i Secrets del repository.
+- Il repository non contiene attualmente una suite di test automatizzata.
 
-## Limitazioni note
+---
 
-- **Dipendenza da cron-job.org per l'avvio automatico.** Se il servizio esterno è in downtime, il check salta; il sistema recupera al check successivo (dispatch d'emergenza fino a 140 minuti dopo il kickoff). L'avvio manuale resta sempre disponibile come fallback.
-- **Copertura amichevoli parziale.** Il feed ESPN `club.friendly` include le amichevoli principali (tour estivi, trofei) ma non sempre quelle minori: in quei casi lo scheduler non può rilevarle e serve l'avvio manuale.
-- **Minuti di recupero dipendenti da ESPN.** Il recupero viene annunciato solo se ESPN pubblica il dato nel commentary. Se la copertura è assente o parziale, il messaggio non viene inviato.
-- **Dipendenza dal feed ESPN.** Marcatori, assist e statistiche dipendono dalla copertura di ESPN per quella specifica competizione, che può variare.
-
------
-
-<div align="center">
-
-*Progetto amatoriale. Non affiliato a Juventus FC, Telegram, Canva o ESPN.*
-
-</div>
+Progetto amatoriale, non affiliato con Juventus Football Club, Telegram, ESPN, GitHub, Canva o cron-job.org.
