@@ -8,11 +8,11 @@ _ORIGINAL_TROVA_PARTITA = bot.trova_partita_oggi
 
 def _notifica_partita_trovata_test(partita: dict) -> None:
     """Invia al canale Test JR la conferma che il LiveScore ha agganciato la gara."""
-    test_chat_id = os.getenv("TELEGRAM_TO_TEST")
+    test_chat_id = os.getenv("TELEGRAM_TO_BOT")
 
     if not bot.BOT_TOKEN or not test_chat_id:
         print(
-            f"[{bot.now_it()}] ⚠️  TELEGRAM_TOKEN o TELEGRAM_TO_TEST mancanti "
+            f"[{bot.now_it()}] ⚠️  TELEGRAM_TOKEN o TELEGRAM_TO_BOT mancanti "
             "— notifica partita trovata saltata"
         )
         return
