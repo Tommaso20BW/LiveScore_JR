@@ -13,6 +13,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 import kit_analyzer
+from telegram_autodelete import enqueue_response, should_enqueue
 
 ITALY_TZ = ZoneInfo('Europe/Rome')
 ESPN_TZ  = ZoneInfo('America/New_York')  # ESPN indicizza gli eventi in orario US Eastern
@@ -47,6 +48,7 @@ except ImportError:
 # ==============================================================================
 BOT_TOKEN           = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID             = os.getenv('TELEGRAM_TO')
+BOT_JR_CHAT_ID      = os.getenv('TELEGRAM_TO_BOT')
 TEAM_ID             = os.getenv('TEAM_ID', '111')
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
@@ -54,6 +56,13 @@ GIST_ID             = os.getenv('GIST_ID')
 CLIENT_ID           = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET       = os.getenv('CANVA_CLIENT_SECRET')
 CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
+
+try:
+    TELEGRAM_AUTO_DELETE_SECONDS = max(
+        0, int(os.getenv('TELEGRAM_AUTO_DELETE_SECONDS', '0'))
+    )
+except ValueError:
+    TELEGRAM_AUTO_DELETE_SECONDS = 0
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 PAGINA_TARGET   = 2  # fallback / kit non determinato
@@ -292,6 +301,29 @@ def _tg_post(method: str, payload: dict | None = None, data: dict | None = None,
     for _ in range(3):
         r = SESSION.post(url, json=payload, data=data, files=files, timeout=timeout)
         if r.status_code != 429:
+            target_chat_id = (payload or {}).get("chat_id") or (data or {}).get("chat_id")
+            if should_enqueue(
+                method,
+                target_chat_id,
+                BOT_JR_CHAT_ID,
+                TELEGRAM_AUTO_DELETE_SECONDS,
+            ):
+                try:
+                    queued = enqueue_response(
+                        SESSION,
+                        r,
+                        GH_PAT,
+                        GIST_ID,
+                        target_chat_id,
+                        TELEGRAM_AUTO_DELETE_SECONDS,
+                    )
+                    if queued:
+                        print(
+                            f"[{now_it()}] 🗑️  Auto-delete Bot JR programmato "
+                            f"per {queued} messaggio/i tra 24 ore"
+                        )
+                except Exception as e:
+                    print(f"[{now_it()}] ⚠️  Errore coda auto-delete Bot JR: {e}")
             return r
         try:
             retry_after = int(r.json().get("parameters", {}).get("retry_after", 3))
