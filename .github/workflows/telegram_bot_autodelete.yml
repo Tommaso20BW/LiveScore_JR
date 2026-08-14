@@ -1,8 +1,6 @@
 name: Telegram Bot JR - Auto-delete
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -16,7 +14,7 @@ concurrency:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 35
 
     steps:
       - name: Checkout repository
@@ -31,13 +29,16 @@ jobs:
       - name: Install dependencies
         run: python -m pip install requests==2.34.2
 
-      - name: Delete expired Bot JR messages
+      - name: Delete Bot JR messages after 20 minutes
         env:
           TELEGRAM_TOKEN:  ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
           GH_PAT:          ${{ secrets.GH_PAT }}
           GIST_ID:         ${{ secrets.GIST_ID }}
-        run: python -u telegram_autodelete.py
+        run: |
+          echo "Attendo 20 minuti dalla fine della partita..."
+          sleep 1200
+          python -u telegram_autodelete.py
 
       - name: Clean previous workflow runs
         if: always()
