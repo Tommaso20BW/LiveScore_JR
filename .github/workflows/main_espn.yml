@@ -58,7 +58,7 @@ jobs:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Bot JR' && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
           TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
-          TELEGRAM_AUTO_DELETE_SECONDS: ${{ github.event.inputs.channel == 'Bot JR' && '3600' || '0' }}
+          TELEGRAM_AUTO_DELETE_SECONDS: ${{ github.event.inputs.channel == 'Bot JR' && '1200' || '0' }}
           GH_PAT:               ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
           GIST_ID:              ${{ secrets.GIST_ID }}
@@ -67,6 +67,12 @@ jobs:
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           TEAM_ID:              ${{ github.event.inputs.team_id || '111' }}
         run: python -u livescore_runner.py
+
+      - name: Start Bot JR auto-delete after the match
+        if: ${{ always() && github.event.inputs.channel == 'Bot JR' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run telegram_bot_autodelete.yml --ref "${{ github.ref_name }}"
 
       - name: Pulisci la cronologia dei run
         if: always()
