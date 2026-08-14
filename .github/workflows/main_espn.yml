@@ -14,7 +14,7 @@ on:
         type: choice
         options:
           - Juventus Reborn
-          - Test JR
+          - Bot JR
 
 permissions:
   actions: write
@@ -56,7 +56,7 @@ jobs:
       - name: Run Live Score Bot
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Test JR' && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
+          TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Bot JR' && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
           TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
           GH_PAT:               ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
