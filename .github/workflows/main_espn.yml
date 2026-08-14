@@ -56,8 +56,8 @@ jobs:
       - name: Run Live Score Bot
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Test JR' && secrets.TELEGRAM_TO_TEST || secrets.TELEGRAM_TO }}
-          TELEGRAM_TO_TEST:     ${{ secrets.TELEGRAM_TO_TEST }}
+          TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Test JR' && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
+          TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
           GH_PAT:               ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
           GIST_ID:              ${{ secrets.GIST_ID }}
