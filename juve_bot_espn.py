@@ -320,7 +320,7 @@ def _tg_post(method: str, payload: dict | None = None, data: dict | None = None,
                     if queued:
                         print(
                             f"[{now_it()}] 🗑️  Auto-delete Bot JR programmato "
-                            f"per {queued} messaggio/i tra 24 ore"
+                            f"per {queued} messaggio/i tra 20 minuti"
                         )
                 except Exception as e:
                     print(f"[{now_it()}] ⚠️  Errore coda auto-delete Bot JR: {e}")
