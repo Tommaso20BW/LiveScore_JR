@@ -2,7 +2,7 @@ name: Telegram Bot JR - Auto-delete
 
 on:
   schedule:
-    - cron: '23 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
