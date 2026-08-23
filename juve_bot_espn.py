@@ -539,9 +539,15 @@ def get_canva_image(access_token: str, pagina: int = PAGINA_TARGET):
         return None
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     try:
-        print(f"[{now_it()}] 🎨 Avvio export Canva (design={CANVA_DESIGN_ID}, pagina={pagina})...")
+        print(f"[{now_it()}] 🎨 Avvio export Canva PRO (design={CANVA_DESIGN_ID}, pagina={pagina})...")
         r = SESSION.post("https://api.canva.com/rest/v1/exports", headers=headers, json={
-            "design_id": CANVA_DESIGN_ID, "format": {"type": "png", "pages": [pagina]}
+            "design_id": CANVA_DESIGN_ID,
+            "format": {
+                "type": "png",
+                "pages": [pagina],
+                "export_quality": "pro",
+                "lossless": True,
+            },
         }, timeout=15)
         if r.status_code not in [200, 201]:
             print(f"[{now_it()}] ❌ Errore avvio export Canva: HTTP {r.status_code} — {r.text}")
