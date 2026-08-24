@@ -201,6 +201,8 @@ MOMENTI_CONFIG = {
     "FT":     {"titolo": f"<b>STATS FINE PARTITA</b> {E_STATS}",  "badge": "FINE PARTITA"},
 }
 
+STATS_DELAY_SECONDS = 5 * 60
+
 # Mapping testo ESPN → tipo interno normalizzato
 EVENT_TYPE_MAP = {
     "goal":                     "goal",
@@ -1654,7 +1656,7 @@ def build_hashtag(home_name, away_name):
 # ==============================================================================
 # CICLO PRINCIPALE
 # ==============================================================================
-def _schedule_stats(state: dict, momento: str, delay: int = 120) -> bool:
+def _schedule_stats(state: dict, momento: str, delay: int = STATS_DELAY_SECONDS) -> bool:
     """Programma l'invio della grafica stats `delay` secondi dopo il cambio di
     stato (HT / 2H_END / FT), senza bloccare il ciclo live. Ritorna True se è
     stata aggiunta una nuova programmazione."""
@@ -1799,7 +1801,7 @@ def avvia_ciclo_partita():
                 state["_last_log_key"] = _log_key
                 state["_last_log_ts"] = _now_ts
 
-            # --- Invio stats programmato (2 min dopo il cambio di stato) ---
+            # --- Invio stats programmato (5 min dopo il cambio di stato) ---
             # Coda non bloccante: durante l'attesa il bot continua a rilevare
             # gol, cambi e cartellini. Persistita nel Gist → sopravvive ai crash.
             for _ps in list(state.get("pending_stats", [])):
@@ -2497,11 +2499,11 @@ def avvia_ciclo_partita():
                     salva_stato_su_gist(state)
                     state_changed = True
 
-                # --- Stats fine partita: 2 minuti dopo il messaggio finale ---
+                # --- Stats fine partita: 5 minuti dopo il messaggio finale ---
                 # (attesa "a fette": la partita è finita, non c'è altro da monitorare)
                 if "FT" not in state["sent_stats"]:
-                    print(f"[{now_it()}] 🕑 Attendo 120s prima delle stats FT...")
-                    for _ in range(24):
+                    print(f"[{now_it()}] 🕑 Attendo {STATS_DELAY_SECONDS}s prima delle stats FT...")
+                    for _ in range(STATS_DELAY_SECONDS // 5):
                         time.sleep(5)
                     data_fresh = fetch_evento(event_id, league_slug) or data
                     _ftp_h, _ftp_a = _rigori_icone(data_fresh, events, home_id, away_id,
