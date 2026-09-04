@@ -3,7 +3,7 @@
 Il sistema assembla la card in tempo reale usando:
 
 1. uno dei tre background approvati, selezionato dal kit ESPN (`home`, `away`, `third`);
-2. PNG scontornato del marcatore;
+2. PNG scontornato del marcatore, quando disponibile;
 3. il livello trasparente approvato `overlays/front_goal.png`, davanti al calciatore;
 4. la mappa tessile generata della variante, in `word_textures/`, ritagliata
    dentro la sagoma della scritta inferiore;
@@ -27,25 +27,29 @@ non viene mai prodotta per `penalty missed`, né per un rigore della Juventus
 parato dal portiere avversario. Se il portiere Juventus non è identificabile
 nei partecipanti o nelle formazioni ESPN, rimane il messaggio testuale.
 
-La grafica viene prodotta soltanto se il gol e della Juventus, il marcatore e
-nel registro e il PNG possiede vera trasparenza. In ogni altro caso il bot usa
-il messaggio testuale esistente.
+La grafica viene prodotta per ogni gol assegnato alla Juventus con un marcatore
+noto. Se il marcatore non è nel registro, la card conserva background, GOAL,
+minuto, loghi e nome, omettendo soltanto la sagoma del calciatore.
+Nelle amichevoli tutte le grafiche GOAL e SAVED sono disattivate: il bot usa
+sempre e soltanto i messaggi testuali esistenti.
 
 Per un autogol che assegna il punto alla Juventus il bot non mostra alcun
-calciatore: invia soltanto il marcatore con la dicitura `(AUTOGOL)`. Se il nome
-del marcatore Juventus non è presente nel registro, applica lo stesso layout
-solo-nome ma senza attribuirgli erroneamente la dicitura autogol. Un autogol
-commesso dalla Juventus è invece un gol avversario e non produce mai una card
-Juventus.
+calciatore: genera la stessa card con il nome del marcatore e la dicitura
+`(AUTOGOL)` direttamente nella grafica. Un autogol commesso dalla Juventus è
+invece un gol avversario e non produce mai una card Juventus.
+
+Le didascalie Telegram non vengono cambiate dalla grafica: conservano
+esattamente la formattazione storica del bot (`(Autogol)` e `(Rig.)`).
 
 Se ESPN corregge successivamente il marcatore, la card viene rigenerata con il
-nuovo giocatore e sostituita nel messaggio Telegram. Sono gestiti anche i due
-passaggi opposti: da foto a solo testo per autogol/marcatore assente e da solo
-testo a foto quando compare un giocatore registrato.
+nuovo giocatore e sostituita nel messaggio Telegram. Se ESPN passa da un
+marcatore registrato a un autogol o a un nome senza asset, la vecchia foto viene
+sostituita dalla card equivalente senza sagoma.
 
-Un gol su rigore durante la partita mostra `(RIGORE)` accanto al marcatore. I
-gol realizzati nella lotteria dei rigori non generano mai una card GOAL: restano
-nel messaggio aggregato della serie dal dischetto.
+Un gol su rigore durante la partita mostra `(RIGORE)` accanto al nome dentro la
+grafica, senza modificare la didascalia Telegram. I gol realizzati nella
+lotteria dei rigori non generano mai una card GOAL: restano nel messaggio
+aggregato della serie dal dischetto.
 
 ## Dove mettere i giocatori
 

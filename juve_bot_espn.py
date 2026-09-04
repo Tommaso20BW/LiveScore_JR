@@ -342,9 +342,9 @@ def goal_player_lines(
 
     player_text = fmt_player(player_name)
     if goal_type == "own goal":
-        player_text += " (AUTOGOL)"
+        player_text += " (Autogol)"
     elif goal_type == "penalty goal":
-        player_text += " (RIGORE)"
+        player_text += " (Rig.)"
 
     scorer_line = f"{E_BALL} <i>{player_text}</i>\n"
     registered = goal_graphics.find_player(html.unescape(player_name)) is not None
@@ -587,24 +587,21 @@ def prepara_grafica_goal(*, data_espn: dict, scorer_name: str,
                          home_goals: int, away_goals: int,
                          league_slug: str, league_name: str,
                          event_key: str) -> goal_graphics.RenderedGoal | None:
-    """Crea la card solo per un gol segnato da un calciatore Juventus.
+    """Crea la card solo per un gol assegnato alla Juventus.
 
-    Autogol, marcatori avversari, asset assenti e PNG ancora verdi/opachi
-    mantengono automaticamente il messaggio testuale esistente.
+    I marcatori senza asset e gli autogol a favore della Juventus ricevono la
+    stessa card, ma senza la sagoma del calciatore. Marcatori avversari, nomi
+    assenti e rigori della lotteria mantengono il normale messaggio testuale.
     """
     if not GOAL_GRAPHICS_ENABLED:
         return None
+    if is_friendly_competition(league_slug, league_name):
+        return None
     if (
         str(scoring_team_id) != JUVE_ID
-        or goal_type not in ("goal", "penalty goal")
+        or goal_type not in ("goal", "penalty goal", "own goal")
         or not scorer_name
     ):
-        return None
-    if not goal_graphics.find_player(html.unescape(scorer_name)):
-        print(
-            f"[{now_it()}] ℹ️  Marcatore Juventus senza asset: {scorer_name} "
-            "— GOAL inviato con il solo nome"
-        )
         return None
     try:
         juve_kit = rileva_kit_juve(
@@ -628,11 +625,16 @@ def prepara_grafica_goal(*, data_espn: dict, scorer_name: str,
             home_goals=home_goals,
             away_goals=away_goals,
             kit=juve_kit,
+            goal_type=goal_type,
             event_key=event_key,
         )
+        rendered_name = (
+            rendered.player.name if rendered.player else rendered.scorer_name
+        )
         print(
-            f"[{now_it()}] 🖼️  Grafica GOAL pronta: {rendered.player.name} "
+            f"[{now_it()}] 🖼️  Grafica GOAL pronta: {rendered_name} "
             f"| kit={rendered.kit} | posa={rendered.pose}"
+            f" | sagoma={'sì' if rendered.player else 'no'}"
         )
         return rendered
     except goal_graphics.GoalGraphicUnavailable as e:
@@ -724,9 +726,13 @@ def prepara_grafica_parata_rigore(
     home_goals: int,
     away_goals: int,
     event_key: str,
+    league_slug: str = "",
+    league_name: str = "",
 ) -> goal_graphics.RenderedGoal | None:
     """Crea SAVED solo per un rigore avversario realmente parato dalla Juve."""
-    if not GOAL_GRAPHICS_ENABLED or penalty_event.get("type") not in (
+    if not GOAL_GRAPHICS_ENABLED or is_friendly_competition(
+        league_slug, league_name
+    ) or penalty_event.get("type") not in (
         "penalty saved", "shootout saved"
     ):
         return None
@@ -2797,11 +2803,9 @@ def avvia_ciclo_partita():
                                 continue
                             ps = fmt_player(e["player_name"])
                             if e["type"] == "own goal":
-                                suffix = " (AUTOGOL)"
-                            elif e["type"] == "penalty goal":
-                                suffix = " (RIGORE)"
+                                suffix = " (Autogol)"
                             else:
-                                suffix = ""
+                                suffix = ""          # i rigori contano come gol normali
                             key = (ps, suffix)
                             if key not in grouped:
                                 grouped[key] = []
@@ -3358,6 +3362,8 @@ def avvia_ciclo_partita():
                             home_goals=g_home,
                             away_goals=g_away,
                             event_key=f"{event_id}|saved|{e.get('uid', '')}",
+                            league_slug=league_slug,
+                            league_name=league_name,
                         )
                         penalty_text = (
                             f"<b>RIGORE PARATO · {e['minute']}' {E_KICK}</b>\n\n"
