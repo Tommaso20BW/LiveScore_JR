@@ -255,6 +255,29 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertIsNone(result)
         render.assert_not_called()
 
+    def test_friendly_goal_never_renders_a_card(self):
+        with patch.object(bot, "GOAL_GRAPHICS_ENABLED", True), patch.object(
+            bot.goal_graphics, "render_goal_card"
+        ) as render:
+            result = bot.prepara_grafica_goal(
+                data_espn={},
+                scorer_name="Kenan Yildiz",
+                goal_type="goal",
+                scoring_team_id="111",
+                minute=12,
+                home_name="Juventus",
+                away_name="Inter",
+                home_id="111",
+                away_id="999",
+                home_goals=1,
+                away_goals=0,
+                league_slug="club.friendly",
+                league_name="Club Friendly",
+                event_key="friendly-goal",
+            )
+        self.assertIsNone(result)
+        render.assert_not_called()
+
     def test_own_goal_team_is_inverted_before_juventus_graphic_logic(self):
         self.assertEqual(
             bot.goal_scoring_team_id(
@@ -292,7 +315,36 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertIsNone(result)
         render.assert_not_called()
 
-    def test_unknown_juventus_scorer_uses_name_only_without_image(self):
+    def test_own_goal_benefiting_juventus_prepares_anonymous_card(self):
+        anonymous_card = SimpleNamespace(
+            player=None,
+            scorer_name="Opponent Player",
+            kit="home",
+            pose="arms_crossed",
+        )
+        with patch.object(bot, "GOAL_GRAPHICS_ENABLED", True), patch.object(
+            bot.goal_graphics, "render_goal_card", return_value=anonymous_card
+        ) as render:
+            result = bot.prepara_grafica_goal(
+                data_espn={},
+                scorer_name="Opponent Player",
+                goal_type="own goal",
+                scoring_team_id="111",
+                minute=48,
+                home_name="Juventus",
+                away_name="Inter",
+                home_id="111",
+                away_id="999",
+                home_goals=1,
+                away_goals=0,
+                league_slug="ita.1",
+                league_name="Serie A",
+                event_key="benefiting-own-goal",
+            )
+        self.assertIs(result, anonymous_card)
+        self.assertEqual(render.call_args.kwargs["goal_type"], "own goal")
+
+    def test_unknown_juventus_scorer_keeps_original_caption_and_gets_card(self):
         scorer_line, assist_line = bot.goal_player_lines(
             "New Player", "Kenan Yildiz", "goal", "111"
         )
@@ -301,7 +353,14 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertEqual(assist_line, "")
 
         with patch.object(bot, "GOAL_GRAPHICS_ENABLED", True), patch.object(
-            bot.goal_graphics, "render_goal_card"
+            bot.goal_graphics,
+            "render_goal_card",
+            return_value=SimpleNamespace(
+                player=None,
+                scorer_name="New Player",
+                kit="home",
+                pose="pointing",
+            ),
         ) as render:
             result = bot.prepara_grafica_goal(
                 data_espn={},
@@ -319,21 +378,77 @@ class GoalGraphicsTests(unittest.TestCase):
                 league_name="Serie A",
                 event_key="unknown-scorer",
             )
-        self.assertIsNone(result)
-        render.assert_not_called()
+        self.assertIsNotNone(result)
+        render.assert_called_once()
+        self.assertEqual(render.call_args.kwargs["goal_type"], "goal")
 
-    def test_juventus_benefiting_own_goal_uses_only_name_and_autogol(self):
+    def test_juventus_benefiting_own_goal_keeps_original_caption_style(self):
         scorer_line, assist_line = bot.goal_player_lines(
             "Opponent Player", "Other Player", "own goal", "111"
         )
-        self.assertIn("(AUTOGOL)", scorer_line)
+        self.assertIn("(Autogol)", scorer_line)
+        self.assertNotIn("(AUTOGOL)", scorer_line)
         self.assertEqual(assist_line, "")
 
-    def test_penalty_goal_label_is_uppercase(self):
+    def test_penalty_goal_keeps_original_caption_style(self):
         scorer_line, _ = bot.goal_player_lines(
             "Kenan Yildiz", "", "penalty goal", "111"
         )
-        self.assertIn("(RIGORE)", scorer_line)
+        self.assertIn("(Rig.)", scorer_line)
+        self.assertNotIn("(RIGORE)", scorer_line)
+
+    def test_unknown_scorer_renders_card_without_player_cutout(self):
+        rendered = goal_graphics.render_goal_card(
+            scorer_name="New Player",
+            minute=60,
+            home_name="Juventus",
+            away_name="Inter",
+            home_goals=2,
+            away_goals=0,
+            kit="home",
+            asset_dir=self.root,
+            registry_path=self.registry,
+            team_logo_registry_path=self.logo_registry,
+        )
+        self.assertIsNone(rendered.player)
+        self.assertIsNone(rendered.player_path)
+        self.assertEqual(rendered.scorer_name, "New Player")
+        self.assertTrue(rendered.png.startswith(b"\x89PNG"))
+
+    def test_graphic_suffixes_are_uppercase_inside_card_only(self):
+        with patch.object(goal_graphics, "_centered_tracked_text") as draw_name:
+            own_goal = goal_graphics.render_goal_card(
+                scorer_name="Opponent Player",
+                goal_type="own goal",
+                minute=48,
+                home_name="Juventus",
+                away_name="Inter",
+                home_goals=1,
+                away_goals=0,
+                kit="home",
+                asset_dir=self.root,
+                registry_path=self.registry,
+                team_logo_registry_path=self.logo_registry,
+            )
+        self.assertIsNone(own_goal.player)
+        self.assertEqual(draw_name.call_args.args[2], "OPPONENT PLAYER (AUTOGOL)")
+
+        with patch.object(goal_graphics, "_centered_tracked_text") as draw_name:
+            penalty = goal_graphics.render_goal_card(
+                scorer_name="Kenan Yildiz",
+                goal_type="penalty goal",
+                minute=31,
+                home_name="Juventus",
+                away_name="Inter",
+                home_goals=2,
+                away_goals=0,
+                kit="away",
+                asset_dir=self.root,
+                registry_path=self.registry,
+                team_logo_registry_path=self.logo_registry,
+            )
+        self.assertIsNotNone(penalty.player)
+        self.assertEqual(draw_name.call_args.args[2], "KENAN YILDIZ (RIGORE)")
 
     def test_shootout_goal_never_renders_a_goal_card(self):
         with patch.object(bot, "GOAL_GRAPHICS_ENABLED", True), patch.object(
@@ -369,7 +484,7 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertTrue(is_photo)
         edit.assert_called_once_with(321, "corrected caption", b"new-player-card")
 
-    def test_correction_to_own_goal_removes_old_player_photo(self):
+    def test_correction_falls_back_to_text_when_new_card_is_unavailable(self):
         with patch.object(bot, "send_telegram_get_id", return_value=654), patch.object(
             bot, "delete_telegram_message"
         ) as delete:
@@ -456,6 +571,33 @@ class GoalGraphicsTests(unittest.TestCase):
                 home_goals=1,
                 away_goals=0,
                 event_key="missed-test",
+            )
+        self.assertIsNone(result)
+        render.assert_not_called()
+
+    def test_friendly_penalty_save_never_renders_saved_card(self):
+        saved_event = {
+            "type": "penalty saved",
+            "team_id": "999",
+            "player_name": "Opponent Taker",
+        }
+        with patch.object(bot, "GOAL_GRAPHICS_ENABLED", True), patch.object(
+            bot.goal_graphics, "render_saved_card"
+        ) as render:
+            result = bot.prepara_grafica_parata_rigore(
+                data_espn={},
+                penalty_event=saved_event,
+                goalkeeper_name="Guglielmo Vicario",
+                minute=72,
+                home_name="Juventus",
+                away_name="Inter",
+                home_id="111",
+                away_id="999",
+                home_goals=1,
+                away_goals=0,
+                event_key="friendly-saved",
+                league_slug="club.friendly",
+                league_name="Club Friendly",
             )
         self.assertIsNone(result)
         render.assert_not_called()

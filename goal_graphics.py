@@ -75,10 +75,11 @@ class Player:
 @dataclass(frozen=True)
 class RenderedGoal:
     png: bytes
-    player: Player
+    player: Player | None
+    scorer_name: str
     kit: str
     pose: str
-    player_path: Path
+    player_path: Path | None
     background_path: Path
 
 
@@ -394,7 +395,9 @@ def _composite_team_logos(
 
 def _render_event_card(
     *,
-    player: Player,
+    player: Player | None,
+    scorer_name: str,
+    scorer_suffix: str = "",
     minute: str | int,
     home_name: str,
     away_name: str,
@@ -416,19 +419,23 @@ def _render_event_card(
     registry_path: Path | str = REGISTRY_PATH,
     team_logo_registry_path: Path | str = TEAM_LOGO_REGISTRY_PATH,
 ) -> RenderedGoal:
+    scorer_key = player.slug if player else normalize_name(scorer_name)
     selected_pose = choose_pose(
-        f"{event_key}|{player.slug}|{home_goals}-{away_goals}",
+        f"{event_key}|{scorer_key}|{home_goals}-{away_goals}",
         requested=pose,
     )
     asset_dir = Path(asset_dir)
     background_path = asset_dir / "backgrounds" / background_filename
     front_word_path = asset_dir / "overlays" / overlay_filename
     word_texture_path = asset_dir / "word_textures" / texture_filename
-    player_path = resolve_player_path(player, player_kit, selected_pose, asset_dir)
+    player_path = (
+        resolve_player_path(player, player_kit, selected_pose, asset_dir)
+        if player else None
+    )
 
     if not background_path.is_file():
         raise GoalGraphicUnavailable(f"Background assente: {background_path}")
-    if not player_path.is_file():
+    if player_path is not None and not player_path.is_file():
         raise GoalGraphicUnavailable(f"PNG giocatore assente: {player_path}")
     if not front_word_path.is_file():
         raise GoalGraphicUnavailable(f"Overlay tipografico assente: {front_word_path}")
@@ -446,20 +453,21 @@ def _render_event_card(
         word_texture_source = Image.open(word_texture_path).convert("RGB")
     else:
         word_texture_source = background.copy()
-    player_image = Image.open(player_path).convert("RGBA")
-    if not _has_real_transparency(player_image):
-        raise GoalGraphicUnavailable(
-            f"PNG giocatore ancora senza trasparenza: {player_path}"
-        )
+    if player_path is not None:
+        player_image = Image.open(player_path).convert("RGBA")
+        if not _has_real_transparency(player_image):
+            raise GoalGraphicUnavailable(
+                f"PNG giocatore ancora senza trasparenza: {player_path}"
+            )
 
-    player_image = ImageOps.contain(
-        player_image,
-        (CANVAS_SIZE, CANVAS_SIZE),
-        method=Image.Resampling.LANCZOS,
-    )
-    px = (CANVAS_SIZE - player_image.width) // 2
-    py = CANVAS_SIZE - player_image.height
-    background.alpha_composite(player_image, (px, py))
+        player_image = ImageOps.contain(
+            player_image,
+            (CANVAS_SIZE, CANVAS_SIZE),
+            method=Image.Resampling.LANCZOS,
+        )
+        px = (CANVAS_SIZE - player_image.width) // 2
+        py = CANVAS_SIZE - player_image.height
+        background.alpha_composite(player_image, (px, py))
 
     # Sfumatura nera trasparente dietro la tipografia inferiore. Parte senza
     # stacco visibile e diventa piu intensa verso il fondo, come nella reference.
@@ -525,7 +533,8 @@ def _render_event_card(
     )
     draw = ImageDraw.Draw(background)
 
-    scorer = player.name.upper()
+    display_name = player.name if player else html.unescape(scorer_name).strip()
+    scorer = f"{display_name.upper()}{scorer_suffix}"
     scorer_font = _fit_font(draw, scorer, 850, 34, minimum=22)
     _centered_tracked_text(
         draw,
@@ -541,6 +550,7 @@ def _render_event_card(
     return RenderedGoal(
         png=output.getvalue(),
         player=player,
+        scorer_name=display_name,
         kit=output_kit,
         pose=selected_pose,
         player_path=player_path,
@@ -557,6 +567,7 @@ def render_goal_card(
     home_goals: int,
     away_goals: int,
     kit: str,
+    goal_type: str = "goal",
     home_id: str = "",
     away_id: str = "",
     pose: str | None = None,
@@ -566,16 +577,27 @@ def render_goal_card(
     team_logo_registry_path: Path | str = TEAM_LOGO_REGISTRY_PATH,
 ) -> RenderedGoal:
     player = find_player(scorer_name, registry_path)
-    if not player:
-        raise GoalGraphicUnavailable(f"Marcatore non presente nel registro: {scorer_name!r}")
+    if not html.unescape(scorer_name).strip():
+        raise GoalGraphicUnavailable("Nome marcatore assente")
+
+    # L'autogol mostra sempre la grafica senza la sagoma del calciatore. Anche
+    # un marcatore non ancora presente nel registro mantiene la card completa:
+    # manca soltanto il suo PNG.
+    card_player = None if goal_type == "own goal" else player
+    scorer_suffix = {
+        "own goal": " (AUTOGOL)",
+        "penalty goal": " (RIGORE)",
+    }.get(goal_type, "")
 
     kit = kit if kit in THEMES else "home"
     # Per un eventuale gol del portiere resta il fondale nero, distinto dalla
     # grafica arancione SAVED che appartiene soltanto ai rigori parati.
-    if player.role == "goalkeeper":
+    if card_player and card_player.role == "goalkeeper":
         kit = "third"
     return _render_event_card(
-        player=player,
+        player=card_player,
+        scorer_name=scorer_name,
+        scorer_suffix=scorer_suffix,
         minute=minute,
         home_name=home_name,
         away_name=away_name,
@@ -622,6 +644,7 @@ def render_saved_card(
         )
     return _render_event_card(
         player=player,
+        scorer_name=player.name,
         minute=minute,
         home_name=home_name,
         away_name=away_name,
@@ -648,6 +671,11 @@ def render_saved_card(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Genera una preview GOAL o SAVED")
     parser.add_argument("--event", choices=("goal", "saved"), default="goal")
+    parser.add_argument(
+        "--goal-type",
+        choices=("goal", "penalty goal", "own goal"),
+        default="goal",
+    )
     parser.add_argument("--player", required=True, help="Nome ESPN o alias del giocatore")
     parser.add_argument("--kit", choices=tuple(THEMES), default="home")
     parser.add_argument("--pose", choices=POSES)
@@ -679,15 +707,21 @@ def main() -> int:
         if args.event == "saved":
             result = render_saved_card(goalkeeper_name=args.player, **common)
         else:
-            result = render_goal_card(scorer_name=args.player, kit=args.kit, **common)
+            result = render_goal_card(
+                scorer_name=args.player,
+                kit=args.kit,
+                goal_type=args.goal_type,
+                **common,
+            )
     except GoalGraphicUnavailable as exc:
         parser.error(str(exc))
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(result.png)
+    player_label = result.player.slug if result.player else "nessuna_sagoma"
     print(
-        f"Preview salvata: {args.output} | giocatore={result.player.slug} "
-        f"kit={result.kit} posa={result.pose}"
+        f"Preview salvata: {args.output} | giocatore={player_label} "
+        f"nome={result.scorer_name} kit={result.kit} posa={result.pose}"
     )
     return 0
 

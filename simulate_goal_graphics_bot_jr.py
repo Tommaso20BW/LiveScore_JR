@@ -220,7 +220,7 @@ def run(send: bool) -> None:
         minute="48",
         home_goals=3,
         away_goals=0,
-        expect_photo=False,
+        expect_photo=True,
     )
     send_goal_case(
         send=send,
@@ -230,7 +230,7 @@ def run(send: bool) -> None:
         minute="60",
         home_goals=4,
         away_goals=0,
-        expect_photo=False,
+        expect_photo=True,
     )
 
     correction_id, correction_was_photo, _, _ = send_goal_case(
@@ -286,7 +286,7 @@ def run(send: bool) -> None:
         expect_photo=True,
     )
     own_goal_text = goal_caption(
-        "CORRETTO IN AUTOGOL — SOLO TESTO",
+        "CORRETTO IN AUTOGOL — CARD SENZA CALCIATORE",
         "Federico Dimarco",
         "",
         "own goal",
@@ -295,20 +295,32 @@ def run(send: bool) -> None:
         0,
         HOME_ID,
     )
+    corrected_own_goal = render_goal(
+        player_name="Federico Dimarco",
+        goal_type="own goal",
+        minute="77",
+        home_goals=6,
+        away_goals=0,
+        scoring_team_id=HOME_ID,
+        kit="home",
+        event_key="simulation|corrected-own-goal",
+    )
+    if not corrected_own_goal or corrected_own_goal.player is not None:
+        raise RuntimeError("Correzione autogol: card senza calciatore non generata")
     if send:
         ok, _, is_photo = bot.replace_corrected_goal_message(
-            photo_id, was_photo, own_goal_text, None
+            photo_id, was_photo, own_goal_text, corrected_own_goal
         )
-        if not ok or is_photo:
-            raise RuntimeError("Correzione foto→autogol fallita")
+        if not ok or not is_photo:
+            raise RuntimeError("Correzione foto→card autogol fallita")
         time.sleep(1)
     else:
-        print("OK correzione foto→autogol solo testo")
+        print("OK correzione foto→card autogol senza calciatore")
 
     text_id, was_photo, _, _ = send_goal_case(
         send=send,
         case="MARCATORE PROVVISORIO ASSENTE",
-        player_name="Marcatore Provvisorio",
+        player_name="",
         minute="82",
         home_goals=7,
         away_goals=0,
@@ -378,6 +390,49 @@ def run(send: bool) -> None:
         "Nessuna card GOAL generata per i rigori della serie.",
     )
 
+    friendly_goal = bot.prepara_grafica_goal(
+        data_espn=espn_payload("home"),
+        scorer_name="Kenan Yildiz",
+        goal_type="goal",
+        scoring_team_id=HOME_ID,
+        minute="22",
+        home_name=HOME_NAME,
+        away_name=AWAY_NAME,
+        home_id=HOME_ID,
+        away_id=AWAY_ID,
+        home_goals=1,
+        away_goals=0,
+        league_slug="club.friendly",
+        league_name="Club Friendly",
+        event_key="simulation|friendly-goal",
+    )
+    friendly_saved = bot.prepara_grafica_parata_rigore(
+        data_espn=espn_payload("home"),
+        penalty_event={
+            "type": "penalty saved",
+            "team_id": AWAY_ID,
+            "player_name": "Lautaro Martínez",
+        },
+        goalkeeper_name="Guglielmo Vicario",
+        minute="66",
+        home_name=HOME_NAME,
+        away_name=AWAY_NAME,
+        home_id=HOME_ID,
+        away_id=AWAY_ID,
+        home_goals=1,
+        away_goals=0,
+        event_key="simulation|friendly-saved",
+        league_slug="club.friendly",
+        league_name="Club Friendly",
+    )
+    if friendly_goal or friendly_saved:
+        raise RuntimeError("Amichevole: non doveva essere generata alcuna grafica")
+    send_text(
+        send,
+        "<b>🧪 TEST ESPN — AMICHEVOLE</b>\n\n"
+        "GOAL e rigore parato restano messaggi testuali: nessuna foto generata.",
+    )
+
     saved_event = {
         "type": "penalty saved",
         "team_id": AWAY_ID,
@@ -444,8 +499,9 @@ def run(send: bool) -> None:
         send,
         "<b>✅ TEST ESPN SIMULATO COMPLETATO</b>\n\n"
         "Verificati: GOAL home/away/third, RIGORE, AUTOGOL a favore, "
-        "marcatore assente, tre tipi di correzione, autogol Juventus senza card, "
-        "lotteria senza GOAL, rigore parato con SAVED e rigore sbagliato senza SAVED.",
+        "marcatore senza foto, tre tipi di correzione, autogol Juventus senza card, "
+        "lotteria senza GOAL, amichevole senza foto, rigore parato con SAVED e "
+        "rigore sbagliato senza SAVED.",
     )
 
 
