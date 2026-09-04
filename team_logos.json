@@ -1,0 +1,28 @@
+{
+  "source": "https://fclogo.top/",
+  "teams": [
+    {"name": "Juventus", "file": "juventus.png", "aliases": ["Juve", "Juventus Turin", "Juventus FC"]},
+    {"name": "Inter", "file": "inter.png", "aliases": ["Inter Milan", "Internazionale", "FC Internazionale", "Internazionale Milano"]},
+    {"name": "Atalanta", "file": "atalanta.png", "aliases": ["Atalanta BC"]},
+    {"name": "Bologna", "file": "bologna.png", "aliases": ["Bologna FC"]},
+    {"name": "Cagliari", "file": "cagliari.png", "aliases": ["Cagliari Calcio"]},
+    {"name": "Como", "file": "como.png", "aliases": ["Como 1907"]},
+    {"name": "Empoli", "file": "empoli.png", "aliases": ["Empoli FC"]},
+    {"name": "Fiorentina", "file": "fiorentina.png", "aliases": ["ACF Fiorentina"]},
+    {"name": "Genoa", "file": "genoa.png", "aliases": ["Genoa CFC"]},
+    {"name": "Hellas Verona", "file": "verona.png", "aliases": ["Verona", "Hellas Verona FC"]},
+    {"name": "Lazio", "file": "lazio.png", "aliases": ["SS Lazio"]},
+    {"name": "Lecce", "file": "lecce.png", "aliases": ["US Lecce"]},
+    {"name": "Milan", "file": "milan.png", "aliases": ["AC Milan"]},
+    {"name": "Monza", "file": "monza.png", "aliases": ["AC Monza"]},
+    {"name": "Napoli", "file": "napoli.png", "aliases": ["SSC Napoli"]},
+    {"name": "Parma", "file": "parma.png", "aliases": ["Parma Calcio", "Parma Calcio 1913"]},
+    {"name": "Roma", "file": "roma.png", "aliases": ["AS Roma"]},
+    {"name": "Torino", "file": "torino.png", "aliases": ["Torino FC"]},
+    {"name": "Udinese", "file": "udinese.png", "aliases": ["Udinese Calcio"]},
+    {"name": "Venezia", "file": "venezia.png", "aliases": ["Venezia FC"]},
+    {"name": "Sassuolo", "file": "sassuolo.png", "aliases": ["US Sassuolo", "US Sassuolo Calcio"]},
+    {"name": "Pisa", "file": "pisa.png", "aliases": ["Pisa SC"]},
+    {"name": "Cremonese", "file": "cremonese.png", "aliases": ["US Cremonese"]}
+  ]
+}
