@@ -13,6 +13,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 import kit_analyzer
+import goal_graphics
 from telegram_autodelete import enqueue_response, should_enqueue
 
 ITALY_TZ = ZoneInfo('Europe/Rome')
@@ -56,6 +57,9 @@ GIST_ID             = os.getenv('GIST_ID')
 CLIENT_ID           = os.getenv('CANVA_CLIENT_ID')
 CLIENT_SECRET       = os.getenv('CANVA_CLIENT_SECRET')
 CANVA_REFRESH_TOKEN = os.getenv('CANVA_REFRESH_TOKEN')
+GOAL_GRAPHICS_ENABLED = os.getenv('GOAL_GRAPHICS_ENABLED', '0').strip().lower() in (
+    '1', 'true', 'yes', 'on'
+)
 
 try:
     TELEGRAM_AUTO_DELETE_SECONDS = max(
@@ -178,6 +182,30 @@ def determina_kit(home_id, away_id, league_slug: str = "", league_name: str = ""
         return "third"
     return "home" if juve_in_casa else "away"
 
+
+def rileva_kit_juve(data_espn: dict, home_id: str, away_id: str,
+                    home_name: str, away_name: str,
+                    league_slug: str = "", league_name: str = "") -> str:
+    """Restituisce il kit realmente indossato usando la stessa cascata ESPN
+    gia usata dalle stats. La funzione e separata per poterla riusare al gol."""
+    try:
+        competitors = data_espn["header"]["competitions"][0]["competitors"]
+    except Exception:
+        competitors = []
+    boxscore_teams = (data_espn.get("boxscore") or {}).get("teams", [])
+    fallback_kit = determina_kit(home_id, away_id, league_slug, league_name)
+    result = kit_analyzer.analizza(
+        home_name=home_name,
+        away_name=away_name,
+        home_id=home_id,
+        away_id=away_id,
+        league_name=league_name,
+        competitors=competitors,
+        boxscore_teams=boxscore_teams,
+        fallback_kit=fallback_kit,
+    )
+    return result["kit"] if result["kit"] in ("home", "away", "third") else fallback_kit
+
 E_BOLT   = '⚡️'
 E_FLAG   = '🏁'
 E_MIC    = '🎙'
@@ -290,6 +318,48 @@ def fmt_player(full_name: str) -> str:
         return esc(full_name.strip())
     return esc(parts[0][0].upper() + ". " + " ".join(parts[1:]))
 
+
+def goal_scoring_team_id(event: dict, home_id: str, away_id: str) -> str:
+    """Restituisce la squadra a cui va assegnato il gol, invertendo l'autogol."""
+    event_team_id = str(event.get("team_id", ""))
+    if event.get("type") == "own goal":
+        if event_team_id == str(home_id):
+            return str(away_id)
+        if event_team_id == str(away_id):
+            return str(home_id)
+    return event_team_id
+
+
+def goal_player_lines(
+    player_name: str,
+    assist_name: str,
+    goal_type: str,
+    scoring_team_id: str,
+) -> tuple[str, str]:
+    """Formatta marcatore/assist applicando il fallback speciale solo alla Juve."""
+    if not player_name:
+        return "", ""
+
+    player_text = fmt_player(player_name)
+    if goal_type == "own goal":
+        player_text += " (AUTOGOL)"
+    elif goal_type == "penalty goal":
+        player_text += " (RIGORE)"
+
+    scorer_line = f"{E_BALL} <i>{player_text}</i>\n"
+    registered = goal_graphics.find_player(html.unescape(player_name)) is not None
+    juventus_name_only = (
+        str(scoring_team_id) == JUVE_ID
+        and (goal_type == "own goal" or not registered)
+    )
+    if juventus_name_only:
+        return scorer_line, ""
+
+    assist_line = ""
+    if assist_name and _norm_name(assist_name) != _norm_name(player_name):
+        assist_line = f"{E_ASSIST} <i>{fmt_player(assist_name)}</i>\n"
+    return scorer_line, assist_line
+
 # ==============================================================================
 # TELEGRAM
 # ==============================================================================
@@ -375,6 +445,87 @@ def send_telegram_get_id(text: str) -> int | None:
         print(f"[{now_it()}] ❌ Errore send_telegram_get_id: {e}")
         return None
 
+
+def _send_telegram_event_photo_get_id(
+    text: str,
+    photo_bytes: bytes | None,
+    *,
+    filename: str,
+    label: str,
+) -> tuple[int | None, bool]:
+    """Invia una card come foto+caption e restituisce anche il message_id.
+
+    Se Telegram rifiuta la foto, il messaggio testuale viene comunque inviato:
+    il booleano indica se il messaggio salvato e realmente una foto.
+    """
+    if not photo_bytes:
+        return send_telegram_get_id(text), False
+    try:
+        r = _tg_post(
+            "sendPhoto",
+            data={"chat_id": CHAT_ID, "caption": text, "parse_mode": "HTML"},
+            files={"photo": (filename, photo_bytes, "image/png")},
+            timeout=25,
+        )
+        if r is not None and r.status_code == 200:
+            msg_id = r.json().get("result", {}).get("message_id")
+            return msg_id, bool(msg_id)
+        print(f"[{now_it()}] ⚠️  Foto {label} rifiutata da Telegram — fallback testo")
+    except Exception as e:
+        print(f"[{now_it()}] ⚠️  Errore invio foto {label}: {e} — fallback testo")
+    return send_telegram_get_id(text), False
+
+
+def send_telegram_goal_get_id(text: str, photo_bytes: bytes | None) -> tuple[int | None, bool]:
+    return _send_telegram_event_photo_get_id(
+        text, photo_bytes, filename="goal.png", label="GOAL"
+    )
+
+
+def send_telegram_saved_get_id(text: str, photo_bytes: bytes | None) -> tuple[int | None, bool]:
+    return _send_telegram_event_photo_get_id(
+        text, photo_bytes, filename="saved.png", label="SAVED"
+    )
+
+
+def edit_telegram_goal_photo(message_id: int, text: str, photo_bytes: bytes) -> bool:
+    """Sostituisce foto e caption quando ESPN corregge il marcatore."""
+    if not BOT_TOKEN or not CHAT_ID or not message_id or not photo_bytes:
+        return False
+    media = json.dumps({
+        "type": "photo",
+        "media": "attach://photo",
+        "caption": text,
+        "parse_mode": "HTML",
+    })
+    try:
+        r = _tg_post(
+            "editMessageMedia",
+            data={"chat_id": CHAT_ID, "message_id": message_id, "media": media},
+            files={"photo": ("goal.png", photo_bytes, "image/png")},
+            timeout=25,
+        )
+        return r is not None and r.status_code == 200
+    except Exception as e:
+        print(f"[{now_it()}] ❌ Errore editMessageMedia GOAL: {e}")
+        return False
+
+
+def edit_telegram_goal_caption(message_id: int, text: str) -> bool:
+    if not BOT_TOKEN or not CHAT_ID or not message_id:
+        return False
+    try:
+        r = _tg_post("editMessageCaption", payload={
+            "chat_id": CHAT_ID,
+            "message_id": message_id,
+            "caption": text,
+            "parse_mode": "HTML",
+        })
+        return r is not None and r.status_code == 200
+    except Exception as e:
+        print(f"[{now_it()}] ❌ Errore editMessageCaption GOAL: {e}")
+        return False
+
 def delete_telegram_message(message_id: int):
     if not BOT_TOKEN or not CHAT_ID or not message_id:
         return
@@ -382,6 +533,36 @@ def delete_telegram_message(message_id: int):
         _tg_post("deleteMessage", payload={"chat_id": CHAT_ID, "message_id": message_id})
     except Exception as e:
         print(f"[{now_it()}] ⚠️  Errore deleteMessage: {e}")
+
+
+def replace_corrected_goal_message(
+    message_id: int,
+    was_photo: bool,
+    text: str,
+    rendered_goal: goal_graphics.RenderedGoal | None,
+) -> tuple[bool, int, bool]:
+    """Aggiorna testo e media di un GOAL corretto senza lasciare la foto errata."""
+    if was_photo and rendered_goal:
+        edited = edit_telegram_goal_photo(message_id, text, rendered_goal.png)
+        return edited, message_id, True
+
+    if was_photo and not rendered_goal:
+        replacement_id = send_telegram_get_id(text)
+        if replacement_id:
+            delete_telegram_message(message_id)
+            return True, replacement_id, False
+        return False, message_id, True
+
+    if not was_photo and rendered_goal:
+        replacement_id, replacement_is_photo = send_telegram_goal_get_id(
+            text, rendered_goal.png
+        )
+        if replacement_id:
+            delete_telegram_message(message_id)
+            return True, replacement_id, replacement_is_photo
+        return False, message_id, False
+
+    return send_telegram_edit(message_id, text), message_id, False
 
 def send_telegram_with_photo(text: str, photo_bytes) -> bool:
     """Invia foto+caption; fallback su solo testo. Ritorna True se almeno
@@ -397,6 +578,188 @@ def send_telegram_with_photo(text: str, photo_bytes) -> bool:
         return send_telegram_get_id(text) is not None
     except Exception:
         return send_telegram_get_id(text) is not None
+
+
+def prepara_grafica_goal(*, data_espn: dict, scorer_name: str,
+                         goal_type: str, scoring_team_id: str,
+                         minute: str | int, home_name: str, away_name: str,
+                         home_id: str, away_id: str,
+                         home_goals: int, away_goals: int,
+                         league_slug: str, league_name: str,
+                         event_key: str) -> goal_graphics.RenderedGoal | None:
+    """Crea la card solo per un gol segnato da un calciatore Juventus.
+
+    Autogol, marcatori avversari, asset assenti e PNG ancora verdi/opachi
+    mantengono automaticamente il messaggio testuale esistente.
+    """
+    if not GOAL_GRAPHICS_ENABLED:
+        return None
+    if (
+        str(scoring_team_id) != JUVE_ID
+        or goal_type not in ("goal", "penalty goal")
+        or not scorer_name
+    ):
+        return None
+    if not goal_graphics.find_player(html.unescape(scorer_name)):
+        print(
+            f"[{now_it()}] ℹ️  Marcatore Juventus senza asset: {scorer_name} "
+            "— GOAL inviato con il solo nome"
+        )
+        return None
+    try:
+        juve_kit = rileva_kit_juve(
+            data_espn,
+            home_id,
+            away_id,
+            home_name,
+            away_name,
+            league_slug,
+            league_name,
+        )
+        if juve_kit not in ("home", "away", "third"):
+            juve_kit = "home" if str(home_id) == JUVE_ID else "away"
+        rendered = goal_graphics.render_goal_card(
+            scorer_name=scorer_name,
+            minute=minute,
+            home_name=home_name,
+            away_name=away_name,
+            home_id=home_id,
+            away_id=away_id,
+            home_goals=home_goals,
+            away_goals=away_goals,
+            kit=juve_kit,
+            event_key=event_key,
+        )
+        print(
+            f"[{now_it()}] 🖼️  Grafica GOAL pronta: {rendered.player.name} "
+            f"| kit={rendered.kit} | posa={rendered.pose}"
+        )
+        return rendered
+    except goal_graphics.GoalGraphicUnavailable as e:
+        print(f"[{now_it()}] ⚠️  Grafica GOAL non disponibile: {e} — invio testo")
+        return None
+    except Exception as e:
+        print(f"[{now_it()}] ⚠️  Errore composizione grafica GOAL: {e} — invio testo")
+        return None
+
+
+def _nome_portiere_registrato(name: str) -> str:
+    player = goal_graphics.find_player(html.unescape(name or ""))
+    return player.name if player and player.role == "goalkeeper" else ""
+
+
+def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
+    """Trova il portiere Juventus nei partecipanti evento o nelle formazioni ESPN."""
+    direct = _nome_portiere_registrato(event_candidate)
+    if direct:
+        return direct
+
+    candidates: list[tuple[int, str]] = []
+
+    def add_candidate(entry: dict, base_priority: int) -> None:
+        athlete = entry.get("athlete") or entry.get("player") or entry
+        if not isinstance(athlete, dict):
+            return
+        name = (
+            athlete.get("displayName") or athlete.get("fullName")
+            or athlete.get("shortName") or ""
+        )
+        canonical = _nome_portiere_registrato(name)
+        if not canonical:
+            return
+        position = entry.get("position") or athlete.get("position") or {}
+        if isinstance(position, dict):
+            position_text = " ".join(str(position.get(key, "")) for key in (
+                "abbreviation", "name", "displayName"
+            )).lower()
+        else:
+            position_text = str(position).lower()
+        is_goalkeeper = any(token in position_text for token in (
+            "gk", "goalkeeper", "portiere", "keeper"
+        ))
+        priority = base_priority
+        if is_goalkeeper:
+            priority += 30
+        if entry.get("starter") is True:
+            priority += 20
+        if entry.get("active") is True or entry.get("didPlay") is True:
+            priority += 10
+        candidates.append((priority, canonical))
+
+    # Summary ESPN: rosters[].roster[]
+    for team_block in data_espn.get("rosters") or []:
+        team = team_block.get("team") or {}
+        if str(team.get("id", team_block.get("id", ""))) != JUVE_ID:
+            continue
+        for entry in team_block.get("roster") or team_block.get("athletes") or []:
+            if isinstance(entry, dict):
+                add_candidate(entry, 200)
+
+    # Summary ESPN: boxscore.players[].statistics[].athletes[]
+    for team_block in ((data_espn.get("boxscore") or {}).get("players") or []):
+        team = team_block.get("team") or {}
+        if str(team.get("id", "")) != JUVE_ID:
+            continue
+        for category in team_block.get("statistics") or []:
+            for entry in category.get("athletes") or []:
+                if isinstance(entry, dict):
+                    add_candidate(entry, 100)
+
+    if not candidates:
+        return ""
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
+
+
+def prepara_grafica_parata_rigore(
+    *,
+    data_espn: dict,
+    penalty_event: dict,
+    goalkeeper_name: str,
+    minute: str | int,
+    home_name: str,
+    away_name: str,
+    home_id: str,
+    away_id: str,
+    home_goals: int,
+    away_goals: int,
+    event_key: str,
+) -> goal_graphics.RenderedGoal | None:
+    """Crea SAVED solo per un rigore avversario realmente parato dalla Juve."""
+    if not GOAL_GRAPHICS_ENABLED or penalty_event.get("type") not in (
+        "penalty saved", "shootout saved"
+    ):
+        return None
+    opponent_id = away_id if str(home_id) == JUVE_ID else (
+        home_id if str(away_id) == JUVE_ID else ""
+    )
+    if not opponent_id or str(penalty_event.get("team_id", "")) != str(opponent_id):
+        return None
+    if not _nome_portiere_registrato(goalkeeper_name):
+        return None
+    try:
+        rendered = goal_graphics.render_saved_card(
+            goalkeeper_name=goalkeeper_name,
+            minute=minute,
+            home_name=home_name,
+            away_name=away_name,
+            home_id=home_id,
+            away_id=away_id,
+            home_goals=home_goals,
+            away_goals=away_goals,
+            event_key=event_key,
+        )
+        print(
+            f"[{now_it()}] 🧤 Grafica SAVED pronta: {rendered.player.name} "
+            f"| posa={rendered.pose}"
+        )
+        return rendered
+    except goal_graphics.GoalGraphicUnavailable as e:
+        print(f"[{now_it()}] ⚠️  Grafica SAVED non disponibile: {e} — invio testo")
+        return None
+    except Exception as e:
+        print(f"[{now_it()}] ⚠️  Errore composizione grafica SAVED: {e} — invio testo")
+        return None
 
 def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str) -> bool:
     """Invia la foto delle statistiche. Ritorna True solo se l'invio è
@@ -1679,6 +2042,10 @@ def _failpen_gia_inviato(state: dict, e: dict) -> bool:
             if rec == f"failpen_{e['minute']}_{e['player_name']}".replace(" ", "_"):
                 return True
             continue
+        if rec.get("uid") and e.get("uid"):
+            if rec["uid"] == e["uid"]:
+                return True
+            continue
         if (rec.get("player") == e["player_name"]
                 and rec.get("type") == e["type"]
                 and abs(int(rec.get("minute", 0)) - e["minute"]) <= 3):
@@ -1897,23 +2264,17 @@ def avvia_ciclo_partita():
                 for ge in goal_events_all:
                     if ch + ca >= g_home + g_away:
                         break
-                    if ge["team_id"] == home_id:
+                    actual_tid = goal_scoring_team_id(ge, home_id, away_id)
+                    if actual_tid == home_id:
                         ch += 1
                     else:
                         ca += 1
 
                     p_name = ge.get("player_name", "")
                     a_name = ge.get("assist_name", "")
-                    ps = fmt_player(p_name) if p_name else ""
-                    if ge["type"] == "own goal" and ps:
-                        ps += " (Autogol)"
-                    elif ge["type"] == "penalty goal" and ps:
-                        ps += " (Rig.)"
-
-                    scorer_line = f"{E_BALL} <i>{ps}</i>\n" if ps else ""
-                    assist_line = f"{E_ASSIST} <i>{fmt_player(a_name)}</i>\n" if a_name and a_name != p_name else ""
-
-                    actual_tid = ge["team_id"]
+                    scorer_line, assist_line = goal_player_lines(
+                        p_name, a_name, ge["type"], actual_tid
+                    )
 
                     if actual_tid == home_id:
                         goal_score = f"<b>{home_name} {ch}</b>-{ca} {away_name}"
@@ -1923,13 +2284,32 @@ def avvia_ciclo_partita():
                     goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
                     goal_key  = f"{ch}_{ca}"
 
-                    msg_id = send_telegram_get_id(goal_text)
+                    rendered_goal = prepara_grafica_goal(
+                        data_espn=data,
+                        scorer_name=p_name,
+                        goal_type=ge["type"],
+                        scoring_team_id=actual_tid,
+                        minute=ge["minute"],
+                        home_name=home_name,
+                        away_name=away_name,
+                        home_id=home_id,
+                        away_id=away_id,
+                        home_goals=ch,
+                        away_goals=ca,
+                        league_slug=league_slug,
+                        league_name=league_name,
+                        event_key=f"{event_id}|{goal_key}",
+                    )
+                    msg_id, sent_as_photo = send_telegram_goal_get_id(
+                        goal_text,
+                        rendered_goal.png if rendered_goal else None,
+                    )
                     if not msg_id:
                         # Invio non riuscito: interrompo il recupero. Annullo
                         # l'incremento di questo gol (non annunciato) e lascio che sia
                         # il rilevamento live a riprovare i gol rimanenti.
                         print(f"[{now_it()}] ⚠️  Invio goal non riuscito {ge['minute']}\' {home_name} {ch}-{ca} {away_name} — riprovo col rilevamento live")
-                        if ge["team_id"] == home_id:
+                        if actual_tid == home_id:
                             ch -= 1
                         else:
                             ca -= 1
@@ -1948,6 +2328,8 @@ def avvia_ciclo_partita():
                         "home_id":   home_id,
                         "away_id":   away_id,
                         "score_tid": actual_tid,
+                        "is_photo":  sent_as_photo,
+                        "graphic_kit": rendered_goal.kit if rendered_goal and sent_as_photo else None,
                     }
                     time.sleep(2)
 
@@ -2170,9 +2552,9 @@ def avvia_ciclo_partita():
                     _gevs = sorted(goal_events, key=lambda x: x["minute"])
                     if _gevs:
                         _last_ev = _gevs[-1]
-                        scoring_tid = _last_ev["team_id"]
-                        if _last_ev["type"] == "own goal":
-                            scoring_tid = away_id if _last_ev["team_id"] == home_id else home_id
+                        scoring_tid = goal_scoring_team_id(
+                            _last_ev, home_id, away_id
+                        )
                     else:
                         scoring_tid = home_id if g_home >= g_away else away_id
                     print(f"[{now_it()}] ⚠️  Stato punteggio incoerente (prev {prev_home}-{prev_away}, ora {g_home}-{g_away}) — marcatore dedotto dal feed")
@@ -2182,9 +2564,13 @@ def avvia_ciclo_partita():
                 goal_announced = False
 
                 if scoring_tid:
-                    team_goals = [e for e in goal_events if e["type"] != "own goal" and e["team_id"] == scoring_tid]
-                    own_goals_vs = [e for e in goal_events if e["type"] == "own goal" and e["team_id"] != scoring_tid]
-                    candidates = sorted(team_goals + own_goals_vs, key=lambda x: (x["minute"], x.get("seq", 0)))
+                    candidates = sorted(
+                        [
+                            e for e in goal_events
+                            if goal_scoring_team_id(e, home_id, away_id) == scoring_tid
+                        ],
+                        key=lambda x: (x["minute"], x.get("seq", 0)),
+                    )
 
                     expected_count = g_home if scoring_tid == home_id else g_away
 
@@ -2206,22 +2592,12 @@ def avvia_ciclo_partita():
                         goal_type   = "goal"
 
                     actual_scoring_tid = scoring_tid
-
-                    if player_name:
-                        ps = fmt_player(player_name)
-                        if goal_type == "own goal":
-                            ps += " (Autogol)"
-                            actual_scoring_tid = away_id if last["team_id"] == home_id else home_id
-                        elif goal_type == "penalty goal":
-                            ps += " (Rig.)"
-                        scorer_line = f"{E_BALL} <i>{ps}</i>\n"
-                    else:
-                        scorer_line = ""
-
-                    if assist_name and assist_name != player_name:
-                        assist_line = f"{E_ASSIST} <i>{fmt_player(assist_name)}</i>\n"
-                    else:
-                        assist_line = ""
+                    scorer_line, assist_line = goal_player_lines(
+                        player_name,
+                        assist_name,
+                        goal_type,
+                        actual_scoring_tid,
+                    )
 
                     if actual_scoring_tid == home_id:
                         goal_score = f"<b>{home_name} {g_home}</b>-{g_away} {away_name}"
@@ -2238,7 +2614,26 @@ def avvia_ciclo_partita():
                     else:
                         _scorer_log = f" {fmt_player(player_name)}" if player_name else " (marcatore in attesa)"
                         _assist_log = f" | assist: {fmt_player(assist_name)}" if assist_name and assist_name != player_name else ""
-                        msg_id = send_telegram_get_id(goal_text)
+                        rendered_goal = prepara_grafica_goal(
+                            data_espn=data,
+                            scorer_name=player_name,
+                            goal_type=goal_type,
+                            scoring_team_id=actual_scoring_tid,
+                            minute=goal_minute,
+                            home_name=home_name,
+                            away_name=away_name,
+                            home_id=home_id,
+                            away_id=away_id,
+                            home_goals=g_home,
+                            away_goals=g_away,
+                            league_slug=league_slug,
+                            league_name=league_name,
+                            event_key=f"{event_id}|{goal_key}",
+                        )
+                        msg_id, sent_as_photo = send_telegram_goal_get_id(
+                            goal_text,
+                            rendered_goal.png if rendered_goal else None,
+                        )
                         if msg_id:
                             state.setdefault("goal_messages", {})[goal_key] = {
                                 "msg_id":    msg_id,
@@ -2253,6 +2648,8 @@ def avvia_ciclo_partita():
                                 "home_id":   home_id,
                                 "away_id":   away_id,
                                 "score_tid": actual_scoring_tid,
+                                "is_photo":  sent_as_photo,
+                                "graphic_kit": rendered_goal.kit if rendered_goal and sent_as_photo else None,
                             }
                             state_changed = True
                             goal_announced = True
@@ -2396,13 +2793,15 @@ def avvia_ciclo_partita():
                         for e in events:
                             if e["type"] not in ("goal", "own goal", "penalty goal"):
                                 continue
-                            if e["team_id"] != team_id:
+                            if goal_scoring_team_id(e, home_id, away_id) != team_id:
                                 continue
                             ps = fmt_player(e["player_name"])
                             if e["type"] == "own goal":
-                                suffix = " (Autogol)"
+                                suffix = " (AUTOGOL)"
+                            elif e["type"] == "penalty goal":
+                                suffix = " (RIGORE)"
                             else:
-                                suffix = ""          # i rigori contano come gol normali
+                                suffix = ""
                             key = (ps, suffix)
                             if key not in grouped:
                                 grouped[key] = []
@@ -2558,15 +2957,17 @@ def avvia_ciclo_partita():
                 goal_events_all = [e for e in events if e["type"] in ("goal", "own goal", "penalty goal")]
 
                 if s_tid == s_home_id:
-                    team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_home_id]
-                    own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_home_id]
-                    candidates   = sorted(team_goals + own_goals_vs, key=lambda x: (x["minute"], x.get("seq", 0)))
                     idx = gh - 1
                 else:
-                    team_goals   = [e for e in goal_events_all if e["type"] != "own goal" and e["team_id"] == s_away_id]
-                    own_goals_vs = [e for e in goal_events_all if e["type"] == "own goal" and e["team_id"] == s_away_id]
-                    candidates   = sorted(team_goals + own_goals_vs, key=lambda x: (x["minute"], x.get("seq", 0)))
                     idx = ga - 1
+
+                candidates = sorted(
+                    [
+                        e for e in goal_events_all
+                        if goal_scoring_team_id(e, s_home_id, s_away_id) == s_tid
+                    ],
+                    key=lambda x: (x["minute"], x.get("seq", 0)),
+                )
 
                 if idx < 0 or idx >= len(candidates):
                     continue
@@ -2580,21 +2981,13 @@ def avvia_ciclo_partita():
                    (_norm_name(current_assist) != _norm_name(saved.get("assist", ""))) or \
                    (current_type != saved.get("type", "goal")):
 
-                    if current_scorer:
-                        ps_new = fmt_player(current_scorer)
-                        if current_type == "own goal":
-                            ps_new += " (Autogol)"
-                        elif current_type == "penalty goal":
-                            ps_new += " (Rig.)"
-                        scorer_line_new = f"{E_BALL} <i>{ps_new}</i>\n"
-                    else:
-                        scorer_line_new = ""
-
-                    assist_line_new = ""
-                    if current_assist and current_assist != current_scorer:
-                        assist_line_new = f"{E_ASSIST} <i>{fmt_player(current_assist)}</i>\n"
-
                     actual_tid = s_tid
+                    scorer_line_new, assist_line_new = goal_player_lines(
+                        current_scorer,
+                        current_assist,
+                        current_type,
+                        actual_tid,
+                    )
 
                     if actual_tid == s_home_id:
                         goal_score_new = f"<b>{s_home_n} {gh}</b>-{ga} {s_away_n}"
@@ -2616,12 +3009,42 @@ def avvia_ciclo_partita():
                     if current_type != saved.get("type", "goal"):
                         changes.append(f"tipo: {saved.get('type', 'goal')} → {current_type}")
 
-                    if send_telegram_edit(msg_id, goal_text_new):
+                    rendered_correction = prepara_grafica_goal(
+                        data_espn=data,
+                        scorer_name=current_scorer,
+                        goal_type=current_type,
+                        scoring_team_id=actual_tid,
+                        minute=_min_disp_new,
+                        home_name=s_home_n,
+                        away_name=s_away_n,
+                        home_id=s_home_id,
+                        away_id=s_away_id,
+                        home_goals=gh,
+                        away_goals=ga,
+                        league_slug=league_slug,
+                        league_name=league_name,
+                        event_key=f"{event_id}|{goal_key}",
+                    )
+                    was_photo = bool(saved.get("is_photo"))
+                    edit_ok, new_msg_id, new_is_photo = replace_corrected_goal_message(
+                        msg_id,
+                        was_photo,
+                        goal_text_new,
+                        rendered_correction,
+                    )
+
+                    if edit_ok:
                         print(f"[{now_it()}] ✏️  CORREZIONE goal {goal_key}: {', '.join(changes)} → messaggio editato")
+                        state["goal_messages"][goal_key]["msg_id"]     = new_msg_id
                         state["goal_messages"][goal_key]["scorer"]    = current_scorer
                         state["goal_messages"][goal_key]["assist"]    = current_assist
                         state["goal_messages"][goal_key]["type"]      = current_type
                         state["goal_messages"][goal_key]["score_tid"] = actual_tid
+                        state["goal_messages"][goal_key]["is_photo"]  = new_is_photo
+                        state["goal_messages"][goal_key]["graphic_kit"] = (
+                            rendered_correction.kit
+                            if rendered_correction and new_is_photo else None
+                        )
                         state_changed = True
                     else:
                         print(f"[{now_it()}] ⚠️  CORREZIONE goal {goal_key} non riuscita ({', '.join(changes)}) — riprovo al prossimo ciclo")
@@ -2899,22 +3322,71 @@ def avvia_ciclo_partita():
 
             # --- Rigori sbagliati (solo durante il gioco: nella lotteria dei
             # rigori l'esito di ogni calcio lo annuncia già il blocco RIGORI) ---
-            for e in (events if status not in ("PEN", "BREAK_PEN") else []):
-                if e["type"] in ("penalty missed", "penalty saved"):
+            for e in events:
+                regular_penalty = (
+                    status not in ("PEN", "BREAK_PEN")
+                    and e["type"] in ("penalty missed", "penalty saved")
+                )
+                shootout_save = e["type"] == "shootout saved"
+                if regular_penalty or shootout_save:
                     if _failpen_gia_inviato(state, e):
                         continue
                     team_name = home_name if e["team_id"] == home_id else away_name
-                    msg_id = send_telegram_get_id(
-                        f"<b>RIGORE SBAGLIATO {team_name.upper()} · {e['minute']}' {E_KICK}</b>\n\n"
-                        f"{E_PEN_KO} <i>{fmt_player(e['player_name'])}</i>\n\n"
-                        f"{e_comp} {hashtag}"
+                    opponent_id = away_id if str(home_id) == JUVE_ID else (
+                        home_id if str(away_id) == JUVE_ID else ""
                     )
+                    is_juve_save = (
+                        e["type"] in ("penalty saved", "shootout saved")
+                        and bool(opponent_id)
+                        and str(e["team_id"]) == str(opponent_id)
+                    )
+                    goalkeeper_name = (
+                        trova_portiere_juve(data, e.get("assist_name", ""))
+                        if is_juve_save else ""
+                    )
+                    rendered_saved = None
+                    if goalkeeper_name:
+                        rendered_saved = prepara_grafica_parata_rigore(
+                            data_espn=data,
+                            penalty_event=e,
+                            goalkeeper_name=goalkeeper_name,
+                            minute=e.get("minute_disp", e["minute"]),
+                            home_name=home_name,
+                            away_name=away_name,
+                            home_id=home_id,
+                            away_id=away_id,
+                            home_goals=g_home,
+                            away_goals=g_away,
+                            event_key=f"{event_id}|saved|{e.get('uid', '')}",
+                        )
+                        penalty_text = (
+                            f"<b>RIGORE PARATO · {e['minute']}' {E_KICK}</b>\n\n"
+                            f"🧤 <i>{fmt_player(goalkeeper_name)}</i>\n"
+                            f"{E_PEN_KO} <i>{fmt_player(e['player_name'])}</i>\n\n"
+                            f"{e_comp} {hashtag}"
+                        )
+                        msg_id, _ = send_telegram_saved_get_id(
+                            penalty_text,
+                            rendered_saved.png if rendered_saved else None,
+                        )
+                    else:
+                        # Nella lotteria il mancato riconoscimento del portiere
+                        # non crea un doppione: resta il messaggio RIGORI aggregato.
+                        if shootout_save:
+                            continue
+                        msg_id = send_telegram_get_id(
+                            f"<b>RIGORE SBAGLIATO {team_name.upper()} · {e['minute']}' {E_KICK}</b>\n\n"
+                            f"{E_PEN_KO} <i>{fmt_player(e['player_name'])}</i>\n\n"
+                            f"{e_comp} {hashtag}"
+                        )
                     if msg_id:
-                        print(f"[{now_it()}] 🥅 RIGORE SBAGLIATO {team_name.upper()} {e['minute']}' {fmt_player(e['player_name'])} → Telegram inviato")
+                        label = "RIGORE PARATO" if goalkeeper_name else "RIGORE SBAGLIATO"
+                        print(f"[{now_it()}] 🥅 {label} {team_name.upper()} {e['minute']}' {fmt_player(e['player_name'])} → Telegram inviato")
                         state["sent_failed_penalties"].append({
                             "player": e["player_name"],
                             "type":   e["type"],
                             "minute": e["minute"],
+                            "uid":    e.get("uid", ""),
                         })
                         state_changed = True
 

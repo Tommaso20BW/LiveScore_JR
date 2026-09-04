@@ -1,0 +1,104 @@
+name: Test Goal/Saved Graphic
+
+on:
+  workflow_dispatch:
+    inputs:
+      event:
+        description: 'Tipo di grafica'
+        required: true
+        default: 'goal'
+        type: choice
+        options:
+          - goal
+          - saved
+      player:
+        description: 'Nome del marcatore o portiere come appare su ESPN'
+        required: true
+        default: 'Kenan Yildiz'
+      kit:
+        description: 'Maglia e background'
+        required: true
+        default: 'home'
+        type: choice
+        options:
+          - home
+          - away
+          - third
+      pose:
+        description: 'Posa'
+        required: true
+        default: 'arms_crossed'
+        type: choice
+        options:
+          - arms_crossed
+          - pointing
+      minute:
+        description: 'Minuto visualizzato'
+        required: true
+        default: '56'
+      home_name:
+        description: 'Squadra di casa'
+        required: true
+        default: 'Juventus'
+      away_name:
+        description: 'Squadra ospite'
+        required: true
+        default: 'Inter'
+      home_goals:
+        description: 'Gol squadra di casa'
+        required: true
+        default: '1'
+      away_goals:
+        description: 'Gol squadra ospite'
+        required: true
+        default: '0'
+
+permissions:
+  contents: read
+
+jobs:
+  render-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Install Pillow
+        run: pip install pillow==12.3.0
+
+      - name: Render preview
+        env:
+          PREVIEW_PLAYER: ${{ github.event.inputs.player }}
+          PREVIEW_EVENT: ${{ github.event.inputs.event }}
+          PREVIEW_KIT: ${{ github.event.inputs.kit }}
+          PREVIEW_POSE: ${{ github.event.inputs.pose }}
+          PREVIEW_MINUTE: ${{ github.event.inputs.minute }}
+          PREVIEW_HOME: ${{ github.event.inputs.home_name }}
+          PREVIEW_AWAY: ${{ github.event.inputs.away_name }}
+          PREVIEW_HOME_GOALS: ${{ github.event.inputs.home_goals }}
+          PREVIEW_AWAY_GOALS: ${{ github.event.inputs.away_goals }}
+        run: |
+          python goal_graphics.py \
+            --event "$PREVIEW_EVENT" \
+            --player "$PREVIEW_PLAYER" \
+            --kit "$PREVIEW_KIT" \
+            --pose "$PREVIEW_POSE" \
+            --minute "$PREVIEW_MINUTE" \
+            --home "$PREVIEW_HOME" \
+            --away "$PREVIEW_AWAY" \
+            --home-goals "$PREVIEW_HOME_GOALS" \
+            --away-goals "$PREVIEW_AWAY_GOALS" \
+            --output outputs/goal-preview.png
+
+      - name: Upload preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.event }}-preview-${{ github.event.inputs.kit }}
+          path: outputs/goal-preview.png
+          if-no-files-found: error

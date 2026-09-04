@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "players": [
+    {"name": "Kerim Alajbegović", "slug": "kerim_alajbegovic", "role": "outfield", "aliases": ["Kerim Alajbegovic", "K. Alajbegovic", "Alajbegovic"]},
+    {"name": "Pierre Kalulu", "slug": "pierre_kalulu", "role": "outfield", "aliases": ["P. Kalulu", "Kalulu"]},
+    {"name": "Jérémie Boga", "slug": "jeremie_boga", "role": "outfield", "aliases": ["Jeremie Boga", "J. Boga", "Boga"]},
+    {"name": "Arkadiusz Milik", "slug": "arkadiusz_milik", "role": "outfield", "aliases": ["A. Milik", "Milik"]},
+    {"name": "Douglas Luiz", "slug": "douglas_luiz", "role": "outfield", "aliases": ["D. Luiz", "Douglas Luiz Soares de Paulo", "Douglas"]},
+    {"name": "Edon Zhegrova", "slug": "edon_zhegrova", "role": "outfield", "aliases": ["E. Zhegrova", "Zhegrova"]},
+    {"name": "Randal Kolo Muani", "slug": "randal_kolo_muani", "role": "outfield", "aliases": ["R. Kolo Muani", "Kolo Muani"]},
+    {"name": "Kenan Yildiz", "slug": "kenan_yildiz", "role": "outfield", "aliases": ["Kenan Yıldız", "K. Yildiz", "K. Yıldız", "Yildiz", "Yıldız"]},
+    {"name": "Teun Koopmeiners", "slug": "teun_koopmeiners", "role": "outfield", "aliases": ["T. Koopmeiners", "Koopmeiners"]},
+    {"name": "Francisco Conceição", "slug": "francisco_conceicao", "role": "outfield", "aliases": ["Francisco Conceicao", "F. Conceicao", "F. Conceição", "Conceicao", "Conceição"]},
+    {"name": "Lloyd Casius Kelly", "slug": "lloyd_casius_kelly", "role": "outfield", "aliases": ["Lloyd Kelly", "L. Kelly", "Kelly"]},
+    {"name": "Manuel Locatelli", "slug": "manuel_locatelli", "role": "outfield", "aliases": ["M. Locatelli", "Locatelli"]},
+    {"name": "Gleison Bremer", "slug": "gleison_bremer", "role": "outfield", "aliases": ["Bremer", "G. Bremer"]},
+    {"name": "Juan David Cabal", "slug": "juan_david_cabal", "role": "outfield", "aliases": ["Juan Cabal", "J. Cabal", "Cabal"]},
+    {"name": "Federico Gatti", "slug": "federico_gatti", "role": "outfield", "aliases": ["F. Gatti", "Gatti"]},
+    {"name": "Nicolás González", "slug": "nicolas_gonzalez", "role": "outfield", "aliases": ["Nicolas Gonzalez", "Nico Gonzalez", "Nico González", "N. Gonzalez", "N. González", "Gonzalez", "González"]},
+    {"name": "Pape Matar Sarr", "slug": "pape_matar_sarr", "role": "outfield", "aliases": ["Pape Sarr", "P. M. Sarr", "P. Sarr", "Sarr"]},
+    {"name": "Zeki Çelik", "slug": "zeki_celik", "role": "outfield", "aliases": ["Zeki Celik", "Z. Celik", "Z. Çelik", "Celik", "Çelik"]},
+    {"name": "Guglielmo Vicario", "slug": "guglielmo_vicario", "role": "goalkeeper", "aliases": ["G. Vicario", "Vicario"]},
+    {"name": "Jhon Lucumí", "slug": "jhon_lucumi", "role": "outfield", "aliases": ["Jhon Lucumi", "J. Lucumi", "J. Lucumí", "Lucumi", "Lucumí"]},
+    {"name": "Carlo Pinsoglio", "slug": "carlo_pinsoglio", "role": "goalkeeper", "aliases": ["C. Pinsoglio", "Pinsoglio"]},
+    {"name": "Weston McKennie", "slug": "weston_mckennie", "role": "outfield", "aliases": ["W. McKennie", "McKennie"]},
+    {"name": "Andrea Cambiaso", "slug": "andrea_cambiaso", "role": "outfield", "aliases": ["A. Cambiaso", "Cambiaso"]},
+    {"name": "Kamil Grabara", "slug": "kamil_grabara", "role": "goalkeeper", "aliases": ["K. Grabara", "Grabara"]},
+    {"name": "Khéphren Thuram-Ulien", "slug": "khephren_thuram_ulien", "role": "outfield", "aliases": ["Khephren Thuram-Ulien", "Khéphren Thuram", "Khephren Thuram", "K. Thuram", "Thuram"]},
+    {"name": "Jeff Ekhator", "slug": "jeff_ekhator", "role": "outfield", "aliases": ["J. Ekhator", "Ekhator"]},
+    {"name": "Nick Woltemade", "slug": "nick_woltemade", "role": "outfield", "aliases": ["N. Woltemade", "Woltemade"]}
+  ]
+}
