@@ -38,7 +38,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Cache seasonal FCLogo team logos
+      - name: Restore seasonal FCLogo team logos
         if: ${{ github.event.inputs.goal_graphics != 'false' }}
         uses: actions/cache@v6
         with:
@@ -66,6 +66,25 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
           playwright install-deps chromium
+
+      - name: Sync seasonal FCLogo team logos
+        id: fclogo_sync
+        if: ${{ github.event.inputs.goal_graphics != 'false' }}
+        continue-on-error: true
+        run: python -u fclogo_sync.py --output-dir assets/goal_graphics/team_logos/fclogo_cache
+
+      - name: Publish seasonal FCLogo team logos
+        if: ${{ github.event.inputs.goal_graphics != 'false' && steps.fclogo_sync.outcome == 'success' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/goal_graphics/team_logos/fclogo_cache
+          if git diff --cached --quiet; then
+            echo "Nessun logo nuovo da pubblicare"
+          else
+            git commit -m "Update seasonal FCLogo team logos"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
 
       - name: Run Live Score Bot
         env:

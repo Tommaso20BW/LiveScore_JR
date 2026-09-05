@@ -127,6 +127,7 @@ class FCLogoSyncTests(unittest.TestCase):
         (self.output_dir / filename).write_bytes(png_bytes())
         (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(
             json.dumps({
+                "season": "2026-27",
                 "teams": [{
                     "name": "Juventus",
                     "slug": club_slug,
@@ -185,6 +186,142 @@ class FCLogoSyncTests(unittest.TestCase):
         )
         self.assertEqual(manifest["teams"][0]["variant"], "mono")
         self.assertTrue((self.output_dir / manifest["teams"][0]["file"]).is_file())
+
+    def test_new_season_removes_old_clubs_and_logo_versions(self):
+        old_filename = "Old-Club-v2025-mono.png"
+        (self.output_dir / old_filename).write_bytes(png_bytes())
+        (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(
+            json.dumps({
+                "season": "2025-26",
+                "teams": [{
+                    "name": "Old Club",
+                    "slug": "Old-Club-v2025",
+                    "file": old_filename,
+                    "variant": "mono",
+                    "packs": ["2025-26-serie-a"],
+                }],
+            }),
+            encoding="utf-8",
+        )
+        pack_slug = "2026-27-serie-a"
+        new_slug = "New-Club-v2026"
+        mono_url = f"{fclogo_sync.ASSET_BASE_URL}/{new_slug}-mono.png"
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(
+                text=pack_listing(pack_slug)
+            ),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(
+                text=pack_page((new_slug, "New Club", "one"))
+            ),
+            f"{fclogo_sync.BASE_URL}/figc/club/{new_slug}-mono": FakeResponse(
+                text=detail_page(mono_url)
+            ),
+            mono_url: FakeResponse(content=png_bytes()),
+        })
+
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir,
+            session=session,
+            today=date(2026, 9, 1),
+        )
+
+        self.assertEqual(report.removed, 1)
+        self.assertFalse((self.output_dir / old_filename).exists())
+        manifest = json.loads(
+            (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
+        )
+        self.assertEqual([team["slug"] for team in manifest["teams"]], [new_slug])
+
+    def test_new_season_redownloads_even_when_club_slug_is_unchanged(self):
+        pack_slug = "2026-27-serie-a"
+        club_slug = "Juventus-FC-v2020"
+        filename = f"{club_slug}-mono.png"
+        old_bytes = png_bytes((10, 10, 10, 255))
+        new_bytes = png_bytes((240, 240, 240, 255))
+        (self.output_dir / filename).write_bytes(old_bytes)
+        preview = f"https://cdn.example/{club_slug}-one.png"
+        (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(
+            json.dumps({
+                "season": "2025-26",
+                "teams": [{
+                    "name": "Juventus",
+                    "slug": club_slug,
+                    "file": filename,
+                    "variant": "mono",
+                    "preview_url": preview,
+                    "packs": ["2025-26-serie-a"],
+                }],
+            }),
+            encoding="utf-8",
+        )
+        mono_url = f"{fclogo_sync.ASSET_BASE_URL}/{club_slug}-mono.png"
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(
+                text=pack_listing(pack_slug)
+            ),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(
+                text=pack_page((club_slug, "Juventus", "one"))
+            ),
+            f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono": FakeResponse(
+                text=detail_page(mono_url)
+            ),
+            mono_url: FakeResponse(content=new_bytes),
+        })
+
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir,
+            session=session,
+            today=date(2026, 9, 1),
+        )
+
+        self.assertEqual(report.downloaded, 1)
+        self.assertEqual((self.output_dir / filename).read_bytes(), new_bytes)
+
+    def test_failed_new_season_sync_does_not_delete_previous_files(self):
+        old_filename = "Old-Club-v2025-mono.png"
+        (self.output_dir / old_filename).write_bytes(png_bytes())
+        (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(
+            json.dumps({
+                "season": "2025-26",
+                "teams": [{
+                    "name": "Old Club",
+                    "slug": "Old-Club-v2025",
+                    "file": old_filename,
+                    "variant": "mono",
+                    "packs": ["2025-26-serie-a"],
+                }],
+            }),
+            encoding="utf-8",
+        )
+        pack_slug = "2026-27-serie-a"
+        new_slug = "New-Club-v2026"
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(
+                text=pack_listing(pack_slug)
+            ),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(
+                text=pack_page((new_slug, "New Club", "one"))
+            ),
+            f"{fclogo_sync.BASE_URL}/figc/club/{new_slug}-mono": FakeResponse(status=404),
+            f"{fclogo_sync.BASE_URL}/figc/club/{new_slug}": FakeResponse(status=404),
+        })
+
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir,
+            session=session,
+            today=date(2026, 9, 1),
+        )
+
+        self.assertEqual(report.failed, 1)
+        self.assertEqual(report.removed, 0)
+        self.assertTrue((self.output_dir / old_filename).is_file())
+        manifest = json.loads(
+            (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["season"], "2025-26")
 
     def test_color_asset_is_used_only_when_mono_is_unavailable(self):
         pack_slug = "2026-27-serie-b"

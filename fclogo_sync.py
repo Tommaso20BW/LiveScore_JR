@@ -8,6 +8,7 @@ contengono la Juventus nella stagione corrente.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import html
 import io
@@ -15,7 +16,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,7 @@ class SyncReport:
     teams: int = 0
     downloaded: int = 0
     reused: int = 0
+    removed: int = 0
     failed: int = 0
     errors: list[str] = field(default_factory=list)
 
@@ -66,7 +68,8 @@ class SyncReport:
         packs = ", ".join(self.selected_packs) if self.selected_packs else "nessuno"
         return (
             f"FCLogo {self.season}: pack [{packs}], {self.teams} squadre, "
-            f"{self.downloaded} aggiornati, {self.reused} in cache, "
+            f"{self.downloaded} aggiornati, {self.reused} riutilizzati, "
+            f"{self.removed} rimossi, "
             f"{self.failed} errori"
         )
 
@@ -415,11 +418,13 @@ def sync_current_season(
         if previous.get("season") == label
         and any(pack in failed_pack_slugs for pack in item.get("packs", []))
     }
+    pending_downloads: list[tuple[str, ClubRecord, dict[str, Any], Path]] = []
     for club_slug, club in sorted(clubs_by_slug.items()):
         old = previous_teams.get(club_slug, {})
         old_path = output_dir / str(old.get("file", ""))
         unchanged = (
-            old.get("preview_url", "") == club.preview_url
+            previous.get("season") == label
+            and old.get("preview_url", "") == club.preview_url
             and old.get("variant") == "mono"
             and _valid_png(old_path)
         )
@@ -428,37 +433,77 @@ def sync_current_season(
             variant = str(old.get("variant", "mono"))
             source_url = str(old.get("source_url", ""))
             report.reused += 1
+            updated_teams[club_slug] = {
+                "name": club.name,
+                "slug": club_slug,
+                "file": filename,
+                "aliases": _club_aliases(club),
+                "variant": variant,
+                "source_url": source_url,
+                "preview_url": club.preview_url,
+                "detail_path": club.detail_path,
+                "packs": sorted(club_packs[club_slug]),
+            }
         else:
-            try:
-                filename, variant, source_url = _download_logo(http, club, output_dir)
-                report.downloaded += 1
-            except FCLogoSyncError as exc:
-                if _valid_png(old_path):
-                    filename = old_path.name
-                    variant = str(old.get("variant", "cached"))
-                    source_url = str(old.get("source_url", ""))
-                    report.reused += 1
-                else:
-                    report.failed += 1
-                    report.errors.append(f"{club.name}: {exc}")
-                    continue
+            pending_downloads.append((club_slug, club, old, old_path))
 
-        updated_teams[club_slug] = {
-            "name": club.name,
-            "slug": club_slug,
-            "file": filename,
-            "aliases": _club_aliases(club),
-            "variant": variant,
-            "source_url": source_url,
-            "preview_url": club.preview_url,
-            "detail_path": club.detail_path,
-            "packs": sorted(club_packs[club_slug]),
-        }
+    def fetch_logo(
+        item: tuple[str, ClubRecord, dict[str, Any], Path],
+    ) -> tuple[str, ClubRecord, str, str, str, bool, str]:
+        club_slug, club, old, old_path = item
+        download_http = http if session is not None else _new_session()
+        try:
+            filename, variant, source_url = _download_logo(
+                download_http, club, output_dir
+            )
+            return club_slug, club, filename, variant, source_url, True, ""
+        except FCLogoSyncError as exc:
+            if previous.get("season") == label and _valid_png(old_path):
+                return (
+                    club_slug,
+                    club,
+                    old_path.name,
+                    str(old.get("variant", "cached")),
+                    str(old.get("source_url", "")),
+                    False,
+                    "",
+                )
+            return club_slug, club, "", "", "", False, str(exc)
+
+    if session is not None or len(pending_downloads) <= 1:
+        fetched = map(fetch_logo, pending_downloads)
+    else:
+        executor = ThreadPoolExecutor(max_workers=min(6, len(pending_downloads)))
+        fetched = executor.map(fetch_logo, pending_downloads)
+
+    try:
+        for club_slug, club, filename, variant, source_url, downloaded, error in fetched:
+            if error:
+                report.failed += 1
+                report.errors.append(f"{club.name}: {error}")
+                continue
+            if downloaded:
+                report.downloaded += 1
+            else:
+                report.reused += 1
+            updated_teams[club_slug] = {
+                "name": club.name,
+                "slug": club_slug,
+                "file": filename,
+                "aliases": _club_aliases(club),
+                "variant": variant,
+                "source_url": source_url,
+                "preview_url": club.preview_url,
+                "detail_path": club.detail_path,
+                "packs": sorted(club_packs[club_slug]),
+            }
+    finally:
+        if session is None and len(pending_downloads) > 1:
+            executor.shutdown(wait=True)
 
     manifest = {
         "source": f"{BASE_URL}/",
         "season": label,
-        "checked_at": datetime.now(timezone.utc).isoformat(),
         "packs": {
             slug: {
                 "url": f"{BASE_URL}/pack/{slug}",
@@ -469,12 +514,27 @@ def sync_current_season(
         },
         "teams": sorted(updated_teams.values(), key=lambda item: str(item.get("slug", ""))),
     }
-    temporary_manifest = manifest_path.with_suffix(".json.tmp")
-    temporary_manifest.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    temporary_manifest.replace(manifest_path)
+    if report.failed == 0:
+        temporary_manifest = manifest_path.with_suffix(".json.tmp")
+        temporary_manifest.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        temporary_manifest.replace(manifest_path)
+
+        # La cartella è dedicata al catalogo FCLogo: dopo aver pubblicato il
+        # nuovo manifest rimuoviamo i PNG non più referenziati. Questo elimina
+        # squadre uscite e vecchie versioni di stemmi al cambio stagione.
+        referenced_files = {
+            str(item.get("file", ""))
+            for item in manifest["teams"]
+            if item.get("file")
+        }
+        for logo_path in output_dir.glob("*.png"):
+            if logo_path.name not in referenced_files:
+                logo_path.unlink()
+                report.removed += 1
+
     report.teams = len(clubs_by_slug)
     return report
 
@@ -491,7 +551,7 @@ def main() -> int:
     print(report.summary())
     for error in report.errors:
         print(f"FCLogo warning: {error}")
-    return 0
+    return 1 if report.failed else 0
 
 
 if __name__ == "__main__":

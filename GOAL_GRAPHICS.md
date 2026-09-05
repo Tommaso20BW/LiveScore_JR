@@ -20,13 +20,20 @@ i pacchetti della stagione corrente: sincronizza sempre Serie A e Serie B (cosi
 sono comprese anche le possibili avversarie di Coppa Italia) e aggiunge
 Champions League, Europa League o Conference League soltanto quando la Juventus
 compare nel relativo pacchetto. Scarica nuovamente solo i file mancanti,
-corrotti o cambiati.
+corrotti o cambiati. Al passaggio alla nuova stagione riscarica da zero tutti i
+loghi dei pacchetti correnti ed elimina i PNG non più referenziati, comprese le
+vecchie versioni degli stemmi, prima di pubblicare il catalogo aggiornato.
+Pulizia e pubblicazione avvengono soltanto dopo una
+sincronizzazione completa senza errori, così un problema temporaneo di FCLogo
+non può sostituire il catalogo con una copia parziale.
 
-La cache dinamica e salvata in
-`assets/goal_graphics/team_logos/fclogo_cache/` e viene mantenuta tra i run di
-GitHub Actions. Se FCLogo e temporaneamente irraggiungibile il live score parte
-comunque, usa l'ultima copia valida e, per un logo assente, ripiega sull'immagine
-ESPN associata all'ID della squadra.
+Il catalogo dinamico e salvato in
+`assets/goal_graphics/team_logos/fclogo_cache/` ed e versionato nel repository:
+tutti i PNG e il relativo `manifest.json` sono quindi visibili su GitHub. Prima
+di avviare il live score, GitHub Actions sincronizza il catalogo e pubblica
+automaticamente eventuali aggiunte o aggiornamenti. Se FCLogo e temporaneamente
+irraggiungibile il live score parte comunque, usa l'ultima copia valida e, per
+un logo assente, ripiega sull'immagine ESPN associata all'ID della squadra.
 
 Per un rigore avversario classificato da ESPN come `penalty saved` o
 `shootout saved`, il sistema
