@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Cache seasonal FCLogo team logos
-        if: ${{ github.event.inputs.goal_graphics != 'false' || github.event.inputs.team_id == 'SIMULATE_GOAL_GRAPHICS' }}
+        if: ${{ github.event.inputs.goal_graphics != 'false' }}
         uses: actions/cache@v6
         with:
           path: assets/goal_graphics/team_logos/fclogo_cache
@@ -68,7 +68,6 @@ jobs:
           playwright install-deps chromium
 
       - name: Run Live Score Bot
-        if: ${{ github.event.inputs.team_id != 'SIMULATE_GOAL_GRAPHICS' }}
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Bot JR' && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
@@ -83,19 +82,6 @@ jobs:
           TEAM_ID:              ${{ github.event.inputs.team_id || '111' }}
           GOAL_GRAPHICS_ENABLED: ${{ github.event.inputs.goal_graphics || 'true' }}
         run: python -u livescore_runner.py
-
-      - name: Run simulated ESPN GOAL/SAVED test on Bot JR
-        if: ${{ github.event.inputs.team_id == 'SIMULATE_GOAL_GRAPHICS' }}
-        env:
-          TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO:          ${{ secrets.TELEGRAM_TO_BOT }}
-          TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
-          TELEGRAM_AUTO_DELETE_SECONDS: '1200'
-          GH_PAT:               ${{ secrets.GH_PAT }}
-          GITHUB_REPOSITORY:    ${{ github.repository }}
-          GIST_ID:              ${{ secrets.GIST_ID }}
-          GOAL_GRAPHICS_ENABLED: 'true'
-        run: python -u simulate_goal_graphics_bot_jr.py --send
 
       - name: Start Bot JR auto-delete after the match
         if: ${{ always() && github.event.inputs.channel == 'Bot JR' }}
