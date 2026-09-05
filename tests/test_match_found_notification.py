@@ -65,7 +65,7 @@ class MatchFoundNotificationTests(unittest.TestCase):
         self.source.return_value = (None, "Non disponibile")
         text = runner.messaggio_partita_trovata(self.match)
         self.assertIn("GOAL / SAVED: disabilitate (amichevole)", text)
-        self.assertIn("Background e scritte: non verificati", text)
+        self.assertNotIn("Background e scritte:", text)
         self.assertIn("NEC Nijmegen: Non disponibile", text)
 
     def test_missing_details_and_html_escaping(self):
@@ -75,6 +75,26 @@ class MatchFoundNotificationTests(unittest.TestCase):
         self.assertIn("Cup &lt;A&amp;B&gt;", text)
         self.assertIn("Orario non disponibile", text)
         self.assertIn("Stadio non disponibile", text)
+
+    def test_non_juventus_match_omits_kit_and_asset_check(self):
+        self.competitors[0]["team"] = {"id": "109", "displayName": "Fiorentina"}
+        self.competitors[1]["team"] = {"id": "239", "displayName": "Torino"}
+        text = runner.messaggio_partita_trovata(self.match)
+        self.assertNotIn("Kit Juventus", text)
+        self.assertNotIn("Background e scritte", text)
+        self.assertNotIn("GOAL / SAVED", text)
+        self.assertNotIn("GRAFICHE", text)
+        runner._asset_status.assert_not_called()
+
+    def test_auto_delete_is_queued_silently(self):
+        response = Mock(status_code=200)
+        with patch.object(runner.bot.SESSION, "post", return_value=response), \
+             patch.object(runner.bot, "should_enqueue", return_value=True), \
+             patch.object(runner.bot, "enqueue_response", return_value=1) as enqueue, \
+             patch("builtins.print") as log:
+            runner.bot._tg_post("sendMessage", payload={"chat_id": "test"})
+        enqueue.assert_called_once()
+        log.assert_not_called()
 
     def test_notification_only_to_bot_jr_even_if_summary_fails(self):
         response = Mock()

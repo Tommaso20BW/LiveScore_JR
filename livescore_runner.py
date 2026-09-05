@@ -34,6 +34,7 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
                    **(competitions[0] if competitions else {})}
     competitors = competition.get("competitors") or partita.get("competitors", [])
     home_id, away_id, home_raw, away_raw, _, _ = bot.parse_score(competitors)
+    juventus_match = bot.JUVE_ID in (str(home_id), str(away_id))
     home, away = (bot.esc(bot.translate_team(name)) for name in (home_raw, away_raw))
     league_slug = partita.get("league_slug", "")
     league_name = partita.get("league_name", "")
@@ -60,7 +61,13 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
     graphics_status = "disabilitate (amichevole)" if friendly else (
         "abilitate" if enabled else "disabilitate")
     asset_status = _asset_status(kit) if enabled and not friendly and kit in (
-        "home", "away", "third") else "non verificati"
+        "home", "away", "third") and juventus_match else None
+    kit_line = f"Kit Juventus: {kit_label}\n" if juventus_match else ""
+    asset_line = f"Background e scritte: {bot.esc(asset_status)}\n" if asset_status else ""
+    graphics_section = (
+        "🎨 <b>GRAFICHE</b>\n"
+        f"GOAL / SAVED: {graphics_status}\n{asset_line}\n"
+    ) if juventus_match else ""
     sources = []
     for name, team_id in ((home_raw, home_id), (away_raw, away_id)):
         try:
@@ -79,10 +86,8 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
         f"{home} — {away}\n"
         f"{bot.esc(league_name)} · {bot.esc(venue_name)}\n"
         f"{kickoff_text}\n"
-        f"Kit Juventus: {kit_label}\n\n"
-        "🎨 <b>GRAFICHE</b>\n"
-        f"GOAL / SAVED: {graphics_status}\n"
-        f"Background e scritte: {bot.esc(asset_status)}\n\n"
+        f"{kit_line}\n"
+        f"{graphics_section}"
         "🛡 <b>LOGHI</b>\n"
         f"{home}: {sources[0]}\n{away}: {sources[1]}\n\n"
         "⚙️ <b>LIVE SCORE</b>\n"
