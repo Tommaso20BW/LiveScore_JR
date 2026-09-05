@@ -46,8 +46,6 @@ class FakeSession:
     def get(self, url, **kwargs):
         self.calls.append(url)
         if url not in self.responses or not self.responses[url]:
-            if url.startswith(fclogo_sync.ESPN_BASE):
-                raise requests.ConnectionError("ESPN offline")
             raise AssertionError(f"Unexpected GET {url}")
         return self.responses[url].pop(0)
 
@@ -137,7 +135,7 @@ class FCLogoSyncTests(unittest.TestCase):
                     "name": "Juventus",
                     "slug": club_slug,
                     "file": filename,
-                    "aliases": ["Juventus FC"],
+                    "aliases": ["Juventus FC", "My manual alias"],
                     "espn_id": "111",
                     "variant": "mono",
                     "source_url": "cached",
@@ -165,26 +163,10 @@ class FCLogoSyncTests(unittest.TestCase):
         self.assertEqual(report.reused, 1)
         self.assertFalse(any("assets.fclogo.top" in url for url in session.calls))
         updated = json.loads((self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text())
-        self.assertEqual(updated["teams"][0]["espn_id"], "111")
+        self.assertNotIn("espn_id", updated["teams"][0])
+        self.assertIn("My manual alias", updated["teams"][0]["aliases"])
+        self.assertFalse(any("espn" in url for url in session.calls))
         self.assertEqual(report.failed, 0)
-
-        # Al successivo avvio ESPN torna disponibile: stesso PNG, ID e alias
-        # aggiornati senza richieste per il singolo club o riscaricamenti.
-        session.responses = {
-            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": [FakeResponse(text=pack_listing(pack_slug))],
-            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": [FakeResponse(text="")],
-            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": [FakeResponse(text=pack_page((club_slug, "Juventus", "one")))],
-            f"{fclogo_sync.ESPN_BASE}/ita.1/teams?limit=1000&season=2026": [FakeResponse(
-                text=json.dumps({"sports": [{"leagues": [{"teams": [
-                    {"team": {"id": "111", "displayName": "Juventus", "shortDisplayName": "Juve"}}
-                ]}]}]}))],
-        }
-        report = fclogo_sync.sync_current_season(output_dir=self.output_dir, session=session,
-                                                today=date(2026, 9, 1))
-        updated = json.loads((self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text())
-        self.assertIn("Juve", updated["teams"][0]["aliases"])
-        self.assertEqual(report.reused, 1)
-        self.assertEqual(report.downloaded, 0)
 
     def test_missing_logo_downloads_mono_and_writes_manifest(self):
         pack_slug = "2026-27-serie-b"
@@ -192,11 +174,6 @@ class FCLogoSyncTests(unittest.TestCase):
         mono_detail_url = f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono"
         mono_url = f"{fclogo_sync.ASSET_BASE_URL}/Palermo_FC-v2024-mono.png"
         session = FakeSession({
-            f"{fclogo_sync.ESPN_BASE}/ita.2/teams?limit=1000&season=2026": FakeResponse(
-                text=json.dumps({"sports": [{"leagues": [{"teams": [
-                    {"team": {"id": "2920", "displayName": "Palermo"}}
-                ]}]}]})
-            ),
             f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(
                 text=pack_listing(pack_slug)
             ),
@@ -217,7 +194,7 @@ class FCLogoSyncTests(unittest.TestCase):
             (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
         )
         self.assertEqual(manifest["teams"][0]["variant"], "mono")
-        self.assertEqual(manifest["teams"][0]["espn_id"], "2920")
+        self.assertNotIn("espn_id", manifest["teams"][0])
         self.assertTrue((self.output_dir / manifest["teams"][0]["file"]).is_file())
 
     def test_new_season_removes_old_clubs_and_logo_versions(self):
@@ -311,6 +288,40 @@ class FCLogoSyncTests(unittest.TestCase):
 
         self.assertEqual(report.downloaded, 1)
         self.assertEqual((self.output_dir / filename).read_bytes(), new_bytes)
+
+    def test_new_season_new_png_version_keeps_manual_alias(self):
+        old_slug, new_slug = "Juventus-FC-v2020", "Juventus-FC-v2027"
+        old_file = self.output_dir / f"{old_slug}-mono.png"
+        old_file.write_bytes(png_bytes())
+        manifest_path = self.output_dir / fclogo_sync.MANIFEST_FILENAME
+        manifest_path.write_text(json.dumps({
+            "season": "2025-26",
+            "teams": [{"name": "Juventus", "slug": old_slug,
+                       "detail_path": f"/figc/club/{old_slug}",
+                       "file": old_file.name, "aliases": ["My ESPN alias"],
+                       "variant": "mono", "packs": ["2025-26-serie-a"]}],
+        }), encoding="utf-8")
+        pack = "2026-27-serie-a"
+        mono_url = f"{fclogo_sync.ASSET_BASE_URL}/{new_slug}-mono.png"
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1":
+                FakeResponse(text=pack_listing(pack)),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(),
+            f"{fclogo_sync.BASE_URL}/pack/{pack}":
+                FakeResponse(text=pack_page((new_slug, "Juventus", "new"))),
+            f"{fclogo_sync.BASE_URL}/figc/club/{new_slug}-mono":
+                FakeResponse(text=detail_page(mono_url)),
+            mono_url: FakeResponse(content=png_bytes()),
+        })
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir, session=session, today=date(2026, 9, 1))
+        updated = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertIn("My ESPN alias", updated["teams"][0]["aliases"])
+        self.assertEqual(updated["teams"][0]["slug"], new_slug)
+        self.assertTrue((self.output_dir / updated["teams"][0]["file"]).is_file())
+        self.assertFalse(old_file.exists())
+        self.assertEqual((report.downloaded, report.removed, report.failed), (1, 1, 0))
+        self.assertFalse(any("espn" in url for url in session.calls))
 
     def test_failed_new_season_sync_does_not_delete_previous_files(self):
         old_filename = "Old-Club-v2025-mono.png"

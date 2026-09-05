@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
-from team_matching import TeamIndex
+from team_matching import TeamIndex, normalize_team_name
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -314,11 +314,13 @@ def _logo_path_from_manifest(
         return None
     if not isinstance(payload, dict) or not isinstance(payload.get("teams"), list):
         return None
-    # Un ID gia' noto e diverso impedisce un falso match soltanto per nome.
-    teams = [item for item in payload["teams"] if isinstance(item, dict)
-             and (not team_id or not item.get("espn_id")
-                  or str(item["espn_id"]) == str(team_id))]
-    item = TeamIndex(teams).match([team_name], team_id)
+    # Gli alias manuali ESPN sono autorevoli; i vecchi ID automatici ignorati.
+    teams = [item for item in payload["teams"] if isinstance(item, dict)]
+    index = TeamIndex(teams)
+    exact = index.by_name.get(normalize_team_name(team_name), set())
+    if len(exact) > 1:
+        return None
+    item = teams[next(iter(exact))] if exact else index.match([team_name])
     if item is None:
         return None
     path = logo_dir / str(item.get("file", ""))

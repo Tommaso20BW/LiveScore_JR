@@ -42,10 +42,11 @@ jobs:
         if: ${{ github.event.inputs.goal_graphics != 'false' }}
         uses: actions/cache@v6
         with:
-          path: assets/goal_graphics/team_logos/fclogo_cache
-          key: fclogo-team-logos-${{ runner.os }}-${{ github.run_id }}
+          # Il manifest arriva da Git, mai da una cache precedente agli alias manuali.
+          path: assets/goal_graphics/team_logos/fclogo_cache/*.png
+          key: fclogo-pngs-v2-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
-            fclogo-team-logos-${{ runner.os }}-
+            fclogo-pngs-v2-${{ runner.os }}-
 
       - name: Set up Python
         uses: actions/setup-python@v6

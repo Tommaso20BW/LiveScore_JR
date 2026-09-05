@@ -163,21 +163,37 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertIsNotNone(logo)
         self.assertEqual(logo.getpixel((0, 0))[:3], (15, 90, 210))
 
-    def test_manifest_id_selects_local_logo_without_legacy_registry(self):
+    def test_manual_espn_alias_selects_logo_without_legacy_registry(self):
         dynamic_dir = self.root / "team_logos" / "fclogo_cache"
         dynamic_dir.mkdir()
         Image.new("RGBA", (20, 20), "white").save(dynamic_dir / "nec.png")
         (dynamic_dir / "manifest.json").write_text(json.dumps({"teams": [{
-            "name": "Nijmegen Eendracht Combinatie", "espn_id": "147",
-            "file": "nec.png", "aliases": [],
+            "name": "Nijmegen Eendracht Combinatie", "espn_id": "999",
+            "file": "nec.png", "aliases": ["NEC Nijmegen"],
         }]}), encoding="utf-8")
         self.assertFalse((self.root / "team_logos.json").exists())
         with patch.object(goal_graphics, "_remote_espn_team_logo") as remote:
-            logo = goal_graphics._team_logo_layer("Completely different name", "147", "#FF0000", self.root)
+            logo = goal_graphics._team_logo_layer("NEC Nijmegen", "147", "#FF0000", self.root)
         remote.assert_not_called()
         self.assertEqual(logo.getpixel((0, 0))[:3], (255, 0, 0))
         self.assertIsNone(goal_graphics._local_team_logo_path(
-            "Nijmegen Eendracht Combinatie", self.root, "999"))
+            "Unrelated Club", self.root, "999"))
+
+    def test_exact_manual_alias_wins_over_fuzzy_but_duplicate_is_rejected(self):
+        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir.mkdir()
+        Image.new("RGBA", (20, 20), "white").save(dynamic_dir / "club.png")
+        teams = [
+            {"name": "Local Alpha", "file": "club.png", "aliases": ["ESPN Aurora"]},
+            {"name": "ESPN Aurora Nord", "file": "club.png", "aliases": []},
+        ]
+        manifest = dynamic_dir / "manifest.json"
+        manifest.write_text(json.dumps({"teams": teams}), encoding="utf-8")
+        self.assertEqual(goal_graphics._local_team_logo_path(
+            "ESPN Aurora", self.root), dynamic_dir / "club.png")
+        teams[1]["aliases"] = ["ESPN Aurora"]
+        manifest.write_text(json.dumps({"teams": teams}), encoding="utf-8")
+        self.assertIsNone(goal_graphics._local_team_logo_path("ESPN Aurora", self.root))
 
     def test_ambiguous_manifest_uses_original_remote_logo(self):
         dynamic_dir = self.root / "team_logos" / "fclogo_cache"
