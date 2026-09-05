@@ -132,6 +132,50 @@ class GoalGraphicsTests(unittest.TestCase):
             "inter.png",
         )
 
+    def test_dynamic_fclogo_manifest_is_preferred_and_fuzzy_matched(self):
+        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir.mkdir()
+        Image.new("RGBA", (20, 20), (25, 80, 170, 255)).save(
+            dynamic_dir / "SL-Benfica-v2025-mono.png"
+        )
+        (dynamic_dir / "manifest.json").write_text(
+            json.dumps({
+                "teams": [{
+                    "name": "Sport Lisboa e Benfica",
+                    "slug": "SL-Benfica-v2025",
+                    "file": "SL-Benfica-v2025-mono.png",
+                    "aliases": ["Sport Lisboa Benfica"],
+                }]
+            }),
+            encoding="utf-8",
+        )
+        resolved = goal_graphics._local_team_logo_path(
+            "Benfica", self.root, self.logo_registry
+        )
+        self.assertEqual(resolved.parent, dynamic_dir)
+
+    def test_team_logo_layer_preserves_source_pixels_without_recoloring(self):
+        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir.mkdir()
+        source_path = dynamic_dir / "Original-Club-v2026-mono.png"
+        Image.new("RGBA", (20, 10), (15, 90, 210, 255)).save(source_path)
+        (dynamic_dir / "manifest.json").write_text(
+            json.dumps({
+                "teams": [{
+                    "name": "Original Club",
+                    "slug": "Original-Club-v2026",
+                    "file": source_path.name,
+                    "aliases": [],
+                }]
+            }),
+            encoding="utf-8",
+        )
+        logo = goal_graphics._team_logo_layer(
+            "Original Club", "", "#FF0000", self.root, self.logo_registry
+        )
+        self.assertIsNotNone(logo)
+        self.assertEqual(logo.getpixel((logo.width // 2, logo.height // 2))[:3], (15, 90, 210))
+
     def test_overlay_tint_preserves_original_texture(self):
         source = Image.new("RGBA", (2, 1), (0, 0, 0, 255))
         source.putpixel((0, 0), (255, 255, 255, 255))
@@ -496,21 +540,37 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertFalse(is_photo)
         delete.assert_called_once_with(321)
 
-    def test_correction_from_unknown_to_registered_scorer_adds_new_photo(self):
+    def test_correction_from_text_adds_photo_to_same_message(self):
         corrected = SimpleNamespace(png=b"registered-player-card")
         with patch.object(
-            bot, "send_telegram_goal_get_id", return_value=(987, True)
-        ) as send_photo, patch.object(bot, "delete_telegram_message") as delete:
+            bot, "edit_telegram_goal_photo", return_value=True
+        ) as edit_photo, patch.object(bot, "delete_telegram_message") as delete:
             ok, message_id, is_photo = bot.replace_corrected_goal_message(
                 654, False, "corrected caption", corrected
             )
         self.assertTrue(ok)
-        self.assertEqual(message_id, 987)
+        self.assertEqual(message_id, 654)
         self.assertTrue(is_photo)
-        send_photo.assert_called_once_with(
-            "corrected caption", b"registered-player-card"
+        edit_photo.assert_called_once_with(
+            654, "corrected caption", b"registered-player-card"
         )
-        delete.assert_called_once_with(654)
+        delete.assert_not_called()
+
+    def test_missing_scorer_starts_as_text_until_photo_is_available(self):
+        with patch.object(bot, "GOAL_GRAPHICS_ENABLED", True), patch.object(
+            bot.goal_graphics, "render_goal_card"
+        ) as render:
+            result = bot.prepara_grafica_goal(
+                data_espn={}, scorer_name="", goal_type="goal",
+                scoring_team_id="111", minute=82,
+                home_name="Juventus", away_name="Inter",
+                home_id="111", away_id="999",
+                home_goals=1, away_goals=0,
+                league_slug="ita.1", league_name="Serie A",
+                event_key="missing-scorer",
+            )
+        self.assertIsNone(result)
+        render.assert_not_called()
 
     def test_finds_juve_goalkeeper_from_espn_roster(self):
         data = {"rosters": [{

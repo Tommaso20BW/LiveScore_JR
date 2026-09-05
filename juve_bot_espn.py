@@ -14,6 +14,7 @@ from urllib3.util.retry import Retry
 
 import kit_analyzer
 import goal_graphics
+import fclogo_sync
 from telegram_autodelete import enqueue_response, should_enqueue
 
 ITALY_TZ = ZoneInfo('Europe/Rome')
@@ -489,7 +490,11 @@ def send_telegram_saved_get_id(text: str, photo_bytes: bytes | None) -> tuple[in
 
 
 def edit_telegram_goal_photo(message_id: int, text: str, photo_bytes: bytes) -> bool:
-    """Sostituisce foto e caption quando ESPN corregge il marcatore."""
+    """Aggiunge/sostituisce foto e caption quando ESPN corregge il marcatore.
+
+    Da Bot API 7.11 editMessageMedia puo anche convertire direttamente un
+    messaggio di testo in un messaggio media, conservando il message_id.
+    """
     if not BOT_TOKEN or not CHAT_ID or not message_id or not photo_bytes:
         return False
     media = json.dumps({
@@ -554,13 +559,9 @@ def replace_corrected_goal_message(
         return False, message_id, True
 
     if not was_photo and rendered_goal:
-        replacement_id, replacement_is_photo = send_telegram_goal_get_id(
-            text, rendered_goal.png
-        )
-        if replacement_id:
-            delete_telegram_message(message_id)
-            return True, replacement_id, replacement_is_photo
-        return False, message_id, False
+        # Bot API 7.11: conversione testo -> foto sullo stesso message_id.
+        edited = edit_telegram_goal_photo(message_id, text, rendered_goal.png)
+        return edited, message_id, edited
 
     return send_telegram_edit(message_id, text), message_id, False
 
@@ -590,8 +591,9 @@ def prepara_grafica_goal(*, data_espn: dict, scorer_name: str,
     """Crea la card solo per un gol assegnato alla Juventus.
 
     I marcatori senza asset e gli autogol a favore della Juventus ricevono la
-    stessa card, ma senza la sagoma del calciatore. Marcatori avversari, nomi
-    assenti e rigori della lotteria mantengono il normale messaggio testuale.
+    stessa card, ma senza la sagoma del calciatore. Se manca anche il nome, il
+    bot invia il testo e lo converte nella card sullo stesso message_id quando
+    ESPN comunica il marcatore. Marcatori avversari e lotteria restano testuali.
     """
     if not GOAL_GRAPHICS_ENABLED:
         return None
@@ -3415,6 +3417,16 @@ def main():
     if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
         get_valid_token()
         return
+
+    if GOAL_GRAPHICS_ENABLED:
+        try:
+            report = fclogo_sync.sync_current_season()
+            print(f"[{now_it()}] 🛡️  {report.summary()}")
+            for warning in report.errors:
+                print(f"[{now_it()}] ⚠️  FCLogo: {warning}")
+        except Exception as exc:
+            # Un problema del catalogo grafico non deve mai bloccare il live.
+            print(f"[{now_it()}] ⚠️  FCLogo non sincronizzato: {exc}")
 
     avvia_ciclo_partita()
 

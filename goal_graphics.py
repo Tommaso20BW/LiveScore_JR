@@ -26,6 +26,8 @@ BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_ASSET_DIR = BASE_DIR / "assets" / "goal_graphics"
 REGISTRY_PATH = BASE_DIR / "goal_players.json"
 TEAM_LOGO_REGISTRY_PATH = BASE_DIR / "team_logos.json"
+FCLOGO_CACHE_DIRNAME = "fclogo_cache"
+FCLOGO_MANIFEST_FILENAME = "manifest.json"
 CANVAS_SIZE = 1254
 
 POSES = ("arms_crossed", "pointing")
@@ -297,26 +299,99 @@ def _tint_textured_overlay(
     return textured
 
 
+_GENERIC_TEAM_TOKENS = {
+    "ac", "afc", "association", "bc", "calcio", "cf", "club", "de",
+    "fc", "fk", "football", "sc", "sk", "societa", "sport", "sportiva",
+    "ss", "sv", "the",
+}
+
+
+def _team_name_tokens(value: str) -> set[str]:
+    return {
+        token for token in normalize_name(value).split()
+        if token not in _GENERIC_TEAM_TOKENS
+    }
+
+
+def _matching_team_item(team_name: str, teams: list[dict]) -> dict | None:
+    wanted = normalize_name(team_name)
+    if not wanted:
+        return None
+
+    candidates_by_item: list[tuple[dict, list[str]]] = []
+    for item in teams:
+        candidates = [
+            candidate for candidate in (item.get("name", ""), *item.get("aliases", []))
+            if candidate
+        ]
+        normalized = [normalize_name(candidate) for candidate in candidates]
+        if wanted in normalized:
+            return item
+        candidates_by_item.append((item, candidates))
+
+    wanted_tokens = _team_name_tokens(team_name)
+    if not wanted_tokens:
+        return None
+    scored: list[tuple[float, dict]] = []
+    for item, candidates in candidates_by_item:
+        best = 0.0
+        for candidate in candidates:
+            candidate_tokens = _team_name_tokens(candidate)
+            if not candidate_tokens:
+                continue
+            overlap = wanted_tokens & candidate_tokens
+            if not overlap:
+                continue
+            if wanted_tokens <= candidate_tokens or candidate_tokens <= wanted_tokens:
+                score = 0.85 + 0.15 * len(overlap) / max(len(wanted_tokens), len(candidate_tokens))
+            else:
+                score = len(overlap) / len(wanted_tokens | candidate_tokens)
+            best = max(best, score)
+        if best >= 0.72:
+            scored.append((best, item))
+    if not scored:
+        return None
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    if len(scored) > 1 and abs(scored[0][0] - scored[1][0]) < 0.01:
+        return None
+    return scored[0][1]
+
+
+def _logo_path_from_registry(
+    team_name: str,
+    registry_path: Path,
+    logo_dir: Path,
+) -> Path | None:
+    if not registry_path.is_file():
+        return None
+    try:
+        with registry_path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    item = _matching_team_item(team_name, payload.get("teams", []))
+    if item is None:
+        return None
+    path = logo_dir / str(item.get("file", ""))
+    return path if path.is_file() else None
+
+
 def _local_team_logo_path(
     team_name: str,
     asset_dir: Path,
     registry_path: Path | str,
 ) -> Path | None:
     """Risolve gli alias ESPN verso i loghi locali provenienti da FCLogo."""
-    wanted = normalize_name(team_name)
-    if not wanted or not Path(registry_path).is_file():
-        return None
-    try:
-        with Path(registry_path).open("r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-    except (OSError, json.JSONDecodeError):
-        return None
-    for item in payload.get("teams", []):
-        candidates = (item.get("name", ""), *item.get("aliases", []))
-        if wanted in {normalize_name(candidate) for candidate in candidates}:
-            path = asset_dir / "team_logos" / str(item.get("file", ""))
-            return path if path.is_file() else None
-    return None
+    logo_dir = asset_dir / "team_logos"
+    dynamic_dir = logo_dir / FCLOGO_CACHE_DIRNAME
+    dynamic = _logo_path_from_registry(
+        team_name,
+        dynamic_dir / FCLOGO_MANIFEST_FILENAME,
+        dynamic_dir,
+    )
+    if dynamic is not None:
+        return dynamic
+    return _logo_path_from_registry(team_name, Path(registry_path), logo_dir)
 
 
 def _remote_espn_team_logo(team_id: str) -> Image.Image | None:
@@ -352,13 +427,12 @@ def _team_logo_layer(
     if source is None:
         return None
 
-    alpha = source.getchannel("A")
-    bbox = alpha.getbbox()
+    bbox = source.getchannel("A").getbbox()
     if not bbox:
         return None
-    alpha = alpha.crop(bbox)
-    logo = Image.new("RGBA", alpha.size, color)
-    logo.putalpha(alpha)
+    # FCLogo e il fallback ESPN restano nei pixel originali: nessun riempimento
+    # o ricolorazione applicata dal compositore.
+    logo = source.crop(bbox)
     logo.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
     return logo
 
@@ -374,7 +448,7 @@ def _composite_team_logos(
     asset_dir: Path,
     registry_path: Path | str,
 ) -> None:
-    """Inserisce i due stemmi piccoli e monocromatici sotto il GOAL."""
+    """Inserisce i due stemmi piccoli, conservandone i pixel originali."""
     logos = [
         logo for logo in (
             _team_logo_layer(home_name, home_id, color, asset_dir, registry_path),
