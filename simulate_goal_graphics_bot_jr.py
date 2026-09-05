@@ -203,7 +203,7 @@ def run(send: bool) -> None:
     send_goal_case(
         send=send,
         case="GOL SU RIGORE — AWAY",
-        player_name="Edon Zhegrova",
+        player_name="Nick Woltemade",
         goal_type="penalty goal",
         minute="31",
         home_goals=2,
