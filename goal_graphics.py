@@ -416,7 +416,7 @@ def _composite_team_logos(
     width = sum(logo.width for logo in logos) + gap * (len(logos) - 1)
     x = (CANVAS_SIZE - width) // 2
     for logo in logos:
-        y = 1040 + (45 - logo.height) // 2
+        y = 1080 + (45 - logo.height) // 2
         canvas.alpha_composite(logo, (x, y))
         x += logo.width + gap
 
@@ -531,11 +531,11 @@ def _render_event_card(
     shadow = Image.new("RGBA", colored_word.size, (0, 0, 0, 0))
     shadow.putalpha(shadow_alpha)
     lowered_shadow = Image.new("RGBA", background.size, (0, 0, 0, 0))
-    lowered_shadow.alpha_composite(shadow, (0, 102))
+    lowered_shadow.alpha_composite(shadow, (0, 142))
     background = Image.alpha_composite(background, lowered_shadow)
 
     lowered_word = Image.new("RGBA", background.size, (0, 0, 0, 0))
-    lowered_word.alpha_composite(colored_word, (0, 92))
+    lowered_word.alpha_composite(colored_word, (0, 132))
     background = Image.alpha_composite(background, lowered_word)
     draw = ImageDraw.Draw(background)
 
@@ -564,7 +564,7 @@ def _render_event_card(
     scorer_font = _fit_font(draw, scorer, 850, 34, minimum=22)
     _centered_tracked_text(
         draw,
-        1110,
+        1150,
         scorer,
         scorer_font,
         theme["small"],
