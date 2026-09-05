@@ -31,6 +31,9 @@ class FakeResponse:
                 f"{self.status_code} response", response=response
             )
 
+    def json(self):
+        return json.loads(self.text)
+
 
 class FakeSession:
     def __init__(self, responses):
@@ -43,6 +46,8 @@ class FakeSession:
     def get(self, url, **kwargs):
         self.calls.append(url)
         if url not in self.responses or not self.responses[url]:
+            if url.startswith(fclogo_sync.ESPN_BASE):
+                raise requests.ConnectionError("ESPN offline")
             raise AssertionError(f"Unexpected GET {url}")
         return self.responses[url].pop(0)
 
@@ -133,6 +138,7 @@ class FCLogoSyncTests(unittest.TestCase):
                     "slug": club_slug,
                     "file": filename,
                     "aliases": ["Juventus FC"],
+                    "espn_id": "111",
                     "variant": "mono",
                     "source_url": "cached",
                     "preview_url": preview,
@@ -158,6 +164,27 @@ class FCLogoSyncTests(unittest.TestCase):
         self.assertEqual(report.downloaded, 0)
         self.assertEqual(report.reused, 1)
         self.assertFalse(any("assets.fclogo.top" in url for url in session.calls))
+        updated = json.loads((self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text())
+        self.assertEqual(updated["teams"][0]["espn_id"], "111")
+        self.assertEqual(report.failed, 0)
+
+        # Al successivo avvio ESPN torna disponibile: stesso PNG, ID e alias
+        # aggiornati senza richieste per il singolo club o riscaricamenti.
+        session.responses = {
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": [FakeResponse(text=pack_listing(pack_slug))],
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": [FakeResponse(text="")],
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": [FakeResponse(text=pack_page((club_slug, "Juventus", "one")))],
+            f"{fclogo_sync.ESPN_BASE}/ita.1/teams?limit=1000&season=2026": [FakeResponse(
+                text=json.dumps({"sports": [{"leagues": [{"teams": [
+                    {"team": {"id": "111", "displayName": "Juventus", "shortDisplayName": "Juve"}}
+                ]}]}]}))],
+        }
+        report = fclogo_sync.sync_current_season(output_dir=self.output_dir, session=session,
+                                                today=date(2026, 9, 1))
+        updated = json.loads((self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text())
+        self.assertIn("Juve", updated["teams"][0]["aliases"])
+        self.assertEqual(report.reused, 1)
+        self.assertEqual(report.downloaded, 0)
 
     def test_missing_logo_downloads_mono_and_writes_manifest(self):
         pack_slug = "2026-27-serie-b"
@@ -165,6 +192,11 @@ class FCLogoSyncTests(unittest.TestCase):
         mono_detail_url = f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono"
         mono_url = f"{fclogo_sync.ASSET_BASE_URL}/Palermo_FC-v2024-mono.png"
         session = FakeSession({
+            f"{fclogo_sync.ESPN_BASE}/ita.2/teams?limit=1000&season=2026": FakeResponse(
+                text=json.dumps({"sports": [{"leagues": [{"teams": [
+                    {"team": {"id": "2920", "displayName": "Palermo"}}
+                ]}]}]})
+            ),
             f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(
                 text=pack_listing(pack_slug)
             ),
@@ -185,6 +217,7 @@ class FCLogoSyncTests(unittest.TestCase):
             (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
         )
         self.assertEqual(manifest["teams"][0]["variant"], "mono")
+        self.assertEqual(manifest["teams"][0]["espn_id"], "2920")
         self.assertTrue((self.output_dir / manifest["teams"][0]["file"]).is_file())
 
     def test_new_season_removes_old_clubs_and_logo_versions(self):
