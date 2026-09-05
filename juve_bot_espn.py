@@ -1790,6 +1790,8 @@ def trova_partita_oggi(team_id: str):
                             "league_slug": slug,
                             "league_name": league_name,
                             "competitors": competitors,
+                            "competition": competitions[0],
+                            "date": event.get("date", ""),
                         }
             except Exception:
                 pass

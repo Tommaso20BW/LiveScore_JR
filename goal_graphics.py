@@ -356,6 +356,23 @@ def _remote_espn_team_logo(team_id: str) -> Image.Image | None:
         return None
 
 
+def resolve_team_logo_source(
+    team_name: str, team_id: str, asset_dir: Path,
+) -> tuple[Image.Image | None, str]:
+    """Stessa verifica per la card e per la notifica di avvio."""
+    path = _local_team_logo_path(team_name, asset_dir, team_id)
+    try:
+        source = Image.open(path).convert("RGBA") if path else None
+    except (OSError, ValueError):
+        source = None
+    if source is not None and source.getchannel("A").getbbox():
+        return source, "FCLogo"
+    source = _remote_espn_team_logo(team_id)
+    if source is not None and source.getchannel("A").getbbox():
+        return source, "ESPN"
+    return None, "Non disponibile"
+
+
 def _team_logo_layer(
     team_name: str,
     team_id: str,
@@ -364,14 +381,8 @@ def _team_logo_layer(
     *,
     max_size: int = 45,
 ) -> Image.Image | None:
-    path = _local_team_logo_path(team_name, asset_dir, team_id)
-    try:
-        source = Image.open(path).convert("RGBA") if path else None
-    except OSError:
-        source = None
-    is_fclogo = source is not None
-    if source is None:
-        source = _remote_espn_team_logo(team_id)
+    source, source_name = resolve_team_logo_source(team_name, team_id, asset_dir)
+    is_fclogo = source_name == "FCLogo"
     if source is None:
         return None
 
