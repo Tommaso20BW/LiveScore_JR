@@ -10,11 +10,9 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
-import html
 import io
 import json
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 from html.parser import HTMLParser
@@ -25,6 +23,7 @@ import requests
 from PIL import Image
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from team_matching import TeamIndex, normalize_team_name as _normalize, unique_aliases
 
 
 BASE_URL = "https://fclogo.top"
@@ -39,6 +38,14 @@ DEFAULT_LOGO_DIR = (
 MANIFEST_FILENAME = "manifest.json"
 USER_AGENT = "LiveScore_JR/1.0 (+https://github.com/Tommaso20BW/LiveScore_JR)"
 MAX_PACK_PAGES = 8
+ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
+ESPN_PACK_LEAGUES = {
+    "serie-a": "ita.1",
+    "serie-b": "ita.2",
+    "uefa-champions-league": "uefa.champions",
+    "uefa-europa-league": "uefa.europa",
+    "uefa-conference-league": "uefa.europa.conf",
+}
 
 
 class FCLogoSyncError(RuntimeError):
@@ -63,6 +70,8 @@ class SyncReport:
     removed: int = 0
     failed: int = 0
     errors: list[str] = field(default_factory=list)
+    espn_matched: int = 0
+    espn_unmatched: int = 0
 
     def summary(self) -> str:
         packs = ", ".join(self.selected_packs) if self.selected_packs else "nessuno"
@@ -70,7 +79,8 @@ class SyncReport:
             f"FCLogo {self.season}: pack [{packs}], {self.teams} squadre, "
             f"{self.downloaded} aggiornati, {self.reused} riutilizzati, "
             f"{self.removed} rimossi, "
-            f"{self.failed} errori"
+            f"{self.failed} errori; ESPN: {self.espn_matched} associati, "
+            f"{self.espn_unmatched} senza associazione"
         )
 
 
@@ -132,16 +142,6 @@ def season_start_year(today: date | None = None) -> int:
 def season_label(today: date | None = None) -> str:
     start = season_start_year(today)
     return f"{start}-{str(start + 1)[-2:]}"
-
-
-def _normalize(value: str) -> str:
-    raw = html.unescape(str(value or "")).casefold()
-    raw = "".join(
-        char
-        for char in unicodedata.normalize("NFKD", raw)
-        if unicodedata.category(char) != "Mn"
-    )
-    return " ".join(re.findall(r"[a-z0-9]+", raw))
 
 
 def _display_name_from_slug(slug: str) -> str:
@@ -365,6 +365,114 @@ def _club_aliases(club: ClubRecord) -> list[str]:
     return sorted({alias for alias in (club.name, derived) if alias})
 
 
+def _espn_league(pack_slug: str) -> str:
+    suffix = re.sub(r"^\d{2,4}-\d{2}-", "", pack_slug)
+    return ESPN_PACK_LEAGUES.get(suffix, "")
+
+
+def fetch_espn_teams(session, packs, start_year: int) -> tuple[TeamIndex, set[str]]:
+    """Una lista per competizione e sync; niente richieste per singolo club."""
+    # teams.json traduce nomi e hashtag, non contiene ID. Solo il primo valore
+    # e' un nome: gli hashtag non costituiscono una prova di identita'.
+    translations = _read_manifest(Path(__file__).with_name("teams.json"))
+    translations = {_normalize(k): v[0] for k, v in translations.items()
+                    if isinstance(v, list) and v and isinstance(v[0], str)}
+    records: dict[str, dict] = {}
+    available = set()
+    leagues = sorted({_espn_league(pack) for pack in packs} - {""})
+    for league in leagues:
+        url = f"{ESPN_BASE}/{league}/teams?limit=1000&season={start_year}"
+        try:
+            response = session.get(url, timeout=6, headers={
+                "User-Agent": USER_AGENT, "Accept": "application/json",
+            })
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise ValueError("risposta ESPN non valida")
+            if int(payload.get("pageCount", 1)) > 1:
+                raise ValueError("elenco ESPN incompleto/non paginato")
+            rows = payload["sports"][0]["leagues"][0]["teams"]
+            if not isinstance(rows, list) or not rows:
+                raise ValueError("lista squadre vuota/non valida")
+            parsed = []
+            for row in rows:
+                team = row["team"]
+                if not isinstance(team, dict):
+                    raise ValueError("record squadra non valido")
+                team_id = str(team.get("id", ""))
+                names = unique_aliases([team.get(k, "") for k in
+                                        ("displayName", "shortDisplayName", "name")])
+                if not team_id.isdigit() or not names:
+                    raise ValueError("squadra priva di ID/nome")
+                names = unique_aliases(names + [translations.get(_normalize(n), "")
+                                                for n in names])
+                parsed.append((team_id, names))
+            # Pubblica il batch soltanto dopo averlo validato completamente.
+            for team_id, names in parsed:
+                old = records.get(team_id, {})
+                records[team_id] = {
+                    "espn_id": team_id, "name": old.get("name", names[0]),
+                    "aliases": unique_aliases(old.get("aliases", []) + names),
+                }
+            available.add(league)
+        except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as exc:
+            print(f"ESPN elenco {league} non disponibile ({type(exc).__name__}); FCLogo continua")
+    return TeamIndex(list(records.values())), available
+
+
+def enrich_espn_teams(teams: dict, previous: dict, index: TeamIndex,
+                     available: set[str], report: SyncReport) -> None:
+    """Arricchisce anche PNG riusati; ID conflittuali non vengono pubblicati."""
+    changed, unresolved = [], []
+    for slug, item in teams.items():
+        old = previous.get(slug, {})
+        item["aliases"] = unique_aliases(item.get("aliases", []) + old.get("aliases", []))
+        leagues = {_espn_league(pack) for pack in item.get("packs", [])} - {""}
+        if not leagues or not leagues <= available:
+            # Non ricalcolare su un elenco parziale: mancherebbero concorrenti
+            # necessari a valutare l'ambiguita'. Lo slug deve essere identico.
+            if old.get("espn_id"):
+                item["espn_id"] = str(old["espn_id"])
+                item["espn_aliases"] = old.get("espn_aliases", [])
+        else:
+            # Gli alias ESPN precedenti non devono auto-confermare un ID vecchio.
+            old_espn = {_normalize(n) for n in old.get("espn_aliases", [])}
+            names = [item["name"], _display_name_from_slug(slug)]
+            names += [n for n in item["aliases"] if _normalize(n) not in old_espn]
+            item["aliases"] = unique_aliases(names)
+            match = index.match(names)
+            item.pop("espn_id", None)
+            item.pop("espn_aliases", None)
+            if match:
+                item["espn_id"] = match["espn_id"]
+                item["espn_aliases"] = match["aliases"]
+                if old.get("espn_id") != match["espn_id"]:
+                    changed.append((slug, match))
+    owners: dict[str, list[dict]] = {}
+    for item in teams.values():
+        if item.get("espn_id"):
+            owners.setdefault(item["espn_id"], []).append(item)
+    for items in owners.values():
+        if len(items) > 1:
+            for item in items:
+                item.pop("espn_id", None)
+                item.pop("espn_aliases", None)
+    for slug, match in changed[:8]:
+        if teams[slug].get("espn_id"):
+            print(f"ESPN match: {match['name']} [{match['espn_id']}] -> {teams[slug]['name']}")
+    for item in teams.values():
+        if item.get("espn_id"):
+            item["aliases"] = unique_aliases(item["aliases"] + item.get("espn_aliases", []))
+            report.espn_matched += 1
+        else:
+            unresolved.append(item["name"])
+    report.espn_unmatched = len(unresolved)
+    if unresolved:
+        print("ESPN match ambiguo/non trovato: " + ", ".join(unresolved[:5])
+              + (f" (+{len(unresolved) - 5} altri)" if len(unresolved) > 5 else ""))
+
+
 def sync_current_season(
     *,
     output_dir: Path | str = DEFAULT_LOGO_DIR,
@@ -500,6 +608,16 @@ def sync_current_season(
     finally:
         if session is None and len(pending_downloads) > 1:
             executor.shutdown(wait=True)
+
+    # ESPN ha una sessione senza retry: il servizio opzionale non deve
+    # moltiplicare i tempi di attesa della sincronizzazione principale.
+    espn_http = session if session is not None else requests.Session()
+    try:
+        espn_index, available = fetch_espn_teams(espn_http, selected, season_start_year(today))
+        enrich_espn_teams(updated_teams, previous_teams, espn_index, available, report)
+    finally:
+        if session is None:
+            espn_http.close()
 
     manifest = {
         "source": f"{BASE_URL}/",

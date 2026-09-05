@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
+from team_matching import TeamIndex
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -298,68 +299,11 @@ def _tint_textured_overlay(
     return textured
 
 
-_GENERIC_TEAM_TOKENS = {
-    "ac", "afc", "association", "bc", "calcio", "cf", "club", "de",
-    "fc", "fk", "football", "sc", "sk", "societa", "sport", "sportiva",
-    "ss", "sv", "the",
-}
-
-
-def _team_name_tokens(value: str) -> set[str]:
-    return {
-        token for token in normalize_name(value).split()
-        if token not in _GENERIC_TEAM_TOKENS
-    }
-
-
-def _matching_team_item(team_name: str, teams: list[dict]) -> dict | None:
-    wanted = normalize_name(team_name)
-    if not wanted:
-        return None
-
-    candidates_by_item: list[tuple[dict, list[str]]] = []
-    for item in teams:
-        candidates = [
-            candidate for candidate in (item.get("name", ""), *item.get("aliases", []))
-            if candidate
-        ]
-        normalized = [normalize_name(candidate) for candidate in candidates]
-        if wanted in normalized:
-            return item
-        candidates_by_item.append((item, candidates))
-
-    wanted_tokens = _team_name_tokens(team_name)
-    if not wanted_tokens:
-        return None
-    scored: list[tuple[float, dict]] = []
-    for item, candidates in candidates_by_item:
-        best = 0.0
-        for candidate in candidates:
-            candidate_tokens = _team_name_tokens(candidate)
-            if not candidate_tokens:
-                continue
-            overlap = wanted_tokens & candidate_tokens
-            if not overlap:
-                continue
-            if wanted_tokens <= candidate_tokens or candidate_tokens <= wanted_tokens:
-                score = 0.85 + 0.15 * len(overlap) / max(len(wanted_tokens), len(candidate_tokens))
-            else:
-                score = len(overlap) / len(wanted_tokens | candidate_tokens)
-            best = max(best, score)
-        if best >= 0.72:
-            scored.append((best, item))
-    if not scored:
-        return None
-    scored.sort(key=lambda pair: pair[0], reverse=True)
-    if len(scored) > 1 and abs(scored[0][0] - scored[1][0]) < 0.01:
-        return None
-    return scored[0][1]
-
-
 def _logo_path_from_manifest(
     team_name: str,
     registry_path: Path,
     logo_dir: Path,
+    team_id: str = "",
 ) -> Path | None:
     if not registry_path.is_file():
         return None
@@ -368,7 +312,13 @@ def _logo_path_from_manifest(
             payload = json.load(handle)
     except (OSError, json.JSONDecodeError):
         return None
-    item = _matching_team_item(team_name, payload.get("teams", []))
+    if not isinstance(payload, dict) or not isinstance(payload.get("teams"), list):
+        return None
+    # Un ID gia' noto e diverso impedisce un falso match soltanto per nome.
+    teams = [item for item in payload["teams"] if isinstance(item, dict)
+             and (not team_id or not item.get("espn_id")
+                  or str(item["espn_id"]) == str(team_id))]
+    item = TeamIndex(teams).match([team_name], team_id)
     if item is None:
         return None
     path = logo_dir / str(item.get("file", ""))
@@ -378,6 +328,7 @@ def _logo_path_from_manifest(
 def _local_team_logo_path(
     team_name: str,
     asset_dir: Path,
+    team_id: str = "",
 ) -> Path | None:
     """Risolve gli alias ESPN verso i loghi locali provenienti da FCLogo."""
     dynamic_dir = asset_dir / "team_logos" / FCLOGO_CACHE_DIRNAME
@@ -385,6 +336,7 @@ def _local_team_logo_path(
         team_name,
         dynamic_dir / FCLOGO_MANIFEST_FILENAME,
         dynamic_dir,
+        team_id,
     )
 
 
@@ -410,7 +362,7 @@ def _team_logo_layer(
     *,
     max_size: int = 45,
 ) -> Image.Image | None:
-    path = _local_team_logo_path(team_name, asset_dir)
+    path = _local_team_logo_path(team_name, asset_dir, team_id)
     try:
         source = Image.open(path).convert("RGBA") if path else None
     except OSError:

@@ -163,6 +163,36 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertIsNotNone(logo)
         self.assertEqual(logo.getpixel((0, 0))[:3], (15, 90, 210))
 
+    def test_manifest_id_selects_local_logo_without_legacy_registry(self):
+        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir.mkdir()
+        Image.new("RGBA", (20, 20), "white").save(dynamic_dir / "nec.png")
+        (dynamic_dir / "manifest.json").write_text(json.dumps({"teams": [{
+            "name": "Nijmegen Eendracht Combinatie", "espn_id": "147",
+            "file": "nec.png", "aliases": [],
+        }]}), encoding="utf-8")
+        self.assertFalse((self.root / "team_logos.json").exists())
+        with patch.object(goal_graphics, "_remote_espn_team_logo") as remote:
+            logo = goal_graphics._team_logo_layer("Completely different name", "147", "#FF0000", self.root)
+        remote.assert_not_called()
+        self.assertEqual(logo.getpixel((0, 0))[:3], (255, 0, 0))
+        self.assertIsNone(goal_graphics._local_team_logo_path(
+            "Nijmegen Eendracht Combinatie", self.root, "999"))
+
+    def test_ambiguous_manifest_uses_original_remote_logo(self):
+        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir.mkdir()
+        Image.new("RGBA", (20, 20), "white").save(dynamic_dir / "club.png")
+        (dynamic_dir / "manifest.json").write_text(json.dumps({"teams": [
+            {"name": "AC Aurora", "file": "club.png"},
+            {"name": "FC Aurora", "file": "club.png"},
+        ]}), encoding="utf-8")
+        with patch.object(goal_graphics, "_remote_espn_team_logo",
+                          return_value=Image.new("RGBA", (20, 20), (15, 90, 210, 255))) as remote:
+            logo = goal_graphics._team_logo_layer("Aurora", "999", "#FF0000", self.root)
+        remote.assert_called_once_with("999")
+        self.assertEqual(logo.getpixel((0, 0))[:3], (15, 90, 210))
+
     def test_espn_fallback_stays_original_when_local_logo_is_invalid(self):
         dynamic_dir = self.root / "team_logos" / "fclogo_cache"
         dynamic_dir.mkdir()
