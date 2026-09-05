@@ -154,11 +154,13 @@ class GoalGraphicsTests(unittest.TestCase):
         )
         self.assertEqual(resolved.parent, dynamic_dir)
 
-    def test_team_logo_layer_preserves_source_pixels_without_recoloring(self):
+    def test_team_logo_layer_uses_goal_color_and_preserves_transparency(self):
         dynamic_dir = self.root / "team_logos" / "fclogo_cache"
         dynamic_dir.mkdir()
         source_path = dynamic_dir / "Original-Club-v2026-mono.png"
-        Image.new("RGBA", (20, 10), (15, 90, 210, 255)).save(source_path)
+        source = Image.new("RGBA", (20, 10), (15, 90, 210, 255))
+        source.putpixel((10, 5), (15, 90, 210, 0))
+        source.save(source_path)
         (dynamic_dir / "manifest.json").write_text(
             json.dumps({
                 "teams": [{
@@ -174,7 +176,8 @@ class GoalGraphicsTests(unittest.TestCase):
             "Original Club", "", "#FF0000", self.root, self.logo_registry
         )
         self.assertIsNotNone(logo)
-        self.assertEqual(logo.getpixel((logo.width // 2, logo.height // 2))[:3], (15, 90, 210))
+        self.assertEqual(logo.getpixel((0, 0))[:3], (255, 0, 0))
+        self.assertEqual(logo.getpixel((logo.width // 2, logo.height // 2))[3], 0)
 
     def test_overlay_tint_preserves_original_texture(self):
         source = Image.new("RGBA", (2, 1), (0, 0, 0, 255))

@@ -427,12 +427,15 @@ def _team_logo_layer(
     if source is None:
         return None
 
-    bbox = source.getchannel("A").getbbox()
+    alpha = source.getchannel("A")
+    bbox = alpha.getbbox()
     if not bbox:
         return None
-    # FCLogo e il fallback ESPN restano nei pixel originali: nessun riempimento
-    # o ricolorazione applicata dal compositore.
-    logo = source.crop(bbox)
+    # Conserva esattamente sagoma, fori e trasparenze del logo mono, ma porta
+    # tutti i suoi pixel visibili sul colore della scritta GOAL/SAVED.
+    alpha = alpha.crop(bbox)
+    logo = Image.new("RGBA", alpha.size, color)
+    logo.putalpha(alpha)
     logo.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
     return logo
 
@@ -448,7 +451,7 @@ def _composite_team_logos(
     asset_dir: Path,
     registry_path: Path | str,
 ) -> None:
-    """Inserisce i due stemmi piccoli, conservandone i pixel originali."""
+    """Inserisce i due stemmi piccoli nel colore della scritta GOAL/SAVED."""
     logos = [
         logo for logo in (
             _team_logo_layer(home_name, home_id, color, asset_dir, registry_path),
