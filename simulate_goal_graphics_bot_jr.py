@@ -317,9 +317,9 @@ def run(send: bool) -> None:
     else:
         print("OK correzione foto→card autogol senza calciatore")
 
-    text_id, was_photo, _, _ = send_goal_case(
+    provisional_id, provisional_was_photo, _, _ = send_goal_case(
         send=send,
-        case="MARCATORE PROVVISORIO ASSENTE",
+        case="MARCATORE PROVVISORIO ASSENTE — SOLO TESTO",
         player_name="",
         minute="82",
         home_goals=7,
@@ -337,7 +337,7 @@ def run(send: bool) -> None:
         event_key="simulation|restored-scorer",
     )
     restored_text = goal_caption(
-        "MARCATORE AGGIUNTO — TESTO SOSTITUITO CON FOTO",
+        "MARCATORE AGGIUNTO — FOTO SULLO STESSO MESSAGGIO",
         "Douglas Luiz",
         "",
         "goal",
@@ -349,14 +349,14 @@ def run(send: bool) -> None:
     if not restored:
         raise RuntimeError("Correzione testo→foto: card non generata")
     if send:
-        ok, _, is_photo = bot.replace_corrected_goal_message(
-            text_id, was_photo, restored_text, restored
+        ok, edited_id, is_photo = bot.replace_corrected_goal_message(
+            provisional_id, provisional_was_photo, restored_text, restored
         )
-        if not ok or not is_photo:
-            raise RuntimeError("Correzione testo→foto fallita")
+        if not ok or not is_photo or edited_id != provisional_id:
+            raise RuntimeError("Correzione testo→foto sullo stesso messaggio fallita")
         time.sleep(1)
     else:
-        print("OK correzione marcatore testo→foto")
+        print("OK correzione testo→foto sullo stesso message_id")
 
     juve_own_goal = render_goal(
         player_name="Kenan Yildiz",
