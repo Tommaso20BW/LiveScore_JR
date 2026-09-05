@@ -107,6 +107,43 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertEqual(rendered.kit, "away")
         self.assertEqual(rendered.pose, "arms_crossed")
 
+    def test_saved_word_is_50px_lower_than_goal(self):
+        marker = Image.new("RGBA", (1254, 1254), (0, 0, 0, 0))
+        ImageDraw.Draw(marker).rectangle((600, 700, 610, 710), fill="white")
+        common = dict(minute=56, home_name="Juventus", away_name="NEC Nijmegen",
+                      home_goals=1, away_goals=0, pose="arms_crossed",
+                      asset_dir=self.root, registry_path=self.registry)
+        with patch.object(goal_graphics, "_tint_textured_overlay", return_value=marker):
+            goal = goal_graphics.render_goal_card(scorer_name="Kenan Yildiz", kit="home", **common)
+            saved = goal_graphics.render_saved_card(goalkeeper_name="Guglielmo Vicario", **common)
+        goal_image = Image.open(io.BytesIO(goal.png))
+        saved_image = Image.open(io.BytesIO(saved.png))
+        self.assertEqual(goal_image.getpixel((605, 837)), (255, 255, 255))
+        self.assertNotEqual(saved_image.getpixel((605, 837)), (255, 255, 255))
+        self.assertEqual(saved_image.getpixel((605, 887)), (255, 255, 255))
+        self.assertNotEqual(goal_image.getpixel((605, 887)), (255, 255, 255))
+
+    def test_darker_bottom_fade_applies_to_all_themes_without_changing_frame(self):
+        transparent_word = Image.new("RGBA", (1254, 1254), (0, 0, 0, 0))
+        common = dict(minute=56, home_name="Juventus", away_name="NEC Nijmegen",
+                      home_goals=1, away_goals=0, pose="arms_crossed",
+                      asset_dir=self.root, registry_path=self.registry)
+        for theme in ("home", "away", "third", "saved"):
+            with self.subTest(theme=theme):
+                Image.new("RGB", (1254, 1254), "white").save(self.root / "backgrounds" / f"{theme}.png")
+                with patch.object(goal_graphics, "_tint_textured_overlay", return_value=transparent_word):
+                    if theme == "saved":
+                        result = goal_graphics.render_saved_card(goalkeeper_name="Guglielmo Vicario", **common)
+                    else:
+                        result = goal_graphics.render_goal_card(scorer_name="Kenan Yildiz", kit=theme, **common)
+                image = Image.open(io.BytesIO(result.png))
+                for y in (520, 800, 1100):
+                    progress = (y - 520) / (1254 - 520)
+                    expected = 255 - int(245 * progress ** 0.85)
+                    self.assertEqual(image.getpixel((100, y)), (expected,) * 3)
+                self.assertEqual(image.getpixel((100, 400)), (255,) * 3)
+                self.assertEqual(image.getpixel((20, 1100)), (255,) * 3)
+
     def test_dynamic_fclogo_manifest_is_preferred_and_fuzzy_matched(self):
         dynamic_dir = self.root / "team_logos" / "fclogo_cache"
         dynamic_dir.mkdir()
