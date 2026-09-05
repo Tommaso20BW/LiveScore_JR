@@ -37,11 +37,6 @@ class GoalGraphicsTests(unittest.TestCase):
         front_goal.save(self.root / "overlays" / "front_goal.png")
         front_goal.save(self.root / "overlays" / "front_saved.png")
 
-        logo = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
-        ImageDraw.Draw(logo).ellipse((10, 10, 70, 70), fill=(255, 255, 255, 255))
-        logo.save(self.root / "team_logos" / "juventus.png")
-        logo.save(self.root / "team_logos" / "inter.png")
-
         player = Image.new("RGBA", (1254, 1254), (0, 0, 0, 0))
         draw = ImageDraw.Draw(player)
         draw.rounded_rectangle((330, 80, 930, 1254), radius=120, fill=(230, 220, 210, 255))
@@ -77,17 +72,6 @@ class GoalGraphicsTests(unittest.TestCase):
             }),
             encoding="utf-8",
         )
-        self.logo_registry = self.root / "team_logos.json"
-        self.logo_registry.write_text(
-            json.dumps({
-                "teams": [
-                    {"name": "Juventus", "file": "juventus.png", "aliases": ["Juve"]},
-                    {"name": "Inter", "file": "inter.png", "aliases": ["Inter Milan"]},
-                ]
-            }),
-            encoding="utf-8",
-        )
-
     def tearDown(self):
         self.tmp.cleanup()
 
@@ -116,21 +100,12 @@ class GoalGraphicsTests(unittest.TestCase):
             event_key="test-event|2_1",
             asset_dir=self.root,
             registry_path=self.registry,
-            team_logo_registry_path=self.logo_registry,
         )
         image = Image.open(io.BytesIO(rendered.png))
         self.assertEqual(image.size, (1254, 1254))
         self.assertEqual(image.format, "PNG")
         self.assertEqual(rendered.kit, "away")
         self.assertEqual(rendered.pose, "arms_crossed")
-
-    def test_team_logos_are_resolved_from_espn_aliases(self):
-        self.assertEqual(
-            goal_graphics._local_team_logo_path(
-                "Inter Milan", self.root, self.logo_registry
-            ).name,
-            "inter.png",
-        )
 
     def test_dynamic_fclogo_manifest_is_preferred_and_fuzzy_matched(self):
         dynamic_dir = self.root / "team_logos" / "fclogo_cache"
@@ -149,9 +124,7 @@ class GoalGraphicsTests(unittest.TestCase):
             }),
             encoding="utf-8",
         )
-        resolved = goal_graphics._local_team_logo_path(
-            "Benfica", self.root, self.logo_registry
-        )
+        resolved = goal_graphics._local_team_logo_path("Benfica", self.root)
         self.assertEqual(resolved.parent, dynamic_dir)
 
     def test_team_logo_layer_uses_goal_color_and_preserves_transparency(self):
@@ -173,11 +146,46 @@ class GoalGraphicsTests(unittest.TestCase):
             encoding="utf-8",
         )
         logo = goal_graphics._team_logo_layer(
-            "Original Club", "", "#FF0000", self.root, self.logo_registry
+            "Original Club", "", "#FF0000", self.root
         )
         self.assertIsNotNone(logo)
         self.assertEqual(logo.getpixel((0, 0))[:3], (255, 0, 0))
         self.assertEqual(logo.getpixel((logo.width // 2, logo.height // 2))[3], 0)
+
+    def test_espn_fallback_logo_preserves_original_colors(self):
+        espn_logo = Image.new("RGBA", (20, 10), (15, 90, 210, 255))
+        with patch.object(
+            goal_graphics, "_remote_espn_team_logo", return_value=espn_logo
+        ):
+            logo = goal_graphics._team_logo_layer(
+                "Club non presente", "999", "#FF0000", self.root
+            )
+        self.assertIsNotNone(logo)
+        self.assertEqual(logo.getpixel((0, 0))[:3], (15, 90, 210))
+
+    def test_espn_fallback_stays_original_when_local_logo_is_invalid(self):
+        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir.mkdir()
+        (dynamic_dir / "invalid.png").write_bytes(b"not an image")
+        (dynamic_dir / "manifest.json").write_text(
+            json.dumps({
+                "teams": [{
+                    "name": "Broken Club",
+                    "file": "invalid.png",
+                    "aliases": [],
+                }]
+            }),
+            encoding="utf-8",
+        )
+        espn_logo = Image.new("RGBA", (20, 10), (15, 90, 210, 255))
+        with patch.object(
+            goal_graphics, "_remote_espn_team_logo", return_value=espn_logo
+        ):
+            logo = goal_graphics._team_logo_layer(
+                "Broken Club", "999", "#FF0000", self.root
+            )
+        self.assertIsNotNone(logo)
+        self.assertEqual(logo.getpixel((0, 0))[:3], (15, 90, 210))
 
     def test_overlay_tint_preserves_original_texture(self):
         source = Image.new("RGBA", (2, 1), (0, 0, 0, 255))
@@ -245,7 +253,6 @@ class GoalGraphicsTests(unittest.TestCase):
             pose="arms_crossed",
             asset_dir=self.root,
             registry_path=self.registry,
-            team_logo_registry_path=self.logo_registry,
         )
         self.assertEqual(rendered.kit, "saved")
         self.assertEqual(rendered.background_path.name, "saved.png")
@@ -455,7 +462,6 @@ class GoalGraphicsTests(unittest.TestCase):
             kit="home",
             asset_dir=self.root,
             registry_path=self.registry,
-            team_logo_registry_path=self.logo_registry,
         )
         self.assertIsNone(rendered.player)
         self.assertIsNone(rendered.player_path)
@@ -475,7 +481,6 @@ class GoalGraphicsTests(unittest.TestCase):
                 kit="home",
                 asset_dir=self.root,
                 registry_path=self.registry,
-                team_logo_registry_path=self.logo_registry,
             )
         self.assertIsNone(own_goal.player)
         self.assertEqual(draw_name.call_args.args[2], "OPPONENT PLAYER (AUTOGOL)")
@@ -492,7 +497,6 @@ class GoalGraphicsTests(unittest.TestCase):
                 kit="away",
                 asset_dir=self.root,
                 registry_path=self.registry,
-                team_logo_registry_path=self.logo_registry,
             )
         self.assertIsNotNone(penalty.player)
         self.assertEqual(draw_name.call_args.args[2], "KENAN YILDIZ (RIGORE)")

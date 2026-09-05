@@ -25,7 +25,6 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_ASSET_DIR = BASE_DIR / "assets" / "goal_graphics"
 REGISTRY_PATH = BASE_DIR / "goal_players.json"
-TEAM_LOGO_REGISTRY_PATH = BASE_DIR / "team_logos.json"
 FCLOGO_CACHE_DIRNAME = "fclogo_cache"
 FCLOGO_MANIFEST_FILENAME = "manifest.json"
 CANVAS_SIZE = 1254
@@ -357,7 +356,7 @@ def _matching_team_item(team_name: str, teams: list[dict]) -> dict | None:
     return scored[0][1]
 
 
-def _logo_path_from_registry(
+def _logo_path_from_manifest(
     team_name: str,
     registry_path: Path,
     logo_dir: Path,
@@ -379,19 +378,14 @@ def _logo_path_from_registry(
 def _local_team_logo_path(
     team_name: str,
     asset_dir: Path,
-    registry_path: Path | str,
 ) -> Path | None:
     """Risolve gli alias ESPN verso i loghi locali provenienti da FCLogo."""
-    logo_dir = asset_dir / "team_logos"
-    dynamic_dir = logo_dir / FCLOGO_CACHE_DIRNAME
-    dynamic = _logo_path_from_registry(
+    dynamic_dir = asset_dir / "team_logos" / FCLOGO_CACHE_DIRNAME
+    return _logo_path_from_manifest(
         team_name,
         dynamic_dir / FCLOGO_MANIFEST_FILENAME,
         dynamic_dir,
     )
-    if dynamic is not None:
-        return dynamic
-    return _logo_path_from_registry(team_name, Path(registry_path), logo_dir)
 
 
 def _remote_espn_team_logo(team_id: str) -> Image.Image | None:
@@ -413,15 +407,15 @@ def _team_logo_layer(
     team_id: str,
     color: str,
     asset_dir: Path,
-    registry_path: Path | str,
     *,
     max_size: int = 45,
 ) -> Image.Image | None:
-    path = _local_team_logo_path(team_name, asset_dir, registry_path)
+    path = _local_team_logo_path(team_name, asset_dir)
     try:
         source = Image.open(path).convert("RGBA") if path else None
     except OSError:
         source = None
+    is_fclogo = source is not None
     if source is None:
         source = _remote_espn_team_logo(team_id)
     if source is None:
@@ -431,11 +425,15 @@ def _team_logo_layer(
     bbox = alpha.getbbox()
     if not bbox:
         return None
-    # Conserva esattamente sagoma, fori e trasparenze del logo mono, ma porta
-    # tutti i suoi pixel visibili sul colore della scritta GOAL/SAVED.
-    alpha = alpha.crop(bbox)
-    logo = Image.new("RGBA", alpha.size, color)
-    logo.putalpha(alpha)
+    if is_fclogo:
+        # FCLogo è mono: conserva sagoma, fori e trasparenze, ma usa il colore
+        # della scritta GOAL/SAVED.
+        alpha = alpha.crop(bbox)
+        logo = Image.new("RGBA", alpha.size, color)
+        logo.putalpha(alpha)
+    else:
+        # Il fallback ESPN non è mono: mantiene i colori originali.
+        logo = source.crop(bbox)
     logo.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
     return logo
 
@@ -449,13 +447,12 @@ def _composite_team_logos(
     away_id: str,
     color: str,
     asset_dir: Path,
-    registry_path: Path | str,
 ) -> None:
-    """Inserisce i due stemmi piccoli nel colore della scritta GOAL/SAVED."""
+    """Inserisce FCLogo nel colore grafico o il fallback ESPN originale."""
     logos = [
         logo for logo in (
-            _team_logo_layer(home_name, home_id, color, asset_dir, registry_path),
-            _team_logo_layer(away_name, away_id, color, asset_dir, registry_path),
+            _team_logo_layer(home_name, home_id, color, asset_dir),
+            _team_logo_layer(away_name, away_id, color, asset_dir),
         )
         if logo is not None
     ]
@@ -494,7 +491,6 @@ def _render_event_card(
     event_key: str = "",
     asset_dir: Path | str = DEFAULT_ASSET_DIR,
     registry_path: Path | str = REGISTRY_PATH,
-    team_logo_registry_path: Path | str = TEAM_LOGO_REGISTRY_PATH,
 ) -> RenderedGoal:
     scorer_key = player.slug if player else normalize_name(scorer_name)
     selected_pose = choose_pose(
@@ -606,7 +602,6 @@ def _render_event_card(
         away_id=away_id,
         color=theme["accent"],
         asset_dir=asset_dir,
-        registry_path=team_logo_registry_path,
     )
     draw = ImageDraw.Draw(background)
 
@@ -651,7 +646,6 @@ def render_goal_card(
     event_key: str = "",
     asset_dir: Path | str = DEFAULT_ASSET_DIR,
     registry_path: Path | str = REGISTRY_PATH,
-    team_logo_registry_path: Path | str = TEAM_LOGO_REGISTRY_PATH,
 ) -> RenderedGoal:
     player = find_player(scorer_name, registry_path)
     if not html.unescape(scorer_name).strip():
@@ -694,7 +688,6 @@ def render_goal_card(
         event_key=event_key,
         asset_dir=asset_dir,
         registry_path=registry_path,
-        team_logo_registry_path=team_logo_registry_path,
     )
 
 
@@ -712,7 +705,6 @@ def render_saved_card(
     event_key: str = "",
     asset_dir: Path | str = DEFAULT_ASSET_DIR,
     registry_path: Path | str = REGISTRY_PATH,
-    team_logo_registry_path: Path | str = TEAM_LOGO_REGISTRY_PATH,
 ) -> RenderedGoal:
     player = find_player(goalkeeper_name, registry_path)
     if not player or player.role != "goalkeeper":
@@ -741,7 +733,6 @@ def render_saved_card(
         event_key=event_key,
         asset_dir=asset_dir,
         registry_path=registry_path,
-        team_logo_registry_path=team_logo_registry_path,
     )
 
 
