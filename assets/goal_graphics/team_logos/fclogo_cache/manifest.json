@@ -119,6 +119,7 @@
       "slug": "AC-Monza-v2021",
       "file": "AC-Monza-v2021-mono.png",
       "aliases": [
+        "AC Monza",
         "Monza"
       ],
       "variant": "mono",
@@ -134,6 +135,7 @@
       "slug": "ACF-Fiorentina-v2022",
       "file": "ACF-Fiorentina-v2022-mono.png",
       "aliases": [
+        "ACF Fiorentina",
         "Fiorentina"
       ],
       "variant": "mono",
@@ -164,6 +166,7 @@
       "slug": "Bayer-04-Leverkusen-v2006",
       "file": "Bayer-04-Leverkusen-v2006-mono.png",
       "aliases": [
+        "Bayer 04 Leverkusen",
         "Bayer Leverkusen"
       ],
       "variant": "mono",
@@ -179,6 +182,7 @@
       "slug": "Bologna-FC-v2018",
       "file": "Bologna-FC-v2018-mono.png",
       "aliases": [
+        "Bologna FC",
         "Bologna"
       ],
       "variant": "mono",
@@ -194,6 +198,7 @@
       "slug": "Cagliari-Calcio-v2015",
       "file": "Cagliari-Calcio-v2015-mono.png",
       "aliases": [
+        "Cagliari Calcio",
         "Cagliari"
       ],
       "variant": "mono",
@@ -209,6 +214,7 @@
       "slug": "Como-1907-v2019",
       "file": "Como-1907-v2019-mono.png",
       "aliases": [
+        "Como 1907",
         "Como"
       ],
       "variant": "mono",
@@ -224,6 +230,7 @@
       "slug": "Crystal-Palace-Football-Club-v2022",
       "file": "Crystal-Palace-Football-Club-v2022-mono.png",
       "aliases": [
+        "Crystal Palace Football Club",
         "Crystal Palace"
       ],
       "variant": "mono",
@@ -239,6 +246,7 @@
       "slug": "Empoli-FC-v2021",
       "file": "Empoli-FC-v2021-mono.png",
       "aliases": [
+        "Empoli FC",
         "Empoli"
       ],
       "variant": "mono",
@@ -254,6 +262,7 @@
       "slug": "FC-Inter-Milan-v2021",
       "file": "FC-Inter-Milan-v2021-mono.png",
       "aliases": [
+        "FC Inter Milan",
         "Internazionale"
       ],
       "variant": "mono",
@@ -265,10 +274,11 @@
       ]
     },
     {
-      "name": "FC Salzburg V2022 Minor",
+      "name": "FC Salzburg",
       "slug": "FC-Salzburg-v2022-minor",
       "file": "FC-Salzburg-v2022-minor-mono.png",
       "aliases": [
+        "FC Salzburg",
         "RB Salzburg"
       ],
       "variant": "mono",
@@ -284,6 +294,7 @@
       "slug": "Genoa-CFC-v2022",
       "file": "Genoa-CFC-v2022-mono.png",
       "aliases": [
+        "Genoa CFC",
         "Genoa"
       ],
       "variant": "mono",
@@ -314,6 +325,7 @@
       "slug": "Juventus-FC-v2017",
       "file": "Juventus-FC-v2017-color.png",
       "aliases": [
+        "Juventus FC",
         "Juventus"
       ],
       "variant": "color",
@@ -330,6 +342,7 @@
       "slug": "Olympique-lyonnais-v2022",
       "file": "Olympique-lyonnais-v2022-mono.png",
       "aliases": [
+        "Olympique Lyonnais",
         "Lyon"
       ],
       "variant": "mono",
@@ -345,6 +358,7 @@
       "slug": "Parma-Calcio-1913-v2016",
       "file": "Parma-Calcio-1913-v2016-mono.png",
       "aliases": [
+        "Parma Calcio 1913",
         "Parma"
       ],
       "variant": "mono",
@@ -360,6 +374,7 @@
       "slug": "Pisa-SC-v2017",
       "file": "Pisa-SC-v2017-mono.png",
       "aliases": [
+        "Pisa SC",
         "Pisa"
       ],
       "variant": "mono",
@@ -375,6 +390,7 @@
       "slug": "RC-Celta-de-Vigo-v2010",
       "file": "RC-Celta-de-Vigo-v2010-mono.png",
       "aliases": [
+        "RC Celta DE Vigo",
         "Celta Vigo"
       ],
       "variant": "mono",
@@ -390,6 +406,7 @@
       "slug": "Real-Sociedad-de-Futbol-v1997",
       "file": "Real-Sociedad-de-Futbol-v1997-mono.png",
       "aliases": [
+        "Real Sociedad DE Futbol",
         "Real Sociedad"
       ],
       "variant": "mono",
@@ -405,6 +422,7 @@
       "slug": "SS-Lazio-v1993",
       "file": "SS-Lazio-v1993-mono.png",
       "aliases": [
+        "SS Lazio",
         "Lazio"
       ],
       "variant": "mono",
@@ -420,6 +438,7 @@
       "slug": "Sport-Lisboa-e-Benfica-v1999",
       "file": "Sport-Lisboa-e-Benfica-v1999-mono.png",
       "aliases": [
+        "Sport Lisboa E Benfica",
         "Benfica"
       ],
       "variant": "mono",
@@ -450,6 +469,7 @@
       "slug": "Sunderland-AFC-v1997",
       "file": "Sunderland-AFC-v1997-mono.png",
       "aliases": [
+        "Sunderland AFC",
         "Sunderland"
       ],
       "variant": "mono",
@@ -480,6 +500,7 @@
       "slug": "Torino-FC-v2005",
       "file": "Torino-FC-v2005-mono.png",
       "aliases": [
+        "Torino FC",
         "Torino"
       ],
       "variant": "mono",
@@ -495,6 +516,7 @@
       "slug": "US-Cremonese-v1997",
       "file": "US-Cremonese-v1997-mono.png",
       "aliases": [
+        "US Cremonese",
         "Cremonese"
       ],
       "variant": "mono",
@@ -510,6 +532,7 @@
       "slug": "US-Lecce-v2001",
       "file": "US-Lecce-v2001-mono.png",
       "aliases": [
+        "US Lecce",
         "Lecce"
       ],
       "variant": "mono",
@@ -525,6 +548,7 @@
       "slug": "US-Sassuolo-Calcio-v2010",
       "file": "US-Sassuolo-Calcio-v2010-mono.png",
       "aliases": [
+        "US Sassuolo Calcio",
         "Sassuolo"
       ],
       "variant": "mono",
@@ -540,6 +564,7 @@
       "slug": "Udinese-Calcio-v2010",
       "file": "Udinese-Calcio-v2010-mono.png",
       "aliases": [
+        "Udinese Calcio",
         "Udinese"
       ],
       "variant": "mono",
@@ -555,6 +580,7 @@
       "slug": "alkmaar-zaanstreek-v1986",
       "file": "alkmaar-zaanstreek-v1986-mono.png",
       "aliases": [
+        "Alkmaar Zaanstreek",
         "AZ Alkmaar"
       ],
       "variant": "mono",
@@ -570,6 +596,7 @@
       "slug": "ascoli-calcio-1898-fc-v2026",
       "file": "ascoli-calcio-1898-fc-v2026-mono.png",
       "aliases": [
+        "Ascoli Calcio 1898 FC",
         "Ascoli"
       ],
       "variant": "mono",
@@ -585,6 +612,7 @@
       "slug": "associazione-sportiva-roma-v2026",
       "file": "associazione-sportiva-roma-v2026-mono.png",
       "aliases": [
+        "Associazione Sportiva Roma",
         "AS Roma"
       ],
       "variant": "mono",
@@ -600,6 +628,7 @@
       "slug": "atalanta-bergamasca-calcio-v2026",
       "file": "atalanta-bergamasca-calcio-v2026-mono.png",
       "aliases": [
+        "Atalanta Bergamasca Calcio",
         "Atalanta"
       ],
       "variant": "mono",
@@ -615,6 +644,7 @@
       "slug": "athletic-club-omonoia-nicosia-v0000",
       "file": "athletic-club-omonoia-nicosia-v0000-mono.png",
       "aliases": [
+        "Athletic Club Omonoia Nicosia",
         "Omonia Nicosia"
       ],
       "variant": "mono",
@@ -630,6 +660,7 @@
       "slug": "athletic-club-sparta-praha-v2021",
       "file": "athletic-club-sparta-praha-v2021-mono.png",
       "aliases": [
+        "Athletic Club Sparta Praha",
         "Sparta Prague"
       ],
       "variant": "mono",
@@ -645,6 +676,7 @@
       "slug": "benevento-calcio-v0000",
       "file": "benevento-calcio-v0000-mono.png",
       "aliases": [
+        "Benevento Calcio",
         "Benevento"
       ],
       "variant": "mono",
@@ -660,6 +692,7 @@
       "slug": "besiktas-jimnastik-kulubu-v2000",
       "file": "besiktas-jimnastik-kulubu-v2000-mono.png",
       "aliases": [
+        "Besiktas Jimnastik Kulubu",
         "Besiktas"
       ],
       "variant": "mono",
@@ -675,6 +708,7 @@
       "slug": "calcio-padova-v2018",
       "file": "calcio-padova-v2018-mono.png",
       "aliases": [
+        "Calcio Padova",
         "Padova"
       ],
       "variant": "mono",
@@ -690,6 +724,7 @@
       "slug": "carrarese-calcio-1908-v0000",
       "file": "carrarese-calcio-1908-v0000-mono.png",
       "aliases": [
+        "Carrarese Calcio 1908",
         "Carrarese"
       ],
       "variant": "mono",
@@ -705,6 +740,7 @@
       "slug": "celje-football-club-v0000",
       "file": "celje-football-club-v0000-mono.png",
       "aliases": [
+        "Celje Football Club",
         "NK Celje"
       ],
       "variant": "mono",
@@ -720,6 +756,7 @@
       "slug": "cesena-football-club-v2018",
       "file": "cesena-football-club-v2018-mono.png",
       "aliases": [
+        "Cesena Football Club",
         "Cesena"
       ],
       "variant": "mono",
@@ -735,6 +772,7 @@
       "slug": "ferencvarosi-torna-club-v2019",
       "file": "ferencvarosi-torna-club-v2019-mono.png",
       "aliases": [
+        "Ferencvarosi Torna Club",
         "Ferencvaros"
       ],
       "variant": "mono",
@@ -750,6 +788,7 @@
       "slug": "football-club-ararat-armenia-v0000",
       "file": "football-club-ararat-armenia-v0000-mono.png",
       "aliases": [
+        "Football Club Ararat Armenia",
         "Ararat-Armenia"
       ],
       "variant": "mono",
@@ -765,6 +804,7 @@
       "slug": "football-club-viktoria-plzen-v1999",
       "file": "football-club-viktoria-plzen-v1999-mono.png",
       "aliases": [
+        "Football Club Viktoria Plzen",
         "Viktoria Plzen"
       ],
       "variant": "mono",
@@ -780,6 +820,7 @@
       "slug": "frosinone-calcio-v2011",
       "file": "frosinone-calcio-v2011-mono.png",
       "aliases": [
+        "Frosinone Calcio",
         "Frosinone"
       ],
       "variant": "mono",
@@ -795,6 +836,7 @@
       "slug": "fussball-club-sudtirol-v2016",
       "file": "fussball-club-sudtirol-v2016-mono.png",
       "aliases": [
+        "Fussball Club Sudtirol",
         "Suditrol"
       ],
       "variant": "mono",
@@ -810,6 +852,7 @@
       "slug": "gnk-dinamo-zagreb-v2024",
       "file": "gnk-dinamo-zagreb-v2024-mono.png",
       "aliases": [
+        "GNK Dinamo Zagreb",
         "Dinamo Zagreb"
       ],
       "variant": "mono",
@@ -825,6 +868,7 @@
       "slug": "hapoel-beer-sheva-football-club-v2016",
       "file": "hapoel-beer-sheva-football-club-v2016-color.png",
       "aliases": [
+        "Hapoel Beer Sheva Football Club",
         "Hapoel Be'er"
       ],
       "variant": "color",
@@ -840,6 +884,7 @@
       "slug": "jagiellonia-biaystok-sportowa-spoka-akcyjna-v2024",
       "file": "jagiellonia-biaystok-sportowa-spoka-akcyjna-v2024-mono.png",
       "aliases": [
+        "Jagiellonia Biaystok Sportowa Spoka Akcyjna",
         "Jagiellonia Bialystok"
       ],
       "variant": "mono",
@@ -855,6 +900,7 @@
       "slug": "kolejowy-klub-sportowy-lech-poznan-sa-v2006",
       "file": "kolejowy-klub-sportowy-lech-poznan-sa-v2006-mono.png",
       "aliases": [
+        "Kolejowy Klub Sportowy Lech Poznan SA",
         "Lech Poznan"
       ],
       "variant": "mono",
@@ -870,6 +916,7 @@
       "slug": "lanerossi-vicenza-v2018",
       "file": "lanerossi-vicenza-v2018-mono.png",
       "aliases": [
+        "Lanerossi Vicenza",
         "Vicenza"
       ],
       "variant": "mono",
@@ -885,6 +932,7 @@
       "slug": "lillestrm-sportsklubb-v0000",
       "file": "lillestrm-sportsklubb-v0000-mono.png",
       "aliases": [
+        "Lillestrm Sportsklubb",
         "Lillestrom"
       ],
       "variant": "mono",
@@ -900,6 +948,7 @@
       "slug": "mantova-1911-v2017",
       "file": "mantova-1911-v2017-mono.png",
       "aliases": [
+        "Mantova 1911",
         "Mantova"
       ],
       "variant": "mono",
@@ -915,6 +964,7 @@
       "slug": "modena-football-club-v2018",
       "file": "modena-football-club-v2018-mono.png",
       "aliases": [
+        "Modena Football Club",
         "Modena"
       ],
       "variant": "mono",
@@ -930,6 +980,7 @@
       "slug": "nijmegen-eendracht-combinatie-v2001",
       "file": "nijmegen-eendracht-combinatie-v2001-mono.png",
       "aliases": [
+        "Nijmegen Eendracht Combinatie",
         "NEC Nijmegen"
       ],
       "variant": "mono",
@@ -945,6 +996,7 @@
       "slug": "ofi-football-club-v2020",
       "file": "ofi-football-club-v2020-mono.png",
       "aliases": [
+        "OFI Football Club",
         "OFI Crete"
       ],
       "variant": "mono",
@@ -960,6 +1012,7 @@
       "slug": "olympiacos-football-club-v2003",
       "file": "olympiacos-football-club-v2003-mono.png",
       "aliases": [
+        "Olympiacos Football Club",
         "Olympiacos"
       ],
       "variant": "mono",
@@ -975,6 +1028,7 @@
       "slug": "olympique-de-marseille-v2026",
       "file": "olympique-de-marseille-v2026-color.png",
       "aliases": [
+        "Olympique DE Marseille",
         "Marseille"
       ],
       "variant": "color",
@@ -990,6 +1044,7 @@
       "slug": "palermo-football-club-v2019",
       "file": "palermo-football-club-v2019-color.png",
       "aliases": [
+        "Palermo Football Club",
         "Palermo"
       ],
       "variant": "color",
@@ -1005,6 +1060,7 @@
       "slug": "profesionalen-futbolen-klub-levski-v2026",
       "file": "profesionalen-futbolen-klub-levski-v2026-color.png",
       "aliases": [
+        "Profesionalen Futbolen Klub Levski",
         "Levski Sofia"
       ],
       "variant": "color",
@@ -1020,6 +1076,7 @@
       "slug": "royal-sporting-club-anderlecht-v2024",
       "file": "royal-sporting-club-anderlecht-v2024-mono.png",
       "aliases": [
+        "Royal Sporting Club Anderlecht",
         "Anderlecht"
       ],
       "variant": "mono",
@@ -1035,6 +1092,7 @@
       "slug": "royale-union-saint-gilloise-v2015",
       "file": "royale-union-saint-gilloise-v2015-mono.png",
       "aliases": [
+        "Royale Union Saint Gilloise",
         "Union St.-Gilloise"
       ],
       "variant": "mono",
@@ -1050,6 +1108,7 @@
       "slug": "societ-sportiva-calcio-napoli-v2024",
       "file": "societ-sportiva-calcio-napoli-v2024-color.png",
       "aliases": [
+        "Societ Sportiva Calcio Napoli",
         "Napoli"
       ],
       "variant": "color",
@@ -1065,6 +1124,7 @@
       "slug": "societ-sportiva-juve-stabia-v2022",
       "file": "societ-sportiva-juve-stabia-v2022-mono.png",
       "aliases": [
+        "Societ Sportiva Juve Stabia",
         "Juve Stabia"
       ],
       "variant": "mono",
@@ -1080,6 +1140,7 @@
       "slug": "societa-sportiva-arezzo-v0000",
       "file": "societa-sportiva-arezzo-v0000-mono.png",
       "aliases": [
+        "Societa Sportiva Arezzo",
         "Arezzo"
       ],
       "variant": "mono",
@@ -1095,6 +1156,7 @@
       "slug": "sport-clube-uniao-torreense-v0000",
       "file": "sport-clube-uniao-torreense-v0000-mono.png",
       "aliases": [
+        "Sport Clube Uniao Torreense",
         "Torreense"
       ],
       "variant": "mono",
@@ -1110,6 +1172,7 @@
       "slug": "sportklub-sturm-graz-v2013",
       "file": "sportklub-sturm-graz-v2013-mono.png",
       "aliases": [
+        "Sportklub Sturm Graz",
         "SK Sturm Graz"
       ],
       "variant": "mono",
@@ -1125,6 +1188,7 @@
       "slug": "the-celtic-football-club-v1995",
       "file": "the-celtic-football-club-v1995-mono.png",
       "aliases": [
+        "THE Celtic Football Club",
         "Celtic"
       ],
       "variant": "mono",
@@ -1140,6 +1204,7 @@
       "slug": "unione-calcio-sampdoria-v1997",
       "file": "unione-calcio-sampdoria-v1997-mono.png",
       "aliases": [
+        "Unione Calcio Sampdoria",
         "Sampdoria"
       ],
       "variant": "mono",
@@ -1155,6 +1220,7 @@
       "slug": "unione-sportiva-avellino-1912-v2015",
       "file": "unione-sportiva-avellino-1912-v2015-mono.png",
       "aliases": [
+        "Unione Sportiva Avellino 1912",
         "US Avellino"
       ],
       "variant": "mono",
@@ -1170,6 +1236,7 @@
       "slug": "unione-sportiva-catanzaro-1929-v2018",
       "file": "unione-sportiva-catanzaro-1929-v2018-mono.png",
       "aliases": [
+        "Unione Sportiva Catanzaro 1929",
         "Catanzaro"
       ],
       "variant": "mono",
@@ -1185,6 +1252,7 @@
       "slug": "venezia-football-club-v2026",
       "file": "venezia-football-club-v2026-mono.png",
       "aliases": [
+        "Venezia Football Club",
         "Venezia"
       ],
       "variant": "mono",
