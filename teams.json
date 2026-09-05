@@ -2711,53 +2711,81 @@
     "Basilea",
     "Basilea"
   ],
-  "Ferencvaros": [
-    "Ferencvaros",
-    "Ferencvaros"
+  "Fiorentina": [
+    "Fiorentina",
+    "Fiorentina"
   ],
-  "Viktoria Plzen": [
-    "Viktoria Plzen",
-    "Plzen"
+  "AFC Bournemouth": [
+    "Bournemouth",
+    "Bournemouth"
   ],
-  "Union St.-Gilloise": [
-    "Union SG",
-    "UnionSG"
+  "Stade Rennais": [
+    "Rennes",
+    "Rennes"
   ],
-  "Dinamo Zagreb": [
-    "Dinamo Zagabria",
-    "Dinamo"
-  ],
-  "Sparta Prague": [
-    "Sparta Praga",
-    "Sparta"
-  ],
-  "SK Sturm Graz": [
-    "Sturm Graz",
-    "Sturm"
-  ],
-  "Lech Poznan": [
-    "Lech Poznan",
-    "Lech"
-  ],
-  "NK Celje": [
-    "Celje",
-    "Celje"
-  ],
-  "Jagiellonia Bialystok": [
-    "Jagiellonia Bialystok",
-    "Jagiellonia"
+  "Ascoli": [
+    "Ascoli",
+    "Ascoli"
   ],
   "Omonia Nicosia": [
     "Omonia Nicosia",
     "Omonia"
   ],
-  "Torreense": [
-    "Torreense",
-    "Torreense"
+  "Sparta Prague": [
+    "Sparta Praga",
+    "Sparta"
+  ],
+  "Benevento": [
+    "Benevento",
+    "Benevento"
+  ],
+  "Padova": [
+    "Padova",
+    "Padova"
+  ],
+  "Carrarese": [
+    "Carrarese",
+    "Carrarese"
+  ],
+  "NK Celje": [
+    "Celje",
+    "Celje"
+  ],
+  "Ferencvaros": [
+    "Ferencvaros",
+    "Ferencvaros"
+  ],
+  "Ararat-Armenia": [
+    "Ararat-Armenia",
+    "Ararat"
+  ],
+  "Viktoria Plzen": [
+    "Viktoria Plzen",
+    "Plzen"
+  ],
+  "Suditrol": [
+    "Sudtirol",
+    "Sudtirol"
+  ],
+  "Dinamo Zagreb": [
+    "Dinamo Zagabria",
+    "Dinamo"
   ],
   "Hapoel Be'er": [
     "Hapoel Beer Sheva",
     "Hapoel"
+  ],
+  "Jagiellonia Bialystok": [
+    "Jagiellonia Bialystok",
+    "Jagiellonia"
+  ],
+  "Lech Poznan": [
+    "Lech Poznan",
+    "Lech"
+  ],
+  "Vicenza": [
+    "Vicenza",
+    "Vicenza"
   ],
   "Lillestrom": [
     "Lillestrom",
@@ -2767,8 +2795,28 @@
     "Levski Sofia",
     "Levski"
   ],
-  "Ararat-Armenia": [
-    "Ararat-Armenia",
-    "Ararat"
+  "Union St.-Gilloise": [
+    "Union SG",
+    "UnionSG"
+  ],
+  "Arezzo": [
+    "Arezzo",
+    "Arezzo"
+  ],
+  "Torreense": [
+    "Torreense",
+    "Torreense"
+  ],
+  "SK Sturm Graz": [
+    "Sturm Graz",
+    "Sturm"
+  ],
+  "US Avellino": [
+    "Avellino",
+    "Avellino"
+  ],
+  "Virtus Entella": [
+    "Virtus Entella",
+    "Entella"
   ]
 }
