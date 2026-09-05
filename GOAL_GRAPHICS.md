@@ -13,8 +13,9 @@ Il sistema assembla la card in tempo reale usando:
 La scritta GOAL superiore e gia incorporata nei tre background: il codice non
 la ridisegna e quindi non puo cambiarne carattere, proporzioni o taglio. I
 portieri con la divisa arancione usano automaticamente il background nero.
-I loghi locali provengono da FCLogo e conservano i loro pixel originali, senza
-riempimenti o ricolorazioni. A ogni avvio con le grafiche attive il bot controlla
+I loghi locali provengono da FCLogo: il compositore ne conserva sagoma, fori e
+trasparenze, ma li ricolora come la scritta GOAL/SAVED della variante. A ogni
+avvio con le grafiche attive il bot controlla
 i pacchetti della stagione corrente: sincronizza sempre Serie A e Serie B (cosi
 sono comprese anche le possibili avversarie di Coppa Italia) e aggiunge
 Champions League, Europa League o Conference League soltanto quando la Juventus
