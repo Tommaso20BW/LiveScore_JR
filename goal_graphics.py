@@ -515,7 +515,7 @@ def _render_event_card(
     panel_bottom = CANVAS_SIZE
     for y in range(gradient_start, panel_bottom):
         progress = (y - gradient_start) / (panel_bottom - gradient_start)
-        alpha = int(225 * progress ** 1.12)
+        alpha = int(245 * progress ** 0.85)
         shade_draw.line((64, y, CANVAS_SIZE - 64, y), fill=(0, 0, 0, alpha), width=1)
     background = Image.alpha_composite(background, shade)
 
@@ -541,12 +541,15 @@ def _render_event_card(
     ).point(lambda value: round(value * 0.34))
     shadow = Image.new("RGBA", colored_word.size, (0, 0, 0, 0))
     shadow.putalpha(shadow_alpha)
+    # SAVED termina più in alto nel PNG: scende di altri 50 px per avvicinarsi
+    # ai loghi, che restano fermi insieme al nome. L'ombra segue la scritta.
+    word_offset = 182 if output_kit == "saved" else 132
     lowered_shadow = Image.new("RGBA", background.size, (0, 0, 0, 0))
-    lowered_shadow.alpha_composite(shadow, (0, 142))
+    lowered_shadow.alpha_composite(shadow, (0, word_offset + 10))
     background = Image.alpha_composite(background, lowered_shadow)
 
     lowered_word = Image.new("RGBA", background.size, (0, 0, 0, 0))
-    lowered_word.alpha_composite(colored_word, (0, 132))
+    lowered_word.alpha_composite(colored_word, (0, word_offset))
     background = Image.alpha_composite(background, lowered_word)
     draw = ImageDraw.Draw(background)
 
