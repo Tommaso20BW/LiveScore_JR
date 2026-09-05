@@ -3415,7 +3415,9 @@ def main():
         get_valid_token()
         return
 
-    if GOAL_GRAPHICS_ENABLED:
+    # Il workflow può aver già sincronizzato i loghi prima di pubblicarli.
+    # L'avvio diretto, o un primo tentativo fallito, mantiene il sync interno.
+    if GOAL_GRAPHICS_ENABLED and os.getenv('FCLOGO_SYNC_DONE', '').strip().lower() != 'true':
         try:
             report = fclogo_sync.sync_current_season()
             print(f"[{now_it()}] 🛡️  {report.summary()}")

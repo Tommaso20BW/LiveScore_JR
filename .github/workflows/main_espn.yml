@@ -76,6 +76,8 @@ jobs:
 
       - name: Publish seasonal FCLogo team logos
         if: ${{ github.event.inputs.goal_graphics != 'false' && steps.fclogo_sync.outcome == 'success' }}
+        # I PNG sono già disponibili nel runner: un push fallito non ferma il live.
+        continue-on-error: true
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -84,7 +86,10 @@ jobs:
             echo "Nessun logo nuovo da pubblicare"
           else
             git commit -m "Update seasonal FCLogo team logos"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
+            if ! git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "::warning::Loghi non pubblicati su GitHub; il live prosegue con i file già disponibili nel runner."
+              exit 1
+            fi
           fi
 
       - name: Run Live Score Bot
@@ -102,6 +107,8 @@ jobs:
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           TEAM_ID:              ${{ github.event.inputs.team_id || '111' }}
           GOAL_GRAPHICS_ENABLED: ${{ github.event.inputs.goal_graphics || 'true' }}
+          # Salta solo una sincronizzazione già riuscita; in caso di errore il bot ritenta.
+          FCLOGO_SYNC_DONE: ${{ steps.fclogo_sync.outcome == 'success' && 'true' || 'false' }}
         run: python -u livescore_runner.py
 
       - name: Start Bot JR auto-delete after the match
