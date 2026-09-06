@@ -15,6 +15,7 @@ from urllib3.util.retry import Retry
 import kit_analyzer
 import goal_graphics
 import fclogo_sync
+import diretta_logos
 from telegram_autodelete import enqueue_response, should_enqueue
 
 ITALY_TZ = ZoneInfo('Europe/Rome')
@@ -114,7 +115,8 @@ def get_league_emoji(slug): return LEAGUE_MAP.get(slug, {}).get("emoji", "⚽️
 JUVE_ID = '111'  # ID ESPN reale della Juventus — usato SOLO per il branding
                  # (logo + tema kit). NON legato a TEAM_ID (la squadra monitorata,
                  # che in test potrebbe essere un'altra): così una partita senza la
-                 # Juve resta sul kit 'default' e usa i loghi ESPN, niente logo Juve.
+                 # Juve resta sul kit 'default' e usa i loghi squadra standard,
+                 # senza applicare l'override grafico Juventus.
 
 def _is_league_slug(slug: str) -> bool:
     """True se lo slug ESPN è un campionato (es. 'ita.1', 'eng.2'):
@@ -1308,6 +1310,60 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
 # ==============================================================================
 # STATISTICHE
 # ==============================================================================
+_DIRETTA_LOGO_CACHE: dict[tuple[str, ...], tuple[str, str]] = {}
+
+
+def _team_logo_aliases(data_espn: dict, team_id: str, display_name: str) -> list[str]:
+    """Nomi utili a collegare una squadra ESPN al risultato di Diretta.it."""
+    aliases = [html.unescape(str(display_name or ""))]
+    team_id = str(team_id)
+    blocks = []
+    try:
+        blocks.extend(data_espn["header"]["competitions"][0].get("competitors", []))
+    except Exception:
+        pass
+    blocks.extend((data_espn.get("boxscore") or {}).get("teams", []))
+    for block in blocks:
+        team = block.get("team") or {}
+        if str(team.get("id", "")) != team_id:
+            continue
+        aliases.extend(
+            team.get(field, "")
+            for field in ("displayName", "name", "shortDisplayName", "location")
+        )
+    result, seen = [], set()
+    for alias in aliases:
+        alias = str(alias or "").strip()
+        key = alias.casefold()
+        if alias and key not in seen:
+            seen.add(key)
+            result.append(alias)
+    return result
+
+
+def _diretta_stats_logo(data_espn: dict, team_id: str, display_name: str) -> str | None:
+    aliases = _team_logo_aliases(data_espn, team_id, display_name)
+    cache_key = (str(team_id), *(alias.casefold() for alias in aliases))
+    cached = _DIRETTA_LOGO_CACHE.get(cache_key)
+    if cached is not None:
+        return cached[0]
+    try:
+        resolved = diretta_logos.resolve_team_logo(aliases, SESSION)
+    except Exception as exc:
+        print(
+            f"[{now_it()}] ⚠️  Logo Diretta.it non disponibile per "
+            f"{display_name}: {exc}"
+        )
+        return None
+    if resolved is None:
+        print(f"[{now_it()}] ⚠️  Nessun logo Diretta.it univoco per {display_name}")
+        return None
+    logo, diretta_name = resolved
+    _DIRETTA_LOGO_CACHE[cache_key] = resolved
+    print(f"[{now_it()}] ✅ Logo Diretta.it: {display_name} → {diretta_name}")
+    return logo
+
+
 def _estrai_stats_espn(data: dict) -> dict:
     raw = {"home": {}, "away": {}}
 
@@ -1512,8 +1568,17 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         juve_logo = JUVE_LOGO_GOLD
     else:
         juve_logo = JUVE_LOGO_WHITE
-    h_logo      = juve_logo if str(home_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
-    a_logo      = juve_logo if str(away_id) == JUVE_ID else f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
+    # L'override Juventus dipendente dal kit resta intenzionale. Per tutte le
+    # altre squadre la fonte primaria e' Diretta.it; ESPN interviene soltanto
+    # se la ricerca non e' disponibile o non produce un match univoco.
+    h_logo = juve_logo if str(home_id) == JUVE_ID else (
+        _diretta_stats_logo(data_espn, home_id, home_name)
+        or f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
+    )
+    a_logo = juve_logo if str(away_id) == JUVE_ID else (
+        _diretta_stats_logo(data_espn, away_id, away_name)
+        or f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
+    )
     badge_label = MOMENTI_CONFIG[momento]["badge"]
     if momento == "FT" and (pen_home > 0 or pen_away > 0):
         badge_label = "FINE PARTITA d.c.r."
