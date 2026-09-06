@@ -81,11 +81,17 @@ def send_preview(event_id: str, league_slug: str, momento: str = "FT") -> bool:
         league_name,
         league_slug=league_slug,
         event_id=event_id,
+        hd_preview=True,
     )
 
     # Impedisce a questo comando di usare per errore il canale principale.
     bot.CHAT_ID = target
-    sent = bot.send_telegram_stats_photo(png_path, momento, hashtag)
+    sent = bot.send_telegram_stats_photo(
+        png_path,
+        momento,
+        hashtag,
+        min_long_side=2000,
+    )
     if sent:
         print(f"[{bot.now_it()}] ✅ Preview stats inviata esclusivamente a Bot JR")
     return sent
