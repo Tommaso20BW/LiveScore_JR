@@ -766,7 +766,8 @@ def prepara_grafica_parata_rigore(
         print(f"[{now_it()}] ⚠️  Errore composizione grafica SAVED: {e} — invio testo")
         return None
 
-def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str) -> bool:
+def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str,
+                              min_long_side: int = 0) -> bool:
     """Invia la foto delle statistiche. Ritorna True solo se l'invio è
     andato davvero a buon fine, così chi chiama può ritentare invece di
     segnare l'evento come fatto e perderlo silenziosamente."""
@@ -782,6 +783,25 @@ def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str) -> bool
         if r is None:
             return False
         r.raise_for_status()
+        if min_long_side:
+            photo_sizes = r.json().get("result", {}).get("photo", [])
+            largest = max(
+                photo_sizes,
+                key=lambda item: item.get("width", 0) * item.get("height", 0),
+                default={},
+            )
+            sent_w = largest.get("width", 0)
+            sent_h = largest.get("height", 0)
+            if max(sent_w, sent_h) >= min_long_side:
+                print(
+                    f"[{now_it()}] ✅ Variante Telegram HD: "
+                    f"{sent_w}x{sent_h}"
+                )
+            else:
+                print(
+                    f"[{now_it()}] ⚠️  Telegram ha restituito solo "
+                    f"{sent_w}x{sent_h}"
+                )
         return True
     except Exception as e:
         print(f"[{now_it()}] ❌ Errore invio foto statistiche: {e}")
@@ -1517,7 +1537,8 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   momento: str, league_name: str = "SERIE A",
                                   league_slug: str = "",
                                   pen_home: int = 0, pen_away: int = 0,
-                                  event_id: str = ""):
+                                  event_id: str = "",
+                                  hd_preview: bool = False):
     # Import lazy: PIL e Playwright servono solo qui. Così il workflow di
     # keep-alive Canva (ONLY_REFRESH_TOKEN) può girare senza installarli.
     from PIL import Image
@@ -1789,7 +1810,11 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
 
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
-        page = browser.new_page(viewport={"width": 1620, "height": 4000}, device_scale_factor=1.0)
+        render_scale = 2.0 if hd_preview else 1.0
+        page = browser.new_page(
+            viewport={"width": 1620, "height": 4000},
+            device_scale_factor=render_scale,
+        )
         page.goto(f"file://{path_html}")
         page.wait_for_timeout(3000)
         page.screenshot(path=path_raw_png, clip={"x": 0, "y": 0, "width": 1620, "height": 2160}, omit_background=False)
@@ -1801,15 +1826,32 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
         "away":  "texture_black.png",
         "third": "texture_gold.png",
     }.get(juve_kit, "texture_white.png")
-    if os.path.exists(texture_file):
-        try:
-            base_img = Image.open(path_raw_png).convert("RGBA")
+    try:
+        base_img = Image.open(path_raw_png).convert("RGBA")
+        if hd_preview:
+            raw_size = base_img.size
+            base_img = base_img.resize((1920, 2560), Image.Resampling.LANCZOS)
+            print(
+                f"[{now_it()}] 🔎 Preview HD: render {raw_size[0]}x{raw_size[1]} "
+                "→ output 1920x2560 (LANCZOS)"
+            )
+
+        if os.path.exists(texture_file):
             texture  = Image.open(texture_file).convert("RGBA").resize(base_img.size, Image.Resampling.LANCZOS)
             Image.alpha_composite(base_img, texture).convert("RGB").save(path_final_png, "PNG")
-            print(f"[{now_it()}] 🎨 Texture applicata: {texture_file}")
+            print(
+                f"[{now_it()}] 🎨 Texture finale applicata: {texture_file} "
+                f"({base_img.width}x{base_img.height})"
+            )
             return path_final_png
-        except Exception as e:
-            print(f"[{now_it()}] ⚠️  Errore texture stats: {e}")
+        if hd_preview:
+            raise FileNotFoundError(
+                f"Texture finale obbligatoria non trovata: {texture_file}"
+            )
+    except Exception as e:
+        if hd_preview:
+            raise RuntimeError(f"Errore output HD/texture stats: {e}") from e
+        print(f"[{now_it()}] ⚠️  Errore texture stats: {e}")
 
     return path_raw_png
 
