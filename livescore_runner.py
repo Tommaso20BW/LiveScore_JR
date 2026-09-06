@@ -105,9 +105,10 @@ def _notifica_partita_trovata_bot(partita: dict) -> None:
     bot_chat_id = os.getenv("TELEGRAM_TO_BOT")
 
     if not bot.BOT_TOKEN or not bot_chat_id:
-        print(
-            f"[{bot.now_it()}] ⚠️  TELEGRAM_TOKEN o TELEGRAM_TO_BOT mancanti "
-            "— notifica partita trovata saltata"
+        bot.log_line(
+            "WARN",
+            "TELEGRAM",
+            "TELEGRAM_TOKEN o TELEGRAM_TO_BOT mancanti; notifica di servizio saltata",
         )
         return
 
@@ -130,14 +131,15 @@ def _notifica_partita_trovata_bot(partita: dict) -> None:
         )
         r.raise_for_status()
 
-        print(
-            f"[{bot.now_it()}] 🧪 Notifica PARTITA TROVATA inviata a Bot JR "
-            f"(event_id={partita.get('event_id', '')})"
+        bot.log_line(
+            "DEBUG",
+            "TELEGRAM",
+            f"Notifica di servizio inviata | event_id={partita.get('event_id', '')}",
         )
 
     except Exception as e:
         # La notifica di servizio NON deve mai impedire l'avvio del LiveScore.
-        print(f"[{bot.now_it()}] ⚠️  Errore notifica Bot JR: {e}")
+        bot.log_line("WARN", "TELEGRAM", f"Notifica di servizio non inviata: {e}")
 
 
 def trova_partita_con_notifica(team_id: str):
