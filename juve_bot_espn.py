@@ -767,7 +767,7 @@ def prepara_grafica_parata_rigore(
         return None
 
 def send_telegram_stats_photo(png_path: str, momento: str, hashtag: str,
-                              min_long_side: int = 0) -> bool:
+                              min_long_side: int = 2000) -> bool:
     """Invia la foto delle statistiche. Ritorna True solo se l'invio è
     andato davvero a buon fine, così chi chiama può ritentare invece di
     segnare l'evento come fatto e perderlo silenziosamente."""
@@ -1538,7 +1538,7 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   league_slug: str = "",
                                   pen_home: int = 0, pen_away: int = 0,
                                   event_id: str = "",
-                                  hd_preview: bool = False):
+                                  hd_output: bool = True):
     # Import lazy: PIL e Playwright servono solo qui. Così il workflow di
     # keep-alive Canva (ONLY_REFRESH_TOKEN) può girare senza installarli.
     from PIL import Image
@@ -1810,7 +1810,7 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
 
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
-        render_scale = 2.0 if hd_preview else 1.0
+        render_scale = 2.0 if hd_output else 1.0
         page = browser.new_page(
             viewport={"width": 1620, "height": 4000},
             device_scale_factor=render_scale,
@@ -1828,11 +1828,11 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     }.get(juve_kit, "texture_white.png")
     try:
         base_img = Image.open(path_raw_png).convert("RGBA")
-        if hd_preview:
+        if hd_output:
             raw_size = base_img.size
             base_img = base_img.resize((1920, 2560), Image.Resampling.LANCZOS)
             print(
-                f"[{now_it()}] 🔎 Preview HD: render {raw_size[0]}x{raw_size[1]} "
+                f"[{now_it()}] 🔎 Output HD: render {raw_size[0]}x{raw_size[1]} "
                 "→ output 1920x2560 (LANCZOS)"
             )
 
@@ -1844,12 +1844,12 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                 f"({base_img.width}x{base_img.height})"
             )
             return path_final_png
-        if hd_preview:
+        if hd_output:
             raise FileNotFoundError(
                 f"Texture finale obbligatoria non trovata: {texture_file}"
             )
     except Exception as e:
-        if hd_preview:
+        if hd_output:
             raise RuntimeError(f"Errore output HD/texture stats: {e}") from e
         print(f"[{now_it()}] ⚠️  Errore texture stats: {e}")
 
