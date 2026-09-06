@@ -107,6 +107,8 @@ jobs:
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           TEAM_ID:              ${{ github.event.inputs.team_id || '111' }}
           GOAL_GRAPHICS_ENABLED: ${{ github.event.inputs.goal_graphics || 'true' }}
+          # Checkpoint di stato ogni 5 minuti; eventi, cambi di fase ed errori restano immediati.
+          LIVE_LOG_HEARTBEAT_MINUTES: '5'
           # Salta solo una sincronizzazione già riuscita; in caso di errore il bot ritenta.
           FCLOGO_SYNC_DONE: ${{ steps.fclogo_sync.outcome == 'success' && 'true' || 'false' }}
         run: python -u livescore_runner.py
