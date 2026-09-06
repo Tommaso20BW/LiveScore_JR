@@ -46,7 +46,7 @@ class StatsPreviewTests(unittest.TestCase):
             self.assertEqual(stats_preview.bot.CHAT_ID, "bot-jr")
 
         self.assertEqual(render.call_args.args[1:7], ("110", "114", "Inter", "Napoli", 3, 2))
-        self.assertTrue(render.call_args.kwargs["hd_preview"])
+        self.assertTrue(render.call_args.kwargs["hd_output"])
         send.assert_called_once_with(
             "/tmp/stats.png",
             "FT",

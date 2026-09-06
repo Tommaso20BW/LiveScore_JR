@@ -81,7 +81,7 @@ def send_preview(event_id: str, league_slug: str, momento: str = "FT") -> bool:
         league_name,
         league_slug=league_slug,
         event_id=event_id,
-        hd_preview=True,
+        hd_output=True,
     )
 
     # Impedisce a questo comando di usare per errore il canale principale.
