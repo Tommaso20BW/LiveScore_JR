@@ -2,7 +2,7 @@
 
 Il modulo non genera e non modifica le fotografie dei calciatori: si aspetta
 PNG gia scontornati nella cartella ``assets/goal_graphics/players`` e assembla
-background, testi dinamici e calciatore in un PNG quadrato pronto per Telegram.
+background, testi dinamici e calciatore in un PNG 3:4 pronto per Telegram.
 """
 
 from __future__ import annotations
@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import html
-import io
 import json
 import os
 import re
@@ -19,7 +18,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageChops, ImageFont, ImageOps
 from team_matching import TeamIndex, normalize_team_name
 
 
@@ -28,7 +27,6 @@ DEFAULT_ASSET_DIR = BASE_DIR / "assets" / "goal_graphics"
 REGISTRY_PATH = BASE_DIR / "goal_players.json"
 FCLOGO_CACHE_DIRNAME = "fclogo_cache"
 FCLOGO_MANIFEST_FILENAME = "manifest.json"
-CANVAS_SIZE = 1254
 
 POSES = ("arms_crossed", "pointing")
 KIT_FILE_PART = {
@@ -55,12 +53,6 @@ THEMES = {
         "small": "#F4E9CC",
     },
 }
-
-SAVED_THEME = {
-    "accent": "#D97C30",
-    "small": "#FFF0DF",
-}
-
 
 class GoalGraphicUnavailable(RuntimeError):
     """La grafica non puo essere prodotta: il bot deve usare il testo."""
@@ -170,79 +162,6 @@ def _font(size: int, *, serif: bool = False, bold: bool = False) -> ImageFont.Fr
         except OSError:
             continue
     return ImageFont.load_default(size=size)
-
-
-def _fit_font(
-    draw: ImageDraw.ImageDraw,
-    text: str,
-    max_width: int,
-    start_size: int,
-    *,
-    serif: bool = False,
-    bold: bool = False,
-    minimum: int = 24,
-) -> ImageFont.FreeTypeFont:
-    for size in range(start_size, minimum - 1, -2):
-        font = _font(size, serif=serif, bold=bold)
-        if draw.textbbox((0, 0), text, font=font)[2] <= max_width:
-            return font
-    return _font(minimum, serif=serif, bold=bold)
-
-
-def _centered_text(
-    draw: ImageDraw.ImageDraw,
-    y: int,
-    text: str,
-    font: ImageFont.ImageFont,
-    fill: str,
-    *,
-    stroke_width: int = 0,
-    stroke_fill: str | None = None,
-) -> None:
-    bbox = draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
-    width = bbox[2] - bbox[0]
-    draw.text(
-        ((CANVAS_SIZE - width) // 2, y),
-        text,
-        font=font,
-        fill=fill,
-        stroke_width=stroke_width,
-        stroke_fill=stroke_fill,
-    )
-
-
-def _centered_tracked_text(
-    draw: ImageDraw.ImageDraw,
-    y: int,
-    text: str,
-    font: ImageFont.ImageFont,
-    fill: str,
-    *,
-    tracking: int,
-) -> None:
-    """Disegna una riga centrata con spaziatura editoriale fra i caratteri."""
-    advances = [draw.textlength(char, font=font) for char in text]
-    width = sum(advances) + tracking * max(0, len(text) - 1)
-    x = (CANVAS_SIZE - width) / 2
-    _tracked_text(draw, x, y, text, font, fill, tracking=tracking)
-
-
-def _tracked_text(
-    draw: ImageDraw.ImageDraw,
-    x: float,
-    y: int,
-    text: str,
-    font: ImageFont.ImageFont,
-    fill: str,
-    *,
-    tracking: int,
-) -> float:
-    """Disegna testo spaziato da sinistra e restituisce la larghezza usata."""
-    advances = [draw.textlength(char, font=font) for char in text]
-    for char, advance in zip(text, advances):
-        draw.text((round(x), y), char, font=font, fill=fill)
-        x += advance + tracking
-    return sum(advances) + tracking * max(0, len(text) - 1)
 
 
 def _has_real_transparency(image: Image.Image) -> bool:
@@ -403,201 +322,6 @@ def _team_logo_layer(
     return logo
 
 
-def _composite_team_logos(
-    canvas: Image.Image,
-    *,
-    home_name: str,
-    away_name: str,
-    home_id: str,
-    away_id: str,
-    color: str,
-    asset_dir: Path,
-) -> None:
-    """Inserisce FCLogo nel colore grafico o il fallback ESPN originale."""
-    logos = [
-        logo for logo in (
-            _team_logo_layer(home_name, home_id, color, asset_dir),
-            _team_logo_layer(away_name, away_id, color, asset_dir),
-        )
-        if logo is not None
-    ]
-    if not logos:
-        return
-    gap = 26
-    width = sum(logo.width for logo in logos) + gap * (len(logos) - 1)
-    x = (CANVAS_SIZE - width) // 2
-    for logo in logos:
-        y = 1080 + (45 - logo.height) // 2
-        canvas.alpha_composite(logo, (x, y))
-        x += logo.width + gap
-
-
-def _render_event_card(
-    *,
-    player: Player | None,
-    scorer_name: str,
-    scorer_suffix: str = "",
-    minute: str | int,
-    home_name: str,
-    away_name: str,
-    home_goals: int,
-    away_goals: int,
-    player_kit: str,
-    output_kit: str,
-    background_filename: str,
-    overlay_filename: str,
-    texture_filename: str,
-    theme: dict[str, str],
-    minute_position: tuple[int, int] = (92, 82),
-    preserve_overlay_detail: bool = True,
-    home_id: str = "",
-    away_id: str = "",
-    pose: str | None = None,
-    event_key: str = "",
-    asset_dir: Path | str = DEFAULT_ASSET_DIR,
-    registry_path: Path | str = REGISTRY_PATH,
-) -> RenderedGoal:
-    scorer_key = player.slug if player else normalize_name(scorer_name)
-    selected_pose = choose_pose(
-        f"{event_key}|{scorer_key}|{home_goals}-{away_goals}",
-        requested=pose,
-    )
-    asset_dir = Path(asset_dir)
-    background_path = asset_dir / "backgrounds" / background_filename
-    front_word_path = asset_dir / "overlays" / overlay_filename
-    word_texture_path = asset_dir / "word_textures" / texture_filename
-    player_path = (
-        resolve_player_path(player, player_kit, selected_pose, asset_dir)
-        if player else None
-    )
-
-    if not background_path.is_file():
-        raise GoalGraphicUnavailable(f"Background assente: {background_path}")
-    if player_path is not None and not player_path.is_file():
-        raise GoalGraphicUnavailable(f"PNG giocatore assente: {player_path}")
-    if not front_word_path.is_file():
-        raise GoalGraphicUnavailable(f"Overlay tipografico assente: {front_word_path}")
-
-    background = Image.open(background_path).convert("RGBA")
-    background = ImageOps.fit(
-        background,
-        (CANVAS_SIZE, CANVAS_SIZE),
-        method=Image.Resampling.LANCZOS,
-    )
-    # Nei test e nelle installazioni precedenti il file puo ancora mancare: il
-    # background resta un fallback sicuro, ma gli asset distribuiti usano le
-    # mappe tessili dedicate generate per ciascuna variante.
-    if word_texture_path.is_file():
-        word_texture_source = Image.open(word_texture_path).convert("RGB")
-    else:
-        word_texture_source = background.copy()
-    if player_path is not None:
-        player_image = Image.open(player_path).convert("RGBA")
-        if not _has_real_transparency(player_image):
-            raise GoalGraphicUnavailable(
-                f"PNG giocatore ancora senza trasparenza: {player_path}"
-            )
-
-        player_image = ImageOps.contain(
-            player_image,
-            (CANVAS_SIZE, CANVAS_SIZE),
-            method=Image.Resampling.LANCZOS,
-        )
-        px = (CANVAS_SIZE - player_image.width) // 2
-        py = CANVAS_SIZE - player_image.height
-        background.alpha_composite(player_image, (px, py))
-
-    # Sfumatura nera trasparente dietro la tipografia inferiore. Parte senza
-    # stacco visibile e diventa piu intensa verso il fondo, come nella reference.
-    shade = Image.new("RGBA", background.size, (0, 0, 0, 0))
-    shade_draw = ImageDraw.Draw(shade)
-    gradient_start = 520
-    panel_bottom = CANVAS_SIZE
-    for y in range(gradient_start, panel_bottom):
-        progress = (y - gradient_start) / (panel_bottom - gradient_start)
-        alpha = int(245 * progress ** 0.85)
-        shade_draw.line((64, y, CANVAS_SIZE - 64, y), fill=(0, 0, 0, alpha), width=1)
-    background = Image.alpha_composite(background, shade)
-
-    # Livello tipografico approvato, davanti al calciatore. Dal PNG prendiamo
-    # esclusivamente l'alpha: il colore viene uniformato al GOAL superiore.
-    front_word = Image.open(front_word_path).convert("RGBA")
-    front_word = ImageOps.fit(
-        front_word,
-        (CANVAS_SIZE, CANVAS_SIZE),
-        method=Image.Resampling.LANCZOS,
-    )
-    colored_word = _tint_textured_overlay(
-        front_word,
-        theme["accent"],
-        texture_source=word_texture_source,
-        preserve_source_detail=preserve_overlay_detail,
-    )
-
-    # Ombra molto morbida, appena staccata verso il basso: aumenta il contrasto
-    # senza trasformare la parola in un elemento con contorno.
-    shadow_alpha = colored_word.getchannel("A").filter(
-        ImageFilter.GaussianBlur(radius=13)
-    ).point(lambda value: round(value * 0.34))
-    shadow = Image.new("RGBA", colored_word.size, (0, 0, 0, 0))
-    shadow.putalpha(shadow_alpha)
-    # SAVED termina più in alto nel PNG: scende di altri 50 px per avvicinarsi
-    # ai loghi, che restano fermi insieme al nome. L'ombra segue la scritta.
-    word_offset = 182 if output_kit == "saved" else 132
-    lowered_shadow = Image.new("RGBA", background.size, (0, 0, 0, 0))
-    lowered_shadow.alpha_composite(shadow, (0, word_offset + 10))
-    background = Image.alpha_composite(background, lowered_shadow)
-
-    lowered_word = Image.new("RGBA", background.size, (0, 0, 0, 0))
-    lowered_word.alpha_composite(colored_word, (0, word_offset))
-    background = Image.alpha_composite(background, lowered_word)
-    draw = ImageDraw.Draw(background)
-
-    minute_text = str(minute).strip().rstrip("'") + "'"
-    minute_font = _font(46, bold=True)
-    draw.text(
-        minute_position,
-        minute_text,
-        font=minute_font,
-        fill=theme["accent"],
-    )
-
-    _composite_team_logos(
-        background,
-        home_name=home_name,
-        away_name=away_name,
-        home_id=home_id,
-        away_id=away_id,
-        color=theme["accent"],
-        asset_dir=asset_dir,
-    )
-    draw = ImageDraw.Draw(background)
-
-    display_name = player.name if player else html.unescape(scorer_name).strip()
-    scorer = f"{display_name.upper()}{scorer_suffix}"
-    scorer_font = _fit_font(draw, scorer, 850, 34, minimum=22)
-    _centered_tracked_text(
-        draw,
-        1150,
-        scorer,
-        scorer_font,
-        theme["small"],
-        tracking=8,
-    )
-
-    output = io.BytesIO()
-    background.convert("RGB").save(output, format="PNG", optimize=True)
-    return RenderedGoal(
-        png=output.getvalue(),
-        player=player,
-        scorer_name=display_name,
-        kit=output_kit,
-        pose=selected_pose,
-        player_path=player_path,
-        background_path=background_path,
-    )
-
-
 def render_goal_card(
     *,
     scorer_name: str,
@@ -634,36 +358,14 @@ def render_goal_card(
     # grafica arancione SAVED che appartiene soltanto ai rigori parati.
     if card_player and card_player.role == "goalkeeper":
         kit = "third"
-    if (Path(asset_dir) / 'portrait/home_goal_1086x1448.png').is_file():
+    try:
         from portrait_graphics import event
         return event(player=card_player, scorer_name=scorer_name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit=kit, suffix=scorer_suffix,
                      competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir)
-    return _render_event_card(
-        player=card_player,
-        scorer_name=scorer_name,
-        scorer_suffix=scorer_suffix,
-        minute=minute,
-        home_name=home_name,
-        away_name=away_name,
-        home_id=home_id,
-        away_id=away_id,
-        home_goals=home_goals,
-        away_goals=away_goals,
-        player_kit=kit,
-        output_kit=kit,
-        background_filename=f"{kit}.png",
-        overlay_filename="front_goal.png",
-        texture_filename=f"{kit}.png",
-        theme=THEMES[kit],
-        minute_position=(92, 82),
-        preserve_overlay_detail=True,
-        pose=pose,
-        event_key=event_key,
-        asset_dir=asset_dir,
-        registry_path=registry_path,
-    )
+    except (OSError, ValueError) as exc:
+        raise GoalGraphicUnavailable(str(exc)) from exc
 
 
 def render_saved_card(
@@ -687,35 +389,14 @@ def render_saved_card(
         raise GoalGraphicUnavailable(
             f"Portiere non presente nel registro: {goalkeeper_name!r}"
         )
-    if (Path(asset_dir) / 'portrait/saved_italia_saved_1086x1448.png').is_file():
+    try:
         from portrait_graphics import event
         return event(player=player, scorer_name=player.name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit='third', saved=True,
                      competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir)
-    return _render_event_card(
-        player=player,
-        scorer_name=player.name,
-        minute=minute,
-        home_name=home_name,
-        away_name=away_name,
-        home_id=home_id,
-        away_id=away_id,
-        home_goals=home_goals,
-        away_goals=away_goals,
-        player_kit="third",
-        output_kit="saved",
-        background_filename="saved.png",
-        overlay_filename="front_saved.png",
-        texture_filename="saved.png",
-        theme=SAVED_THEME,
-        minute_position=(88, 116),
-        preserve_overlay_detail=False,
-        pose=pose,
-        event_key=event_key,
-        asset_dir=asset_dir,
-        registry_path=registry_path,
-    )
+    except (OSError, ValueError) as exc:
+        raise GoalGraphicUnavailable(str(exc)) from exc
 
 
 def main() -> int:

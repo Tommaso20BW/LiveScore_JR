@@ -20,11 +20,6 @@ on:
         required: true
         default: true
         type: boolean
-      simulated_test:
-        description: 'Simulazione grafica pagina 1 Canva, SOLO Bot JR'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   actions: write
@@ -35,41 +30,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  graphics-test-bot-jr:
-    if: ${{ github.event.inputs.simulated_test == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-      - name: Install test dependencies
-        run: pip install -r requirements.txt
-      - name: Regression tests
-        run: python -m unittest discover -s tests -q
-      - name: Simulated ESPN events and real Canva PDF - Bot JR only
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO_BOT }}
-          TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
-          CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
-          CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
-          CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
-          GH_PAT: ${{ secrets.GH_PAT }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GOAL_GRAPHICS_ENABLED: 'true'
-          TELEGRAM_AUTO_DELETE_SECONDS: '0'
-          SIMULATION_BOT_JR: 'true'
-        run: python -u simulate_graphics_bot_jr.py
-      - name: Save cards and test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: graphics-bot-jr-${{ github.run_id }}
-          path: simulation_output/
   live-score:
-    if: ${{ github.event.inputs.simulated_test != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 240
 

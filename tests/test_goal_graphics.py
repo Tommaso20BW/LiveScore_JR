@@ -1,4 +1,6 @@
 import io
+import shutil
+import portrait_graphics
 import json
 import tempfile
 import unittest
@@ -16,21 +18,12 @@ class GoalGraphicsTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
-        (self.root / "backgrounds").mkdir(parents=True)
-        (self.root / "overlays").mkdir(parents=True)
-        (self.root / "team_logos").mkdir(parents=True)
+        for folder in ('portrait', 'word_textures', 'fonts'):
+            shutil.copytree(goal_graphics.DEFAULT_ASSET_DIR / folder, self.root / folder)
+        (self.root / "overlays").mkdir()
+        (self.root / "team_logos").mkdir()
         (self.root / "players" / "kenan_yildiz").mkdir(parents=True)
         (self.root / "players" / "guglielmo_vicario").mkdir(parents=True)
-
-        for kit, color in (
-            ("home", (20, 20, 20)),
-            ("away", (90, 0, 40)),
-            ("third", (5, 5, 5)),
-            ("saved", (90, 35, 5)),
-        ):
-            Image.new("RGB", (1254, 1254), color).save(
-                self.root / "backgrounds" / f"{kit}.png"
-            )
 
         front_goal = Image.new("RGBA", (1254, 1254), (0, 0, 0, 0))
         ImageDraw.Draw(front_goal).text((420, 800), "GOAL", fill=(255, 255, 255, 255))
@@ -87,7 +80,14 @@ class GoalGraphicsTests(unittest.TestCase):
             "kenan_yildiz_away_pink_pose_02_pointing.png",
         )
 
-    def test_renderer_outputs_square_png(self):
+    def test_missing_portrait_background_raises_without_legacy_fallback(self):
+        (self.root / 'portrait/home_goal_1086x1448.png').unlink()
+        with self.assertRaises(goal_graphics.GoalGraphicUnavailable):
+            goal_graphics.render_goal_card(scorer_name='Kenan Yildiz', minute=12,
+                home_name='Juventus', away_name='Inter', home_goals=1, away_goals=0,
+                kit='home', asset_dir=self.root, registry_path=self.registry)
+
+    def test_renderer_outputs_portrait_png(self):
         rendered = goal_graphics.render_goal_card(
             scorer_name="Kenan Yıldız",
             minute="56+2",
@@ -102,47 +102,12 @@ class GoalGraphicsTests(unittest.TestCase):
             registry_path=self.registry,
         )
         image = Image.open(io.BytesIO(rendered.png))
-        self.assertEqual(image.size, (1254, 1254))
+        self.assertEqual(image.size, (1086, 1448))
         self.assertEqual(image.format, "PNG")
         self.assertEqual(rendered.kit, "away")
         self.assertEqual(rendered.pose, "arms_crossed")
 
-    def test_saved_word_is_50px_lower_than_goal(self):
-        marker = Image.new("RGBA", (1254, 1254), (0, 0, 0, 0))
-        ImageDraw.Draw(marker).rectangle((600, 700, 610, 710), fill="white")
-        common = dict(minute=56, home_name="Juventus", away_name="NEC Nijmegen",
-                      home_goals=1, away_goals=0, pose="arms_crossed",
-                      asset_dir=self.root, registry_path=self.registry)
-        with patch.object(goal_graphics, "_tint_textured_overlay", return_value=marker):
-            goal = goal_graphics.render_goal_card(scorer_name="Kenan Yildiz", kit="home", **common)
-            saved = goal_graphics.render_saved_card(goalkeeper_name="Guglielmo Vicario", **common)
-        goal_image = Image.open(io.BytesIO(goal.png))
-        saved_image = Image.open(io.BytesIO(saved.png))
-        self.assertEqual(goal_image.getpixel((605, 837)), (255, 255, 255))
-        self.assertNotEqual(saved_image.getpixel((605, 837)), (255, 255, 255))
-        self.assertEqual(saved_image.getpixel((605, 887)), (255, 255, 255))
-        self.assertNotEqual(goal_image.getpixel((605, 887)), (255, 255, 255))
 
-    def test_darker_bottom_fade_applies_to_all_themes_without_changing_frame(self):
-        transparent_word = Image.new("RGBA", (1254, 1254), (0, 0, 0, 0))
-        common = dict(minute=56, home_name="Juventus", away_name="NEC Nijmegen",
-                      home_goals=1, away_goals=0, pose="arms_crossed",
-                      asset_dir=self.root, registry_path=self.registry)
-        for theme in ("home", "away", "third", "saved"):
-            with self.subTest(theme=theme):
-                Image.new("RGB", (1254, 1254), "white").save(self.root / "backgrounds" / f"{theme}.png")
-                with patch.object(goal_graphics, "_tint_textured_overlay", return_value=transparent_word):
-                    if theme == "saved":
-                        result = goal_graphics.render_saved_card(goalkeeper_name="Guglielmo Vicario", **common)
-                    else:
-                        result = goal_graphics.render_goal_card(scorer_name="Kenan Yildiz", kit=theme, **common)
-                image = Image.open(io.BytesIO(result.png))
-                for y in (520, 800, 1100):
-                    progress = (y - 520) / (1254 - 520)
-                    expected = 255 - int(245 * progress ** 0.85)
-                    self.assertEqual(image.getpixel((100, y)), (expected,) * 3)
-                self.assertEqual(image.getpixel((100, 400)), (255,) * 3)
-                self.assertEqual(image.getpixel((20, 1100)), (255,) * 3)
 
     def test_dynamic_fclogo_manifest_is_preferred_and_fuzzy_matched(self):
         dynamic_dir = self.root / "team_logos" / "fclogo_cache"
@@ -323,7 +288,7 @@ class GoalGraphicsTests(unittest.TestCase):
             registry_path=self.registry,
         )
         self.assertEqual(rendered.kit, "third")
-        self.assertEqual(rendered.background_path.name, "third.png")
+        self.assertEqual(rendered.background_path.name, "third_goal_1086x1448.png")
 
     def test_saved_renderer_uses_orange_background_for_goalkeeper(self):
         rendered = goal_graphics.render_saved_card(
@@ -338,7 +303,7 @@ class GoalGraphicsTests(unittest.TestCase):
             registry_path=self.registry,
         )
         self.assertEqual(rendered.kit, "saved")
-        self.assertEqual(rendered.background_path.name, "saved.png")
+        self.assertEqual(rendered.background_path.name, "saved_italia_saved_1086x1448.png")
 
     def test_saved_renderer_rejects_outfield_player(self):
         with self.assertRaises(goal_graphics.GoalGraphicUnavailable):
@@ -552,7 +517,7 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertTrue(rendered.png.startswith(b"\x89PNG"))
 
     def test_graphic_suffixes_are_uppercase_inside_card_only(self):
-        with patch.object(goal_graphics, "_centered_tracked_text") as draw_name:
+        with patch.object(portrait_graphics, "center_name") as draw_name:
             own_goal = goal_graphics.render_goal_card(
                 scorer_name="Opponent Player",
                 goal_type="own goal",
@@ -566,9 +531,9 @@ class GoalGraphicsTests(unittest.TestCase):
                 registry_path=self.registry,
             )
         self.assertIsNone(own_goal.player)
-        self.assertEqual(draw_name.call_args.args[2], "OPPONENT PLAYER (AUTOGOL)")
+        self.assertEqual(draw_name.call_args.args[1], "OPPONENT PLAYER (AUTOGOL)")
 
-        with patch.object(goal_graphics, "_centered_tracked_text") as draw_name:
+        with patch.object(portrait_graphics, "center_name") as draw_name:
             penalty = goal_graphics.render_goal_card(
                 scorer_name="Kenan Yildiz",
                 goal_type="penalty goal",
@@ -582,7 +547,7 @@ class GoalGraphicsTests(unittest.TestCase):
                 registry_path=self.registry,
             )
         self.assertIsNotNone(penalty.player)
-        self.assertEqual(draw_name.call_args.args[2], "KENAN YILDIZ (RIGORE)")
+        self.assertEqual(draw_name.call_args.args[1], "KENAN YILDIZ (RIGORE)")
 
     def test_shootout_goal_never_renders_a_goal_card(self):
         with patch.object(bot, "GOAL_GRAPHICS_ENABLED", True), patch.object(
