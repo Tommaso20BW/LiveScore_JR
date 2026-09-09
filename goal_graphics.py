@@ -614,6 +614,7 @@ def render_goal_card(
     event_key: str = "",
     asset_dir: Path | str = DEFAULT_ASSET_DIR,
     registry_path: Path | str = REGISTRY_PATH,
+    competition: str = "",
 ) -> RenderedGoal:
     player = find_player(scorer_name, registry_path)
     if not html.unescape(scorer_name).strip():
@@ -633,6 +634,12 @@ def render_goal_card(
     # grafica arancione SAVED che appartiene soltanto ai rigori parati.
     if card_player and card_player.role == "goalkeeper":
         kit = "third"
+    if (Path(asset_dir) / 'portrait/home_goal_1086x1448.png').is_file():
+        from portrait_graphics import event
+        return event(player=card_player, scorer_name=scorer_name, minute=minute,
+                     home_name=home_name, away_name=away_name, home_id=home_id,
+                     away_id=away_id, kit=kit, suffix=scorer_suffix,
+                     competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir)
     return _render_event_card(
         player=card_player,
         scorer_name=scorer_name,
@@ -673,12 +680,19 @@ def render_saved_card(
     event_key: str = "",
     asset_dir: Path | str = DEFAULT_ASSET_DIR,
     registry_path: Path | str = REGISTRY_PATH,
+    competition: str = "",
 ) -> RenderedGoal:
     player = find_player(goalkeeper_name, registry_path)
     if not player or player.role != "goalkeeper":
         raise GoalGraphicUnavailable(
             f"Portiere non presente nel registro: {goalkeeper_name!r}"
         )
+    if (Path(asset_dir) / 'portrait/saved_italia_saved_1086x1448.png').is_file():
+        from portrait_graphics import event
+        return event(player=player, scorer_name=player.name, minute=minute,
+                     home_name=home_name, away_name=away_name, home_id=home_id,
+                     away_id=away_id, kit='third', saved=True,
+                     competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir)
     return _render_event_card(
         player=player,
         scorer_name=player.name,

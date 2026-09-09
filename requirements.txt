@@ -3,3 +3,4 @@ pillow==12.3.0
 pynacl==1.6.2
 playwright==1.61.0
 tzdata==2026.3
+pymupdf>=1.26,<2
