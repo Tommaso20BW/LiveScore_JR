@@ -1,13 +1,13 @@
 """Approved 3:4 compositor. No generation, Canva edits, or Telegram side effects."""
 import io
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat
+from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
 import goal_graphics as g
 
 W, H, M = 1086, 1448, 76
 IW, IH = W - 2*M, H - 2*M
 COLORS = dict(home='#FACA02', away='#ED95AE', third='#C7A852',
-              saved_italia='#D97C30', ucl='#7DB8EC', uel='#FFAC38', conference='#A1EF46')
+              saved_italia='#D97C30', ucl='#8DD6FF', uel='#FFAC38', conference='#A1EF46')
 
 def theme(kit='home', competition='', saved=False):
     value = competition.lower()
@@ -49,10 +49,16 @@ def brand(card, key, assets):
     mark = tight(Image.open(assets/'portrait/jr.png'))
     height = round(H*58/1280)
     mark = mark.resize((round(mark.width*height/mark.height),height),Image.Resampling.LANCZOS)
-    color = {'ucl':'#14549A','uel':'#000000','conference':'#000000','away':'#F6B5CA'}.get(key,COLORS[key])
+    color = {'ucl':'#8DD6FF','uel':'#000000','conference':'#000000','away':'#F6B5CA'}.get(key,COLORS[key])
     mark = textured(mark,key,assets,True,color,bright=key=='home')
     x = W-round(W*16/960)-mark.width
     assert x > W-M
+    if key == 'home':
+        shadow_mask = Image.new('L',card.size)
+        shadow_mask.paste(mark.getchannel('A'),(x+1,round(H*13/1280)+4))
+        shadow = Image.new('RGBA',card.size,'black')
+        shadow.putalpha(shadow_mask.filter(ImageFilter.GaussianBlur(9)).point(lambda a:round(a*.35)))
+        card.alpha_composite(shadow)
     card.alpha_composite(mark,(x,round(H*13/1280)))
     return card
 
@@ -81,6 +87,7 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
     key = theme(kit,competition,saved)
     background = assets/'portrait'/f'{key}_{"saved" if saved else "goal"}_1086x1448.png'
     card = Image.open(background).convert('RGBA')
+    if key == 'ucl': card = vivid_background(card)
     panel = card.crop((M,M,W-M,H-M))
     path = None
     pose = pose or 'arms_crossed'
@@ -95,22 +102,27 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
     fade = Image.new('RGBA',panel.size)
     draw = ImageDraw.Draw(fade)
     for y in range(520,IH):
-        draw.line((0,y,IW,y),fill=(0,0,0,round(255*min(1,(y-520)/650)**(.85 if saved else 1.15))))
+        draw.line((0,y,IW,y),fill=(0,0,0,round(238*min(1,(y-520)/(IH-520))**1.35)))
     panel.alpha_composite(fade)
     card.alpha_composite(panel,(M,M))
     word = tight(Image.open(assets/'overlays'/('front_saved.png' if saved else 'front_goal.png')),True)
-    word = ImageOps.contain(word,(IW-80,280),Image.Resampling.LANCZOS)
+    word = ImageOps.contain(word,(IW+44,340),Image.Resampling.LANCZOS)
     word = textured(word,key,assets)
-    card.alpha_composite(word,((W-word.width)//2,1135-word.height))
+    place_word(card,word,saved)
     font = ImageFont.truetype(str(assets/'fonts/DharmaGothicEBold.otf'),32 if saved else 36)
     ImageDraw.Draw(card).text((M+(45 if saved else 18),M+(128 if saved else 30)),str(minute).rstrip("'’")+"'",font=font,fill=COLORS[key],anchor='lt')
-    for name,tid,cx in [(home_name,home_id,500),(away_name,away_id,581)]:
-        mark = logo(name,tid,key,assets,64)
-        if mark: card.alpha_composite(mark,(cx-mark.width//2,1188-mark.height//2))
+    marks = [logo(name,tid,key,assets,64) for name,tid in [(home_name,home_id),(away_name,away_id)]]
+    marks = [mark for mark in marks if mark is not None]
+    total = sum(mark.width for mark in marks)+max(0,len(marks)-1)*20
+    x = (W-total)//2
+    for mark in marks:
+        soft_place(card,mark,(x,1180-mark.height//2),blur=6,opacity=.50)
+        x += mark.width+20
+
     label = (scorer_name+suffix).upper()
     size = 29
     while size > 14 and g._font(size).getlength(label) > IW-40: size -= 1
-    ImageDraw.Draw(card).text((W//2,1250),label,font=g._font(size),fill='white',anchor='mt')
+    center_name(card,label,g._font(size))
     return g.RenderedGoal(png(brand(card,key,assets)),player if path else None,scorer_name,
                           'saved' if saved else kit,pose,path,background)
 
@@ -120,6 +132,7 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
     assets = Path(assets)
     key = theme(kit,competition)
     card = Image.open(assets/'portrait'/f'{key}_clean_1086x1448.png').convert('RGBA')
+    if key == 'ucl': card = vivid_background(card)
     word = tight(Image.open(assets/'portrait'/f'{kind}.png'),True)
     if kind == 'kick':
         word = ImageOps.contain(word,(600,600),Image.Resampling.LANCZOS)
@@ -127,14 +140,14 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
         card.alpha_composite(textured(word,key,assets),((W-word.width)//2,top+102))
         for name,tid,cx in [(home_name,home_id,500),(away_name,away_id,581)]:
             mark = logo(name,tid,key,assets,64)
-            if mark: card.alpha_composite(mark,(cx-mark.width//2,top))
+            if mark: soft_place(card,mark,(cx-mark.width//2,top),blur=6,opacity=.50)
     else:
         if layers is None: raise ValueError('Pagina 1 Canva non disponibile')
         # Both extracted layers share the PDF page coordinates and transform.
         bg = ImageOps.fit(Image.open(Path(layers)/'background.png').convert('RGBA'),(IW,IH),method=Image.Resampling.LANCZOS)
         player = ImageOps.fit(Image.open(Path(layers)/'player.png').convert('RGBA'),(IW,IH),method=Image.Resampling.LANCZOS)
         word = word.resize((IW-36,round(word.height*(IW-36)/word.width)),Image.Resampling.LANCZOS)
-        bg.alpha_composite(textured(word,key,assets),(18,28))
+        soft_place(bg,textured(word,key,assets),(18,28),blur=12,opacity=.60)
         bg.alpha_composite(player)
         fade = Image.new('RGBA',bg.size)
         draw = ImageDraw.Draw(fade)
@@ -144,12 +157,12 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
         card.alpha_composite(bg,(M,M))
         score = number(f'{home_goals}-{away_goals}',200,key,assets)
         y = 1210 if shootout else 1220
-        card.alpha_composite(score,((W-score.width)//2,y-score.height//2))
+        soft_place(card,score,((W-score.width)//2,y-score.height//2),blur=9,opacity=.60)
         for name,tid,left in [(home_name,home_id,True),(away_name,away_id,False)]:
             mark = logo(name,tid,key,assets,score.height)
             if mark:
                 x = (W-score.width)//2-40-mark.width if left else (W+score.width)//2+40
-                card.alpha_composite(mark,(x,y-mark.height//2))
+                soft_place(card,mark,(x,y-mark.height//2),blur=9,opacity=.60)
         if shootout:
             hp,ap = shootout
             if hp == ap: raise ValueError('Rigori non conclusi')
@@ -157,5 +170,45 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
             text = f'{winner} VINCE {max(hp,ap)}-{min(hp,ap)} AI RIGORI'.upper()
             caption = number(text,36,key,assets)
             if caption.width > IW-40: caption = ImageOps.contain(caption,(IW-40,caption.height))
-            card.alpha_composite(caption,((W-caption.width)//2,1320))
+            soft_place(card,caption,((W-caption.width)//2,1320),blur=5,opacity=.50)
     return png(brand(card,key,assets))
+
+
+def vivid_background(card):
+    # Regrade only the fabric asset, never the player's photograph.
+    frame = ImageOps.colorize(ImageOps.grayscale(card), '#031426', '#4EAEE0',
+                             mid='#0B4776', midpoint=150).convert('RGBA')
+    panel = card.crop((76,76,1010,1372))
+    # The baked source includes two bright antialiased frame pixels inside the
+    # right edge (x=1008/1009). Extend adjacent fabric across that seam only.
+    panel.paste(panel.crop((panel.width-6,0,panel.width-5,panel.height)).resize((3,panel.height)),(panel.width-3,0))
+    panel = ImageEnhance.Color(panel).enhance(1.22)
+    panel = ImageEnhance.Contrast(panel).enhance(1.08)
+    panel = ImageEnhance.Brightness(panel).enhance(1.12)
+    frame.paste(panel,(76,76))
+    return frame
+
+def place_word(card,word,saved):
+    x=(1086-word.width)//2
+    y=1115-word.height
+    mask=Image.new('L',card.size)
+    mask.paste(word.getchannel('A'),(x,y+10))
+    shadow=Image.new('RGBA',card.size,'black')
+    shadow.putalpha(mask.filter(ImageFilter.GaussianBlur(18)).point(lambda a:round(a*.70)))
+    card.alpha_composite(shadow)
+    card.alpha_composite(word,(x,y))
+
+def soft_place(canvas,layer,position,blur=8,opacity=.55,offset=5):
+    mask=Image.new('L',canvas.size)
+    mask.paste(layer.getchannel('A'),(position[0],position[1]+offset))
+    shadow=Image.new('RGBA',canvas.size,'black')
+    shadow.putalpha(mask.filter(ImageFilter.GaussianBlur(blur)).point(lambda a:round(a*opacity)))
+    canvas.alpha_composite(shadow)
+    canvas.alpha_composite(layer,position)
+
+def center_name(card,label,font):
+    box=font.getbbox(label)
+    layer=Image.new('RGBA',(box[2]-box[0]+8,box[3]-box[1]+8))
+    ImageDraw.Draw(layer).text((4-box[0],4-box[1]),label,font=font,fill='white')
+    layer=layer.crop(layer.getchannel('A').getbbox())
+    card.alpha_composite(layer,((card.width-layer.width)//2,1254))
