@@ -303,7 +303,7 @@ class GoalGraphicsTests(unittest.TestCase):
             registry_path=self.registry,
         )
         self.assertEqual(rendered.kit, "saved")
-        self.assertEqual(rendered.background_path.name, "saved_italia_saved_1086x1448.png")
+        self.assertEqual(rendered.background_path.name, "home_clean_1086x1448.png")
 
     def test_saved_renderer_rejects_outfield_player(self):
         with self.assertRaises(goal_graphics.GoalGraphicUnavailable):

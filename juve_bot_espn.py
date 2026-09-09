@@ -767,6 +767,8 @@ def prepara_grafica_parata_rigore(
     try:
         rendered = goal_graphics.render_saved_card(
             goalkeeper_name=goalkeeper_name,
+            kit=rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
+                               league_slug, league_name),
             competition=league_slug,
             minute=minute,
             home_name=home_name,
