@@ -94,7 +94,10 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
     if player:
         path = g.resolve_player_path(player,'third' if saved else kit,pose,assets)
         if path and Path(path).is_file():
-            portrait = tight(Image.open(path))
+            with Image.open(path) as raw:
+                if not g._has_real_transparency(raw):
+                    raise g.GoalGraphicUnavailable('PNG giocatore non scontornato')
+                portrait = tight(raw)
             portrait = portrait.resize((round(portrait.width*1450/portrait.height),1450),Image.Resampling.LANCZOS)
             panel.alpha_composite(portrait,((IW-portrait.width)//2,-25))
             card.alpha_composite(portrait.crop((0,0,portrait.width,25)),((W-portrait.width)//2,M-25))

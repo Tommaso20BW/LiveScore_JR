@@ -9,10 +9,15 @@ import juve_bot_espn as bot
 _ORIGINAL_TROVA_PARTITA = bot.trova_partita_oggi
 
 
-def _asset_status(kit: str) -> str:
+def _asset_status(kit: str, competition: str = '') -> str:
+    from portrait_graphics import theme
+    key = theme(kit, competition)
+    saved_key = theme(kit, competition, True)
     root = bot.goal_graphics.DEFAULT_ASSET_DIR
     files = [root / folder / filename for folder, filename in (
-        ("backgrounds", f"{kit}.png"), ("backgrounds", "saved.png"),
+        ("portrait", f"{key}_goal_1086x1448.png"),
+        ("portrait", f"{saved_key}_saved_1086x1448.png"),
+        ("portrait", f"{key}_clean_1086x1448.png"),
         ("overlays", "front_goal.png"), ("overlays", "front_saved.png"),
         ("word_textures", f"{kit}.png"), ("word_textures", "saved.png"),
     )]
@@ -60,7 +65,7 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
     friendly = bot.is_friendly_competition(league_slug, league_name)
     graphics_status = "disabilitate (amichevole)" if friendly else (
         "abilitate" if enabled else "disabilitate")
-    asset_status = _asset_status(kit) if enabled and not friendly and kit in (
+    asset_status = _asset_status(kit, league_slug) if enabled and not friendly and kit in (
         "home", "away", "third") and juventus_match else None
     kit_line = f"Kit Juventus: {kit_label}\n" if juventus_match else ""
     asset_line = f"Background e scritte: {bot.esc(asset_status)}\n" if asset_status else ""
