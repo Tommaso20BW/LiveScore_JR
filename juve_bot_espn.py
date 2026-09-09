@@ -451,6 +451,7 @@ def _send_telegram_event_photo_get_id(
     *,
     filename: str,
     label: str,
+    retry_factory=None,
 ) -> tuple[int | None, bool]:
     """Invia una card come foto+caption e restituisce anche il message_id.
 
@@ -458,7 +459,7 @@ def _send_telegram_event_photo_get_id(
     il booleano indica se il messaggio salvato e realmente una foto.
     """
     if not photo_bytes:
-        return send_telegram_get_id(text), False
+        return _retry_graphic_on_text(send_telegram_get_id(text), text, retry_factory, label)
     try:
         r = _tg_post(
             "sendPhoto",
@@ -472,18 +473,36 @@ def _send_telegram_event_photo_get_id(
         log_line("WARN", "TELEGRAM", f"Foto {label} rifiutata; fallback testo")
     except Exception as e:
         log_line("WARN", "TELEGRAM", f"Invio foto {label} fallito: {e}; fallback testo")
-    return send_telegram_get_id(text), False
+    factory = retry_factory or (lambda: photo_bytes)
+    return _retry_graphic_on_text(send_telegram_get_id(text), text, factory, label)
 
 
-def send_telegram_goal_get_id(text: str, photo_bytes: bytes | None) -> tuple[int | None, bool]:
+def _retry_graphic_on_text(message_id, text, factory, label):
+    """Five additional attempts; never delete or resend the fallback message."""
+    if not message_id or factory is None:
+        return message_id, False
+    for attempt in range(1, 6):
+        try:
+            result = factory()
+            photo = getattr(result, 'png', result)
+            if photo and edit_telegram_goal_photo(message_id, text, photo):
+                log_line('OK', 'GRAPHICS', f'{label} recuperata | tentativo {attempt}/5 | stesso messaggio')
+                return message_id, True
+        except Exception as exc:
+            log_line('WARN', 'GRAPHICS', f'{label} | tentativo {attempt}/5 | {type(exc).__name__}')
+    log_line('WARN', 'GRAPHICS', f'{label} | 5 tentativi esauriti; resta il testo')
+    return message_id, False
+
+
+def send_telegram_goal_get_id(text: str, photo_bytes: bytes | None, *, retry_factory=None) -> tuple[int | None, bool]:
     return _send_telegram_event_photo_get_id(
-        text, photo_bytes, filename="goal.png", label="GOAL"
+        text, photo_bytes, filename="goal.png", label="GOAL", retry_factory=retry_factory
     )
 
 
-def send_telegram_saved_get_id(text: str, photo_bytes: bytes | None) -> tuple[int | None, bool]:
+def send_telegram_saved_get_id(text: str, photo_bytes: bytes | None, *, retry_factory=None) -> tuple[int | None, bool]:
     return _send_telegram_event_photo_get_id(
-        text, photo_bytes, filename="saved.png", label="SAVED"
+        text, photo_bytes, filename="saved.png", label="SAVED", retry_factory=retry_factory
     )
 
 
@@ -950,9 +969,12 @@ def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_na
 
 def send_phase_message(text, **kwargs):
     photo = build_phase_graphic(**kwargs)
-    if photo:
-        return _send_telegram_event_photo_get_id(text, photo, filename='phase.png', label=kwargs['kind'])[0]
-    return send_telegram_get_id(text)
+    eligible = (GOAL_GRAPHICS_ENABLED
+        and JUVE_ID in (str(kwargs['home_id']), str(kwargs['away_id']))
+        and not is_friendly_competition(kwargs['league_slug'], kwargs['league_name'])
+        and kwargs['kind'] in ('kick', 'half', 'full'))
+    return _send_telegram_event_photo_get_id(text, photo, filename='phase.png',
+        label=kwargs['kind'], retry_factory=(lambda: build_phase_graphic(**kwargs)) if eligible else None)[0]
 
 # ==============================================================================
 # PARSE EVENTS
@@ -2390,7 +2412,7 @@ def avvia_ciclo_partita():
                     goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{e_comp} {hashtag}"
                     goal_key  = f"{ch}_{ca}"
 
-                    rendered_goal = prepara_grafica_goal(
+                    rendered_goal_retry = (lambda: prepara_grafica_goal(
                         data_espn=data,
                         scorer_name=p_name,
                         goal_type=ge["type"],
@@ -2405,10 +2427,12 @@ def avvia_ciclo_partita():
                         league_slug=league_slug,
                         league_name=league_name,
                         event_key=f"{event_id}|{goal_key}",
-                    )
+                    )) if (GOAL_GRAPHICS_ENABLED and not is_friendly_competition(league_slug, league_name) and str(actual_tid) == JUVE_ID and bool(p_name) and ge["type"] in ('goal', 'own goal', 'penalty goal')) else None
+                    rendered_goal = rendered_goal_retry() if rendered_goal_retry else None
                     msg_id, sent_as_photo = send_telegram_goal_get_id(
                         goal_text,
                         rendered_goal.png if rendered_goal else None,
+                        retry_factory=rendered_goal_retry,
                     )
                     if not msg_id:
                         # Invio non riuscito: interrompo il recupero. Annullo
@@ -2723,7 +2747,7 @@ def avvia_ciclo_partita():
                     else:
                         _scorer_log = f" {fmt_player(player_name)}" if player_name else " (marcatore in attesa)"
                         _assist_log = f" | assist: {fmt_player(assist_name)}" if assist_name and assist_name != player_name else ""
-                        rendered_goal = prepara_grafica_goal(
+                        rendered_goal_retry = (lambda: prepara_grafica_goal(
                             data_espn=data,
                             scorer_name=player_name,
                             goal_type=goal_type,
@@ -2738,10 +2762,12 @@ def avvia_ciclo_partita():
                             league_slug=league_slug,
                             league_name=league_name,
                             event_key=f"{event_id}|{goal_key}",
-                        )
+                        )) if (GOAL_GRAPHICS_ENABLED and not is_friendly_competition(league_slug, league_name) and str(actual_scoring_tid) == JUVE_ID and bool(player_name) and goal_type in ('goal', 'own goal', 'penalty goal')) else None
+                        rendered_goal = rendered_goal_retry() if rendered_goal_retry else None
                         msg_id, sent_as_photo = send_telegram_goal_get_id(
                             goal_text,
                             rendered_goal.png if rendered_goal else None,
+                            retry_factory=rendered_goal_retry,
                         )
                         if msg_id:
                             state.setdefault("goal_messages", {})[goal_key] = {
@@ -3433,7 +3459,7 @@ def avvia_ciclo_partita():
                     )
                     rendered_saved = None
                     if goalkeeper_name:
-                        rendered_saved = prepara_grafica_parata_rigore(
+                        rendered_saved_retry = (lambda: prepara_grafica_parata_rigore(
                             data_espn=data,
                             penalty_event=e,
                             goalkeeper_name=goalkeeper_name,
@@ -3447,7 +3473,8 @@ def avvia_ciclo_partita():
                             event_key=f"{event_id}|saved|{e.get('uid', '')}",
                             league_slug=league_slug,
                             league_name=league_name,
-                        )
+                        )) if (GOAL_GRAPHICS_ENABLED and not is_friendly_competition(league_slug, league_name)) else None
+                        rendered_saved = rendered_saved_retry() if rendered_saved_retry else None
                         penalty_text = (
                             f"<b>RIGORE PARATO · {e['minute']}' {E_KICK}</b>\n\n"
                             f"🧤 <i>{fmt_player(goalkeeper_name)}</i>\n"
@@ -3457,6 +3484,7 @@ def avvia_ciclo_partita():
                         msg_id, _ = send_telegram_saved_get_id(
                             penalty_text,
                             rendered_saved.png if rendered_saved else None,
+                            retry_factory=rendered_saved_retry,
                         )
                     else:
                         # Nella lotteria il mancato riconoscimento del portiere
