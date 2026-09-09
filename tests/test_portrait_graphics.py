@@ -6,6 +6,11 @@ import goal_graphics as g
 import portrait_graphics as p
 
 class PortraitTests(unittest.TestCase):
+    def test_domestic_saved_matches_goal_kit(self):
+        for kit in ('home', 'away', 'third'):
+            for comp in ('ita.1', 'ita.coppa_italia', 'ita.super_cup'):
+                self.assertEqual(p.theme(kit, comp, True), p.theme(kit, comp, False))
+
     def test_competition_priority_and_conference_slug(self):
         for comp,expected in [('uefa.champions','ucl'),('uefa.europa','uel'),('uefa.europa.conf','conference')]:
             self.assertEqual(p.theme('away',comp,True),expected)

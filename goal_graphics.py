@@ -371,6 +371,7 @@ def render_goal_card(
 def render_saved_card(
     *,
     goalkeeper_name: str,
+    kit: str = "home",
     minute: str | int,
     home_name: str,
     away_name: str,
@@ -393,7 +394,7 @@ def render_saved_card(
         from portrait_graphics import event
         return event(player=player, scorer_name=player.name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
-                     away_id=away_id, kit='third', saved=True,
+                     away_id=away_id, kit=kit, saved=True,
                      competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir)
     except (OSError, ValueError) as exc:
         raise GoalGraphicUnavailable(str(exc)) from exc
@@ -436,7 +437,7 @@ def main() -> int:
             "asset_dir": args.asset_dir,
         }
         if args.event == "saved":
-            result = render_saved_card(goalkeeper_name=args.player, **common)
+            result = render_saved_card(goalkeeper_name=args.player, kit=args.kit, **common)
         else:
             result = render_goal_card(
                 scorer_name=args.player,

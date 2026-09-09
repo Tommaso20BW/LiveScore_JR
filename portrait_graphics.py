@@ -14,7 +14,7 @@ def theme(kit='home', competition='', saved=False):
     if 'conference' in value or 'europa.conf' in value: return 'conference'
     if 'champions' in value: return 'ucl'
     if 'europa' in value: return 'uel'
-    return 'saved_italia' if saved else kit if kit in ('home', 'away', 'third') else 'home'
+    return kit if kit in ('home', 'away', 'third') else 'home'
 
 def texture_key(key):
     return 'saved' if key == 'saved_italia' else key if key in ('home','away','third') else 'home'
@@ -86,9 +86,16 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
     assets = Path(assets)
     key = theme(kit,competition,saved)
     background = assets/'portrait'/f'{key}_{"saved" if saved else "goal"}_1086x1448.png'
+    domestic_saved = saved and key in ('home', 'away', 'third')
+    if domestic_saved:
+        background = assets/'portrait'/f'{key}_clean_1086x1448.png'
     card = Image.open(background).convert('RGBA')
     if key == 'ucl': card = vivid_background(card)
     panel = card.crop((M,M,W-M,H-M))
+    if domestic_saved:
+        heading = tight(Image.open(assets/'overlays/front_saved.png'), True)
+        heading = heading.resize((IW+100, round(heading.height*(IW+100)/heading.width)), Image.Resampling.LANCZOS)
+        panel.alpha_composite(textured(heading,key,assets),(-50,-60))
     path = None
     pose = pose or 'arms_crossed'
     if player:
@@ -113,7 +120,8 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
     word = textured(word,key,assets)
     place_word(card,word,saved)
     font = ImageFont.truetype(str(assets/'fonts/DharmaGothicEBold.otf'),32 if saved else 36)
-    ImageDraw.Draw(card).text((M+(45 if saved else 18),M+(128 if saved else 30)),str(minute).rstrip("'’")+"'",font=font,fill=COLORS[key],anchor='lt')
+    minute_position = (M+14, M+160) if domestic_saved else (M+(45 if saved else 18), M+(128 if saved else 30))
+    ImageDraw.Draw(card).text(minute_position,str(minute).rstrip("'’")+"'",font=font,fill=COLORS[key],anchor='lt')
     marks = [logo(name,tid,key,assets,64) for name,tid in [(home_name,home_id),(away_name,away_id)]]
     marks = [mark for mark in marks if mark is not None]
     total = sum(mark.width for mark in marks)+max(0,len(marks)-1)*20
