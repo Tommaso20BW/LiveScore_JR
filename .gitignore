@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+canva_page1_cache/
+simulation_output/

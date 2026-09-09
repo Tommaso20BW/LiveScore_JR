@@ -1,30 +1,43 @@
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
-
+import canva_page_one as canva
 import juve_bot_espn as bot
 
-
 class CanvaExportTests(unittest.TestCase):
-    def test_requests_pro_lossless_at_native_size(self):
-        failed_response = Mock(status_code=400, text="test stop")
+    def test_pdf_page_one_only(self):
+        session = Mock()
+        session.post.return_value.json.return_value = {'job': {'id': 'test'}}
+        session.get.side_effect = [Mock(json=lambda: {'job': {'status':'success','urls':['https://example.test/pdf']}}),Mock(content=b'pdf')]
+        with tempfile.TemporaryDirectory() as root, patch.object(canva,'extract_layers',return_value=Path(root)) as extract:
+            canva.export_page_one(session,'token','design',Path(root),sleep=lambda _: None)
+            extract.assert_called_once()
+        self.assertEqual(session.post.call_args.kwargs['json']['format'],{'type':'pdf','pages':[1]})
 
-        with patch.object(bot.SESSION, "post", return_value=failed_response) as post:
-            self.assertIsNone(bot.get_canva_image("test-access-token", pagina=10))
+    def test_failure_without_cache_is_explicit(self):
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaises(ValueError):
+                canva.export_page_one(Mock(),'','design',Path(root))
 
-        request_payload = post.call_args.kwargs["json"]
-        self.assertEqual(request_payload["design_id"], bot.CANVA_DESIGN_ID)
-        self.assertEqual(
-            request_payload["format"],
-            {
-                "type": "png",
-                "pages": [10],
-                "export_quality": "pro",
-                "lossless": True,
-            },
-        )
-        self.assertNotIn("width", request_payload["format"])
-        self.assertNotIn("height", request_payload["format"])
+    def test_offline_reuses_validated_cache(self):
+        with tempfile.TemporaryDirectory() as root:
+            root=Path(root); folder=root/'abc'; folder.mkdir()
+            for name in ('player.png','background.png','manifest.json'): (folder/name).touch()
+            (root/'current.json').write_text('{"folder":"abc"}')
+            self.assertEqual(canva.export_page_one(Mock(),'','design',root),folder)
 
+    def test_legacy_kit_pages_removed(self):
+        self.assertFalse(hasattr(bot,'PAGINA_PER_KIT'))
+        self.assertFalse(hasattr(bot,'get_canva_image'))
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_unsupported_phases_and_friendlies_do_not_export(self):
+        common=dict(data_espn={},home_id='111',away_id='110',home_name='Juventus',away_name='Inter',league_slug='ita.1',league_name='Serie A')
+        with patch.object(bot,'GOAL_GRAPHICS_ENABLED',True), patch.object(bot,'get_valid_token') as token:
+            for kind in ('second_half','extra_time','penalties'):
+                self.assertIsNone(bot.build_phase_graphic(kind=kind,**common))
+            common['league_slug']='club.friendly'
+            self.assertIsNone(bot.build_phase_graphic(kind='full',**common))
+            token.assert_not_called()
+
+if __name__ == '__main__': unittest.main()

@@ -7,6 +7,7 @@ import json
 import time
 import sys
 import base64
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from requests.adapters import HTTPAdapter
@@ -79,14 +80,6 @@ except ValueError:
     TELEGRAM_AUTO_DELETE_SECONDS = 0
 
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
-PAGINA_TARGET   = 2  # fallback / kit non determinato
-
-# Pagina del design Canva da esportare in base al kit indossato dalla Juve
-PAGINA_PER_KIT = {
-    "home":  2,
-    "away":  6,
-    "third": 10,
-}
 
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
@@ -632,6 +625,7 @@ def prepara_grafica_goal(*, data_espn: dict, scorer_name: str,
             home_goals=home_goals,
             away_goals=away_goals,
             kit=juve_kit,
+            competition=league_slug,
             goal_type=goal_type,
             event_key=event_key,
         )
@@ -754,6 +748,7 @@ def prepara_grafica_parata_rigore(
     try:
         rendered = goal_graphics.render_saved_card(
             goalkeeper_name=goalkeeper_name,
+            competition=league_slug,
             minute=minute,
             home_name=home_name,
             away_name=away_name,
@@ -898,6 +893,7 @@ def resetta_gist():
 # CANVA
 # ==============================================================================
 def get_valid_token():
+    global CANVA_REFRESH_TOKEN
     if not CANVA_REFRESH_TOKEN:
         log_line("ERROR", "CANVA", "CANVA_REFRESH_TOKEN mancante")
         return None
@@ -910,6 +906,8 @@ def get_valid_token():
         if r.status_code == 200:
             tokens = r.json()
             if "refresh_token" in tokens and tokens["refresh_token"] != CANVA_REFRESH_TOKEN:
+                # Keep the rotated token in this process too (HT then FT).
+                CANVA_REFRESH_TOKEN = tokens['refresh_token']
                 log_line("DEBUG", "CANVA", "Nuovo refresh token; aggiorno GitHub Secret")
                 if update_github_secret("CANVA_REFRESH_TOKEN", tokens["refresh_token"]):
                     log_line("DEBUG", "CANVA", "GitHub Secret CANVA_REFRESH_TOKEN aggiornato")
@@ -926,52 +924,35 @@ def get_valid_token():
         log_line("ERROR", "CANVA", f"Connessione fallita: {e}")
     return None
 
-def get_canva_image(access_token: str, pagina: int = PAGINA_TARGET):
-    if not access_token:
+def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_name,
+                        league_slug, league_name, home_goals=0, away_goals=0, shootout=None):
+    """Compose supported phases; Canva contributes only page-one PDF layers."""
+    if (not GOAL_GRAPHICS_ENABLED or JUVE_ID not in (str(home_id), str(away_id))
+            or is_friendly_competition(league_slug, league_name)
+            or kind not in ('kick', 'half', 'full')):
         return None
-    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     try:
-        log_line("DEBUG", "CANVA", f"Avvio export | design={CANVA_DESIGN_ID} | pagina={pagina}")
-        r = SESSION.post("https://api.canva.com/rest/v1/exports", headers=headers, json={
-            "design_id": CANVA_DESIGN_ID,
-            "format": {
-                "type": "png",
-                "pages": [pagina],
-                "export_quality": "pro",
-                "lossless": True,
-            },
-        }, timeout=15)
-        if r.status_code not in [200, 201]:
-            log_line("ERROR", "CANVA", f"Avvio export HTTP {r.status_code}: {r.text}")
-            return None
-        job_data = r.json()
-        job_id = job_data.get("id") or job_data.get("job", {}).get("id")
-        if not job_id:
-            log_line("ERROR", "CANVA", "Export senza job_id nella risposta")
-            return None
-        log_line("DEBUG", "CANVA", f"Export in corso | job_id={job_id}")
-        status_url = f"https://api.canva.com/rest/v1/exports/{job_id}"
-        time.sleep(3)
-        for i in range(60):
-            time.sleep(3)
-            check = SESSION.get(status_url, headers=headers, timeout=15)
-            if check.status_code == 200:
-                d = check.json()
-                stato = d.get("status") or d.get("job", {}).get("status")
-                if stato == "success":
-                    urls = d.get("urls") or d.get("job", {}).get("urls")
-                    url_dl = urls[0] if urls else (d.get("url") or d.get("job", {}).get("url"))
-                    if url_dl:
-                        log_line("DEBUG", "CANVA", "Export completato; scarico immagine")
-                        img = SESSION.get(url_dl, timeout=30).content
-                        log_line("DEBUG", "CANVA", f"Immagine scaricata | {len(img) // 1024} KB")
-                        return img
-                elif stato == "failed":
-                    log_line("ERROR", "CANVA", f"Export fallito | job_id={job_id}")
-                    return None
-    except Exception as e:
-        log_line("ERROR", "CANVA", f"Export fallito: {e}")
-    return None
+        import portrait_graphics
+        from canva_page_one import export_page_one
+        layers = None
+        if kind != 'kick':
+            layers = export_page_one(SESSION, get_valid_token(), CANVA_DESIGN_ID,
+                                     Path('canva_page1_cache'))
+        kit = rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
+                             league_slug, league_name)
+        return portrait_graphics.phase(kind=kind, home_name=home_name, away_name=away_name,
+            home_id=home_id, away_id=away_id, home_goals=home_goals, away_goals=away_goals,
+            kit=kit, competition=league_slug, layers=layers, shootout=shootout)
+    except Exception as exc:
+        log_line("WARN", "GRAPHICS", f"{kind.upper()} non disponibile: {type(exc).__name__}; invio testo")
+        return None
+
+
+def send_phase_message(text, **kwargs):
+    photo = build_phase_graphic(**kwargs)
+    if photo:
+        return _send_telegram_event_photo_get_id(text, photo, filename='phase.png', label=kwargs['kind'])[0]
+    return send_telegram_get_id(text)
 
 # ==============================================================================
 # PARSE EVENTS
@@ -2360,7 +2341,9 @@ def avvia_ciclo_partita():
 
             # --- Inizio primo tempo ---
             if status == "1H" and "1H" not in state["sent_periods"]:
-                msg_id = send_telegram_get_id(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}")
+                msg_id = send_phase_message(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{home_name} - {away_name}\n\n{e_comp} {hashtag}",
+                    kind='kick', data_espn=data, home_id=home_id, away_id=away_id,
+                    home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name)
                 if msg_id:
                     log_line("EVENT", "MATCH", "INIZIO PARTITA | Telegram inviato")
                     state["sent_periods"].append("1H")
@@ -2466,7 +2449,10 @@ def avvia_ciclo_partita():
             # --- Fine primo tempo ---
             if status == "HT":
                 if "HT" not in state["sent_periods"]:
-                    msg_id = send_telegram_get_id(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    msg_id = send_phase_message(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}",
+                        kind='half', data_espn=data, home_id=home_id, away_id=away_id,
+                        home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name,
+                        home_goals=g_home, away_goals=g_away)
                     if msg_id:
                         log_line("EVENT", "MATCH", f"FINE 1° TEMPO | {home_name} {g_home}-{g_away} {away_name} | Telegram inviato")
                         state["sent_periods"].append("HT")
@@ -2981,37 +2967,11 @@ def avvia_ciclo_partita():
 
                     msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}"
 
-                    # Foto Canva solo per le partite ufficiali della Juve:
-                    # nelle amichevoli il messaggio finale parte come solo testo.
-                    is_juve_match = home_id == JUVE_ID or away_id == JUVE_ID
-                    is_friendly   = is_friendly_competition(league_slug, league_name)
-                    if is_juve_match and not is_friendly:
-                        # Kit Juve (home/away/third) dagli stessi dati ESPN già
-                        # disponibili, per scegliere la pagina Canva corretta.
-                        try:
-                            _competitors = data["header"]["competitions"][0]["competitors"]
-                        except Exception:
-                            _competitors = []
-                        _boxscore_teams = (data.get("boxscore") or {}).get("teams", [])
-                        _fallback_kit = determina_kit(home_id, away_id, league_slug, league_name)
-                        _kit_result = kit_analyzer.analizza(
-                            home_name=home_name, away_name=away_name,
-                            home_id=home_id, away_id=away_id,
-                            league_name=league_name,
-                            competitors=_competitors, boxscore_teams=_boxscore_teams,
-                            fallback_kit=_fallback_kit,
-                        )
-                        juve_kit_finale = _kit_result["kit"]
-                        pagina_canva = PAGINA_PER_KIT.get(juve_kit_finale, PAGINA_TARGET)
-                        log_line("DEBUG", "CANVA", f"Kit finale={juve_kit_finale} | pagina={pagina_canva}")
-
-                        canva_token = get_valid_token()
-                        foto = get_canva_image(canva_token, pagina_canva) if canva_token else None
-                        ft_sent = send_telegram_with_photo(msg_finale, foto)
-                    else:
-                        if is_juve_match and is_friendly:
-                            log_line("DEBUG", "CANVA", "Amichevole; foto finale saltata")
-                        ft_sent = send_telegram_get_id(msg_finale) is not None
+                    ft_sent = send_phase_message(msg_finale, kind='full', data_espn=data,
+                        home_id=home_id, away_id=away_id, home_name=home_name, away_name=away_name,
+                        league_slug=league_slug, league_name=league_name,
+                        home_goals=g_home, away_goals=g_away,
+                        shootout=(home_pen_goals, away_pen_goals) if has_shootout else None) is not None
 
                     if not ft_sent:
                         log_line("RETRY", "TELEGRAM", "FINE PARTITA non inviata; nuovo tentativo al prossimo ciclo")
