@@ -45,6 +45,10 @@ class GoalGraphicsTests(unittest.TestCase):
         for filename in (
             "guglielmo_vicario_keeper_orange_pose_01_arms_crossed.png",
             "guglielmo_vicario_keeper_orange_pose_02_pointing.png",
+            "guglielmo_vicario_keeper_blue_pose_01_arms_crossed.png",
+            "guglielmo_vicario_keeper_blue_pose_02_pointing.png",
+            "guglielmo_vicario_keeper_green_pose_01_arms_crossed.png",
+            "guglielmo_vicario_keeper_green_pose_02_pointing.png",
         ):
             player.save(self.root / "players" / "guglielmo_vicario" / filename)
 
@@ -274,7 +278,7 @@ class GoalGraphicsTests(unittest.TestCase):
                 registry_path=self.registry,
             )
 
-    def test_goalkeeper_uses_black_background_with_orange_kit(self):
+    def test_goalkeeper_uses_requested_home_kit(self):
         rendered = goal_graphics.render_goal_card(
             scorer_name="Guglielmo Vicario",
             minute=90,
@@ -287,10 +291,11 @@ class GoalGraphicsTests(unittest.TestCase):
             asset_dir=self.root,
             registry_path=self.registry,
         )
-        self.assertEqual(rendered.kit, "third")
-        self.assertEqual(rendered.background_path.name, "third_goal_1086x1448.png")
+        self.assertEqual(rendered.kit, "home")
+        self.assertEqual(rendered.background_path.name, "home_goal_1086x1448.png")
+        self.assertIn("keeper_blue", rendered.player_path.name)
 
-    def test_saved_renderer_uses_orange_background_for_goalkeeper(self):
+    def test_saved_renderer_uses_home_background_for_goalkeeper(self):
         rendered = goal_graphics.render_saved_card(
             goalkeeper_name="G. Vicario",
             minute=72,

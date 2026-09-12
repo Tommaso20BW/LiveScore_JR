@@ -124,7 +124,8 @@ def player_filename(player: Player, kit: str, pose: str) -> str:
     if pose not in POSES:
         raise ValueError(f"Posa non valida: {pose}")
     if player.role == "goalkeeper":
-        return f"{player.slug}_keeper_orange_{POSE_FILE_PART[pose]}.png"
+        color = {"home": "blue", "away": "green", "third": "orange"}.get(kit, "blue")
+        return f"{player.slug}_keeper_{color}_{POSE_FILE_PART[pose]}.png"
     kit = kit if kit in KIT_FILE_PART else "home"
     return f"{player.slug}_{KIT_FILE_PART[kit]}{POSE_FILE_PART[pose]}.png"
 
@@ -354,10 +355,6 @@ def render_goal_card(
     }.get(goal_type, "")
 
     kit = kit if kit in THEMES else "home"
-    # Per un eventuale gol del portiere resta il fondale nero, distinto dalla
-    # grafica arancione SAVED che appartiene soltanto ai rigori parati.
-    if card_player and card_player.role == "goalkeeper":
-        kit = "third"
     try:
         from portrait_graphics import event
         return event(player=card_player, scorer_name=scorer_name, minute=minute,
