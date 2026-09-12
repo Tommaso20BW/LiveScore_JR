@@ -81,6 +81,29 @@ def png(card):
     card.convert('RGB').save(stream,format='PNG')
     return stream.getvalue()
 
+
+def saved_heading(assets):
+    heading = tight(Image.open(Path(assets)/'overlays/front_saved.png'), True)
+    # Uniform scaling preserves the supplied lettering's original proportions.
+    width = 1034
+    heading = heading.resize((width, round(heading.height*width/heading.width)), Image.Resampling.LANCZOS)
+    layer = Image.new('RGBA', (IW, IH))
+    layer.alpha_composite(heading, (-50, -22))
+    return layer
+
+
+def saved_minute_position(heading, text, font):
+    """Keep the entire minute box plus 4px clearance in the S's upper hollow."""
+    box = font.getbbox(text)
+    width, height = box[2]-box[0], box[3]-box[1]
+    mask = heading.getchannel('A').point(lambda a: 255 if a > 100 else 0)
+    candidates = sorted(((x, y) for y in range(8, 51) for x in range(8, 81)),
+                        key=lambda xy: (xy[0]-20)**2+(xy[1]-14)**2)
+    for x, y in candidates:
+        if mask.crop((x-4, y-4, x+width+4, y+height+4)).getbbox() is None:
+            return M+x, M+y
+    raise ValueError('Minuto SAVED senza spazio libero nella S')
+
 def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id,
           kit, saved=False, suffix='', competition='', pose=None, event_key='', assets=g.DEFAULT_ASSET_DIR):
     assets = Path(assets)
@@ -92,11 +115,8 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
     if key == 'ucl': card = vivid_background(card)
     panel = card.crop((M,M,W-M,H-M))
     if saved:
-        heading = tight(Image.open(assets/'overlays/front_saved.png'), True)
-        # Match the GOAL header's framing: 50px side bleed, cropped top,
-        # and the same visible lower edge (218px below the inner frame).
-        heading = heading.resize((IW+100, 288), Image.Resampling.LANCZOS)
-        panel.alpha_composite(textured(heading,key,assets),(-50,-70))
+        heading = saved_heading(assets)
+        panel.alpha_composite(textured(heading,key,assets))
     path = None
     pose = pose or 'arms_crossed'
     if player:
@@ -120,9 +140,10 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
     word = ImageOps.contain(word,(IW+44,340),Image.Resampling.LANCZOS)
     word = textured(word,key,assets)
     place_word(card,word,saved)
-    font = ImageFont.truetype(str(assets/'fonts/DharmaGothicEBold.otf'),32 if saved else 36)
-    minute_position = (M+14, M+130) if saved else (M+18, M+30)
-    ImageDraw.Draw(card).text(minute_position,str(minute).rstrip("'’")+"'",font=font,fill=COLORS[key],anchor='lt')
+    font = ImageFont.truetype(str(assets/'fonts/DharmaGothicEBold.otf'),24 if saved else 36)
+    minute_text = str(minute).rstrip("'’")+"'"
+    minute_position = saved_minute_position(heading, minute_text, font) if saved else (M+18, M+30)
+    ImageDraw.Draw(card).text(minute_position,minute_text,font=font,fill=COLORS[key],anchor='lt')
     marks = [logo(name,tid,key,assets,64) for name,tid in [(home_name,home_id),(away_name,away_id)]]
     marks = [mark for mark in marks if mark is not None]
     total = sum(mark.width for mark in marks)+max(0,len(marks)-1)*20
