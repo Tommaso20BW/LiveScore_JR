@@ -1551,8 +1551,6 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     if not stats_eligible(home_id, away_id, league_slug, league_name):
         return None
     import stats_graphics
-    from PIL import Image
-    import io
     kit = rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
                          league_slug, league_name)
     raw         = _estrai_stats_espn(data_espn)
@@ -1651,23 +1649,9 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     mapped = {aliases.get(label, label.upper()): (h, a) for label, h, a, _ in stats_mappate}
     mapped["POSSESSO"] = (pos_h, pos_a)
     rows = [(label, *mapped[label]) for label in stats_graphics.ORDER if label in mapped]
-    logos = []
-    for tid, name in ((home_id, home_name), (away_id, away_name)):
-        url = _diretta_stats_logo(data_espn, tid, name)
-        if not url:
-            log_line("WARN", "STATS", f"Logo Diretta mancante | {name}")
-            return None
-        if url.startswith('data:image/png;base64,'):
-            import base64
-            content = base64.b64decode(url.split(',', 1)[1], validate=True)
-        else:
-            response = SESSION.get(url, timeout=20)
-            response.raise_for_status()
-            content = response.content
-        logos.append(Image.open(io.BytesIO(content)).convert("RGBA"))
     html = stats_graphics.build_html(rows=rows, kit=kit, competition=league_slug,
         league_name=league_name, momento=momento, home_id=home_id, away_id=away_id,
-        home_logo=logos[0], away_logo=logos[1])
+        home_name=home_name, away_name=away_name)
     return stats_graphics.render(html, hd_output=hd_output)
 
 # ==============================================================================

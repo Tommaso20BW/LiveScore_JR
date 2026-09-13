@@ -4,7 +4,7 @@ import io
 import math
 from html import escape
 from pathlib import Path
-from PIL import Image, ImageOps, ImageChops
+from PIL import Image
 import portrait_graphics as p
 import goal_graphics as g
 
@@ -40,22 +40,8 @@ def rows_html(rows):
     return ''.join(result)
 
 
-def textured_logo(source, key, assets, silhouette=False):
-    mark = p.tight(source)
-    mark = mark.resize((round(mark.width * 128 / mark.height), 128), Image.Resampling.LANCZOS)
-    result = p.textured(mark, key, assets, zoom=True)
-    # Coloured Diretta crests can have an opaque shield/circle. Preserve their
-    # internal light/dark drawing rather than turning the whole crest into a disk.
-    gray = ImageOps.grayscale(mark)
-    visible = [v for v, a in zip(gray.getdata(), mark.getchannel('A').getdata()) if a > 200]
-    if not silhouette and visible and max(visible) - min(visible) > 80:
-        detail = gray.point(lambda value: max(0, min(255, round((value - 35) * 255 / 180))))
-        result.putalpha(ImageChops.multiply(detail, mark.getchannel('A')))
-    return result
-
-
 def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id,
-               home_logo, away_logo, assets=g.DEFAULT_ASSET_DIR):
+               home_name, away_name, assets=g.DEFAULT_ASSET_DIR):
     if '111' not in (str(home_id), str(away_id)):
         raise ValueError('STATS solo Juventus')
     assets = Path(assets)
@@ -69,8 +55,12 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     word = word.resize((300, round(word.height * 300 / word.width)), Image.Resampling.LANCZOS)
     phase = uri(p.textured(word, key, assets))
     logos = []
-    for source, tid in ((home_logo, home_id), (away_logo, away_id)):
-        logos.append(uri(textured_logo(source, key, assets, silhouette=str(tid) == '111')))
+    for name, tid in ((home_name, home_id), (away_name, away_id)):
+        # Exactly the same resolver, alpha and zoomed texture as event/phase cards.
+        mark = p.logo(name, tid, key, assets, 128)
+        if mark is None:
+            raise g.GoalGraphicUnavailable(f'Logo non disponibile: {name}')
+        logos.append(uri(mark))
     font = 'data:font/otf;base64,' + base64.b64encode((assets / 'fonts/DharmaGothicEBold.otf').read_bytes()).decode()
     left, right = (p.COLORS[key], '#fff') if str(home_id) == '111' else ('#fff', p.COLORS[key])
     template = Path(__file__).with_name('stats.html').read_text(encoding='utf-8')
