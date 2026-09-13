@@ -63,6 +63,15 @@ def logo(name, tid, key, assets, height):
     source = source.resize((round(source.width*height/source.height),height),Image.Resampling.LANCZOS)
     return textured(source,key,assets,True) if origin == 'FCLogo' else source
 
+def centered_logo_positions(marks, center, gap=20):
+    """Center the tight visible bounds as a group, not fixed logo slots."""
+    marks = [mark for mark in marks if mark is not None]
+    total = sum(mark.width for mark in marks) + max(0, len(marks)-1)*gap
+    x = round(center-total/2)
+    for mark in marks:
+        yield mark, x
+        x += mark.width+gap
+
 def number(text, size, key, assets):
     font = ImageFont.truetype(str(assets/'fonts/DharmaGothicEBold.otf'),size)
     box = font.getbbox(text)
@@ -137,12 +146,8 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
     minute_position = saved_minute_position(heading, minute_text, font) if saved else (M+18, M+30)
     ImageDraw.Draw(card).text(minute_position,minute_text,font=font,fill=COLORS[key],anchor='lt')
     marks = [logo(name,tid,key,assets,64) for name,tid in [(home_name,home_id),(away_name,away_id)]]
-    marks = [mark for mark in marks if mark is not None]
-    total = sum(mark.width for mark in marks)+max(0,len(marks)-1)*20
-    x = (W-total)//2
-    for mark in marks:
+    for mark, x in centered_logo_positions(marks, W/2):
         soft_place(card,mark,(x,1180-mark.height//2),blur=6,opacity=.50)
-        x += mark.width+20
 
     label = (scorer_name+suffix).upper()
     size = 29
@@ -163,9 +168,10 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
         word = ImageOps.contain(word,(600,600),Image.Resampling.LANCZOS)
         top = (H-64-38-word.height)//2
         card.alpha_composite(textured(word,key,assets),((W-word.width)//2,top+102))
-        for name,tid,cx in [(home_name,home_id,500),(away_name,away_id,581)]:
-            mark = logo(name,tid,key,assets,64)
-            if mark: soft_place(card,mark,(cx-mark.width//2,top),blur=6,opacity=.50)
+        marks = [logo(name,tid,key,assets,64) for name,tid in
+                 [(home_name,home_id),(away_name,away_id)]]
+        for mark, x in centered_logo_positions(marks, W/2):
+            soft_place(card,mark,(x,top),blur=6,opacity=.50)
     else:
         if layers is None: raise ValueError('Pagina 1 Canva non disponibile')
         # Both extracted layers share the PDF page coordinates and transform.
@@ -182,11 +188,14 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
         card.alpha_composite(bg,(M,M))
         score = number(f'{home_goals}-{away_goals}',200,key,assets)
         y = 1210 if shootout else 1220
-        soft_place(card,score,((W-score.width)//2,y-score.height//2),blur=9,opacity=.60)
+        score_x = (W-score.width)//2
+        soft_place(card,score,(score_x,y-score.height//2),blur=9,opacity=.60)
         for name,tid,left in [(home_name,home_id,True),(away_name,away_id,False)]:
             mark = logo(name,tid,key,assets,score.height)
             if mark:
-                x = (W-score.width)//2-40-mark.width if left else (W+score.width)//2+40
+                # Measure from tight visible bounds; never shift the score
+                # to compensate for differently shaped team crests.
+                x = score_x-28-mark.width if left else score_x+score.width+28
                 soft_place(card,mark,(x,y-mark.height//2),blur=9,opacity=.60)
         if shootout:
             hp,ap = shootout
