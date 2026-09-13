@@ -1,138 +1,18 @@
-<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:1620px;height:2160px;overflow:hidden}
-body{--display-font:'Barlow Condensed',Arial,sans-serif;--left-text:var(--left);--right-text:var(--right);background:var(--bg);color:var(--ink);font-family:'Inter',Arial,sans-serif;position:relative}
-
-/* Background e grain originali del bot. */
-body.kit-home{--bg:#efeee9;--ink:#111111;--muted:#777770;--line:rgba(0,0,0,.10);--juve-color:#c9a84c;--opp-color:#2a2a2a;--juve-text:#c9a84c;--opp-text:#2a2a2a;--card-bg1:rgba(248,248,245,.98);--card-bg2:rgba(228,228,222,.98);background:radial-gradient(ellipse 90% 60% at 10% 5%,rgba(180,180,175,.55) 0%,transparent 65%),radial-gradient(ellipse 80% 55% at 90% 95%,rgba(180,180,175,.40) 0%,transparent 65%),linear-gradient(135deg,var(--card-bg1),var(--card-bg2))}
-body.kit-away{--bg:#f4aec9;--ink:#111111;--muted:#7a2848;--line:rgba(0,0,0,.12);--juve-color:#9a3060;--opp-color:#111111;--juve-text:#8a224f;--opp-text:#111111;--card-bg1:rgba(250,185,210,.97);--card-bg2:rgba(238,160,190,.97);background:radial-gradient(ellipse 90% 60% at 10% 5%,rgba(192,48,106,.42) 0%,transparent 65%),radial-gradient(ellipse 80% 55% at 90% 95%,rgba(128,16,64,.30) 0%,transparent 65%),linear-gradient(135deg,var(--card-bg1),var(--card-bg2))}
-body.kit-third{--bg:#181818;--ink:#c9a84c;--muted:#c9a84c;--line:rgba(201,168,76,.14);--juve-color:#c9a84c;--opp-color:#484840;--juve-text:#c9a84c;--opp-text:#6a6a60;--card-bg1:rgba(28,28,28,1);--card-bg2:rgba(20,20,20,1);background:radial-gradient(ellipse 90% 60% at 10% 5%,rgba(0,0,0,.60) 0%,transparent 65%),radial-gradient(ellipse 80% 55% at 90% 95%,rgba(0,0,0,.40) 0%,transparent 65%),linear-gradient(135deg,var(--card-bg1),var(--card-bg2))}
-body.kit-default{--bg:#111827;--ink:#ffffff;--muted:#8fa1c7;--line:rgba(255,255,255,.06);--left:#1e3a8a;--left-dark:#13265a;--right:#7c3aed;--right-soft:#50269a;--left-text:#ffffff;--right-text:#ffffff;--card-bg1:rgba(17,24,39,.96);--card-bg2:rgba(10,14,28,.96);--body-glow1:#1e3a8a4D;--body-glow2:#7c3aed38;background:radial-gradient(ellipse 90% 60% at 10% 5%,var(--body-glow1) 0%,transparent 65%),radial-gradient(ellipse 80% 55% at 90% 95%,var(--body-glow2) 0%,transparent 65%),linear-gradient(135deg,var(--card-bg1),var(--card-bg2))}
-
-/* Il colore principale segue sempre il lato in cui si trova la Juventus. */
-body.juve-home:not(.kit-default){--left:var(--juve-color);--left-dark:var(--juve-color);--left-text:var(--juve-text);--right:var(--opp-color);--right-soft:var(--opp-color);--right-text:var(--opp-text)}
-body.juve-away:not(.kit-default){--left:var(--opp-color);--left-dark:var(--opp-color);--left-text:var(--opp-text);--right:var(--juve-color);--right-soft:var(--juve-color);--right-text:var(--juve-text)}
-
-/* Override dinamico del bot per il tema default. */
-{DYNAMIC_STYLE}
-
-/* Effetto grain originale del bot. */
-body::after,body::before{content:"";position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:180px 180px}
-body::after{opacity:.10;mix-blend-mode:multiply}
-body::before{opacity:.06;mix-blend-mode:screen}
-
-.page{height:100%;padding:64px 82px 70px;position:relative;z-index:2}
-.top{height:86px;display:flex;align-items:center;border-bottom:2px solid var(--line)}
-.league{font-size:23px;font-weight:800;letter-spacing:5px;text-transform:uppercase}
-
-.match{height:260px;display:grid;grid-template-columns:minmax(0,1fr) 330px minmax(0,1fr);align-items:center}
-.team{display:grid;align-items:center;gap:24px;min-width:0}
-.team:first-child{grid-template-columns:126px minmax(0,1fr)}
-.team:last-child{grid-template-columns:minmax(0,1fr) 126px;text-align:right}
-.team>div{min-width:0;overflow:hidden}
-.logo{width:126px;height:134px;object-fit:contain}
-.team-name{font-family:var(--display-font);font-size:50px;font-weight:900;text-transform:uppercase;white-space:nowrap;line-height:1;display:block}
-.side{font-size:15px;font-weight:800;letter-spacing:4px;color:var(--muted);text-transform:uppercase;margin-top:9px}
-.scorebox{text-align:center}
-.score{width:260px;margin:0 auto;font-family:var(--display-font);font-size:136px;line-height:.8;font-weight:900;display:grid;grid-template-columns:1fr 56px 1fr;align-items:center}
-.score>span:first-child{text-align:right}
-.score>span:last-child{text-align:left}
-.score-separator{font-size:.62em;font-weight:900;margin:0;text-align:center;transform:translateY(-2px)}
-.pen-score{font-family:var(--display-font);font-size:34px;line-height:1;font-weight:400;color:var(--muted);margin-top:12px}
-.status{width:260px;margin:16px auto 0;padding-left:4px;font-size:15px;font-weight:900;letter-spacing:4px;color:var(--muted);text-align:center;text-transform:uppercase}
-
-.stats-heading{height:70px;padding-bottom:20px;border-top:2px solid var(--line);display:flex;align-items:flex-end;justify-content:center}
-.possession{height:360px;display:grid;grid-template-columns:1fr 360px 1fr;align-items:center}
-.pos-value{font-family:var(--display-font);font-size:100px;line-height:1;font-weight:400}
-.left-pos{text-align:right;padding-right:32px;color:var(--left-text)}
-.right-pos{padding-left:32px;color:var(--right-text)}
-.ring{--right-pos:{POS_RIGHT_PCT};--ring-gap:.24%;width:320px;height:320px;border-radius:50%;margin:auto;background:conic-gradient(from 0deg,var(--right) 0 var(--right-pos),var(--left) var(--right-pos) 100%);position:relative}
-.ring.has-split{background:conic-gradient(from 0deg,var(--bg) 0 var(--ring-gap),var(--right) var(--ring-gap) calc(var(--right-pos) - var(--ring-gap)),var(--bg) calc(var(--right-pos) - var(--ring-gap)) calc(var(--right-pos) + var(--ring-gap)),var(--left) calc(var(--right-pos) + var(--ring-gap)) calc(100% - var(--ring-gap)),var(--bg) calc(100% - var(--ring-gap)) 100%)}
-.ring::before{content:"";position:absolute;inset:37px;border-radius:50%;background:var(--bg)}
-.ring-label{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:20px;line-height:1.2;font-weight:400;letter-spacing:1px;text-transform:uppercase}
-
-.stats{height:1200px;padding:0 110px 14px;display:flex;flex-direction:column}
-.stats-title{text-align:center;font-size:19px;font-weight:900;letter-spacing:4px;text-transform:uppercase}
-.row{flex:1;border-top:1px solid var(--line);display:grid;grid-template-columns:100px minmax(0,928px) 100px;grid-template-rows:auto 64px;column-gap:36px;align-content:center;justify-content:center}
-.row-top{display:contents}
-.value{grid-row:2;align-self:center;font-family:var(--display-font);font-size:52px;line-height:1;font-weight:400;text-align:right;font-variant-numeric:tabular-nums}
-.value:first-child{grid-column:1;color:var(--left-text)}
-.value.right{grid-column:3;text-align:left;color:var(--right-text)}
-.label{grid-column:2;grid-row:1;position:relative;z-index:5;transform:translateY(12px);text-align:center;font-size:25px;line-height:1;font-weight:400}
-.track{grid-column:2;grid-row:2;align-self:center;width:100%;height:10px;background:var(--line);position:relative;overflow:hidden}
-.track.has-split::after{content:"";position:absolute;z-index:4;left:var(--split);top:0;width:3px;height:100%;background:var(--bg);transform:translateX(-50%)}
-.track.is-empty .bar-left,.track.is-empty .bar-right{display:none}
-.bar-left,.bar-right{position:absolute;top:0;height:100%}
-.bar-left{left:0;background:linear-gradient(90deg,var(--left),var(--left-dark))}
-.bar-right{right:0;background:linear-gradient(90deg,var(--right-soft),var(--right))}
-body.kit-home .bar-left,body.kit-away .bar-left,body.kit-third .bar-left{background:var(--left)}
-body.kit-home .bar-right,body.kit-away .bar-right,body.kit-third .bar-right{background:var(--right)}
-
-.foot{height:50px;display:flex;align-items:end;justify-content:space-between;font-size:12px;font-weight:800;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
-
-@media(max-width:1000px){html{width:810px;height:1080px}body{width:1620px;height:2160px;transform:scale(.5);transform-origin:top left}}
-</style>
-</head>
-<body class="kit-{JUVE_KIT} {JUVE_SIDE_CLASS}">
-<main class="page">
-  <header class="top"><div class="league">{LEAGUE_NAME}</div></header>
-  <section class="match">
-    <div class="team">
-      <img class="logo" src="{H_LOGO}" alt="{HOME_NAME}">
-      <div><div class="team-name">{HOME_NAME}</div><div class="side">Casa</div></div>
-    </div>
-    <div class="scorebox">{SCORE_BLOCK}<div class="status">{BADGE_LABEL}</div></div>
-    <div class="team">
-      <div><div class="team-name">{AWAY_NAME}</div><div class="side">Trasferta</div></div>
-      <img class="logo" src="{A_LOGO}" alt="{AWAY_NAME}">
-    </div>
-  </section>
-  <div class="stats-heading"><div class="stats-title">Statistiche della partita</div></div>
-  <section class="possession">
-    <div class="pos-value left-pos">{POS_H}</div>
-    <div class="ring{POS_RING_CLASS}"><div class="ring-label">Possesso<br>palla</div></div>
-    <div class="pos-value right-pos">{POS_A}</div>
-  </section>
-  <section class="stats">
-    {ROWS_HTML}
-  </section>
-  <footer class="foot"><span>JR - STATS LIVE</span><span>{MATCH_DATE}</span></footer>
-</main>
-<script>
-(function(){
-  var leagueMap={
-    'ITALIAN SERIE A':'Serie A','ITALY SERIE A':'Serie A','SERIE A TIM':'Serie A',
-    'ITALIAN COPPA ITALIA':'Coppa Italia','ITALY COPPA ITALIA':'Coppa Italia',
-    'COPPA ITALIA FRECCIAROSSA':'Coppa Italia','ITALIAN SUPERCOPPA':'Supercoppa Italiana',
-    'ITALY SUPERCOPPA':'Supercoppa Italiana','UEFA CHAMPIONS LEAGUE':'Champions League',
-    'UEFA EUROPA LEAGUE':'Europa League','UEFA EUROPA CONFERENCE LEAGUE':'Conference League',
-    'UEFA SUPER CUP':'Supercoppa UEFA','FIFA CLUB WORLD CUP':'Mondiale per Club',
-    'FIFA INTERCONTINENTAL CUP':'Coppa Intercontinentale'
-  };
-  var league=document.querySelector('.league');
-  if(league){
-    var raw=league.textContent.trim().toUpperCase();
-    var mapped=leagueMap[raw];
-    if(!mapped&&raw.indexOf('FRIEND')!==-1)mapped='Amichevole';
-    if(mapped)league.textContent=mapped;
-  }
-
-  var names=Array.prototype.slice.call(document.querySelectorAll('.team-name'));
-  var size=50;
-  names.forEach(function(name){name.style.fontSize=size+'px';});
-  while(size>25&&names.some(function(name){return name.scrollWidth>name.parentElement.clientWidth;})){
-    size-=1;
-    names.forEach(function(name){name.style.fontSize=size+'px';});
-  }
-})();
-</script>
-</body>
-</html>
+<!doctype html><html lang="it"><meta charset="utf-8"><style>
+@font-face{font-family:Dharma;src:url({{FONT}})}
+*{box-sizing:border-box}html,body{margin:0;width:1086px;height:1448px;overflow:hidden}
+body{background:url({{BACKGROUND}}) center/cover;color:white;font-family:Arial}
+main{position:absolute;inset:76px}
+header{position:absolute;left:36px;right:36px;top:55px;height:166px;display:grid;grid-template-columns:135px 1fr 135px;align-items:center;justify-items:center;gap:10px}
+.logo{height:88px;width:auto;max-width:93px;object-fit:contain}.title{width:560px;height:auto}
+.phase{position:absolute;top:235px;left:50%;transform:translateX(-50%);width:255px;height:40px;object-fit:contain;filter:drop-shadow(0 4px 6px #0008)}
+.stats{position:absolute;left:38px;right:38px;top:310px;bottom:60px;display:flex;flex-direction:column}
+.row{flex:1;display:grid;grid-template-columns:115px 1fr 115px;gap:24px;align-items:center;border-top:1px solid #ffffff26}
+.row:last-child{border-bottom:1px solid #ffffff26}span{font:62px/1 Dharma;text-align:center}
+.home{color:{{LEFT}}}.away{color:{{RIGHT}}}
+.label{font-size:18px;letter-spacing:4px;text-align:center;margin-bottom:17px}
+.track{display:flex;height:10px;gap:6px}.track i{background:{{LEFT}}}.track b{background:{{RIGHT}}}
+.track.empty{height:10px;background:#39434d}
+footer{position:absolute;top:1260px;left:0;right:0;text-align:center;font:12px/16px Arial;letter-spacing:1.8px;color:#a5adb3}
+img{filter:drop-shadow(0 5px 8px #0007)}
+</style><body><main><header><img class="logo" src="{{HOME_LOGO}}"><img class="title" src="{{TITLE}}"><img class="logo" src="{{AWAY_LOGO}}"></header><img class="phase" src="{{PHASE}}"><section class="stats">{{ROWS}}</section><footer>JR STATS • {{COMPETITION}}</footer></main></body></html>
