@@ -912,8 +912,13 @@ def resetta_gist():
 # ==============================================================================
 # CANVA
 # ==============================================================================
+_CANVA_ACCESS_TOKEN = None
+_CANVA_ACCESS_EXPIRES_AT = 0.0
+
 def get_valid_token():
-    global CANVA_REFRESH_TOKEN
+    global CANVA_REFRESH_TOKEN, _CANVA_ACCESS_TOKEN, _CANVA_ACCESS_EXPIRES_AT
+    if _CANVA_ACCESS_TOKEN and time.monotonic() < _CANVA_ACCESS_EXPIRES_AT:
+        return _CANVA_ACCESS_TOKEN
     if not CANVA_REFRESH_TOKEN:
         log_line("ERROR", "CANVA", "CANVA_REFRESH_TOKEN mancante")
         return None
@@ -938,7 +943,9 @@ def get_valid_token():
                     log_line("ERROR", "CANVA", "Update GitHub Secret fallito; salvare il refresh token manualmente")
             else:
                 log_line("DEBUG", "CANVA", "Access token ottenuto | refresh token invariato")
-            return tokens["access_token"]
+            _CANVA_ACCESS_TOKEN = tokens["access_token"]
+            _CANVA_ACCESS_EXPIRES_AT = time.monotonic() + max(0, float(tokens.get('expires_in', 0))-60)
+            return _CANVA_ACCESS_TOKEN
         log_line("ERROR", "CANVA", f"Richiesta token fallita: {r.text}")
     except Exception as e:
         log_line("ERROR", "CANVA", f"Connessione fallita: {e}")
