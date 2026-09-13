@@ -953,7 +953,7 @@ def get_valid_token():
 
 def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_name,
                         league_slug, league_name, home_goals=0, away_goals=0, shootout=None):
-    """Compose supported phases; Canva contributes only page-one PDF layers."""
+    """Compose each supported phase with a fresh Canva page-one PDF download."""
     if (not GOAL_GRAPHICS_ENABLED or JUVE_ID not in (str(home_id), str(away_id))
             or is_friendly_competition(league_slug, league_name)
             or kind not in ('kick', 'half', 'full', 'end_of_90')):
@@ -963,6 +963,7 @@ def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_na
         from canva_page_one import export_page_one
         layers = None
         if kind != 'kick':
+            log_line("INFO", "CANVA", f"{kind.upper()}: scarico un nuovo PDF dalla pagina 1")
             layers = export_page_one(SESSION, get_valid_token(), CANVA_DESIGN_ID,
                                      Path('canva_page1_cache'))
         kit = rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
