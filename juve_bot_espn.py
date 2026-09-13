@@ -16,7 +16,6 @@ from urllib3.util.retry import Retry
 import kit_analyzer
 import goal_graphics
 import fclogo_sync
-import diretta_logos
 from live_logging import MatchProgressLog, log_line
 from telegram_autodelete import enqueue_response, should_enqueue
 
@@ -1337,55 +1336,6 @@ def parse_events(data: dict, home_name: str = "", away_name: str = "",
 # ==============================================================================
 # STATISTICHE
 # ==============================================================================
-_DIRETTA_LOGO_CACHE: dict[tuple[str, ...], tuple[str, str]] = {}
-
-
-def _team_logo_aliases(data_espn: dict, team_id: str, display_name: str) -> list[str]:
-    """Nomi utili a collegare una squadra ESPN al risultato di Diretta.it."""
-    aliases = [html.unescape(str(display_name or ""))]
-    team_id = str(team_id)
-    blocks = []
-    try:
-        blocks.extend(data_espn["header"]["competitions"][0].get("competitors", []))
-    except Exception:
-        pass
-    blocks.extend((data_espn.get("boxscore") or {}).get("teams", []))
-    for block in blocks:
-        team = block.get("team") or {}
-        if str(team.get("id", "")) != team_id:
-            continue
-        aliases.extend(
-            team.get(field, "")
-            for field in ("displayName", "name", "shortDisplayName", "location")
-        )
-    result, seen = [], set()
-    for alias in aliases:
-        alias = str(alias or "").strip()
-        key = alias.casefold()
-        if alias and key not in seen:
-            seen.add(key)
-            result.append(alias)
-    return result
-
-
-def _diretta_stats_logo(data_espn: dict, team_id: str, display_name: str) -> str | None:
-    aliases = _team_logo_aliases(data_espn, team_id, display_name)
-    cache_key = (str(team_id), *(alias.casefold() for alias in aliases))
-    cached = _DIRETTA_LOGO_CACHE.get(cache_key)
-    if cached is not None:
-        return cached[0]
-    try:
-        resolved = diretta_logos.resolve_team_logo(aliases, SESSION)
-    except Exception as exc:
-        log_line("DEBUG", "GRAPHICS", f"Logo Diretta non disponibile | {display_name}: {exc}")
-        return None
-    if resolved is None:
-        log_line("DEBUG", "GRAPHICS", f"Logo Diretta non univoco | {display_name}")
-        return None
-    logo, diretta_name = resolved
-    _DIRETTA_LOGO_CACHE[cache_key] = resolved
-    log_line("DEBUG", "GRAPHICS", f"Logo Diretta | {display_name} -> {diretta_name}")
-    return logo
 
 
 def _estrai_stats_espn(data: dict) -> dict:
