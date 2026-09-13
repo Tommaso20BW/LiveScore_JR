@@ -49,16 +49,10 @@ def brand(card, key, assets):
     mark = tight(Image.open(assets/'portrait/jr.png'))
     height = round(H*58/1280)
     mark = mark.resize((round(mark.width*height/mark.height),height),Image.Resampling.LANCZOS)
-    color = {'ucl':'#8DD6FF','uel':'#000000','conference':'#000000','away':'#F6B5CA'}.get(key,COLORS[key])
-    mark = textured(mark,key,assets,True,color,bright=key=='home')
+    color = {'home':'#102B46','ucl':'#8DD6FF','uel':'#232323','conference':'#232323','away':'#F6B5CA'}.get(key,COLORS[key])
+    mark = textured(mark,key,assets,True,color)
     x = W-round(W*16/960)-mark.width
     assert x > W-M
-    if key == 'home':
-        shadow_mask = Image.new('L',card.size)
-        shadow_mask.paste(mark.getchannel('A'),(x+1,round(H*13/1280)+4))
-        shadow = Image.new('RGBA',card.size,'black')
-        shadow.putalpha(shadow_mask.filter(ImageFilter.GaussianBlur(9)).point(lambda a:round(a*.35)))
-        card.alpha_composite(shadow)
     card.alpha_composite(mark,(x,round(H*13/1280)))
     return card
 
@@ -161,7 +155,7 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
 
 def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_goals=0,
           kit='home', competition='', layers=None, shootout=None, assets=g.DEFAULT_ASSET_DIR):
-    if kind not in ('kick','half','full'): raise ValueError('Fase senza grafica')
+    if kind not in ('kick','half','full','end_of_90'): raise ValueError('Fase senza grafica')
     assets = Path(assets)
     key = theme(kit,competition)
     card = Image.open(assets/'portrait'/f'{key}_clean_1086x1448.png').convert('RGBA')

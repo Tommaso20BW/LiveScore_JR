@@ -950,7 +950,7 @@ def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_na
     """Compose supported phases; Canva contributes only page-one PDF layers."""
     if (not GOAL_GRAPHICS_ENABLED or JUVE_ID not in (str(home_id), str(away_id))
             or is_friendly_competition(league_slug, league_name)
-            or kind not in ('kick', 'half', 'full')):
+            or kind not in ('kick', 'half', 'full', 'end_of_90')):
         return None
     try:
         import portrait_graphics
@@ -974,7 +974,7 @@ def send_phase_message(text, **kwargs):
     eligible = (GOAL_GRAPHICS_ENABLED
         and JUVE_ID in (str(kwargs['home_id']), str(kwargs['away_id']))
         and not is_friendly_competition(kwargs['league_slug'], kwargs['league_name'])
-        and kwargs['kind'] in ('kick', 'half', 'full'))
+        and kwargs['kind'] in ('kick', 'half', 'full', 'end_of_90'))
     return _send_telegram_event_photo_get_id(text, photo, filename='phase.png',
         label=kwargs['kind'], retry_factory=(lambda: build_phase_graphic(**kwargs)) if eligible else None)[0]
 
@@ -1535,6 +1535,11 @@ def recupera_xg_espn(event_id: str, home_id: str, away_id: str):
                 pass
 
 
+def stats_eligible(home_id, away_id, league_slug, league_name=""):
+    return (JUVE_ID in (str(home_id), str(away_id))
+            and not is_friendly_competition(league_slug, league_name))
+
+
 def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   home_name: str, away_name: str,
                                   home_goals: int, away_goals: int,
@@ -1543,71 +1548,13 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
                                   pen_home: int = 0, pen_away: int = 0,
                                   event_id: str = "",
                                   hd_output: bool = True):
-    # Import lazy: PIL e Playwright servono solo qui. Così il workflow di
-    # keep-alive Canva (ONLY_REFRESH_TOKEN) può girare senza installarli.
+    if not stats_eligible(home_id, away_id, league_slug, league_name):
+        return None
+    import stats_graphics
     from PIL import Image
-    from playwright.sync_api import sync_playwright
-
-    # ── Kit maglia + colori dal campo 'uniform' ESPN (cascata fallback) ──
-    # boxscore.teams → uniform reale (kit + colore indossato in campo)
-    # competitors    → fallback colori brand (team.color / alternateColor)
-    try:
-        _competitors = data_espn["header"]["competitions"][0]["competitors"]
-    except Exception:
-        _competitors = []
-    _boxscore_teams = (data_espn.get("boxscore") or {}).get("teams", [])
-
-    # La logica classica (campionato/coppa/amichevole) resta come fallback
-    # nel caso in cui il campo uniform non sia disponibile.
-    _fallback_kit = determina_kit(home_id, away_id, league_slug, league_name)
-
-    _kit_result = kit_analyzer.analizza(
-        home_name      = home_name,
-        away_name      = away_name,
-        home_id        = home_id,
-        away_id        = away_id,
-        league_name    = league_name,
-        competitors    = _competitors,
-        boxscore_teams = _boxscore_teams,
-        fallback_kit   = _fallback_kit,
-    )
-    juve_kit   = _kit_result["kit"]
-    home_color = _kit_result["home_color"]
-    away_color = _kit_result["away_color"]
-    log_line(
-        "DEBUG",
-        "STATS",
-        f"Kit={juve_kit} | {home_name}={home_color} | {away_name}={away_color} "
-        f"| lega={league_name}/{league_slug or 'n.d.'}",
-    )
-
-    # Logo Juve in base al kit:
-    #   home / away    → logo nero (SVG, 2020)
-    #   third / default → icona bianca quadrata (PNG, 2017)
-    JUVE_LOGO_BLACK = "https://upload.wikimedia.org/wikipedia/commons/e/ed/Juventus_FC_-_logo_black_%28Italy%2C_2020%29.svg"
-    JUVE_LOGO_WHITE = "https://upload.wikimedia.org/wikipedia/commons/9/99/Juventus_FC_2017_squared_icon_%28white%29.png"
-    JUVE_LOGO_GOLD  = "https://gist.githubusercontent.com/Tommaso20BW/86db1c7a3581f15150f157c1fa572047/raw/fcb8706fea43a1e015da2d5ae4ff3e8b651ec235/juve_thid.png"
-
-    if juve_kit in ("home", "away"):
-        juve_logo = JUVE_LOGO_BLACK
-    elif juve_kit == "third":
-        juve_logo = JUVE_LOGO_GOLD
-    else:
-        juve_logo = JUVE_LOGO_WHITE
-    # L'override Juventus dipendente dal kit resta intenzionale. Per tutte le
-    # altre squadre la fonte primaria e' Diretta.it; ESPN interviene soltanto
-    # se la ricerca non e' disponibile o non produce un match univoco.
-    h_logo = juve_logo if str(home_id) == JUVE_ID else (
-        _diretta_stats_logo(data_espn, home_id, home_name)
-        or f"https://a.espncdn.com/i/teamlogos/soccer/500/{home_id}.png"
-    )
-    a_logo = juve_logo if str(away_id) == JUVE_ID else (
-        _diretta_stats_logo(data_espn, away_id, away_name)
-        or f"https://a.espncdn.com/i/teamlogos/soccer/500/{away_id}.png"
-    )
-    badge_label = MOMENTI_CONFIG[momento]["badge"]
-    if momento == "FT" and (pen_home > 0 or pen_away > 0):
-        badge_label = "FINE PARTITA d.c.r."
+    import io
+    kit = rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
+                         league_slug, league_name)
     raw         = _estrai_stats_espn(data_espn)
 
     def g(side, *keys, fallback="0"):
@@ -1700,163 +1647,28 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
             str(passpct_h).replace("%",""), str(passpct_a).replace("%",""))),
     ])
 
-    def render_stat_row(label, h, a, hp):
-        if hp is None:
-            track_html = '<div class="track is-empty"></div>'
+    aliases = {"Expected Goals (xG)": "xG", "Passaggi totali": "PASSAGGI"}
+    mapped = {aliases.get(label, label.upper()): (h, a) for label, h, a, _ in stats_mappate}
+    mapped["POSSESSO"] = (pos_h, pos_a)
+    rows = [(label, *mapped[label]) for label in stats_graphics.ORDER if label in mapped]
+    logos = []
+    for tid, name in ((home_id, home_name), (away_id, away_name)):
+        url = _diretta_stats_logo(data_espn, tid, name)
+        if not url:
+            log_line("WARN", "STATS", f"Logo Diretta mancante | {name}")
+            return None
+        if url.startswith('data:image/png;base64,'):
+            import base64
+            content = base64.b64decode(url.split(',', 1)[1], validate=True)
         else:
-            hp = max(0, min(100, hp))
-            split_class = " has-split" if 0 < hp < 100 else ""
-            track_html = (
-                f'<div class="track{split_class}" style="--split:{hp}%">'
-                f'<div class="bar-left" style="width:{hp}%"></div>'
-                f'<div class="bar-right" style="width:{100-hp}%"></div>'
-                f'</div>'
-            )
-        return (
-            f'<div class="row">'
-            f'<div class="row-top">'
-            f'<div class="value">{h}</div>'
-            f'<div class="label">{label}</div>'
-            f'<div class="value right">{a}</div>'
-            f'</div>'
-            f'{track_html}'
-            f'</div>'
-        )
-
-    rows_html = "".join(
-        render_stat_row(label, h, a, hp)
-        for label, h, a, hp in stats_mappate
-    )
-
-    if pen_home > 0 or pen_away > 0:
-        score_block_html = (
-            f'<div class="score"><span>{home_goals}</span>'
-            f'<span class="score-separator">-</span><span>{away_goals}</span></div>'
-            f'<div class="pen-score">({pen_home} - {pen_away})</div>'
-        )
-    else:
-        score_block_html = (
-            f'<div class="score"><span>{home_goals}</span>'
-            f'<span class="score-separator">-</span><span>{away_goals}</span></div>'
-        )
-
-    # Carica il template HTML esterno
-    _template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stats.html")
-    try:
-        with open(_template_path, "r", encoding="utf-8") as f:
-            template = f.read()
-    except FileNotFoundError:
-        log_line("ERROR", "STATS", f"Template stats.html non trovato | {_template_path}")
-        return None
-
-    # Il colore principale dei temi Juventus segue il lato reale della squadra.
-    if str(home_id) == JUVE_ID:
-        _juve_side_class = "juve-home"
-    elif str(away_id) == JUVE_ID:
-        _juve_side_class = "juve-away"
-    else:
-        _juve_side_class = "no-juve"
-
-    # Data del rendering in italiano, mostrata nel footer.
-    _mesi_it = (
-        "GENNAIO", "FEBBRAIO", "MARZO", "APRILE", "MAGGIO", "GIUGNO",
-        "LUGLIO", "AGOSTO", "SETTEMBRE", "OTTOBRE", "NOVEMBRE", "DICEMBRE",
-    )
-    _now_match = datetime.now(ITALY_TZ)
-    _match_date = f"{_now_match.day:02d} {_mesi_it[_now_match.month - 1]} {_now_match.year}"
-
-    # Nel tema default i colori delle barre e dei bagliori arrivano dalle
-    # uniform reali ESPN. Home/away/third mantengono la palette del bot.
-    if juve_kit == "default":
-        _home_dark = kit_analyzer.darken(home_color)
-        _away_dark = kit_analyzer.darken(away_color)
-        _dynamic_style = (
-            f"\nbody.kit-default {{\n"
-            f"  --body-glow1: {home_color}4D;\n"
-            f"  --body-glow2: {away_color}38;\n"
-            f"  --left:       {home_color};\n"
-            f"  --left-dark:  {_home_dark};\n"
-            f"  --right:      {away_color};\n"
-            f"  --right-soft: {_away_dark};\n"
-            f"  --left-text:  #ffffff;\n"
-            f"  --right-text: #ffffff;\n"
-            f"}}"
-        )
-    else:
-        _dynamic_style = ""
-
-    # Determina il tema maglia (home / away / third / default)
-    html_content = (
-        template
-        .replace("{JUVE_KIT}",       juve_kit)
-        .replace("{JUVE_SIDE_CLASS}", _juve_side_class)
-        .replace("{DYNAMIC_STYLE}",  _dynamic_style)
-        .replace("{LEAGUE_NAME}",    esc(league_name.upper()))
-        .replace("{BADGE_LABEL}",    badge_label)
-        .replace("{H_LOGO}",         h_logo)
-        .replace("{HOME_NAME}",      home_name)
-        .replace("{SCORE_BLOCK}",    score_block_html)
-        .replace("{A_LOGO}",         a_logo)
-        .replace("{AWAY_NAME}",      away_name)
-        .replace("{POS_H}",          pos_h)
-        .replace("{POS_A}",          pos_a)
-        .replace("{POS_RIGHT_PCT}",  pos_right_pct)
-        .replace("{POS_RING_CLASS}", pos_ring_class)
-        .replace("{ROWS_HTML}",      rows_html)
-        .replace("{MATCH_DATE}",     _match_date)
-    )
-
-    path_html      = "/tmp/stats.html"
-    path_raw_png   = "/tmp/stats_raw.png"
-    path_final_png = "/tmp/stats_final.png"
-
-    with open(path_html, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(args=["--disable-web-security", "--allow-running-insecure-content"])
-        render_scale = 2.0 if hd_output else 1.0
-        page = browser.new_page(
-            viewport={"width": 1620, "height": 4000},
-            device_scale_factor=render_scale,
-        )
-        page.goto(f"file://{path_html}")
-        page.wait_for_timeout(3000)
-        page.screenshot(path=path_raw_png, clip={"x": 0, "y": 0, "width": 1620, "height": 2160}, omit_background=False)
-        browser.close()
-
-    # home/away → texture scura; third → texture gold; default → texture chiara
-    texture_file = {
-        "home":  "texture_black.png",
-        "away":  "texture_black.png",
-        "third": "texture_gold.png",
-    }.get(juve_kit, "texture_white.png")
-    try:
-        base_img = Image.open(path_raw_png).convert("RGBA")
-        if hd_output:
-            raw_size = base_img.size
-            base_img = base_img.resize((1920, 2560), Image.Resampling.LANCZOS)
-            log_line(
-                "DEBUG", "STATS", f"Output HD | {raw_size[0]}x{raw_size[1]} -> 1920x2560 (LANCZOS)"
-            )
-
-        if os.path.exists(texture_file):
-            texture  = Image.open(texture_file).convert("RGBA").resize(base_img.size, Image.Resampling.LANCZOS)
-            Image.alpha_composite(base_img, texture).convert("RGB").save(path_final_png, "PNG")
-            log_line(
-                "DEBUG", "STATS", f"Texture applicata | {texture_file} | {base_img.width}x{base_img.height}"
-            )
-            return path_final_png
-        if hd_output:
-            raise FileNotFoundError(
-                f"Texture finale obbligatoria non trovata: {texture_file}"
-            )
-    except Exception as e:
-        if hd_output:
-            raise RuntimeError(f"Errore output HD/texture stats: {e}") from e
-        log_line("DEBUG", "STATS", f"Texture non applicata: {e}")
-
-    return path_raw_png
+            response = SESSION.get(url, timeout=20)
+            response.raise_for_status()
+            content = response.content
+        logos.append(Image.open(io.BytesIO(content)).convert("RGBA"))
+    html = stats_graphics.build_html(rows=rows, kit=kit, competition=league_slug,
+        league_name=league_name, momento=momento, home_id=home_id, away_id=away_id,
+        home_logo=logos[0], away_logo=logos[1])
+    return stats_graphics.render(html, hd_output=hd_output)
 
 # ==============================================================================
 # ESPN API
@@ -2305,7 +2117,8 @@ def avvia_ciclo_partita():
                 _momento = _ps.get("momento")
                 state["pending_stats"].remove(_ps)
                 state_changed = True
-                if not _momento or _momento in state.get("sent_stats", []):
+                if (not stats_eligible(home_id, away_id, league_slug, league_name)
+                        or not _momento or _momento in state.get("sent_stats", [])):
                     continue
                 data_fresh = fetch_evento(event_id, league_slug) or data
                 png_path = recupera_e_genera_stats_html(data_fresh, home_id, away_id,
@@ -2520,7 +2333,7 @@ def avvia_ciclo_partita():
             if status == "BREAK_ET" and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
                 state["_break_et_seen"] = state.get("_break_et_seen", 0) + 1
                 if state["_break_et_seen"] >= 2:
-                    msg_id = send_telegram_get_id(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                    msg_id = send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}", kind="end_of_90", data_espn=data, home_id=home_id, away_id=away_id, home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name, home_goals=g_home, away_goals=g_away)
                     if msg_id:
                         log_line("EVENT", "MATCH", f"FINE REGOLAMENTARI | {home_name} {g_home}-{g_away} {away_name} | Telegram inviato")
                         state["sent_periods"].append("2H_END")
@@ -2536,7 +2349,7 @@ def avvia_ciclo_partita():
             # status è già ET/PEN/AET → invia ora. L'INIZIO 1T SUPPLEMENTARE
             # partirà comunque al ciclo successivo grazie a _2h_end_gia_inviato.
             if status in ("ET", "PEN", "AET") and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
-                msg_id = send_telegram_get_id(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}")
+                msg_id = send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}", kind="end_of_90", data_espn=data, home_id=home_id, away_id=away_id, home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name, home_goals=g_home, away_goals=g_away)
                 if msg_id:
                     log_line("EVENT", "MATCH", f"FINE REGOLAMENTARI | {home_name} {g_home}-{g_away} {away_name} | Telegram inviato")
                     state["sent_periods"].append("2H_END")
@@ -3015,7 +2828,7 @@ def avvia_ciclo_partita():
 
                 # --- Stats fine partita: 5 minuti dopo il messaggio finale ---
                 # (attesa "a fette": la partita è finita, non c'è altro da monitorare)
-                if "FT" not in state["sent_stats"]:
+                if stats_eligible(home_id, away_id, league_slug, league_name) and "FT" not in state["sent_stats"]:
                     log_line("WAIT", "STATS", f"FINE PARTITA | generazione tra {STATS_DELAY_SECONDS}s")
                     for _ in range(STATS_DELAY_SECONDS // 5):
                         time.sleep(5)
