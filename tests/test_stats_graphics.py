@@ -1,7 +1,5 @@
-import io
-import base64
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, call
 from PIL import Image
 import stats_graphics as stats
 import juve_bot_espn as bot
@@ -9,6 +7,15 @@ import portrait_graphics as portrait
 
 
 class StatsGraphicsTests(unittest.TestCase):
+    def test_logos_use_shared_card_renderer_in_home_away_order(self):
+        mark = Image.new('RGBA', (20, 30), 'white')
+        with patch.object(portrait, 'logo', return_value=mark) as logo:
+            stats.build_html(rows=[], kit='home', competition='ita.1', league_name='Serie A',
+                momento='FT', home_id='110', away_id='111', home_name='Inter', away_name='Juventus')
+        self.assertEqual(logo.call_args_list, [
+            call('Inter', '110', 'home', stats.g.DEFAULT_ASSET_DIR, 128),
+            call('Juventus', '111', 'home', stats.g.DEFAULT_ASSET_DIR, 128)])
+
     def test_zero_track_and_missing_values(self):
         html = stats.rows_html([('FUORIGIOCO', '0', '0'), ('xG', None, '0')])
         self.assertIn('track empty', html)
@@ -32,16 +39,12 @@ class StatsGraphicsTests(unittest.TestCase):
         self.assertIn('PARATE', stats.ORDER)
 
     def test_real_data_pipeline_missing_and_zero_xg(self):
-        buffer = io.BytesIO()
-        Image.new('RGBA', (20, 30), 'white').save(buffer, 'PNG')
-        response = Mock(content=buffer.getvalue())
         data = {'boxscore': {'teams': [
             {'homeAway': 'home', 'statistics': [{'name': 'redCards', 'displayValue': '1'}]},
             {'homeAway': 'away', 'statistics': [{'name': 'saves', 'displayValue': '5'}]}]}}
         for xg in (None, ('0.00', '0.00')):
             with patch.object(bot, 'rileva_kit_juve', return_value='away'), \
-                 patch.object(bot, '_diretta_stats_logo', return_value='data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode()), \
-                 patch.object(bot.SESSION, 'get', return_value=response), \
+                 patch.object(bot, '_diretta_stats_logo', side_effect=AssertionError('Diretta must not be called')), \
                  patch.object(bot, 'recupera_xg_espn', return_value=xg), \
                  patch.object(stats, 'build_html', return_value='html') as build, \
                  patch.object(stats, 'render', return_value='stats.png'):
@@ -58,10 +61,9 @@ class StatsGraphicsTests(unittest.TestCase):
         self.assertEqual(result.getpixel((1000, 100)), background.getpixel((1000, 100)))
 
     def test_away_theme_juventus_is_right_and_layout_is_approved(self):
-        mark = Image.new('RGBA', (20, 30), 'white')
         html = stats.build_html(rows=[('POSSESSO', '43%', '57%')], kit='home', competition='ita.1',
             league_name='Serie A', momento='2H_END', home_id='110', away_id='111',
-            home_logo=mark, away_logo=mark)
+            home_name='Inter', away_name='Juventus')
         self.assertIn('.home{color:#fff}', html)
         self.assertIn('.away{color:#FACA02}', html)
         self.assertIn('height:88px', html)
