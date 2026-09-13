@@ -7,7 +7,7 @@ import goal_graphics as g
 W, H, M = 1086, 1448, 76
 IW, IH = W - 2*M, H - 2*M
 COLORS = dict(home='#FACA02', away='#ED95AE', third='#C7A852',
-              saved_italia='#D97C30', ucl='#8DD6FF', uel='#FFAC38', conference='#A1EF46')
+              ucl='#8DD6FF', uel='#FFAC38', conference='#A1EF46')
 
 def theme(kit='home', competition='', saved=False):
     value = competition.lower()
@@ -17,7 +17,7 @@ def theme(kit='home', competition='', saved=False):
     return kit if kit in ('home', 'away', 'third') else 'home'
 
 def texture_key(key):
-    return 'saved' if key == 'saved_italia' else key if key in ('home','away','third') else 'home'
+    return key if key in ('home','away','third') else 'home'
 
 def tight(source, white_mask=False):
     source = source.convert('RGBA')
@@ -102,9 +102,7 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
           kit, saved=False, suffix='', competition='', pose=None, event_key='', assets=g.DEFAULT_ASSET_DIR):
     assets = Path(assets)
     key = theme(kit,competition,saved)
-    background = assets/'portrait'/f'{key}_{"saved" if saved else "goal"}_1086x1448.png'
-    if saved:
-        background = assets/'portrait'/f'{key}_clean_1086x1448.png'
+    background = assets/'portrait'/f'{key}_{"clean" if saved else "goal"}_1086x1448.png'
     card = Image.open(background).convert('RGBA')
     if key == 'ucl': card = vivid_background(card)
     panel = card.crop((M,M,W-M,H-M))

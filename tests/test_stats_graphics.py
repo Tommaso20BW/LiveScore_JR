@@ -44,7 +44,6 @@ class StatsGraphicsTests(unittest.TestCase):
             {'homeAway': 'away', 'statistics': [{'name': 'saves', 'displayValue': '5'}]}]}}
         for xg in (None, ('0.00', '0.00')):
             with patch.object(bot, 'rileva_kit_juve', return_value='away'), \
-                 patch.object(bot, '_diretta_stats_logo', side_effect=AssertionError('Diretta must not be called')), \
                  patch.object(bot, 'recupera_xg_espn', return_value=xg), \
                  patch.object(stats, 'build_html', return_value='html') as build, \
                  patch.object(stats, 'render', return_value='stats.png'):

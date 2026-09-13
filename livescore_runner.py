@@ -19,7 +19,7 @@ def _asset_status(kit: str, competition: str = '') -> str:
         ("portrait", f"{saved_key}_clean_1086x1448.png"),
         ("portrait", f"{key}_clean_1086x1448.png"),
         ("overlays", "front_goal.png"), ("overlays", "front_saved.png"),
-        ("word_textures", f"{kit}.png"), ("word_textures", "saved.png"),
+        ("word_textures", f"{kit}.png"),
     )]
     missing = []
     for path in files:
