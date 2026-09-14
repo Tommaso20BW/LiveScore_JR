@@ -417,7 +417,7 @@ jobs:
                         )
                         state_changed = True
 
-'''
+          '''
 
           text = text[:start] + new_block + text[end:]
 
@@ -429,7 +429,7 @@ jobs:
                 (status == "PEN" and _pen_deciso)
             )
             if is_finished:
-'''
+          '''
 
           finish_replacement = '''            is_finished = (
                 status in ("FT", "AET") or
@@ -468,7 +468,7 @@ jobs:
                 continue
 
             if is_finished:
-'''
+          '''
 
           if finish_marker not in text:
               raise SystemExit(
