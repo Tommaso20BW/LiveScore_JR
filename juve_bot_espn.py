@@ -884,30 +884,127 @@ def leggi_stato_da_gist():
         time.sleep(3)
     return False, None
 
-def salva_stato_su_gist(state: dict):
-    if not GH_PAT or not GIST_ID:
-        return
+def _gist_retry_delay(response=None, attempt: int = 0) -> int:
+    """Attesa breve tra i retry Gist, rispettando Retry-After quando presente."""
+    retry_after = None
     try:
-        # Le chiavi con underscore sono flag interni di sessione (log, reset):
-        # non vanno persistite nel Gist.
-        clean = {k: v for k, v in state.items() if not str(k).startswith("_")}
-        payload = {"files": {"match_state.json": {"content": json.dumps(clean, ensure_ascii=False, indent=2)}}}
-        r = SESSION.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
-                          json=payload, timeout=10)
-        if r.status_code == 200:
-            pass
-    except Exception as e:
-        log_line("ERROR", "STATE", f"Salvataggio Gist fallito: {e}")
+        if response is not None:
+            retry_after = int(response.headers.get("Retry-After", ""))
+    except (TypeError, ValueError):
+        retry_after = None
+    if retry_after is not None:
+        return max(1, min(retry_after, 30))
+    return min(2 * (attempt + 1), 6)
 
-def resetta_gist():
+
+def salva_stato_su_gist(state: dict) -> bool:
+    """Salva lo stato con retry e marca lo stato come dirty finché non persiste.
+
+    In caso di errore non viene perso lo stato in memoria: `_gist_dirty` forza
+    un nuovo tentativo prima che il live elabori altri eventi nel ciclo seguente.
+    """
     if not GH_PAT or not GIST_ID:
-        return
-    try:
-        payload = {"files": {"match_state.json": {"content": "{}"}}}
-        SESSION.patch(f"https://api.github.com/gists/{GIST_ID}", headers=_gist_headers(),
-                      json=payload, timeout=10)
-    except Exception as e:
-        log_line("ERROR", "STATE", f"Reset Gist fallito: {e}")
+        state.pop("_gist_dirty", None)
+        return True
+
+    # Le chiavi con underscore sono flag interni di sessione (log, reset):
+    # non vanno persistite nel Gist.
+    clean = {k: v for k, v in state.items() if not str(k).startswith("_")}
+    payload = {
+        "files": {
+            "match_state.json": {
+                "content": json.dumps(clean, ensure_ascii=False, indent=2)
+            }
+        }
+    }
+
+    last_detail = ""
+    for attempt in range(3):
+        response = None
+        try:
+            response = SESSION.patch(
+                f"https://api.github.com/gists/{GIST_ID}",
+                headers=_gist_headers(),
+                json=payload,
+                timeout=10,
+            )
+            if response.status_code == 200:
+                was_dirty = bool(state.pop("_gist_dirty", None))
+                if was_dirty:
+                    log_line("OK", "STATE", "Stato Gist recuperato e sincronizzato")
+                return True
+
+            last_detail = f"HTTP {response.status_code}"
+            log_line(
+                "RETRY",
+                "STATE",
+                f"Salvataggio Gist {last_detail} | tentativo {attempt + 1}/3",
+            )
+        except Exception as e:
+            last_detail = str(e)
+            log_line(
+                "RETRY",
+                "STATE",
+                f"Salvataggio Gist fallito: {e} | tentativo {attempt + 1}/3",
+            )
+
+        if attempt < 2:
+            time.sleep(_gist_retry_delay(response, attempt))
+
+    state["_gist_dirty"] = True
+    log_line(
+        "ERROR",
+        "STATE",
+        f"Stato Gist non salvato dopo 3 tentativi"
+        + (f" | {last_detail}" if last_detail else ""),
+    )
+    return False
+
+
+def resetta_gist() -> bool:
+    """Azzera il Gist con retry e verifica esplicita della risposta GitHub."""
+    if not GH_PAT or not GIST_ID:
+        return True
+
+    payload = {"files": {"match_state.json": {"content": "{}"}}}
+    last_detail = ""
+
+    for attempt in range(3):
+        response = None
+        try:
+            response = SESSION.patch(
+                f"https://api.github.com/gists/{GIST_ID}",
+                headers=_gist_headers(),
+                json=payload,
+                timeout=10,
+            )
+            if response.status_code == 200:
+                return True
+
+            last_detail = f"HTTP {response.status_code}"
+            log_line(
+                "RETRY",
+                "STATE",
+                f"Reset Gist {last_detail} | tentativo {attempt + 1}/3",
+            )
+        except Exception as e:
+            last_detail = str(e)
+            log_line(
+                "RETRY",
+                "STATE",
+                f"Reset Gist fallito: {e} | tentativo {attempt + 1}/3",
+            )
+
+        if attempt < 2:
+            time.sleep(_gist_retry_delay(response, attempt))
+
+    log_line(
+        "ERROR",
+        "STATE",
+        f"Reset Gist non riuscito dopo 3 tentativi"
+        + (f" | {last_detail}" if last_detail else ""),
+    )
+    return False
 
 # ==============================================================================
 # CANVA
@@ -1986,6 +2083,17 @@ def avvia_ciclo_partita():
         sleep_time = 6
         state_changed = False
         try:
+            if state.get("_gist_dirty"):
+                if not salva_stato_su_gist(state):
+                    log_line(
+                        "WAIT",
+                        "STATE",
+                        "Gist non sincronizzato; sospendo nuovi invii "
+                        "per evitare duplicati",
+                    )
+                    time.sleep(sleep_time)
+                    continue
+
             data = fetch_evento(event_id, league_slug)
             if not data:
                 time.sleep(10)
@@ -3476,7 +3584,11 @@ def avvia_ciclo_partita():
             sleep_time = 6
 
         finally:
-            if isinstance(state, dict) and not state.get("_reset_done") and state_changed:
+            if (
+                isinstance(state, dict)
+                and not state.get("_reset_done")
+                and (state_changed or state.get("_gist_dirty"))
+            ):
                 salva_stato_su_gist(state)
 
         time.sleep(sleep_time)
