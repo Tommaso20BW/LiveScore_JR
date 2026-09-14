@@ -11,7 +11,7 @@ COLORS = dict(home='#FACA02', away='#ED95AE', third='#C7A852',
 
 def theme(kit='home', competition='', saved=False):
     value = competition.lower()
-    if 'conference' in value or 'europa.conf' in value: return 'conference'
+    if 'conference' in value or 'europa.conf' in value or 'europa_conf' in value: return 'conference'
     if 'champions' in value: return 'ucl'
     if 'europa' in value: return 'uel'
     return kit if kit in ('home', 'away', 'third') else 'home'
