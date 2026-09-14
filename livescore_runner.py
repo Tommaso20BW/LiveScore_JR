@@ -1,11 +1,15 @@
+import json
 import os
 from datetime import datetime
 
 from PIL import Image
 
 import juve_bot_espn as bot
+from dynamic_kit_runtime import DynamicKitRuntime
 
 
+# Installa gli hook una sola volta. Il cuore juve_bot_espn.py resta invariato.
+KIT_RUNTIME = DynamicKitRuntime(bot).install()
 _ORIGINAL_TROVA_PARTITA = bot.trova_partita_oggi
 
 
@@ -67,7 +71,14 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
         "abilitate" if enabled else "disabilitate")
     asset_status = _asset_status(kit, league_slug) if enabled and not friendly and kit in (
         "home", "away", "third") and juventus_match else None
-    kit_line = f"Kit Juventus: {kit_label}\n" if juventus_match else ""
+
+    mode_label = KIT_RUNTIME.mode_label_for(partita.get("event_id"))
+    kit_line = ""
+    if juventus_match:
+        kit_line = f"Kit Juventus: {kit_label}\n"
+        if mode_label:
+            kit_line += f"Modalità kit: {mode_label}\n"
+
     asset_line = f"Background e scritte: {bot.esc(asset_status)}\n" if asset_status else ""
     graphics_section = (
         "🎨 <b>GRAFICHE</b>\n"
@@ -105,6 +116,20 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
     )
 
 
+def _response_message_id(response) -> int | None:
+    try:
+        payload = response.json()
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    try:
+        value = (payload.get("result") or {}).get("message_id")
+        return int(value) if value is not None else None
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
 def _notifica_partita_trovata_bot(partita: dict) -> None:
     """Invia al canale Bot JR la conferma che il LiveScore ha agganciato la gara."""
     bot_chat_id = os.getenv("TELEGRAM_TO_BOT")
@@ -118,23 +143,42 @@ def _notifica_partita_trovata_bot(partita: dict) -> None:
         return
 
     try:
-        # Un solo summary per orario, stadio e kit. Se ESPN non risponde,
-        # la notifica usa comunque i dati gia' acquisiti dalla discovery.
+        # Un solo summary per orario, stadio e kit. Il runtime non aggiunge
+        # richieste ESPN: da qui in poi controllerà uniform.type dentro ogni
+        # normale fetch_evento già eseguito dal LiveScore.
         try:
             data = bot.fetch_evento(partita["event_id"], partita["league_slug"])
         except Exception:
             data = None
+
+        KIT_RUNTIME.prepare_match(partita, data)
         testo = messaggio_partita_trovata(partita, data)
 
-        r = bot._tg_post(
-            "sendMessage",
-            payload={
-                "chat_id": bot_chat_id,
-                "text": testo,
-                "parse_mode": "HTML",
-            },
-        )
+        payload = {
+            "chat_id": bot_chat_id,
+            "text": testo,
+            "parse_mode": "HTML",
+        }
+        keyboard = KIT_RUNTIME.keyboard_for_current()
+        if keyboard:
+            payload["reply_markup"] = json.dumps(
+                keyboard,
+                ensure_ascii=False,
+            )
+
+        r = bot._tg_post("sendMessage", payload=payload)
         r.raise_for_status()
+
+        message_id = _response_message_id(r)
+        if message_id:
+            KIT_RUNTIME.attach_recap(
+                message_id,
+                bot_chat_id,
+                lambda: messaggio_partita_trovata(
+                    partita,
+                    KIT_RUNTIME.latest_summary or data,
+                ),
+            )
 
         bot.log_line(
             "DEBUG",
@@ -157,7 +201,7 @@ def trova_partita_con_notifica(team_id: str):
 
 
 # Il bot originale resta intatto: sostituiamo solo la funzione di discovery
-# durante questo run, aggiungendo la notifica sul canale Bot.
+# durante questo run, aggiungendo notifica e controllo kit dinamico.
 if __name__ == "__main__":
     bot.trova_partita_oggi = trova_partita_con_notifica
     bot.main()
