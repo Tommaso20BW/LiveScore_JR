@@ -1,0 +1,90 @@
+name: TEST - Dynamic Juventus Kit UEFA 10m
+
+on:
+  workflow_dispatch:
+    inputs:
+      competition:
+        description: "Competizione UEFA da simulare"
+        required: true
+        default: "Champions League"
+        type: choice
+        options:
+          - Champions League
+          - Europa League
+          - Conference League
+      duration_seconds:
+        description: "Durata test interattivo"
+        required: true
+        default: "600"
+      fallback_kit:
+        description: "Kit fallback iniziale"
+        required: true
+        default: "away"
+        type: choice
+        options:
+          - home
+          - away
+          - third
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dynamic-kit-uefa-live-test
+  cancel-in-progress: true
+
+jobs:
+  dynamic-kit-uefa-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip==26.1.2
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Unit tests UEFA dynamic kit
+        run: python -m unittest -v tests.test_dynamic_kit_uefa
+
+      - name: Resolve UEFA competition
+        id: comp
+        shell: bash
+        run: |
+          case "${{ inputs.competition }}" in
+            "Europa League")
+              echo "slug=uefa.europa" >> "$GITHUB_OUTPUT"
+              echo "name=UEFA EUROPA LEAGUE" >> "$GITHUB_OUTPUT"
+              ;;
+            "Conference League")
+              echo "slug=uefa.europa.conf" >> "$GITHUB_OUTPUT"
+              echo "name=UEFA CONFERENCE LEAGUE" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "slug=uefa.champions" >> "$GITHUB_OUTPUT"
+              echo "name=UEFA CHAMPIONS LEAGUE" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Run interactive UEFA simulation
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
+          KIT_TEST_DURATION_SECONDS: ${{ inputs.duration_seconds }}
+          KIT_TEST_FALLBACK: ${{ inputs.fallback_kit }}
+          KIT_TEST_COMPETITION: ${{ steps.comp.outputs.slug }}
+          KIT_TEST_LEAGUE_NAME: ${{ steps.comp.outputs.name }}
+          KIT_TEST_ESPN_TIMELINE: >-
+            [{"at":0,"kit":null},{"at":60,"kit":"third"},{"at":180,"kit":"home"}]
+        run: python -u dynamic_kit_uefa_live_test.py
