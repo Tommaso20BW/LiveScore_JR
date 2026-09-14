@@ -290,52 +290,115 @@ def scoring_items(data: dict) -> list[dict]:
     return result
 
 
+def production_goal_events(data: dict) -> list[dict]:
+    """Usa ESATTAMENTE parse_events() e goal_scoring_team_id() del bot reale."""
+    home_id, away_id, home_name, away_name, *_ = match_info(data)
+    events = bot.parse_events(
+        data,
+        home_name,
+        away_name,
+        str(home_id),
+        str(away_id),
+    )
+
+    goals = []
+    for event in events:
+        if event.get("type") not in (
+            "goal",
+            "penalty goal",
+            "own goal",
+        ):
+            continue
+        item = dict(event)
+        item["scoring_team_id"] = bot.goal_scoring_team_id(
+            item,
+            str(home_id),
+            str(away_id),
+        )
+        goals.append(item)
+
+    def sort_key(event):
+        period = int(event.get("period") or 0)
+        minute = int(event.get("minute") or 0)
+        # Se ESPN non ha valorizzato il periodo, il minuto mantiene comunque
+        # l'ordine regolamentare. Il seq del parser produzione fa da tiebreaker.
+        inferred_period = period or (1 if minute <= 45 else 2)
+        return (
+            inferred_period,
+            minute,
+            int(event.get("seq") or 0),
+        )
+
+    return sorted(goals, key=sort_key)
+
+
+def _display_base_minute(value) -> int:
+    raw = str(value or "").replace("’", "'").replace("'", "")
+    first = raw.split("+", 1)[0].split(":", 1)[0].strip()
+    try:
+        return int(float(first))
+    except Exception:
+        return 999
+
+
 def halftime_score(data: dict) -> tuple[int, int]:
     home_id, away_id, *_ = match_info(data)
     home = away = 0
-    found = False
-    for item in scoring_items(data):
+
+    for event in production_goal_events(data):
+        period = int(event.get("period") or 0)
+        minute_disp = event.get("minute_disp") or event.get("minute") or ""
         first_half = (
-            item["period"] == 1
+            period == 1
             or (
-                item["period"] is None
-                and _clock_minutes(item["minute"]) < 46
+                period == 0
+                and _display_base_minute(minute_disp) <= 45
             )
         )
         if not first_half:
             continue
-        if item["team_id"] == str(home_id):
-            home += 1
-            found = True
-        elif item["team_id"] == str(away_id):
-            away += 1
-            found = True
-    if found:
-        return home, away
 
-    # Se ESPN cambia forma ai dettagli, meglio una card dichiaratamente neutra
-    # che inventare un parziale.
-    log("WARN: parziale HT non ricavato dai dettagli ESPN; uso 0-0 nel test")
-    return 0, 0
+        scoring_team = str(event.get("scoring_team_id") or "")
+        if scoring_team == str(home_id):
+            home += 1
+        elif scoring_team == str(away_id):
+            away += 1
+
+    return home, away
 
 
 def real_juve_goal(data: dict) -> dict:
+    """Primo vero gol Juve secondo lo stesso parser/dedup del LiveScore."""
     home_id, away_id, *_ = match_info(data)
     score_h = score_a = 0
-    for item in scoring_items(data):
-        if item["team_id"] == str(home_id):
+
+    for event in production_goal_events(data):
+        scoring_team = str(event.get("scoring_team_id") or "")
+
+        if scoring_team == str(home_id):
             score_h += 1
-        elif item["team_id"] == str(away_id):
+        elif scoring_team == str(away_id):
             score_a += 1
 
-        if item["team_id"] == str(bot.JUVE_ID) and item["player"]:
+        player = str(event.get("player_name") or "").strip()
+        if scoring_team == str(bot.JUVE_ID) and player:
             return {
-                **item,
+                "team_id": scoring_team,
+                "player": player,
+                "minute": (
+                    event.get("minute_disp")
+                    or event.get("minute")
+                    or "?"
+                ),
+                "period": int(event.get("period") or 0),
+                "goal_type": event.get("type") or "goal",
                 "home_goals": score_h,
                 "away_goals": score_a,
+                "uid": str(event.get("uid") or ""),
             }
+
     raise RuntimeError(
-        "Non sono riuscito a ricavare un vero gol Juventus dal summary ESPN"
+        "Il parser eventi reale non ha trovato un gol Juventus utilizzabile"
     )
 
 
@@ -967,6 +1030,12 @@ class RealDynamicKitTest:
                 "Evento ESPN senza Juventus"
             )
 
+        match_status, _ = bot.parse_status(self.data)
+        if match_status not in ("FT", "AET", "PEN"):
+            raise RuntimeError(
+                f"Evento ESPN non concluso come atteso: {match_status}"
+            )
+
         self.ht_home, self.ht_away = halftime_score(
             self.data
         )
@@ -984,6 +1053,26 @@ class RealDynamicKitTest:
             self.espn_kit
             or self.fallback_kit
         )
+
+        # Cross-check contro la funzione reale già presente nel bot.
+        production_effective_kit = bot.rileva_kit_juve(
+            self.data,
+            self.home_id,
+            self.away_id,
+            self.home_name,
+            self.away_name,
+            LEAGUE_SLUG,
+            LEAGUE_NAME,
+        )
+        if (
+            production_effective_kit in VALID_KITS
+            and production_effective_kit != self.active_kit
+        ):
+            raise RuntimeError(
+                "Disallineamento kit: "
+                f"runtime test={self.active_kit}, "
+                f"rileva_kit_juve={production_effective_kit}"
+            )
 
         self.page1_layers = None
         self.page2_layers = None
@@ -1439,9 +1528,10 @@ class RealDynamicKitTest:
             f"active={display_kit(self.active_kit)}"
         )
         log(
-            f"Gol Juventus reale usato: "
+            f"Gol Juventus reale dal parser produzione: "
             f"{self.goal['player']} "
-            f"{self.goal['minute']}"
+            f"{self.goal['minute']} | "
+            f"type={self.goal['goal_type']}"
         )
 
         # Canva reale. Pagina 1 e 2 vengono scaricate una volta.
