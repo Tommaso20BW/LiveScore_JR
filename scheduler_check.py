@@ -12,7 +12,8 @@ già conclusa secondo ESPN.
 
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -20,6 +21,10 @@ from urllib3.util.retry import Retry
 
 
 JUVENTUS_TEAM_ID = "111"
+
+# ESPN indicizza gli eventi secondo l'orario US Eastern.
+# Manteniamo lo scheduler allineato al criterio usato dal bot principale.
+ESPN_TZ = ZoneInfo("America/New_York")
 
 LEAGUES = [
     "ita.1",                      # Serie A
@@ -181,70 +186,80 @@ def get_match_status(event: dict) -> tuple[str, bool, str]:
 
 def find_juventus_match():
     """
-    Cerca la prossima partita odierna della Juventus.
+    Cerca la prossima partita della Juventus usando le stesse date ESPN
+    del bot principale: oggi e domani secondo il fuso US Eastern.
 
     Restituisce:
         (kickoff, evento, lega), oppure (None, None, None).
     """
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    now_espn = datetime.now(ESPN_TZ)
+
+    dates_to_try = [
+        now_espn.strftime("%Y%m%d"),
+        (now_espn + timedelta(days=1)).strftime("%Y%m%d"),
+    ]
+
     best = None
 
     successful_feeds = 0
     failed_feeds = []
 
-    for league in LEAGUES:
-        url = SCOREBOARD_URL.format(
-            league=league,
-            date=today,
-        )
-
-        try:
-            data = fetch_json(url)
-            successful_feeds += 1
-
-        except requests.RequestException as exc:
-            failed_feeds.append(league)
-
-            print(
-                f"[warn] feed {league} non raggiungibile: {exc}",
-                file=sys.stderr,
+    for date in dates_to_try:
+        for league in LEAGUES:
+            url = SCOREBOARD_URL.format(
+                league=league,
+                date=date,
             )
-            continue
-
-        except Exception as exc:
-            failed_feeds.append(league)
-
-            print(
-                f"[warn] feed {league} non valido: {exc}",
-                file=sys.stderr,
-            )
-            continue
-
-        for event in data.get("events") or []:
-            if not contains_juventus(event):
-                continue
 
             try:
-                kickoff = parse_kickoff(
-                    str(event.get("date", ""))
-                )
-            except (TypeError, ValueError) as exc:
+                data = fetch_json(url)
+                successful_feeds += 1
+
+            except requests.RequestException as exc:
+                failed_feeds.append(f"{league}@{date}")
+
                 print(
-                    f"[warn] kickoff non valido in {league}: {exc}",
+                    f"[warn] feed {league} ({date}) non raggiungibile: {exc}",
                     file=sys.stderr,
                 )
                 continue
 
-            if best is None or kickoff < best[0]:
-                best = (
-                    kickoff,
-                    event,
-                    league,
+            except Exception as exc:
+                failed_feeds.append(f"{league}@{date}")
+
+                print(
+                    f"[warn] feed {league} ({date}) non valido: {exc}",
+                    file=sys.stderr,
                 )
+                continue
+
+            for event in data.get("events") or []:
+                if not contains_juventus(event):
+                    continue
+
+                try:
+                    kickoff = parse_kickoff(
+                        str(event.get("date", ""))
+                    )
+                except (TypeError, ValueError) as exc:
+                    print(
+                        f"[warn] kickoff non valido in {league}: {exc}",
+                        file=sys.stderr,
+                    )
+                    continue
+
+                if best is None or kickoff < best[0]:
+                    best = (
+                        kickoff,
+                        event,
+                        league,
+                    )
+
+    total_feeds = len(LEAGUES) * len(dates_to_try)
 
     print(
         f"Feed ESPN raggiungibili: "
-        f"{successful_feeds}/{len(LEAGUES)}"
+        f"{successful_feeds}/{total_feeds}"
     )
 
     if failed_feeds:
@@ -288,7 +303,7 @@ def main() -> None:
     kickoff, event, league = find_juventus_match()
 
     if kickoff is None:
-        print("Nessuna partita della Juventus oggi.")
+        print("Nessuna partita della Juventus trovata.")
 
         write_output("dispatch", "false")
         write_output("kickoff", "")
