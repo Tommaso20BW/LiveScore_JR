@@ -1,7 +1,6 @@
 name: Test automatici LiveScore JR
 
 on:
-  push:
   workflow_dispatch:
 
 permissions:
