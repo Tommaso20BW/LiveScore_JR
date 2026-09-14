@@ -1,0 +1,91 @@
+name: Manual JR Goal Graphics
+
+on:
+  workflow_dispatch:
+    inputs:
+      goal_items_json:
+        description: 'JSON con una o più grafiche. Esempio: [{"player":"Kenan Yildiz","kit":"home","pose_page":2},{"player":"Randal Kolo Muani","kit":"away","pose_page":6}]'
+        required: true
+        default: '[{"player":"Kenan Yildiz","kit":"home","pose_page":2}]'
+        type: string
+
+      default_competition:
+        description: "Competizione di default"
+        required: true
+        default: "Serie A"
+        type: string
+
+      goal_canva_design_id:
+        description: "Design Canva da usare per i pose pages"
+        required: true
+        default: "DAHI3ytu6yQ"
+        type: string
+
+      send_to_bot_jr:
+        description: "Invia le grafiche a Bot JR"
+        required: true
+        default: true
+        type: boolean
+
+      send_as_album:
+        description: "Invia più grafiche come album Telegram"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-jr-goal-graphics
+  cancel-in-progress: false
+
+jobs:
+  render:
+    name: Crea grafiche goal JR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip==26.1.2
+          pip install -r requirements.txt
+
+      - name: Render goal graphics from Canva
+        env:
+          CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
+          CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
+          CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
+
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO: ${{ secrets.TELEGRAM_TO_BOT }}
+          TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
+
+          GOAL_ITEMS_JSON: ${{ inputs.goal_items_json }}
+          DEFAULT_COMPETITION: ${{ inputs.default_competition }}
+          GOAL_CANVA_DESIGN_ID: ${{ inputs.goal_canva_design_id }}
+          SEND_TO_BOT_JR: ${{ inputs.send_to_bot_jr }}
+          SEND_AS_ALBUM: ${{ inputs.send_as_album }}
+
+        run: python -u manual_goal_graphics.py
+
+      - name: Upload generated PNGs
+        uses: actions/upload-artifact@v4
+        with:
+          name: jr-manual-goal-graphics
+          path: manual_goal_output/*.png
+          if-no-files-found: error
+          retention-days: 7
