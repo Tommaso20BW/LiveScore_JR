@@ -109,6 +109,10 @@ class OfficialUefaKitTests(unittest.TestCase):
             "conference",
         )
 
+    def test_opponent_is_nec_nijmegen(self):
+        self.assertEqual(uefa.AWAY_NAME, "NEC Nijmegen")
+        self.assertEqual(uefa.AWAY_ID, "147")
+
 
 if __name__ == "__main__":
     unittest.main()
