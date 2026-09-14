@@ -1,0 +1,103 @@
+name: TEST - Dynamic Kit UEFA OFFICIAL 10m
+
+on:
+  workflow_dispatch:
+    inputs:
+      competition:
+        description: "Competizione UEFA"
+        required: true
+        default: "Champions League"
+        type: choice
+        options:
+          - Champions League
+          - Europa League
+          - Conference League
+      duration_seconds:
+        description: "Durata test"
+        required: true
+        default: "600"
+      fallback_kit:
+        description: "Kit fallback iniziale"
+        required: true
+        default: "away"
+        type: choice
+        options:
+          - home
+          - away
+          - third
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: dynamic-kit-uefa-official-test
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Resolve competition
+        id: comp
+        shell: bash
+        run: |
+          case "${{ inputs.competition }}" in
+            "Europa League")
+              echo "slug=uefa.europa" >> "$GITHUB_OUTPUT"
+              echo "name=UEFA EUROPA LEAGUE" >> "$GITHUB_OUTPUT"
+              ;;
+            "Conference League")
+              echo "slug=uefa.europa.conf" >> "$GITHUB_OUTPUT"
+              echo "name=UEFA CONFERENCE LEAGUE" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "slug=uefa.champions" >> "$GITHUB_OUTPUT"
+              echo "name=UEFA CHAMPIONS LEAGUE" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Unit tests
+        run: python -m unittest -v tests.test_dynamic_kit_uefa_official
+
+      - name: Run official UEFA interactive test
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
+
+          CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
+          CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
+          CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
+
+          # Same token-refresh path used by the production bot.
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+          KIT_TEST_DURATION_SECONDS: ${{ inputs.duration_seconds }}
+          KIT_TEST_FALLBACK: ${{ inputs.fallback_kit }}
+          KIT_TEST_COMPETITION: ${{ steps.comp.outputs.slug }}
+          KIT_TEST_LEAGUE_NAME: ${{ steps.comp.outputs.name }}
+
+          # ESPN uniform is simulated here; graphics are NOT simulated.
+          KIT_TEST_ESPN_TIMELINE: >-
+            [{"at":0,"kit":null},{"at":60,"kit":"third"},{"at":180,"kit":"home"}]
+
+        run: python -u dynamic_kit_uefa_official_test.py
