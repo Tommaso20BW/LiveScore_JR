@@ -6,7 +6,8 @@ Interroga i feed ESPN delle competizioni della Juventus e verifica se oggi
 c'è una partita il cui kickoff cade entro la finestra di dispatch.
 
 Il bot principale viene avviato esclusivamente quando viene trovata davvero
-una partita della Juventus nella finestra prevista.
+una partita della Juventus nella finestra prevista e la partita non risulta
+già conclusa secondo ESPN.
 """
 
 import os
@@ -107,6 +108,75 @@ def contains_juventus(event: dict) -> bool:
                 return True
 
     return False
+
+
+def is_match_finished(event: dict) -> bool:
+    """
+    Controlla se ESPN considera la partita già conclusa.
+
+    ESPN normalmente espone:
+        event.status.type.completed
+        event.status.type.state
+
+    Viene controllato anche competition.status come fallback.
+    """
+    statuses = [event.get("status") or {}]
+
+    for competition in event.get("competitions") or []:
+        statuses.append(
+            competition.get("status") or {}
+        )
+
+    for status in statuses:
+        status_type = status.get("type") or {}
+
+        completed = status_type.get("completed")
+
+        if completed is True:
+            return True
+
+        if str(completed).strip().lower() == "true":
+            return True
+
+        state = str(
+            status_type.get("state") or ""
+        ).strip().lower()
+
+        if state == "post":
+            return True
+
+    return False
+
+
+def get_match_status(event: dict) -> tuple[str, bool, str]:
+    """
+    Restituisce informazioni sullo stato ESPN per il log.
+
+    Returns:
+        (state, completed, description)
+    """
+    status = event.get("status") or {}
+    status_type = status.get("type") or {}
+
+    state = str(
+        status_type.get("state") or ""
+    ).strip()
+
+    completed_raw = status_type.get("completed")
+
+    completed = (
+        completed_raw is True
+        or str(completed_raw).strip().lower() == "true"
+    )
+
+    description = str(
+        status_type.get("description")
+        or status_type.get("detail")
+        or status_type.get("name")
+        or ""
+    ).strip()
+
+    return state, completed, description
 
 
 def find_juventus_match():
@@ -236,8 +306,17 @@ def main() -> None:
         event.get("name") or "Partita Juventus"
     )
 
+    # Stato reale ESPN.
+    match_finished = is_match_finished(event)
+
+    state, completed, status_description = get_match_status(event)
+
+    # Il bot viene avviato solo se:
+    # - siamo nella finestra temporale prevista
+    # - ESPN NON considera la partita conclusa
     should_dispatch = (
-        -RECOVERY_WINDOW_MIN
+        not match_finished
+        and -RECOVERY_WINDOW_MIN
         <= minutes_to_kickoff
         <= DISPATCH_WINDOW_MIN
     )
@@ -246,22 +325,38 @@ def main() -> None:
     print(f"Kickoff UTC: {kickoff.isoformat()}")
     print(f"Minuti al kickoff: {minutes_to_kickoff:.1f}")
 
+    print(
+        "Stato ESPN: "
+        f"state={state or 'N/A'}, "
+        f"completed={completed}, "
+        f"description={status_description or 'N/A'}"
+    )
+
     write_output(
         "dispatch",
         "true" if should_dispatch else "false",
     )
+
     write_output(
         "kickoff",
         kickoff.strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
+
     write_output("match_name", match_name)
     write_output("league", league)
 
-    if should_dispatch:
+    if match_finished:
         print(
-            f"Partita nella finestra prevista: "
-            f"avvio del bot LiveScore."
+            "Partita già conclusa secondo ESPN: "
+            "il bot LiveScore NON viene avviato."
         )
+
+    elif should_dispatch:
+        print(
+            "Partita nella finestra prevista e ancora attiva: "
+            "avvio del bot LiveScore."
+        )
+
     else:
         print(
             "Partita trovata, ma fuori dalla finestra "
