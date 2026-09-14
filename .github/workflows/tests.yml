@@ -1,4 +1,4 @@
-name: Test automatici LiveScore JR
+name: Bot Check
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: tests-livescore-jr-${{ github.ref }}
@@ -163,3 +164,24 @@ jobs:
         run: |
           echo "Uno o più controlli del bot sono falliti."
           exit 1
+
+      - name: Pulisci la cronologia dei test
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: "0"
+        shell: bash
+        run: |
+          gh api \
+            "repos/${{ github.repository }}/actions/workflows/tests.yml/runs?status=completed&per_page=100" \
+            --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
+          while read -r RUN_ID; do
+            if [ -n "$RUN_ID" ]; then
+              echo "Elimino run test $RUN_ID"
+
+              gh api -X DELETE \
+                "repos/${{ github.repository }}/actions/runs/$RUN_ID" || true
+            fi
+          done
+
+          echo "Pulizia test completata."
