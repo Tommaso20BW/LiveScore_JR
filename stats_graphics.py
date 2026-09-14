@@ -12,6 +12,41 @@ PHASES = {'HT': 'half', '2H_END': 'end_of_90', 'FT': 'full'}
 ORDER = ('POSSESSO', 'xG', 'TIRI', 'TIRI IN PORTA', 'CORNER', 'FALLI',
          'FUORIGIOCO', 'AMMONITI', 'ESPULSI', 'PARATE', 'PRECISIONE PASSAGGI', 'PASSAGGI')
 
+# Nome breve/editoriale mostrato SOLO nel footer delle grafiche STATS.
+# Il resto del bot continua a usare senza modifiche il nome originale ESPN.
+COMPETITION_DISPLAY_NAMES = {
+    'ita.1': 'Serie A',
+    'ita.coppa_italia': 'Coppa Italia',
+    'ita.super_cup': 'Supercoppa Italiana',
+
+    'uefa.champions': 'Champions League',
+    'uefa.champions_qual': 'Champions League',
+    'uefa.europa': 'Europa League',
+    'uefa.europa_qual': 'Europa League',
+    'uefa.europa.conf': 'Conference League',
+    'uefa.europa.conf_qual': 'Conference League',
+    'uefa.europa_conf': 'Conference League',
+    'uefa.super_cup': 'Supercoppa UEFA',
+
+    'fifa.cwc': 'Mondiale per Club',
+    'fifa.intercontinental_cup': 'Coppa Intercontinentale',
+
+    # Le amichevoli normalmente non generano STATS, ma restano mappate
+    # come fallback nel caso vengano abilitate in futuro.
+    'club.friendly': 'Amichevole',
+    'friendly.club': 'Amichevole',
+    'fifa.friendly': 'Amichevole',
+}
+
+
+def competition_display_name(competition, league_name):
+    """Nome da mostrare nella grafica, senza alterare i dati ESPN del bot."""
+    slug = str(competition or '').strip()
+    return COMPETITION_DISPLAY_NAMES.get(
+        slug,
+        str(league_name or slug or 'Competizione')
+    )
+
 
 def uri(image):
     stream = io.BytesIO()
@@ -132,7 +167,9 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
         LEFT=left,
         RIGHT=right,
         ROWS=rows_html(rows),
-        COMPETITION=escape(league_name.upper())
+        COMPETITION=escape(
+            competition_display_name(competition, league_name).upper()
+        )
     )
 
     for name, value in values.items():
