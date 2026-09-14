@@ -28,6 +28,37 @@ def tight(source, white_mask=False):
     if not box: raise ValueError('Asset vuoto')
     return source.crop(box)
 
+def anchored_player(source, target_height=1450):
+    """Ritaglia il PNG del giocatore senza perdere il centro originale del canvas.
+
+    Prima il compositor usava ``tight(raw)`` e poi centrava geometricamente il
+    bounding box visibile. Con pose asimmetriche (es. braccio/dito verso sinistra)
+    il bounding box non ha lo stesso centro del canvas sorgente: il giocatore
+    finiva quindi spostato anche se il PNG di partenza era gia centrato bene.
+
+    Qui continuiamo a rimuovere lo spazio trasparente per mantenere la stessa
+    scala verticale, ma conserviamo come ancora orizzontale il centro X del
+    canvas originale.
+    """
+    source = source.convert('RGBA')
+    alpha = source.getchannel('A')
+    box = alpha.point(lambda a: 255 if a > 100 else 0).getbbox()
+    if not box:
+        raise ValueError('Asset giocatore vuoto')
+
+    cropped = source.crop(box)
+    if cropped.height <= 0:
+        raise ValueError('Altezza giocatore non valida')
+
+    scale = target_height / cropped.height
+    width = max(1, round(cropped.width * scale))
+    portrait = cropped.resize((width, target_height), Image.Resampling.LANCZOS)
+
+    # Posizione, dentro il crop, del centro X del canvas sorgente.
+    # Sarà questa coordinata ad essere allineata al centro della card.
+    anchor_x = (source.width / 2 - box[0]) * scale
+    return portrait, anchor_x
+
 def textured(source, key, assets, zoom=False, color=None, bright=False):
     color = color or COLORS[key]
     texture = Image.open(assets/'word_textures'/f'{texture_key(key)}.png')
@@ -126,11 +157,24 @@ def event(*, player, scorer_name, minute, home_name, away_name, home_id, away_id
             with Image.open(path) as raw:
                 if not g._has_real_transparency(raw):
                     raise g.GoalGraphicUnavailable('PNG giocatore non scontornato')
-                portrait = tight(raw)
-            portrait = portrait.resize((round(portrait.width*1450/portrait.height),1450),Image.Resampling.LANCZOS)
-            panel.alpha_composite(portrait,((IW-portrait.width)//2,-25))
-            card.alpha_composite(portrait.crop((0,0,portrait.width,25)),((W-portrait.width)//2,M-25))
-        else: path = None
+
+                # FIX CENTRATURA:
+                # non centrare il bounding box della sagoma, ma il centro X
+                # originale del PNG. In questo modo le pose con braccio/dito
+                # esteso non trascinano tutto il corpo a destra o sinistra.
+                portrait, anchor_x = anchored_player(raw, 1450)
+
+            panel_x = round(IW / 2 - anchor_x)
+            panel.alpha_composite(portrait,(panel_x,-25))
+
+            # I primi 25 px salgono sopra il pannello interno: manteniamo la
+            # stessa identica ancora X anche nella porzione compositata sul card.
+            card.alpha_composite(
+                portrait.crop((0,0,portrait.width,25)),
+                (M + panel_x, M-25)
+            )
+        else:
+            path = None
     fade = Image.new('RGBA',panel.size)
     draw = ImageDraw.Draw(fade)
     for y in range(520,IH):
