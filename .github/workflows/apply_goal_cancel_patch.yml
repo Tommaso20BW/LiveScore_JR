@@ -1,0 +1,525 @@
+name: Apply GOAL ANNULLATO non-blocking
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply_goal_cancel_patch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Applica patch non bloccante
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("juve_bot_espn.py")
+          text = path.read_text(encoding="utf-8")
+
+          # Stato persistente: deve sopravvivere a un riavvio tramite Gist.
+          new_state_anchor = '            "pending_stats":          [],\n'
+          new_state_line = '            "pending_goal_cancellation": None,\n'
+          if new_state_line not in text:
+              if new_state_anchor not in text:
+                  raise SystemExit("ERRORE: punto inserimento nuovo stato non trovato")
+              text = text.replace(
+                  new_state_anchor,
+                  new_state_anchor + new_state_line,
+                  1,
+              )
+
+          # Retrocompatibilità con Gist creati da versioni precedenti.
+          defaults_anchor = '    state.setdefault("sent_failed_penalties", [])\n'
+          defaults_line = '    state.setdefault("pending_goal_cancellation", None)\n'
+          if defaults_line not in text:
+              if defaults_anchor not in text:
+                  raise SystemExit("ERRORE: punto setdefault non trovato")
+              text = text.replace(
+                  defaults_anchor,
+                  defaults_anchor + defaults_line,
+                  1,
+              )
+
+          # Sostituisce SOLO il blocco GOAL ANNULLATO, fino a "Fine partita".
+          start_marker = '            elif total_goals_now < state["goals_detected"]:\n'
+          end_marker = '            # --- Fine partita ---\n'
+
+          start = text.find(start_marker)
+          if start < 0:
+              raise SystemExit("ERRORE: blocco GOAL ANNULLATO non trovato")
+
+          end = text.find(end_marker, start)
+          if end < 0:
+              raise SystemExit("ERRORE: fine blocco GOAL ANNULLATO non trovata")
+
+          new_block = '''            elif total_goals_now < state["goals_detected"]:
+                # ======================================================
+                # GOAL ANNULLATO - conferma non bloccante
+                # ======================================================
+                # Alla prima diminuzione del punteggio memorizza il candidato
+                # nel Gist, ma NON blocca il loop per 120 secondi.
+                # ESPN, cambi, cartellini, kit e callback continuano a essere
+                # controllati normalmente durante tutta l'attesa.
+                _cancel_now = int(time.time())
+                pending_cancel = state.get("pending_goal_cancellation")
+
+                if not isinstance(pending_cancel, dict):
+                    pending_cancel = {
+                        "baseline_total": int(state.get("goals_detected", 0)),
+                        "baseline_home": int(state.get("prev_home_goals", 0)),
+                        "baseline_away": int(state.get("prev_away_goals", 0)),
+                        "candidate_home": int(g_home),
+                        "candidate_away": int(g_away),
+                        "confirm_at": _cancel_now + 120,
+                    }
+                    state["pending_goal_cancellation"] = pending_cancel
+                    state_changed = True
+                    log_line(
+                        "WAIT",
+                        "MATCH",
+                        f"Possibile GOAL ANNULLATO | {g_home}-{g_away}; "
+                        "conferma non bloccante tra 120s",
+                    )
+                else:
+                    try:
+                        _candidate_home = int(
+                            pending_cancel.get("candidate_home", g_home)
+                        )
+                        _candidate_away = int(
+                            pending_cancel.get("candidate_away", g_away)
+                        )
+                    except (TypeError, ValueError):
+                        _candidate_home = int(g_home)
+                        _candidate_away = int(g_away)
+
+                    # Se ESPN cambia ancora il punteggio candidato prima della
+                    # conferma, i 120 secondi ripartono da quel nuovo valore.
+                    if (
+                        int(g_home),
+                        int(g_away),
+                    ) != (
+                        _candidate_home,
+                        _candidate_away,
+                    ):
+                        pending_cancel["candidate_home"] = int(g_home)
+                        pending_cancel["candidate_away"] = int(g_away)
+                        pending_cancel["confirm_at"] = _cancel_now + 120
+                        state_changed = True
+                        log_line(
+                            "WAIT",
+                            "MATCH",
+                            f"GOAL ANNULLATO: candidato cambiato in "
+                            f"{g_home}-{g_away}; nuova conferma tra 120s",
+                        )
+
+                    try:
+                        _confirm_at = int(
+                            pending_cancel.get("confirm_at", 0)
+                        )
+                    except (TypeError, ValueError):
+                        _confirm_at = 0
+
+                    if _cancel_now >= _confirm_at:
+                        # Controllo fresco al momento della scadenza.
+                        data_cancel = fetch_evento(
+                            event_id,
+                            league_slug,
+                        ) or data
+                        try:
+                            competitors_cancel = data_cancel[
+                                "header"
+                            ]["competitions"][0]["competitors"]
+                        except Exception:
+                            competitors_cancel = competitors
+
+                        (
+                            _,
+                            _,
+                            _,
+                            _,
+                            g_home_c,
+                            g_away_c,
+                        ) = parse_score(competitors_cancel)
+
+                        try:
+                            _baseline_total = int(
+                                pending_cancel.get(
+                                    "baseline_total",
+                                    state.get("goals_detected", 0),
+                                )
+                            )
+                        except (TypeError, ValueError):
+                            _baseline_total = int(
+                                state.get("goals_detected", 0)
+                            )
+
+                        try:
+                            _candidate_pair = (
+                                int(
+                                    pending_cancel.get(
+                                        "candidate_home",
+                                        g_home,
+                                    )
+                                ),
+                                int(
+                                    pending_cancel.get(
+                                        "candidate_away",
+                                        g_away,
+                                    )
+                                ),
+                            )
+                        except (TypeError, ValueError):
+                            _candidate_pair = (
+                                int(g_home),
+                                int(g_away),
+                            )
+
+                        _confirmed_pair = (
+                            int(g_home_c),
+                            int(g_away_c),
+                        )
+
+                        if (
+                            g_home_c + g_away_c < _baseline_total
+                            and _confirmed_pair != _candidate_pair
+                        ):
+                            # Proprio al controllo finale ESPN mostra un altro
+                            # punteggio inferiore. Non confermare un valore che
+                            # non è rimasto stabile 120 secondi: riparte il timer.
+                            pending_cancel["candidate_home"] = int(g_home_c)
+                            pending_cancel["candidate_away"] = int(g_away_c)
+                            pending_cancel["confirm_at"] = _cancel_now + 120
+                            state_changed = True
+                            log_line(
+                                "WAIT",
+                                "MATCH",
+                                f"GOAL ANNULLATO: ESPN ora mostra "
+                                f"{g_home_c}-{g_away_c}; "
+                                "nuova conferma tra 120s",
+                            )
+
+                        elif g_home_c + g_away_c < _baseline_total:
+                            # Annullamento confermato dopo 120 secondi
+                            # consecutivi sullo stesso punteggio.
+                            data = data_cancel
+                            g_home = g_home_c
+                            g_away = g_away_c
+                            events = parse_events(
+                                data,
+                                home_name_raw,
+                                away_name_raw,
+                                home_id,
+                                away_id,
+                            )
+                            score_str = build_score_str(
+                                home_name,
+                                away_name,
+                                g_home,
+                                g_away,
+                            )
+                            cancel_text = (
+                                f"<b>GOAL ANNULLATO {E_CANCEL}</b>\\n\\n"
+                                f"{score_str}\\n\\n"
+                                f"{e_comp} {hashtag}"
+                            )
+
+                            cancel_msg_id = send_telegram_get_id(
+                                cancel_text
+                            )
+                            if cancel_msg_id:
+                                log_line(
+                                    "EVENT",
+                                    "MATCH",
+                                    "GOAL ANNULLATO | Telegram inviato",
+                                )
+                                state["cancel_msg_id"] = cancel_msg_id
+                            else:
+                                # Lo score è confermato comunque; il testo
+                                # Telegram resta nella coda di retry esistente.
+                                log_line(
+                                    "RETRY",
+                                    "TELEGRAM",
+                                    "GOAL ANNULLATO non inviato; "
+                                    "nuovo tentativo al prossimo ciclo",
+                                )
+                                state[
+                                    "pending_goal_annullato"
+                                ] = cancel_text
+
+                            # Elimina dallo stato le card relative a punteggi
+                            # che non esistono più dopo l'annullamento.
+                            keys_to_remove = [
+                                key
+                                for key in state.get(
+                                    "goal_messages",
+                                    {},
+                                )
+                                if (
+                                    int(key.split("_")[0])
+                                    + int(key.split("_")[1])
+                                    > g_home_c + g_away_c
+                                )
+                            ]
+                            for key in keys_to_remove:
+                                state["goal_messages"].pop(
+                                    key,
+                                    None,
+                                )
+
+                            state[
+                                "goals_detected"
+                            ] = g_home_c + g_away_c
+                            state["prev_home_goals"] = g_home_c
+                            state["prev_away_goals"] = g_away_c
+                            state[
+                                "pending_goal_cancellation"
+                            ] = None
+                            state.pop(
+                                "_ft_wait_cancel_logged",
+                                None,
+                            )
+                            state_changed = True
+
+                        else:
+                            # ESPN ha ripristinato il punteggio: era un dato
+                            # transitorio, quindi nessun GOAL ANNULLATO.
+                            log_line(
+                                "INFO",
+                                "MATCH",
+                                f"Punteggio ripristinato | "
+                                f"{g_home_c}-{g_away_c}; "
+                                "annullamento scartato",
+                            )
+                            data = data_cancel
+                            events = parse_events(
+                                data,
+                                home_name_raw,
+                                away_name_raw,
+                                home_id,
+                                away_id,
+                            )
+                            g_home = g_home_c
+                            g_away = g_away_c
+                            score_str = build_score_str(
+                                home_name,
+                                away_name,
+                                g_home,
+                                g_away,
+                            )
+                            state[
+                                "pending_goal_cancellation"
+                            ] = None
+                            state.pop(
+                                "_ft_wait_cancel_logged",
+                                None,
+                            )
+                            state_changed = True
+
+            else:
+                # Se prima dei 120 secondi ESPN ripristina un punteggio che
+                # non è più inferiore al baseline, il candidato viene scartato
+                # subito senza notifiche.
+                pending_cancel = state.get(
+                    "pending_goal_cancellation"
+                )
+                if isinstance(pending_cancel, dict):
+                    try:
+                        _baseline_total = int(
+                            pending_cancel.get(
+                                "baseline_total",
+                                state.get("goals_detected", 0),
+                            )
+                        )
+                        _baseline_home = int(
+                            pending_cancel.get(
+                                "baseline_home",
+                                state.get(
+                                    "prev_home_goals",
+                                    g_home,
+                                ),
+                            )
+                        )
+                        _baseline_away = int(
+                            pending_cancel.get(
+                                "baseline_away",
+                                state.get(
+                                    "prev_away_goals",
+                                    g_away,
+                                ),
+                            )
+                        )
+                    except (TypeError, ValueError):
+                        _baseline_total = int(
+                            state.get("goals_detected", 0)
+                        )
+                        _baseline_home = int(
+                            state.get(
+                                "prev_home_goals",
+                                g_home,
+                            )
+                        )
+                        _baseline_away = int(
+                            state.get(
+                                "prev_away_goals",
+                                g_away,
+                            )
+                        )
+
+                    if total_goals_now >= _baseline_total:
+                        if (
+                            int(g_home),
+                            int(g_away),
+                        ) == (
+                            _baseline_home,
+                            _baseline_away,
+                        ):
+                            log_line(
+                                "INFO",
+                                "MATCH",
+                                f"Punteggio ripristinato | "
+                                f"{g_home}-{g_away}; "
+                                "possibile annullamento scartato",
+                            )
+                        else:
+                            log_line(
+                                "INFO",
+                                "MATCH",
+                                f"Punteggio cambiato durante verifica "
+                                f"annullamento | {g_home}-{g_away}; "
+                                "timer azzerato",
+                            )
+                        state[
+                            "pending_goal_cancellation"
+                        ] = None
+                        state.pop(
+                            "_ft_wait_cancel_logged",
+                            None,
+                        )
+                        state_changed = True
+
+'''
+
+          text = text[:start] + new_block + text[end:]
+
+          # Se ESPN passa a FT mentre il possibile annullamento è ancora
+          # in verifica, il bot NON deve chiudere né resettare il Gist.
+          finish_marker = '''            is_finished = (
+                status in ("FT", "AET") or
+                (status == "PEN" and comp_state_espn == "post") or
+                (status == "PEN" and _pen_deciso)
+            )
+            if is_finished:
+'''
+
+          finish_replacement = '''            is_finished = (
+                status in ("FT", "AET") or
+                (status == "PEN" and comp_state_espn == "post") or
+                (status == "PEN" and _pen_deciso)
+            )
+
+            if (
+                is_finished
+                and isinstance(
+                    state.get("pending_goal_cancellation"),
+                    dict,
+                )
+            ):
+                if not state.get("_ft_wait_cancel_logged"):
+                    try:
+                        _cancel_left = max(
+                            0,
+                            int(
+                                state[
+                                    "pending_goal_cancellation"
+                                ].get("confirm_at", 0)
+                            )
+                            - int(time.time()),
+                        )
+                    except (TypeError, ValueError):
+                        _cancel_left = 0
+                    log_line(
+                        "WAIT",
+                        "MATCH",
+                        f"Fine partita con possibile GOAL ANNULLATO "
+                        f"in verifica | circa {_cancel_left}s",
+                    )
+                    state["_ft_wait_cancel_logged"] = True
+                time.sleep(sleep_time)
+                continue
+
+            if is_finished:
+'''
+
+          if finish_marker not in text:
+              raise SystemExit(
+                  "ERRORE: blocco is_finished non trovato"
+              )
+          text = text.replace(
+              finish_marker,
+              finish_replacement,
+              1,
+          )
+
+          path.write_text(
+              text,
+              encoding="utf-8",
+              newline="\n",
+          )
+          PY
+
+      - name: Verifica sintassi
+        run: python -m py_compile juve_bot_espn.py
+
+      - name: Installa dipendenze test
+        run: |
+          python -m pip install --upgrade pip==26.1.2
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Esegui tutti i test
+        run: python -m unittest discover -s tests -v
+
+      - name: Commit della modifica
+        shell: bash
+        run: |
+          if git diff --quiet -- juve_bot_espn.py; then
+            echo "Nessuna modifica da applicare"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add juve_bot_espn.py
+          git commit -m "Make cancelled-goal confirmation non-blocking"
+          git push origin HEAD:main
+
+      - name: Prova a rimuovere questo workflow temporaneo
+        if: success()
+        continue-on-error: true
+        shell: bash
+        run: |
+          git pull --rebase origin main
+          git rm .github/workflows/apply_goal_cancel_patch.yml
+          git commit -m "Remove temporary goal cancellation patch workflow"
+          git push origin HEAD:main
