@@ -1,0 +1,52 @@
+name: LiveScore Rich Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_seconds:
+        description: 'Durata demo in secondi'
+        required: true
+        default: '300'
+        type: string
+      tick_seconds:
+        description: 'Aggiornamento Match Center ogni N secondi'
+        required: true
+        default: '10'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: livescore-rich-demo
+  cancel-in-progress: true
+
+jobs:
+  demo:
+    name: Demo Rich su Bot JR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Installa dipendenza Telegram
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Verifica sintassi demo
+        run: python -m py_compile livescore_rich_demo.py
+
+      - name: Avvia demo LiveScore Rich
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
+        run: >-
+          python -u livescore_rich_demo.py
+          --duration "${{ inputs.duration_seconds }}"
+          --tick "${{ inputs.tick_seconds }}"
