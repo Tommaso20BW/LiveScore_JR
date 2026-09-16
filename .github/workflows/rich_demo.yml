@@ -23,9 +23,9 @@ concurrency:
 
 jobs:
   demo:
-    name: Demo Rich su Bot JR
+    name: Demo Rich + grafiche JR su Bot JR
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -35,9 +35,18 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.14'
+          cache: pip
+          cache-dependency-path: requirements.txt
 
-      - name: Installa dipendenza Telegram
-        run: python -m pip install --disable-pip-version-check requests
+      - name: Installa dipendenze
+        run: |
+          python -m pip install --upgrade pip==26.1.2
+          python -m pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Aggiorna loghi locali per le grafiche
+        continue-on-error: true
+        run: python -u fclogo_sync.py --output-dir assets/goal_graphics/team_logos/fclogo_cache
 
       - name: Verifica sintassi demo
         run: python -m py_compile livescore_rich_demo.py
