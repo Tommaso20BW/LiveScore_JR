@@ -30,25 +30,105 @@ jobs:
           cache-dependency-path: requirements.txt
 
       - name: Installa dipendenze
+        shell: bash
         run: |
-          python -m pip install -r requirements.txt
+          echo "::group::Dipendenze Python"
+          python -m pip install --disable-pip-version-check -q -r requirements.txt
+          echo "::endgroup::"
+          echo "✅ Dipendenze installate"
 
-      - name: Controlla sintassi di tutti i file Python
+      - name: Controlla sintassi
         id: syntax
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          python -m compileall -q . 2>&1 | tee syntax.log
+          echo "::group::Controllo sintassi Python"
+          if python -m compileall -q . > syntax.log 2>&1; then
+            echo "✅ Sintassi OK"
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ Errore di sintassi"
+            cat syntax.log
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "::endgroup::"
 
-      - name: Esegui tutti i test
+      - name: Esegui test
         id: unittest
         if: steps.syntax.outcome == 'success'
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          python -m unittest discover -s tests -v 2>&1 | tee tests.log
+          echo "::group::Test automatici"
+
+          if python -m unittest discover -s tests -q > tests.log 2>&1; then
+            echo "✅ Tutti i test superati"
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ Uno o più test sono falliti"
+            echo
+            tail -n 80 tests.log
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          echo "::endgroup::"
+
+      - name: Crea riepilogo GitHub
+        if: always()
+        shell: bash
+        env:
+          SYNTAX_OUTCOME: ${{ steps.syntax.outcome }}
+          TEST_OUTCOME: ${{ steps.unittest.outcome }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          {
+            echo "# LiveScore JR · Bot Check"
+            echo
+            echo "| Controllo | Stato |"
+            echo "|---|---|"
+
+            if [ "$SYNTAX_OUTCOME" = "success" ]; then
+              echo "| Sintassi Python | ✅ OK |"
+            else
+              echo "| Sintassi Python | ❌ Fallita |"
+            fi
+
+            if [ "$SYNTAX_OUTCOME" != "success" ]; then
+              echo "| Test automatici | ⏭️ Non eseguiti |"
+            elif [ "$TEST_OUTCOME" = "success" ]; then
+              echo "| Test automatici | ✅ OK |"
+            else
+              echo "| Test automatici | ❌ Falliti |"
+            fi
+
+            echo
+            echo "**Branch:** \`$BRANCH\`  "
+            echo "**Commit:** \`${SHA:0:7}\`  "
+            echo "**Autore:** $ACTOR"
+
+            if [ "$SYNTAX_OUTCOME" != "success" ]; then
+              echo
+              echo "## Errore principale"
+              echo
+              echo '```text'
+              tail -n 50 syntax.log 2>/dev/null || true
+              echo '```'
+            elif [ "$TEST_OUTCOME" != "success" ]; then
+              echo
+              echo "## Errore principale"
+              echo
+              echo '```text'
+              tail -n 80 tests.log 2>/dev/null || true
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Prepara riepilogo errore per Telegram
         if: always() && (steps.syntax.outcome != 'success' || steps.unittest.outcome != 'success')
@@ -78,33 +158,23 @@ jobs:
 
           text = source.read_text(encoding="utf-8", errors="replace") if source.exists() else "Log non disponibile."
 
-          # Rimuove sequenze ANSI e oscura eventuali token che finissero per errore nel log.
           text = re.sub(r"\x1b\[[0-9;]*m", "", text)
           text = re.sub(r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b", "[TELEGRAM_TOKEN_OSCURATO]", text)
           text = re.sub(r"\b(?:ghp|github_pat)_[A-Za-z0-9_]{20,}\b", "[GITHUB_TOKEN_OSCURATO]", text)
 
-          lines = text.splitlines()
+          lines = [line.rstrip() for line in text.splitlines() if line.strip()]
 
-          # Cerca l'ultima sezione utile di unittest, altrimenti usa la coda del log.
-          start = None
-          for i, line in enumerate(lines):
-              if line.startswith("FAIL: ") or line.startswith("ERROR: "):
-                  start = max(0, i - 1)
-
-          if start is not None:
-              excerpt_lines = lines[start:start + 32]
-              # Aggiunge anche il riepilogo finale, se non è già incluso.
-              tail = lines[-8:]
-              if tail and tail[0] not in excerpt_lines:
-                  excerpt_lines += ["", "...", ""] + tail
+          if syntax_failed:
+              excerpt_lines = lines[-30:]
           else:
-              excerpt_lines = lines[-35:]
+              start = None
+              for i, line in enumerate(lines):
+                  if line.startswith("FAIL: ") or line.startswith("ERROR: "):
+                      start = max(0, i - 1)
 
-          excerpt = "\n".join(excerpt_lines).strip()
-          if not excerpt:
-              excerpt = "Il controllo è fallito senza produrre dettagli nel log."
+              excerpt_lines = lines[start:start + 35] if start is not None else lines[-35:]
 
-          # Telegram ha un limite di 4096 caratteri: teniamo il dettaglio compatto.
+          excerpt = "\n".join(excerpt_lines).strip() or "Nessun dettaglio disponibile."
           excerpt = excerpt[-2400:]
 
           repo = os.environ["REPOSITORY"]
@@ -117,7 +187,7 @@ jobs:
               f"<b>Branch:</b> <code>{html.escape(os.environ['BRANCH'])}</code>\n"
               f"<b>Commit:</b> <code>{html.escape(sha[:7])}</code>\n"
               f"<b>Autore:</b> {html.escape(os.environ['ACTOR'])}\n\n"
-              "<b>Dettaglio principale:</b>\n"
+              "<b>Dettaglio:</b>\n"
               f"<pre>{html.escape(excerpt)}</pre>\n\n"
               f"<a href=\"{html.escape(run_url)}\">Apri il log completo su GitHub Actions</a>"
           )
@@ -161,7 +231,7 @@ jobs:
       - name: Segna il workflow come fallito
         if: always() && (steps.syntax.outcome != 'success' || steps.unittest.outcome != 'success')
         run: |
-          echo "Uno o più controlli del bot sono falliti."
+          echo "❌ Uno o più controlli del bot sono falliti."
           exit 1
 
       - name: Pulisci la cronologia dei test
@@ -171,16 +241,15 @@ jobs:
           KEEP: "0"
         shell: bash
         run: |
+          echo "::group::Pulizia cronologia"
           gh api \
             "repos/${{ github.repository }}/actions/workflows/tests.yml/runs?status=completed&per_page=100" \
             --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
           while read -r RUN_ID; do
             if [ -n "$RUN_ID" ]; then
-              echo "Elimino run test $RUN_ID"
-
               gh api -X DELETE \
-                "repos/${{ github.repository }}/actions/runs/$RUN_ID" || true
+                "repos/${{ github.repository }}/actions/runs/$RUN_ID" >/dev/null 2>&1 || true
             fi
           done
-
-          echo "Pulizia test completata."
+          echo "✅ Pulizia completata"
+          echo "::endgroup::"
