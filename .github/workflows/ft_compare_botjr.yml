@@ -3,31 +3,53 @@ name: FT Compare Bot JR
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# Stesso gruppo del LiveScore principale.
+# In questo modo il test NON può usare/ruotare il refresh token Canva
+# contemporaneamente a una partita live.
+concurrency:
+  group: juve-live-bot
+  cancel-in-progress: false
+
 jobs:
-  send-ft-compare:
+  ft-compare:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.14'
           cache: 'pip'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip==26.1.2
           pip install -r requirements.txt
 
-      - name: Run FT comparison and send to Bot JR
+      - name: Generate 2 Full Time and send to Bot JR
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
-          CANVA_ACCESS_TOKEN: ${{ secrets.CANVA_ACCESS_TOKEN }}
-          CANVA_DESIGN_ID: DAHI3ytu6yQ
-        run: |
-          python ft_compare_botjr.py
+          TELEGRAM_TOKEN:      ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO_BOT:     ${{ secrets.TELEGRAM_TO_BOT }}
+          # Anche TELEGRAM_TO punta a Bot JR: se la gestione Canva dovesse
+          # produrre un alert, non finisce sul canale pubblico.
+          TELEGRAM_TO:         ${{ secrets.TELEGRAM_TO_BOT }}
+
+          # STESSI secret Canva del LiveScore principale.
+          CANVA_CLIENT_ID:     ${{ secrets.CANVA_CLIENT_ID }}
+          CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
+          CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
+
+          # Necessari alla funzione già esistente get_valid_token():
+          # se Canva ruota il refresh token, lo stesso codice del LiveScore
+          # aggiorna CANVA_REFRESH_TOKEN nei GitHub Secrets.
+          GH_PAT:              ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY:   ${{ github.repository }}
+
+        run: python -u ft_compare_botjr.py
