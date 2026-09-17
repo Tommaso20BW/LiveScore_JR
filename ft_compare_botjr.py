@@ -31,6 +31,9 @@ KIT = "home"
 COMPETITION = "uefa.europa"
 
 
+# =========================================================
+# BASICS
+# =========================================================
 def require_env() -> None:
     missing = []
     if not BOT_TOKEN:
@@ -94,13 +97,13 @@ def visible_metrics(image: Image.Image, threshold: int = 100) -> dict:
         "width": width,
         "height": height,
         "fill_ratio": fill_ratio,
-        # euristica della "massa" visiva orizzontale
+        # euristica della massa visiva orizzontale
         "mass": width * fill_ratio,
     }
 
 
 def build_base_card() -> tuple[Image.Image, str]:
-    """Grafica FT minima: background competizione + FULL TIME + score."""
+    """Grafica FT minima: background competizione + FULL TIME."""
     key = p.theme(KIT, COMPETITION)
     card = Image.open(
         ASSETS / "portrait" / f"{key}_clean_1086x1448.png"
@@ -109,7 +112,6 @@ def build_base_card() -> tuple[Image.Image, str]:
     if key == "ucl":
         card = p.vivid_background(card)
 
-    # FULL TIME come nel compositor attuale.
     word = p.tight(Image.open(ASSETS / "portrait" / "full.png"), True)
     word = word.resize(
         (p.IW - 36, round(word.height * (p.IW - 36) / word.width)),
@@ -126,103 +128,133 @@ def build_base_card() -> tuple[Image.Image, str]:
     return card, key
 
 
-def calculate_logo_positions(
-    *,
-    score_x: int,
-    score_width: int,
-    home_logo: Image.Image,
-    away_logo: Image.Image,
-    gap: int,
-    mode: str,
-) -> tuple[int, int]:
-    """
-    mode:
-      - canvas: usa il canvas completo del PNG (padding incluso)
-      - visible: usa i bounds visibili per distanza precisa dal punteggio
-      - optical: come visible + correzione ottica asimmetrica
-    """
-    if mode == "canvas":
-        home_x = score_x - gap - home_logo.width
-        away_x = score_x + score_width + gap
-        return home_x, away_x
+# =========================================================
+# POSITIONING
+# =========================================================
+def mode_settings(mode: str, score_height: int) -> dict:
+    if mode == "small_canvas":
+        return {"logo_height": 56, "gap": 18, "blur": 6, "opacity": 0.55}
+    if mode in {"normal_canvas", "normal_visible", "normal_optical"}:
+        return {"logo_height": score_height, "gap": 28, "blur": 9, "opacity": 0.60}
+    if mode == "group_visible":
+        return {"logo_height": score_height, "gap": 28, "blur": 9, "opacity": 0.60}
+    if mode == "group_optical":
+        return {"logo_height": score_height, "gap": 28, "blur": 9, "opacity": 0.60}
+    if mode == "group_small_optical":
+        return {"logo_height": round(score_height * 0.82), "gap": 26, "blur": 8, "opacity": 0.58}
+    raise ValueError(f"mode non valido: {mode}")
+
+
+def calc_fixed_score_positions(score_x, score_width, home_logo, away_logo, gap, strategy):
+    """Strategie con punteggio bloccato al centro assoluto."""
+    if strategy == "canvas":
+        return score_x, score_x - gap - home_logo.width, score_x + score_width + gap
 
     home_info = visible_metrics(home_logo)
     away_info = visible_metrics(away_logo)
     home_box = home_info["box"]
     away_box = away_info["box"]
 
-    if mode == "visible":
+    if strategy == "visible":
         home_gap = gap
         away_gap = gap
-    elif mode == "optical":
-        # Se uno stemma è molto più largo/pieno dell'altro, gli diamo più aria.
-        # Il punteggio resta perfettamente al centro; modifichiamo solo i gap.
+    elif strategy == "optical":
         delta_mass = away_info["mass"] - home_info["mass"]
         correction = round(delta_mass * 0.16)
         correction = max(-14, min(14, correction))
         home_gap = max(16, gap - correction)
         away_gap = max(16, gap + correction)
     else:
-        raise ValueError(f"mode non valido: {mode}")
+        raise ValueError(f"strategy non valida: {strategy}")
 
     home_x = score_x - home_gap - home_box[2]
     away_x = score_x + score_width + away_gap - away_box[0]
-    return home_x, away_x
+    return score_x, home_x, away_x
 
 
-def place_variant_logos(
-    *,
-    card: Image.Image,
-    key: str,
-    score: Image.Image,
-    score_x: int,
-    score_y: int,
-    small: bool,
-    mode: str,
-) -> None:
-    if small:
-        logo_height = 56
-        gap = 18
-        blur = 6
-        opacity = 0.55
+def calc_group_centered_positions(score_width, home_logo, away_logo, gap, strategy):
+    """Strategie con centratura del gruppo complessivo, non del solo punteggio."""
+    home_info = visible_metrics(home_logo)
+    away_info = visible_metrics(away_logo)
+    home_box = home_info["box"]
+    away_box = away_info["box"]
+
+    if strategy == "group_visible":
+        home_gap = gap
+        away_gap = gap
+    elif strategy == "group_optical":
+        delta_mass = away_info["mass"] - home_info["mass"]
+        correction = round(delta_mass * 0.24)
+        correction = max(-20, min(20, correction))
+        home_gap = max(16, gap - correction)
+        away_gap = max(16, gap + correction)
+    elif strategy == "group_small_optical":
+        delta_mass = away_info["mass"] - home_info["mass"]
+        correction = round(delta_mass * 0.22)
+        correction = max(-18, min(18, correction))
+        home_gap = max(14, gap - correction)
+        away_gap = max(14, gap + correction)
     else:
-        logo_height = score.height
-        gap = 28
-        blur = 9
-        opacity = 0.60
+        raise ValueError(f"strategy non valida: {strategy}")
 
-    home_logo = load_logo_without_trim(HOME_NAME, HOME_ID, key, ASSETS, logo_height)
-    away_logo = load_logo_without_trim(AWAY_NAME, AWAY_ID, key, ASSETS, logo_height)
+    total_visible_width = home_info["width"] + home_gap + score_width + away_gap + away_info["width"]
+    left_visible = round((p.W - total_visible_width) / 2)
 
-    home_x, away_x = calculate_logo_positions(
-        score_x=score_x,
-        score_width=score.width,
-        home_logo=home_logo,
-        away_logo=away_logo,
-        gap=gap,
-        mode=mode,
-    )
+    home_x = left_visible - home_box[0]
+    score_x = left_visible + home_info["width"] + home_gap
+    away_x = score_x + score_width + away_gap - away_box[0]
 
-    home_y = score_y - home_logo.height // 2
-    away_y = score_y - away_logo.height // 2
-
-    p.soft_place(card, home_logo, (home_x, home_y), blur=blur, opacity=opacity)
-    p.soft_place(card, away_logo, (away_x, away_y), blur=blur, opacity=opacity)
+    return score_x, home_x, away_x
 
 
-def build_variant(
-    *,
-    small: bool,
-    mode: str,
-    output_path: Path,
-) -> Path:
+def calculate_positions(mode, score_width, score_height, home_logo, away_logo):
+    settings = mode_settings(mode, score_height)
+    gap = settings["gap"]
+    centered_score_x = (p.W - score_width) // 2
+
+    if mode == "small_canvas":
+        score_x, home_x, away_x = calc_fixed_score_positions(
+            centered_score_x, score_width, home_logo, away_logo, gap, "canvas"
+        )
+    elif mode == "normal_canvas":
+        score_x, home_x, away_x = calc_fixed_score_positions(
+            centered_score_x, score_width, home_logo, away_logo, gap, "canvas"
+        )
+    elif mode == "normal_visible":
+        score_x, home_x, away_x = calc_fixed_score_positions(
+            centered_score_x, score_width, home_logo, away_logo, gap, "visible"
+        )
+    elif mode == "normal_optical":
+        score_x, home_x, away_x = calc_fixed_score_positions(
+            centered_score_x, score_width, home_logo, away_logo, gap, "optical"
+        )
+    elif mode in {"group_visible", "group_optical", "group_small_optical"}:
+        score_x, home_x, away_x = calc_group_centered_positions(
+            score_width, home_logo, away_logo, gap, mode
+        )
+    else:
+        raise ValueError(f"mode non valido: {mode}")
+
+    return settings, score_x, home_x, away_x
+
+
+# =========================================================
+# RENDERING
+# =========================================================
+def build_variant(*, mode: str, output_path: Path) -> Path:
     card, key = build_base_card()
 
     score = p.number(f"{HOME_GOALS}-{AWAY_GOALS}", 200, key, ASSETS)
     score_y = 1220
-    score_x = (p.W - score.width) // 2
 
-    # Il punteggio resta sempre perfettamente centrato.
+    settings = mode_settings(mode, score.height)
+    home_logo = load_logo_without_trim(HOME_NAME, HOME_ID, key, ASSETS, settings["logo_height"])
+    away_logo = load_logo_without_trim(AWAY_NAME, AWAY_ID, key, ASSETS, settings["logo_height"])
+
+    settings, score_x, home_x, away_x = calculate_positions(
+        mode, score.width, score.height, home_logo, away_logo
+    )
+
     p.soft_place(
         card,
         score,
@@ -231,14 +263,19 @@ def build_variant(
         opacity=0.60,
     )
 
-    place_variant_logos(
-        card=card,
-        key=key,
-        score=score,
-        score_x=score_x,
-        score_y=score_y,
-        small=small,
-        mode=mode,
+    p.soft_place(
+        card,
+        home_logo,
+        (home_x, score_y - home_logo.height // 2),
+        blur=settings["blur"],
+        opacity=settings["opacity"],
+    )
+    p.soft_place(
+        card,
+        away_logo,
+        (away_x, score_y - away_logo.height // 2),
+        blur=settings["blur"],
+        opacity=settings["opacity"],
     )
 
     card = p.brand(card, key, ASSETS)
@@ -288,51 +325,56 @@ def main() -> None:
 
     output_dir = Path(tempfile.mkdtemp(prefix="jr_ft_padding_test_"))
 
-    variant_1 = build_variant(
-        small=True,
-        mode="canvas",
-        output_path=output_dir / "01_small_logos_padding_preserved.png",
-    )
-    variant_2 = build_variant(
-        small=False,
-        mode="canvas",
-        output_path=output_dir / "02_normal_logos_padding_preserved.png",
-    )
-    variant_3 = build_variant(
-        small=False,
-        mode="visible",
-        output_path=output_dir / "03_normal_logos_padding_smart_spacing.png",
-    )
-    variant_4 = build_variant(
-        small=False,
-        mode="optical",
-        output_path=output_dir / "04_normal_logos_padding_optical_centering.png",
-    )
+    variants = [
+        (
+            "small_canvas",
+            "01_small_logos_padding_preserved.png",
+            "1/7 · LOGHI PICCOLISSIMI · padding trasparente preservato",
+        ),
+        (
+            "normal_canvas",
+            "02_normal_logos_padding_preserved.png",
+            "2/7 · LOGHI NORMALI · padding trasparente preservato",
+        ),
+        (
+            "normal_visible",
+            "03_normal_logos_padding_visible_bounds.png",
+            "3/7 · LOGHI NORMALI · padding preservato + distanze sui bordi visibili",
+        ),
+        (
+            "normal_optical",
+            "04_normal_logos_padding_optical_score_fixed.png",
+            "4/7 · LOGHI NORMALI · padding preservato + centratura ottica (score fisso)",
+        ),
+        (
+            "group_visible",
+            "05_group_centered_visible.png",
+            "5/7 · BLOCCO COMPLETO centrato · bordi visibili",
+        ),
+        (
+            "group_optical",
+            "06_group_centered_optical.png",
+            "6/7 · BLOCCO COMPLETO centrato · correzione ottica forte",
+        ),
+        (
+            "group_small_optical",
+            "07_group_centered_small_optical.png",
+            "7/7 · LOGHI LEGGERMENTE PIÙ PICCOLI · blocco centrato + correzione ottica",
+        ),
+    ]
 
-    send_media_group([
-        {
-            "path": variant_1,
-            "caption": "1/4 · LOGHI PICCOLISSIMI · padding trasparente preservato",
-        },
-        {
-            "path": variant_2,
-            "caption": "2/4 · LOGHI NORMALI · padding trasparente preservato",
-        },
-        {
-            "path": variant_3,
-            "caption": "3/4 · LOGHI NORMALI · padding preservato + distanze sui bordi visibili",
-        },
-        {
-            "path": variant_4,
-            "caption": "4/4 · LOGHI NORMALI · padding preservato + centratura ottica",
-        },
-    ])
+    items = []
+    saved_paths = []
+    for mode, filename, caption in variants:
+        path = build_variant(mode=mode, output_path=output_dir / filename)
+        items.append({"path": path, "caption": caption})
+        saved_paths.append(str(path))
 
-    print("OK: inviate 4 immagini a Bot JR")
-    print(str(variant_1))
-    print(str(variant_2))
-    print(str(variant_3))
-    print(str(variant_4))
+    send_media_group(items)
+
+    print("OK: inviate 7 immagini a Bot JR")
+    for path in saved_paths:
+        print(path)
 
 
 if __name__ == "__main__":
