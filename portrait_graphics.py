@@ -103,6 +103,60 @@ def centered_logo_positions(marks, center, gap=20):
         yield mark, x
         x += mark.width+gap
 
+
+def phase_logo(name, tid, key, assets, height):
+    """Load a phase-card crest without cropping its transparent PNG padding."""
+    source, origin = g.resolve_team_logo_source(name, str(tid), assets)
+    if source is None:
+        return None
+    source = source.convert('RGBA')
+    if source.height <= 0:
+        raise ValueError('Altezza logo non valida')
+    width = max(1, round(source.width * height / source.height))
+    source = source.resize((width, height), Image.Resampling.LANCZOS)
+    return textured(source, key, assets, True) if origin == 'FCLogo' else source
+
+
+def visible_logo_bbox(mark, threshold=100):
+    """Return visible alpha bounds while leaving the padded logo untouched."""
+    mark = mark.convert('RGBA')
+    box = mark.getchannel('A').point(lambda a: 255 if a > threshold else 0).getbbox()
+    if not box:
+        raise ValueError('Logo vuoto')
+    return box
+
+
+def phase_group_positions(home_mark, away_mark, score_width, canvas_width=W, gap=28):
+    """Center the visible crest-score-crest group while preserving PNG padding."""
+    home_box = visible_logo_bbox(home_mark) if home_mark is not None else None
+    away_box = visible_logo_bbox(away_mark) if away_mark is not None else None
+    home_visible_width = home_box[2] - home_box[0] if home_box else 0
+    away_visible_width = away_box[2] - away_box[0] if away_box else 0
+
+    total = score_width
+    if home_box:
+        total += home_visible_width + gap
+    if away_box:
+        total += gap + away_visible_width
+
+    visible_left = round((canvas_width - total) / 2)
+    cursor = visible_left
+
+    home_x = None
+    if home_box:
+        home_x = cursor - home_box[0]
+        cursor += home_visible_width + gap
+
+    score_x = cursor
+    cursor += score_width
+
+    away_x = None
+    if away_box:
+        cursor += gap
+        away_x = cursor - away_box[0]
+
+    return score_x, home_x, away_x
+
 def number(text, size, key, assets):
     font = ImageFont.truetype(str(assets/'fonts/DharmaGothicEBold.otf'),size)
     box = font.getbbox(text)
@@ -232,15 +286,22 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
         card.alpha_composite(bg,(M,M))
         score = number(f'{home_goals}-{away_goals}',200,key,assets)
         y = 1210 if shootout else 1220
-        score_x = (W-score.width)//2
+
+        # Phase cards use the approved "version 5" layout: preserve each
+        # crest's original transparent PNG padding, measure only its visible
+        # alpha bounds, then center the whole visible group
+        # (home crest + gap + score + gap + away crest) on the card.
+        home_mark = phase_logo(home_name,home_id,key,assets,score.height)
+        away_mark = phase_logo(away_name,away_id,key,assets,score.height)
+        score_x, home_x, away_x = phase_group_positions(
+            home_mark, away_mark, score.width, W, gap=28
+        )
+
         soft_place(card,score,(score_x,y-score.height//2),blur=9,opacity=.60)
-        for name,tid,left in [(home_name,home_id,True),(away_name,away_id,False)]:
-            mark = logo(name,tid,key,assets,score.height)
-            if mark:
-                # Measure from tight visible bounds; never shift the score
-                # to compensate for differently shaped team crests.
-                x = score_x-28-mark.width if left else score_x+score.width+28
-                soft_place(card,mark,(x,y-mark.height//2),blur=9,opacity=.60)
+        if home_mark is not None:
+            soft_place(card,home_mark,(home_x,y-home_mark.height//2),blur=9,opacity=.60)
+        if away_mark is not None:
+            soft_place(card,away_mark,(away_x,y-away_mark.height//2),blur=9,opacity=.60)
         if shootout:
             hp,ap = shootout
             if hp == ap: raise ValueError('Rigori non conclusi')
