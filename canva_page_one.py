@@ -5,7 +5,10 @@ import json
 import os
 import time
 from pathlib import Path
+
 from PIL import Image
+
+from live_logging import log_line
 
 
 def extract_layers(pdf: bytes, destination: Path) -> Path:
@@ -74,7 +77,7 @@ def export_page_one(session, token: str, design: str, cache: Path, *, sleep=time
     response.raise_for_status()
     job=response.json();job=job.get('job',job)
     job_id=job['id']
-    print('CANVA: nuovo export PDF PRO pagina 1 richiesto', flush=True)
+    log_line('DEBUG', 'CANVA', 'Nuovo export PDF PRO pagina 1 richiesto')
     for _ in range(60):
         sleep(3)
         response=session.get(f'https://api.canva.com/rest/v1/exports/{job_id}',headers=headers,timeout=30)
@@ -91,6 +94,10 @@ def export_page_one(session, token: str, design: str, cache: Path, *, sleep=time
             tmp=cache/'current.tmp'
             tmp.write_text(json.dumps({'folder':folder}))
             os.replace(tmp,manifest)
-            print('CANVA: PDF PRO pagina 1 scaricato, background e maschera verificati', flush=True)
+            log_line(
+                'DEBUG',
+                'CANVA',
+                'PDF PRO pagina 1 scaricato | background e maschera verificati'
+            )
             return result
     raise TimeoutError('Export PDF Canva PRO scaduto')
