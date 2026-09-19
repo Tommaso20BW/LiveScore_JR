@@ -1,7 +1,11 @@
 # Generatore manuale Bot JR — specifica
 
+> Documento storico: i requisiti di durata e riavvio qui sotto sono stati
+> sostituiti dall'utente. L'implementazione corrente dura **30 minuti**, parte
+> **solo manualmente** e non avvia successori. Vedere README.md e PROGRESS.md.
+
 Data: 19 settembre 2026. Base esaminata: main, commit 0c76899.
-Stato: progetto da approvare, non implementato e non attivo.
+Stato storico al momento della stesura: progetto da approvare.
 
 ## Risultato richiesto
 

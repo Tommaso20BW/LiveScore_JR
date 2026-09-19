@@ -1,5 +1,9 @@
 # Manual graphics — Implementation Plan
 
+> HISTORICAL PLAN: the user superseded the four-hour relay/recovery design.
+> Current implementation: manual workflow_dispatch only, 30 minutes, no
+> successor or automatic restart. See README.md and the PROGRESS.md rulings.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans for native execution, or superpowers:subagent-driven-development if the user chooses delegation. Steps use checkbox syntax for tracking.
 
 **Goal:** Generate original PNG graphics through an authorized Telegram conversation, with a four-hour receiver relay and no disruption of live kit controls.

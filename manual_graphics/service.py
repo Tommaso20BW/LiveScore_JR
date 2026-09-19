@@ -15,6 +15,7 @@ class Service:
         self.owner_id, self.chat_id = owner_id, chat_id
         self.worker = None
         self.results = queue.Queue()
+        self.pending_result = None
         self.stopped = False
 
     def restore(self):
@@ -57,26 +58,39 @@ class Service:
             if int(update['update_id']) > int(state.get('last_update', -1)):
                 new_state, effects = self.wizard.handle(state, update, time.time())
                 new_state['last_update'] = int(update['update_id'])
+                new_state['prompt_outbox'] = effects
                 self.store.write('session', new_state)
+                state = new_state
                 callback_id = (update.get('callback_query') or {}).get('id')
                 if callback_id:
                     try:
                         self.telegram.answer(callback_id)
                     except TelegramError:
                         pass
-                for effect in effects:
-                    self.telegram.prompt(effect['text'], effect.get('keyboard'))
+            while state.get('prompt_outbox'):
+                effect = state['prompt_outbox'][0]
+                self.telegram.prompt(effect['text'], effect.get('keyboard'))
+                state['prompt_outbox'].pop(0)
+                self.store.write('session', state)
             receiver['pending'].pop(0)
             self.store.write('receiver', receiver)
 
     def rendering(self):
-        try:
-            session_id, png, error = self.results.get_nowait()
-        except queue.Empty:
-            pass
-        else:
+        if self.pending_result is None:
+            try:
+                self.pending_result = self.results.get_nowait()
+            except queue.Empty:
+                pass
+        if self.pending_result is not None:
+            session_id, png, error = self.pending_result
             state = self.store.read('session')
             self.worker = None
+            if state.get('id') == session_id and state.get('status') == 'sending':
+                # A previous send or its state write failed ambiguously. Never
+                # automatically repeat the document and risk a duplicate.
+                state['status'] = 'uncertain'
+                self.store.write('session', state)
+                self.telegram.prompt('Invio incerto: controlla la chat. /reinvia solo se il PNG manca.')
             if state.get('id') == session_id and state.get('status') == 'rendering':
                 if error:
                     state['status'] = 'failed'
@@ -99,6 +113,7 @@ class Service:
                         state.update(status='completed', message_id=mid)
                         self.store.write('session', state)
                         self.telegram.prompt('PNG originale inviato. /grafica per un’altra immagine.')
+            self.pending_result = None
         state = self.store.read('session')
         if state.get('status') == 'ready' and self.worker is None:
             state['status'] = 'rendering'

@@ -21,6 +21,19 @@ def message(text, sender=7, chat=7):
 
 
 class CoreTests(unittest.TestCase):
+    def test_rerun_requires_fresh_acknowledgement(self):
+        store = MemoryStore()
+        old = Coordinator(store, '22', lambda _: True)
+        old.request()
+        live = Coordinator(store, '11', lambda _: True)
+        live.live_paused(40)
+        old.finish(41)
+        new = Coordinator(store, '22', lambda _: True)
+        new.request()
+        self.assertFalse(new.ready(['11']))
+        live.live_paused(41)
+        self.assertTrue(new.ready(['11']))
+
     def test_authorization(self):
         self.assertTrue(authorized(message('/grafica'), 7, 7))
         self.assertFalse(authorized(message('/grafica', sender=8), 7, 7))
