@@ -1,4 +1,4 @@
-name: Telegram Bot JR - Auto-delete
+name: Auto-delete Test
 
 on:
   workflow_dispatch:
