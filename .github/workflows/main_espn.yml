@@ -95,8 +95,6 @@ jobs:
       - name: Run Live Score Bot
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
-          # Coordina soltanto ricezione Telegram e refresh Canva con il generatore.
-          MANUAL_GRAPHICS_BRIDGE: '1'
           TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Bot JR' && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
           TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
           LIVE_SCORE_CHANNEL_NAME: ${{ github.event.inputs.channel || 'Juventus Reborn' }}
