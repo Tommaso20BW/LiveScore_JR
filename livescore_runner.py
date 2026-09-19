@@ -10,9 +10,6 @@ from dynamic_kit_runtime import DynamicKitRuntime
 
 # Installa gli hook una sola volta. Il cuore juve_bot_espn.py resta invariato.
 KIT_RUNTIME = DynamicKitRuntime(bot).install()
-if os.getenv('MANUAL_GRAPHICS_BRIDGE') == '1':
-    from manual_graphics.live_bridge import install as install_manual_bridge
-    install_manual_bridge(bot, KIT_RUNTIME)
 _ORIGINAL_TROVA_PARTITA = bot.trova_partita_oggi
 
 

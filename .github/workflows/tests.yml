@@ -82,10 +82,7 @@ jobs:
 
           echo "::group::Test automatici"
 
-          if {
-            python -m unittest discover -s tests -q &&
-            python -m unittest discover -s manual_graphics/tests -q
-          } > tests.log 2>&1; then
+          if python -m unittest discover -s tests -q > tests.log 2>&1; then
 
             echo "✅ Tutti i test superati"
             echo "result=success" >> "$GITHUB_OUTPUT"
