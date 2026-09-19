@@ -6,6 +6,19 @@ from manual_graphics.store import GistStore, StorageError
 
 
 class TransportTests(unittest.TestCase):
+    def test_gist_error_identifies_file_and_retry_without_response_body(self):
+        http = Mock()
+        http.get.return_value.status_code = 200
+        http.get.return_value.json.return_value = {'public': False, 'files': {}}
+        http.patch.return_value.status_code = 429
+        http.patch.return_value.headers = {'Retry-After': '120'}
+        http.patch.return_value.text = 'secret-content'
+        with self.assertRaises(StorageError) as caught:
+            GistStore('secret-token', 'gist', http).write('session', {'status': 'ready'})
+        self.assertIn('manual_session.json', str(caught.exception))
+        self.assertEqual(caught.exception.retry_after, 120)
+        self.assertNotIn('secret', str(caught.exception))
+
     def test_document_keeps_original_bytes_and_private_destination(self):
         http = Mock()
         http.post.return_value.status_code = 200

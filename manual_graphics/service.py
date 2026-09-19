@@ -7,6 +7,7 @@ import threading
 import time
 from .telegram import Telegram, TelegramError, DeliveryUncertain, authorized
 from .coordination import Coordinator
+from .store import StorageError
 
 
 class Service:
@@ -28,6 +29,7 @@ class Service:
 
     def receive(self):
         state = self.store.read('receiver')
+        previous = copy.deepcopy(state)
         state.setdefault('offset', 0)
         state.setdefault('kit', [])
         state.setdefault('pending', [])
@@ -48,7 +50,8 @@ class Service:
                     state['pending'].append(update)
             state['offset'] = uid + 1
         # One write holds routing decisions and offset together.
-        self.store.write('receiver', state)
+        if state != previous:
+            self.store.write('receiver', state)
 
     def conversations(self):
         receiver = self.store.read('receiver')
@@ -119,6 +122,7 @@ class Service:
             state['status'] = 'rendering'
             self.store.write('session', state)
             data, sid = copy.deepcopy(state['data']), state['id']
+            print(f"INFO MANUAL: fase=render tipo={data['kind']}", flush=True)
             def work():
                 try:
                     self.results.put((sid, self.renderer.render(data), None))
@@ -134,17 +138,24 @@ class Service:
         self.telegram.prompt('Generatore attivo per 30 minuti. Scrivi /grafica. Nessun riavvio automatico.')
         failures = 0
         while not self.stopped and time.monotonic() < deadline:
+            stage = 'conversazione'
             try:
                 self.conversations()
+                stage = 'generazione/invio'
                 self.rendering()
+                stage = 'ricezione/salvataggio'
                 self.receive()
                 failures = 0
             except Exception as exc:
                 failures += 1
-                print(f'WARN MANUAL: {type(exc).__name__}; tentativo {failures}', flush=True)
+                detail = str(exc) if isinstance(exc, StorageError) else type(exc).__name__
+                delay = max(min(2 * failures, 10), exc.retry_after if isinstance(exc, StorageError) else 0)
+                print(f'WARN MANUAL: fase={stage}; {detail}; tentativo {failures}; attesa={delay}s', flush=True)
                 if failures >= 5:
                     raise RuntimeError('Generatore fermato dopo errori ripetuti') from None
-                time.sleep(min(2 * failures, 10))
+                wait_until = min(deadline, time.monotonic() + delay)
+                while not self.stopped and time.monotonic() < wait_until:
+                    time.sleep(min(1, max(0, wait_until - time.monotonic())))
         # No successor: the next run can only be started manually.
         state = self.store.read('session')
         if state.get('status') == 'rendering':
@@ -190,5 +201,6 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as exc:
-        print(f'ERROR MANUAL: {type(exc).__name__}. Nessun riavvio automatico.', flush=True)
+        detail = str(exc) if isinstance(exc, StorageError) else type(exc).__name__
+        print(f'ERROR MANUAL: {detail}. Nessun riavvio automatico.', flush=True)
         raise SystemExit(1)

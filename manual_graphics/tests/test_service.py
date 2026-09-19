@@ -7,6 +7,12 @@ from manual_graphics.telegram import TelegramError
 
 
 class ServiceTests(unittest.TestCase):
+    def test_idle_poll_does_not_rewrite_unchanged_gist(self):
+        self.store.write('receiver', {'offset': 21, 'pending': [], 'kit': []})
+        self.store.write = Mock(wraps=self.store.write)
+        self.service.receive()
+        self.store.write.assert_not_called()
+
     def setUp(self):
         self.store = MemoryStore()
         self.tg = Mock()
