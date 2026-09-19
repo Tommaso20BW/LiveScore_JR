@@ -13,14 +13,16 @@ import requests
 class GitMutex:
     REF = 'heads/jr-manual-canva-lock'
 
-    def __init__(self, api, run_id, base_sha, wait_seconds=45):
+    def __init__(self, api, run_id, base_sha, wait_seconds=45, attempt=1):
         self.api, self.run_id, self.base_sha = api, str(run_id), base_sha
         self.wait_seconds = wait_seconds
         self.held = None
+        self.attempt = int(attempt)
 
     def _commit(self, parent, tree, locked):
         return self.api.json('POST', 'git/commits', json={
-            'message': json.dumps({'jr_manual_canva_lock': True, 'locked': locked, 'run_id': self.run_id}),
+            'message': json.dumps({'jr_manual_canva_lock': True, 'locked': locked,
+                                   'run_id': self.run_id, 'attempt': self.attempt}),
             'tree': tree, 'parents': [parent]})['sha']
 
     def _head(self):
@@ -54,7 +56,8 @@ class GitMutex:
         deadline = time.monotonic() + self.wait_seconds
         while time.monotonic() < deadline:
             sha, tree, state = self._head()
-            if not state.get('locked') or not self.api.run_active(state['run_id']):
+            if not state.get('locked') or not self.api.run_active(
+                    state['run_id'], attempt=state.get('attempt', 1)):
                 self.held = self._advance(sha, tree, True)
                 if self.held:
                     return self
@@ -80,6 +83,11 @@ class TokenManager:
     def get(self, now=None):
         now = time.time() if now is None else now
         with self.local_lock:
+            cached = self.store.read('canva')
+            if (not self.pending and cached.get('access_token')
+                    and float(cached.get('expires_at', 0)) > now
+                    and cached.get('secret_synced', True)):
+                return cached['access_token']
             with self.mutex_factory():
                 # If a save failed after OAuth rotation, retry that exact token,
                 # never another refresh with the old startup environment.

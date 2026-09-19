@@ -1,16 +1,27 @@
 import contextlib
 import unittest
 from unittest.mock import Mock
-from manual_graphics.canva import TokenManager
+from manual_graphics.canva import TokenManager, GitMutex
 from manual_graphics.tests.test_core import MemoryStore
 
 
 class TokenTests(unittest.TestCase):
+    def test_abandoned_lock_passes_owner_attempt_for_recovery(self):
+        api = Mock()
+        api.run_active.return_value = False
+        mutex = GitMutex(api, '22', 'base', attempt=2)
+        mutex._head = Mock(return_value=('old', 'tree', {'locked': True, 'run_id': '22', 'attempt': 1}))
+        mutex._advance = Mock(return_value='new')
+        self.assertIs(mutex.__enter__(), mutex)
+        api.run_active.assert_called_once_with('22', attempt=1)
+        mutex._advance.assert_called_once_with('old', 'tree', True)
+
     def test_cached_token_no_oauth(self):
         store = MemoryStore()
         store.write('canva', {'access_token': 'cached', 'expires_at': 1000})
         http = Mock()
-        manager = TokenManager(store, contextlib.nullcontext, http, 'id', 'secret', 'old', lambda v: True)
+        mutex = Mock(side_effect=AssertionError('Cached token must not acquire Git lock'))
+        manager = TokenManager(store, mutex, http, 'id', 'secret', 'old', lambda v: True)
         self.assertEqual(manager.get(now=100), 'cached')
         http.post.assert_not_called()
 

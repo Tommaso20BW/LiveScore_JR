@@ -37,8 +37,22 @@ class GitHub:
         return [str(r['id']) for r in self.runs('main_espn.yml')
                 if r['status'] not in ('completed', 'queued', 'waiting', 'pending', 'requested')]
 
-    def run_active(self, run_id):
-        return self.json('GET', f'actions/runs/{int(run_id)}')['status'] != 'completed'
+    def run_active(self, run_id, attempt=None):
+        response = self.request('GET', f'actions/runs/{int(run_id)}')
+        if response.status_code == 404:
+            # A deleted run is not a running owner. First verify that the same
+            # credential can actually read Actions in this repository; an
+            # inaccessible repository must never release another process' lock.
+            visible = self.json('GET', 'actions/runs?per_page=1')
+            if not isinstance(visible.get('workflow_runs'), list):
+                raise RuntimeError('Accesso Actions non verificato')
+            return False
+        if response.status_code != 200:
+            raise RuntimeError(f'GitHub HTTP {response.status_code}')
+        run = response.json()
+        if attempt is not None and int(run['run_attempt']) > int(attempt):
+            return False
+        return run['status'] != 'completed'
 
     def delete(self, run_id):
         self.json('DELETE', f'actions/runs/{int(run_id)}')

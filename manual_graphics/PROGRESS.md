@@ -32,7 +32,19 @@ four-hour requirements in the earlier design/plan.
 - Existing suite initially: 152 tests, 3 environment errors (PyMuPDF missing).
   Installed PyMuPDF and PyYAML for local verification; no requirements change.
 - First new contract tests: RED, new conversation module missing.
+- Final local verification: 152 existing tests and 41 manual-generator tests
+  pass; compileall passes. Real kick-off renderer checked for PNG dimensions;
+  Telegram/Canva remote calls covered with test doubles, not a production run.
+- Independent review found stale handoff acknowledgements on rerun and stale
+  Canva lock ownership. Added unique handoff request UUIDs, run-attempt lock
+  metadata, and deleted-run detection requiring verified Actions read access.
+  Regression tests observed RED before the fixes, then GREEN.
+- Valid cached Canva tokens avoid Git mutex writes. Prompt outbox retries
+  failed questions without advancing the form twice.
+- Completed PNGs remain buffered through temporary state-read failures;
+  ambiguous deliveries never trigger an automatic duplicate.
 
 ## Status
 
-Implementation in progress. Nothing pushed or activated yet.
+Implementation verified locally; publishing to main as explicitly requested.
+The generator is not dispatched as part of installation.

@@ -15,7 +15,8 @@ def resources(env=None):
     api = GitHub(env.get('GH_TOKEN') or env.get('SNAPSHOT_GH_TOKEN') or env['GH_PAT'], env['GITHUB_REPOSITORY'])
     secret_api = GitHub(env['GH_PAT'], env['GITHUB_REPOSITORY'])
     tokens = TokenManager(store,
-        lambda: GitMutex(api, env['GITHUB_RUN_ID'], env['GITHUB_SHA']), requests.Session(),
+        lambda: GitMutex(api, env['GITHUB_RUN_ID'], env['GITHUB_SHA'],
+                         attempt=env.get('GITHUB_RUN_ATTEMPT', 1)), requests.Session(),
         env.get('CANVA_CLIENT_ID'), env.get('CANVA_CLIENT_SECRET'), env.get('CANVA_REFRESH_TOKEN'),
         lambda token: sync_refresh_secret(secret_api, token))
     return store, api, tokens
