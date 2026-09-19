@@ -2,6 +2,9 @@ name: Bot Check
 
 on:
   push:
+    branches:
+      - main
+
   workflow_dispatch:
 
 permissions:
@@ -19,6 +22,17 @@ jobs:
     timeout-minutes: 20
 
     steps:
+      # Evita test inutili mentre stai facendo più modifiche ravvicinate.
+      # Se arriva un altro push su main, questo run viene cancellato
+      # automaticamente da concurrency.
+      - name: Attendi modifiche ravvicinate
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          echo "⏳ Attendo 60 secondi per eventuali altri aggiornamenti..."
+          sleep 60
+          echo "✅ Repository stabile, avvio i controlli"
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -43,7 +57,9 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           echo "::group::Controllo sintassi Python"
+
           if python -m compileall -q . > syntax.log 2>&1; then
             echo "✅ Sintassi OK"
             echo "result=success" >> "$GITHUB_OUTPUT"
@@ -53,6 +69,7 @@ jobs:
             echo "result=failure" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+
           echo "::endgroup::"
 
       - name: Esegui test
@@ -62,16 +79,25 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           echo "::group::Test automatici"
 
-          if { python -m unittest discover -s tests -q && python -m unittest discover -s manual_graphics/tests -q; } > tests.log 2>&1; then
+          if {
+            python -m unittest discover -s tests -q &&
+            python -m unittest discover -s manual_graphics/tests -q
+          } > tests.log 2>&1; then
+
             echo "✅ Tutti i test superati"
             echo "result=success" >> "$GITHUB_OUTPUT"
+
           else
+
             echo "❌ Uno o più test sono falliti"
             echo
             tail -n 80 tests.log
+
             echo "result=failure" >> "$GITHUB_OUTPUT"
+
             echo "::endgroup::"
             exit 1
           fi
@@ -79,7 +105,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Crea riepilogo GitHub
-        if: always()
+        if: always() && !cancelled()
         shell: bash
         env:
           SYNTAX_OUTCOME: ${{ steps.syntax.outcome }}
@@ -120,6 +146,7 @@ jobs:
               echo '```text'
               tail -n 50 syntax.log 2>/dev/null || true
               echo '```'
+
             elif [ "$TEST_OUTCOME" != "success" ]; then
               echo
               echo "## Errore principale"
@@ -128,10 +155,17 @@ jobs:
               tail -n 80 tests.log 2>/dev/null || true
               echo '```'
             fi
+
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Prepara riepilogo errore per Telegram
-        if: always() && (steps.syntax.outcome != 'success' || steps.unittest.outcome != 'success')
+        if: >-
+          always() &&
+          !cancelled() &&
+          (
+            steps.syntax.outcome != 'success' ||
+            steps.unittest.outcome != 'success'
+          )
         env:
           SYNTAX_OUTCOME: ${{ steps.syntax.outcome }}
           TEST_OUTCOME: ${{ steps.unittest.outcome }}
@@ -156,47 +190,101 @@ jobs:
               title = "Test automatici falliti"
               source = Path("tests.log")
 
-          text = source.read_text(encoding="utf-8", errors="replace") if source.exists() else "Log non disponibile."
+          text = (
+              source.read_text(
+                  encoding="utf-8",
+                  errors="replace",
+              )
+              if source.exists()
+              else "Log non disponibile."
+          )
 
-          text = re.sub(r"\x1b\[[0-9;]*m", "", text)
-          text = re.sub(r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b", "[TELEGRAM_TOKEN_OSCURATO]", text)
-          text = re.sub(r"\b(?:ghp|github_pat)_[A-Za-z0-9_]{20,}\b", "[GITHUB_TOKEN_OSCURATO]", text)
+          text = re.sub(
+              r"\x1b\[[0-9;]*m",
+              "",
+              text,
+          )
 
-          lines = [line.rstrip() for line in text.splitlines() if line.strip()]
+          text = re.sub(
+              r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b",
+              "[TELEGRAM_TOKEN_OSCURATO]",
+              text,
+          )
+
+          text = re.sub(
+              r"\b(?:ghp|github_pat)_[A-Za-z0-9_]{20,}\b",
+              "[GITHUB_TOKEN_OSCURATO]",
+              text,
+          )
+
+          lines = [
+              line.rstrip()
+              for line in text.splitlines()
+              if line.strip()
+          ]
 
           if syntax_failed:
               excerpt_lines = lines[-30:]
           else:
               start = None
+
               for i, line in enumerate(lines):
-                  if line.startswith("FAIL: ") or line.startswith("ERROR: "):
+                  if (
+                      line.startswith("FAIL: ")
+                      or line.startswith("ERROR: ")
+                  ):
                       start = max(0, i - 1)
 
-              excerpt_lines = lines[start:start + 35] if start is not None else lines[-35:]
+              if start is not None:
+                  excerpt_lines = lines[start:start + 35]
+              else:
+                  excerpt_lines = lines[-35:]
 
-          excerpt = "\n".join(excerpt_lines).strip() or "Nessun dettaglio disponibile."
+          excerpt = (
+              "\n".join(excerpt_lines).strip()
+              or "Nessun dettaglio disponibile."
+          )
+
           excerpt = excerpt[-2400:]
 
           repo = os.environ["REPOSITORY"]
           sha = os.environ["SHA"]
-          run_url = f"https://github.com/{repo}/actions/runs/{os.environ['RUN_ID']}"
+
+          run_url = (
+              f"https://github.com/{repo}/actions/runs/"
+              f"{os.environ['RUN_ID']}"
+          )
 
           message = (
               "🚨 <b>LIVE SCORE JR · CONTROLLO FALLITO</b>\n\n"
               f"<b>Problema:</b> {html.escape(title)}\n"
-              f"<b>Branch:</b> <code>{html.escape(os.environ['BRANCH'])}</code>\n"
-              f"<b>Commit:</b> <code>{html.escape(sha[:7])}</code>\n"
-              f"<b>Autore:</b> {html.escape(os.environ['ACTOR'])}\n\n"
+              f"<b>Branch:</b> "
+              f"<code>{html.escape(os.environ['BRANCH'])}</code>\n"
+              f"<b>Commit:</b> "
+              f"<code>{html.escape(sha[:7])}</code>\n"
+              f"<b>Autore:</b> "
+              f"{html.escape(os.environ['ACTOR'])}\n\n"
               "<b>Dettaglio:</b>\n"
               f"<pre>{html.escape(excerpt)}</pre>\n\n"
-              f"<a href=\"{html.escape(run_url)}\">Apri il log completo su GitHub Actions</a>"
+              f'<a href="{html.escape(run_url)}">'
+              "Apri il log completo su GitHub Actions"
+              "</a>"
           )
 
-          Path("telegram_message.txt").write_text(message, encoding="utf-8")
+          Path("telegram_message.txt").write_text(
+              message,
+              encoding="utf-8",
+          )
           PY
 
       - name: Avvisa Bot JR su Telegram
-        if: always() && (steps.syntax.outcome != 'success' || steps.unittest.outcome != 'success')
+        if: >-
+          always() &&
+          !cancelled() &&
+          (
+            steps.syntax.outcome != 'success' ||
+            steps.unittest.outcome != 'success'
+          )
         continue-on-error: true
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -208,7 +296,10 @@ jobs:
             exit 1
           fi
 
-          curl --fail --silent --show-error \
+          curl \
+            --fail \
+            --silent \
+            --show-error \
             --request POST \
             "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_TO_BOT}" \
@@ -217,7 +308,13 @@ jobs:
             --data-urlencode "text@telegram_message.txt"
 
       - name: Salva log completi se qualcosa fallisce
-        if: always() && (steps.syntax.outcome != 'success' || steps.unittest.outcome != 'success')
+        if: >-
+          always() &&
+          !cancelled() &&
+          (
+            steps.syntax.outcome != 'success' ||
+            steps.unittest.outcome != 'success'
+          )
         uses: actions/upload-artifact@v4
         with:
           name: test-error-${{ github.run_id }}
@@ -229,27 +326,38 @@ jobs:
           retention-days: 7
 
       - name: Segna il workflow come fallito
-        if: always() && (steps.syntax.outcome != 'success' || steps.unittest.outcome != 'success')
+        if: >-
+          always() &&
+          !cancelled() &&
+          (
+            steps.syntax.outcome != 'success' ||
+            steps.unittest.outcome != 'success'
+          )
         run: |
           echo "❌ Uno o più controlli del bot sono falliti."
           exit 1
 
       - name: Pulisci la cronologia dei test
-        if: always()
+        if: always() && !cancelled()
         env:
           GH_TOKEN: ${{ github.token }}
           KEEP: "0"
         shell: bash
         run: |
           echo "::group::Pulizia cronologia"
+
           gh api \
             "repos/${{ github.repository }}/actions/workflows/tests.yml/runs?status=completed&per_page=100" \
-            --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
+            --jq \
+            '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
           while read -r RUN_ID; do
             if [ -n "$RUN_ID" ]; then
-              gh api -X DELETE \
-                "repos/${{ github.repository }}/actions/runs/$RUN_ID" >/dev/null 2>&1 || true
+              gh api \
+                -X DELETE \
+                "repos/${{ github.repository }}/actions/runs/$RUN_ID" \
+                >/dev/null 2>&1 || true
             fi
           done
+
           echo "✅ Pulizia completata"
           echo "::endgroup::"
