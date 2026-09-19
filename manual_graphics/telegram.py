@@ -1,4 +1,7 @@
 """Telegram transport; document output is always the configured Bot JR chat."""
+import json
+from urllib.parse import urlparse
+
 import requests
 
 
@@ -55,11 +58,37 @@ class Telegram:
             'allowed_updates': '["message","callback_query"]'}, timeout=15)
 
     def prompt(self, text, keyboard=None):
-        import json
         data = {'chat_id': self.chat_id, 'text': text, 'disable_web_page_preview': 'true'}
         if keyboard:
             data['reply_markup'] = json.dumps(keyboard)
         return self.call('sendMessage', data)['message_id']
+
+    def webapp_launcher(self, url):
+        parsed = urlparse(str(url).strip())
+        if parsed.scheme != 'https' or not parsed.netloc:
+            raise TelegramError('URL Mini App non HTTPS')
+        keyboard = {
+            'keyboard': [[{
+                'text': '🎨 Apri generatore',
+                'web_app': {'url': str(url).strip()},
+            }]],
+            'resize_keyboard': True,
+            'is_persistent': True,
+            'input_field_placeholder': 'Apri il generatore grafico',
+        }
+        return self.prompt(
+            '🎨 Generatore grafiche attivo per 30 minuti. Usa il pulsante qui sotto.',
+            keyboard,
+        )
+
+    def remove_keyboard(self):
+        return self.prompt('Chiusura generatore…', {'remove_keyboard': True})
+
+    def delete(self, message_id):
+        return self.call('deleteMessage', {
+            'chat_id': self.chat_id,
+            'message_id': int(message_id),
+        })
 
     def answer(self, callback_id, text=''):
         return self.call('answerCallbackQuery', {'callback_query_id': callback_id, 'text': text[:180]})

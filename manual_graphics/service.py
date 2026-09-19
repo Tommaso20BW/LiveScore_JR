@@ -3,11 +3,14 @@ import copy
 import os
 import queue
 import signal
+import secrets
 import threading
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import time
 from .telegram import Telegram, TelegramError, DeliveryUncertain, authorized
 from .coordination import Coordinator
 from .store import StorageError
+from .webapp_payload import parse_webapp_update
 
 
 class Service:
@@ -18,6 +21,7 @@ class Service:
         self.results = queue.Queue()
         self.pending_result = None
         self.stopped = False
+        self.webapp_session = None
 
     def restore(self):
         state = self.store.read('session')
@@ -44,9 +48,12 @@ class Service:
                 continue
             if authorized(update, self.owner_id, self.chat_id):
                 callback = update.get('callback_query') or {}
+                message = update.get('message') or {}
                 if str(callback.get('data') or '').startswith('kit:'):
                     state['kit'].append(update)
-                elif (update.get('message', {}).get('text') or str(callback.get('data') or '').startswith('mg:')):
+                elif (message.get('web_app_data')
+                      or message.get('text')
+                      or str(callback.get('data') or '').startswith('mg:')):
                     state['pending'].append(update)
             state['offset'] = uid + 1
         # One write holds routing decisions and offset together.
@@ -58,8 +65,16 @@ class Service:
         while receiver.get('pending'):
             update = receiver['pending'][0]
             state = self.store.read('session')
+            is_webapp = bool((update.get('message') or {}).get('web_app_data'))
             if int(update['update_id']) > int(state.get('last_update', -1)):
-                new_state, effects = self.wizard.handle(state, update, time.time())
+                if is_webapp:
+                    new_state, effects = parse_webapp_update(
+                        state, update, self.wizard.catalog, time.time(),
+                        expected_session=self.webapp_session)
+                else:
+                    # Legacy wizard remains available as a fallback, but the
+                    # normal interface is now the Mini App.
+                    new_state, effects = self.wizard.handle(state, update, time.time())
                 new_state['last_update'] = int(update['update_id'])
                 new_state['prompt_outbox'] = effects
                 self.store.write('session', new_state)
@@ -75,6 +90,15 @@ class Service:
                 self.telegram.prompt(effect['text'], effect.get('keyboard'))
                 state['prompt_outbox'].pop(0)
                 self.store.write('session', state)
+            if is_webapp:
+                # web_app_data arrives as a service message. Remove it so a
+                # successful generation leaves only the final PNG in the chat.
+                message_id = (update.get('message') or {}).get('message_id')
+                if message_id:
+                    try:
+                        self.telegram.delete(message_id)
+                    except TelegramError:
+                        pass
             receiver['pending'].pop(0)
             self.store.write('receiver', receiver)
 
@@ -98,7 +122,7 @@ class Service:
                 if error:
                     state['status'] = 'failed'
                     self.store.write('session', state)
-                    self.telegram.prompt(f'Grafica non generata ({error}). /reinvia per riprovare o /annulla.')
+                    self.telegram.prompt(f'Grafica non generata ({error}). Riapri la Mini App per riprovare.')
                 else:
                     state['status'] = 'sending'
                     self.store.write('session', state)
@@ -107,15 +131,16 @@ class Service:
                     except DeliveryUncertain:
                         state['status'] = 'uncertain'
                         self.store.write('session', state)
-                        self.telegram.prompt('Invio incerto: controlla se il PNG è arrivato. /reinvia solo se manca, altrimenti /annulla.')
+                        self.telegram.prompt('Invio incerto: controlla se il PNG è arrivato. Riprova solo se manca.')
                     except TelegramError:
                         state['status'] = 'failed'
                         self.store.write('session', state)
-                        self.telegram.prompt('Invio rifiutato da Telegram. /reinvia per riprovare.')
+                        self.telegram.prompt('Invio rifiutato da Telegram. Riapri la Mini App per riprovare.')
                     else:
                         state.update(status='completed', message_id=mid)
                         self.store.write('session', state)
-                        self.telegram.prompt('PNG originale inviato. /grafica per un’altra immagine.')
+                        if state.get('source') != 'webapp':
+                            self.telegram.prompt('PNG originale inviato. /grafica per un’altra immagine.')
             self.pending_result = None
         state = self.store.read('session')
         if state.get('status') == 'ready' and self.worker is None:
@@ -135,33 +160,64 @@ class Service:
     def run(self, duration=1800):
         deadline = time.monotonic() + min(1800, max(1, duration))
         self.restore()
-        self.telegram.prompt('Generatore attivo per 30 minuti. Scrivi /grafica. Nessun riavvio automatico.')
+        webapp_url = os.getenv('MANUAL_GRAPHICS_WEBAPP_URL', '').strip()
+        launcher_message_id = None
+        if webapp_url:
+            self.webapp_session = secrets.token_urlsafe(18)
+            parts = urlsplit(webapp_url)
+            query = dict(parse_qsl(parts.query, keep_blank_values=True))
+            query['session'] = self.webapp_session
+            launch_url = urlunsplit((parts.scheme, parts.netloc, parts.path,
+                                     urlencode(query), parts.fragment))
+            launcher_message_id = self.telegram.webapp_launcher(launch_url)
+        else:
+            self.telegram.prompt('Generatore attivo per 30 minuti. Scrivi /grafica. Nessun riavvio automatico.')
         failures = 0
-        while not self.stopped and time.monotonic() < deadline:
-            stage = 'conversazione'
-            try:
-                self.conversations()
-                stage = 'generazione/invio'
-                self.rendering()
-                stage = 'ricezione/salvataggio'
-                self.receive()
-                failures = 0
-            except Exception as exc:
-                failures += 1
-                detail = str(exc) if isinstance(exc, StorageError) else type(exc).__name__
-                delay = max(min(2 * failures, 10), exc.retry_after if isinstance(exc, StorageError) else 0)
-                print(f'WARN MANUAL: fase={stage}; {detail}; tentativo {failures}; attesa={delay}s', flush=True)
-                if failures >= 5:
-                    raise RuntimeError('Generatore fermato dopo errori ripetuti') from None
-                wait_until = min(deadline, time.monotonic() + delay)
-                while not self.stopped and time.monotonic() < wait_until:
-                    time.sleep(min(1, max(0, wait_until - time.monotonic())))
-        # No successor: the next run can only be started manually.
-        state = self.store.read('session')
-        if state.get('status') == 'rendering':
-            state['status'] = 'ready'
-            self.store.write('session', state)
-        self.telegram.prompt('Generatore terminato. Per usarlo ancora, avvia manualmente il workflow. Le richieste incomplete sono conservate.')
+        try:
+            while not self.stopped and time.monotonic() < deadline:
+                stage = 'conversazione'
+                try:
+                    self.conversations()
+                    stage = 'generazione/invio'
+                    self.rendering()
+                    stage = 'ricezione/salvataggio'
+                    self.receive()
+                    failures = 0
+                except Exception as exc:
+                    failures += 1
+                    detail = str(exc) if isinstance(exc, StorageError) else type(exc).__name__
+                    delay = max(min(2 * failures, 10), exc.retry_after if isinstance(exc, StorageError) else 0)
+                    print(f'WARN MANUAL: fase={stage}; {detail}; tentativo {failures}; attesa={delay}s', flush=True)
+                    if failures >= 5:
+                        raise RuntimeError('Generatore fermato dopo errori ripetuti') from None
+                    wait_until = min(deadline, time.monotonic() + delay)
+                    while not self.stopped and time.monotonic() < wait_until:
+                        time.sleep(min(1, max(0, wait_until - time.monotonic())))
+        finally:
+            # No successor: the next run can only be started manually.
+            state = self.store.read('session')
+            if state.get('status') == 'rendering':
+                state['status'] = 'ready'
+                self.store.write('session', state)
+            if webapp_url:
+                # Remove both the launcher message and the persistent keyboard.
+                if launcher_message_id:
+                    try:
+                        self.telegram.delete(launcher_message_id)
+                    except TelegramError:
+                        pass
+                cleanup_message_id = None
+                try:
+                    cleanup_message_id = self.telegram.remove_keyboard()
+                except TelegramError:
+                    pass
+                if cleanup_message_id:
+                    try:
+                        self.telegram.delete(cleanup_message_id)
+                    except TelegramError:
+                        pass
+            else:
+                self.telegram.prompt('Generatore terminato. Per usarlo ancora, avvia manualmente il workflow. Le richieste incomplete sono conservate.')
 
 
 def main():
