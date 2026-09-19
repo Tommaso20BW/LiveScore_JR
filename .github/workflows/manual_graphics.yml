@@ -1,4 +1,4 @@
-name: Bot JR - Generatore manuale
+name: ImageGen
 
 on:
   workflow_dispatch:
