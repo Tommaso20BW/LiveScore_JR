@@ -43,11 +43,12 @@ jobs:
           python -m pip install -r requirements.txt
           playwright install --with-deps chromium
 
-      - name: Ricevi richieste manuali su Bot JR
+      - name: Ricevi richieste dalla Mini App Telegram
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
           MANUAL_GRAPHICS_OWNER_ID: ${{ secrets.MANUAL_GRAPHICS_OWNER_ID }}
+          MANUAL_GRAPHICS_WEBAPP_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manual_graphics/webapp/
           GH_PAT: ${{ secrets.GH_PAT }}
           GH_TOKEN: ${{ github.token }}
           GIST_ID: ${{ secrets.GIST_ID }}
