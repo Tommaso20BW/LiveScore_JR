@@ -322,6 +322,42 @@ def fmt_player(full_name: str) -> str:
     return esc(parts[0][0].upper() + ". " + " ".join(parts[1:]))
 
 
+def phase_scorers_line(events, home_id, away_id, kind):
+    """FT-style scorer summary for HT and regulation end, never ET notices."""
+    limits = {'half': (1, 45), 'end_of_90': (2, 90)}
+    if kind not in limits:
+        return ''
+    period_limit, minute_limit = limits[kind]
+    teams = {str(home_id): {}, str(away_id): {}}
+    for event in events:
+        if event.get('type') not in ('goal', 'own goal', 'penalty goal'):
+            continue
+        period = int(event.get('period') or 0)
+        display = str(event.get('minute_disp') or event.get('minute', ''))
+        if period:
+            if period > period_limit:
+                continue
+        else:
+            try:
+                if int(display.split('+')[0].rstrip("'’")) > minute_limit:
+                    continue
+            except ValueError:
+                continue
+        team = str(goal_scoring_team_id(event, home_id, away_id))
+        if team not in teams:
+            continue
+        suffix = ' (Autogol)' if event['type'] == 'own goal' else ''
+        key = (fmt_player(event['player_name']), suffix)
+        teams[team].setdefault(key, []).append(display)
+    parts = []
+    for grouped in teams.values():
+        entries = [', '.join(f"{minute}'" for minute in minutes) + f' {player}{suffix}'
+                   for (player, suffix), minutes in grouped.items()]
+        if entries:
+            parts.append(', '.join(entries))
+    return f"{E_BALL} <i>{' // '.join(parts)}</i>\n" if parts else ''
+
+
 def goal_scoring_team_id(event: dict, home_id: str, away_id: str) -> str:
     """Restituisce la squadra a cui va assegnato il gol, invertendo l'autogol."""
     event_team_id = str(event.get("team_id", ""))
@@ -2340,7 +2376,8 @@ def avvia_ciclo_partita():
             # --- Fine primo tempo ---
             if status == "HT":
                 if "HT" not in state["sent_periods"]:
-                    msg_id = send_phase_message(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}",
+                    scorers_line = phase_scorers_line(events, home_id, away_id, 'half')
+                    msg_id = send_phase_message(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}",
                         kind='half', data_espn=data, home_id=home_id, away_id=away_id,
                         home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name,
                         home_goals=g_home, away_goals=g_away)
@@ -2385,7 +2422,8 @@ def avvia_ciclo_partita():
             if status == "BREAK_ET" and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
                 state["_break_et_seen"] = state.get("_break_et_seen", 0) + 1
                 if state["_break_et_seen"] >= 2:
-                    msg_id = send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}", kind="end_of_90", data_espn=data, home_id=home_id, away_id=away_id, home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name, home_goals=g_home, away_goals=g_away)
+                    scorers_line = phase_scorers_line(events, home_id, away_id, 'end_of_90')
+                    msg_id = send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}", kind="end_of_90", data_espn=data, home_id=home_id, away_id=away_id, home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name, home_goals=g_home, away_goals=g_away)
                     if msg_id:
                         log_line("EVENT", "MATCH", f"FINE REGOLAMENTARI | {home_name} {g_home}-{g_away} {away_name} | Telegram inviato")
                         state["sent_periods"].append("2H_END")
@@ -2401,7 +2439,8 @@ def avvia_ciclo_partita():
             # status è già ET/PEN/AET → invia ora. L'INIZIO 1T SUPPLEMENTARE
             # partirà comunque al ciclo successivo grazie a _2h_end_gia_inviato.
             if status in ("ET", "PEN", "AET") and "2H_END" not in state["sent_periods"] and "FT" not in state["sent_periods"]:
-                msg_id = send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n\n{e_comp} {hashtag}", kind="end_of_90", data_espn=data, home_id=home_id, away_id=away_id, home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name, home_goals=g_home, away_goals=g_away)
+                scorers_line = phase_scorers_line(events, home_id, away_id, 'end_of_90')
+                msg_id = send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{score_str}\n{scorers_line}\n{e_comp} {hashtag}", kind="end_of_90", data_espn=data, home_id=home_id, away_id=away_id, home_name=home_name, away_name=away_name, league_slug=league_slug, league_name=league_name, home_goals=g_home, away_goals=g_away)
                 if msg_id:
                     log_line("EVENT", "MATCH", f"FINE REGOLAMENTARI | {home_name} {g_home}-{g_away} {away_name} | Telegram inviato")
                     state["sent_periods"].append("2H_END")
