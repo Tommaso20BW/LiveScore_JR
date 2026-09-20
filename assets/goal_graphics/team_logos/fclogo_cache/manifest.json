@@ -56,7 +56,7 @@
     },
     "2026-27-uefa-europa-league": {
       "url": "https://fclogo.top/pack/2026-27-uefa-europa-league",
-      "fingerprint": "b51da3ae5419f3f3eed8df20f32ab3de55f4c7cf5396496b1f963a9ae7d6e4dc",
+      "fingerprint": "729a57c253823a1d5010f49d9e287121c9caca65f7c06a4befe7557b13f9e3a0",
       "clubs": [
         "AC-Milan-v2009",
         "AFC-Bournemouth-v2013",
@@ -1032,8 +1032,8 @@
         "Marseille"
       ],
       "variant": "color",
-      "source_url": "https://assets.fclogo.top/png/Olympique-de-Marseille-v2026.png",
-      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/07de083c616d790d7f7698cd8ee75273a5a63af4-800x800.png?w=320&fm=webp&q=80",
+      "source_url": "https://assets.fclogo.top/png/Marseille-v2026.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/742e01aac838f776c44799d41f8cabbbd3990f6a-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/fff/club/olympique-de-marseille-v2026",
       "packs": [
         "2026-27-uefa-europa-league"
