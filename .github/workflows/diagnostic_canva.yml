@@ -1,0 +1,34 @@
+name: Canva isolated export diagnostic
+on:
+  push:
+    branches: [diagnostic/canva-sequence]
+    paths: [diagnostics/canva_sequence.py, .github/workflows/diagnostic_canva.yml]
+permissions:
+  contents: read
+concurrency:
+  group: canva-isolated-diagnostic
+  cancel-in-progress: false
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - run: pip install -r requirements.txt
+      - name: Real Canva exports without Telegram
+        env:
+          CANVA_CLIENT_ID: ${{ secrets.CANVA_CLIENT_ID }}
+          CANVA_CLIENT_SECRET: ${{ secrets.CANVA_CLIENT_SECRET }}
+          CANVA_REFRESH_TOKEN: ${{ secrets.CANVA_REFRESH_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python -u diagnostics/canva_sequence.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canva-diagnostic-results
+          path: diagnostic-results.json
+          retention-days: 3
