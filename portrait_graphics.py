@@ -71,6 +71,9 @@ def textured(source, key, assets, zoom=False, color=None, bright=False):
         texture = max(patches, key=lambda im: ImageStat.Stat(im).mean[0])
     else: texture = texture.crop((w*3//8,h*3//8,w*5//8,h*5//8))
     texture = ImageOps.fit(texture, source.size, method=Image.Resampling.LANCZOS)
+    if key == 'third':
+        # Restore detail lost by the enlarged crop without adding more folds.
+        texture = ImageEnhance.Contrast(texture).enhance(2.0)
     channels = [texture.point(lambda v,c=c: round(max(0,min(255,c*(.75+.4*v/255)+(18*v/255 if c<12 else 0))))) for c in ImageColor.getrgb(color)]
     result = Image.merge('RGB',channels).convert('RGBA')
     result.putalpha(source.getchannel('A'))
