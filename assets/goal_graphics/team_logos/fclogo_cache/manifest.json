@@ -1106,14 +1106,14 @@
     {
       "name": "Societ Sportiva Calcio Napoli",
       "slug": "societ-sportiva-calcio-napoli-v2024",
-      "file": "societ-sportiva-calcio-napoli-v2024-color.png",
+      "file": "societ-sportiva-calcio-napoli-v2024-mono.png",
       "aliases": [
         "Societ Sportiva Calcio Napoli",
         "Napoli"
       ],
-      "variant": "color",
+      "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/SSC-Napoli-v2024-full.png",
-      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/58e62d96f7e702c343714247d6c83c2dc16bec9a-800x800.png?w=320&fm=webp&q=80",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/34010068d740b45640f270732a342150e22f803f-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/societ-sportiva-calcio-napoli-v2024",
       "packs": [
         "2026-27-serie-a"
