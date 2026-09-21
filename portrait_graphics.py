@@ -127,33 +127,12 @@ def visible_logo_bbox(mark, threshold=100):
 
 
 def phase_group_positions(home_mark, away_mark, score_width, canvas_width=W, gap=28):
-    """Center the visible crest-score-crest group while preserving PNG padding."""
+    """Anchor the score at card center; space visible crests independently."""
     home_box = visible_logo_bbox(home_mark) if home_mark is not None else None
     away_box = visible_logo_bbox(away_mark) if away_mark is not None else None
-    home_visible_width = home_box[2] - home_box[0] if home_box else 0
-    away_visible_width = away_box[2] - away_box[0] if away_box else 0
-
-    total = score_width
-    if home_box:
-        total += home_visible_width + gap
-    if away_box:
-        total += gap + away_visible_width
-
-    visible_left = round((canvas_width - total) / 2)
-    cursor = visible_left
-
-    home_x = None
-    if home_box:
-        home_x = cursor - home_box[0]
-        cursor += home_visible_width + gap
-
-    score_x = cursor
-    cursor += score_width
-
-    away_x = None
-    if away_box:
-        cursor += gap
-        away_x = cursor - away_box[0]
+    score_x = round((canvas_width - score_width) / 2)
+    home_x = score_x - gap - home_box[2] if home_box else None
+    away_x = score_x + score_width + gap - away_box[0] if away_box else None
 
     return score_x, home_x, away_x
 
@@ -287,10 +266,8 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
         score = number(f'{home_goals}-{away_goals}',200,key,assets)
         y = 1210 if shootout else 1220
 
-        # Phase cards use the approved "version 5" layout: preserve each
-        # crest's original transparent PNG padding, measure only its visible
-        # alpha bounds, then center the whole visible group
-        # (home crest + gap + score + gap + away crest) on the card.
+        # Keep the score fixed at card center, independent of crest widths.
+        # Measure gaps from visible alpha bounds, preserving PNG padding.
         home_mark = phase_logo(home_name,home_id,key,assets,score.height)
         away_mark = phase_logo(away_name,away_id,key,assets,score.height)
         score_x, home_x, away_x = phase_group_positions(
