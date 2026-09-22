@@ -9,14 +9,6 @@ IW, IH = W - 2*M, H - 2*M
 COLORS = dict(home='#FACA02', away='#ED95AE', third='#C7A852',
               ucl='#8DD6FF', uel='#FFAC38', conference='#A1EF46')
 
-# Layout phase cards (HALF / FULL / END OF 90) on canvas 1086x1448.
-PHASE_SCORE_FONT_SIZE = 300
-PHASE_LOGO_HEIGHT_RATIO = 0.43
-PHASE_LOGO_GAP = 28
-PHASE_GROUP_RAISE = 38
-PHASE_SHOOTOUT_CAPTION_MIN_GAP = 52
-PHASE_SHOOTOUT_BOTTOM_MARGIN = 32
-
 def theme(kit='home', competition='', saved=False):
     value = competition.lower()
     if 'conference' in value or 'europa.conf' in value or 'europa_conf' in value: return 'conference'
@@ -63,7 +55,7 @@ def anchored_player(source, target_height=1450):
     portrait = cropped.resize((width, target_height), Image.Resampling.LANCZOS)
 
     # Posizione, dentro il crop, del centro X del canvas sorgente.
-    # Sara questa coordinata ad essere allineata al centro della card.
+    # Sarà questa coordinata ad essere allineata al centro della card.
     anchor_x = (source.width / 2 - box[0]) * scale
     return portrait, anchor_x
 
@@ -116,27 +108,15 @@ def centered_logo_positions(marks, center, gap=20):
 
 
 def phase_logo(name, tid, key, assets, height):
-    """Load a phase-card crest preserving transparent padding.
-
-    The requested ``height`` refers to the visible crest height, not the full PNG
-    canvas. This keeps the transparent background intact while sizing the actual
-    visible logo consistently across teams.
-    """
+    """Load a phase-card crest without cropping its transparent PNG padding."""
     source, origin = g.resolve_team_logo_source(name, str(tid), assets)
     if source is None:
         return None
     source = source.convert('RGBA')
-    alpha = source.getchannel('A').point(lambda a: 255 if a > 100 else 0)
-    box = alpha.getbbox()
-    if not box:
-        raise ValueError('Logo vuoto')
-    visible_height = box[3] - box[1]
-    if visible_height <= 0:
-        raise ValueError('Altezza logo visibile non valida')
-    scale = height / visible_height
-    width = max(1, round(source.width * scale))
-    full_height = max(1, round(source.height * scale))
-    source = source.resize((width, full_height), Image.Resampling.LANCZOS)
+    if source.height <= 0:
+        raise ValueError('Altezza logo non valida')
+    width = max(1, round(source.width * height / source.height))
+    source = source.resize((width, height), Image.Resampling.LANCZOS)
     return textured(source, key, assets, True) if origin == 'FCLogo' else source
 
 
@@ -286,21 +266,18 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
             draw.line((0,y,IW,y),fill=(0,0,0,round(240*max(0,(y-IH*.48)/(IH*.52))**1.1)))
         bg.alpha_composite(fade)
         card.alpha_composite(bg,(M,M))
-        score = number(f'{home_goals}-{away_goals}',PHASE_SCORE_FONT_SIZE,key,assets)
-        y = (1210 if shootout else 1220) - PHASE_GROUP_RAISE
-        score_top = y-score.height//2
-        score_bottom = score_top + score.height
+        score = number(f'{home_goals}-{away_goals}',200,key,assets)
+        y = 1210 if shootout else 1220
 
         # Keep the score fixed at card center, independent of crest widths.
         # Measure gaps from visible alpha bounds, preserving PNG padding.
-        logo_height = max(1, round(score.height * PHASE_LOGO_HEIGHT_RATIO))
-        home_mark = phase_logo(home_name,home_id,key,assets,logo_height)
-        away_mark = phase_logo(away_name,away_id,key,assets,logo_height)
+        home_mark = phase_logo(home_name,home_id,key,assets,score.height)
+        away_mark = phase_logo(away_name,away_id,key,assets,score.height)
         score_x, home_x, away_x = phase_group_positions(
-            home_mark, away_mark, score.width, W, gap=PHASE_LOGO_GAP
+            home_mark, away_mark, score.width, W, gap=28
         )
 
-        soft_place(card,score,(score_x,score_top),blur=9,opacity=.60)
+        soft_place(card,score,(score_x,y-score.height//2),blur=9,opacity=.60)
         if home_mark is not None:
             soft_place(card,home_mark,(home_x,y-home_mark.height//2),blur=9,opacity=.60)
         if away_mark is not None:
@@ -312,15 +289,7 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
             text = f'{winner} VINCE {max(hp,ap)}-{min(hp,ap)} AI RIGORI'.upper()
             caption = number(text,36,key,assets)
             if caption.width > IW-40: caption = ImageOps.contain(caption,(IW-40,caption.height))
-            caption_y = max(
-                1300 - PHASE_GROUP_RAISE,
-                score_bottom + PHASE_SHOOTOUT_CAPTION_MIN_GAP,
-            )
-            caption_y = min(
-                caption_y,
-                H - M - caption.height - PHASE_SHOOTOUT_BOTTOM_MARGIN,
-            )
-            soft_place(card,caption,((W-caption.width)//2,caption_y),blur=5,opacity=.50)
+            soft_place(card,caption,((W-caption.width)//2,1320),blur=5,opacity=.50)
     return png(brand(card,key,assets))
 
 
