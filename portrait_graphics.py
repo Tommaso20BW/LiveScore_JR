@@ -13,9 +13,9 @@ COLORS = dict(home='#FACA02', away='#ED95AE', third='#C7A852',
 PHASE_SCORE_FONT_SIZE = 300
 PHASE_LOGO_HEIGHT_RATIO = 0.43
 PHASE_LOGO_GAP = 28
-PHASE_GROUP_RAISE = 65
-PHASE_SHOOTOUT_CAPTION_MIN_GAP = 36
-PHASE_SHOOTOUT_BOTTOM_MARGIN = 28
+PHASE_GROUP_RAISE = 38
+PHASE_SHOOTOUT_CAPTION_MIN_GAP = 52
+PHASE_SHOOTOUT_BOTTOM_MARGIN = 40
 
 def theme(kit='home', competition='', saved=False):
     value = competition.lower()
@@ -301,7 +301,7 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
             caption = number(text,36,key,assets)
             if caption.width > IW-40: caption = ImageOps.contain(caption,(IW-40,caption.height))
             caption_y = max(
-                1320 - PHASE_GROUP_RAISE,
+                1300 - PHASE_GROUP_RAISE,
                 score_bottom + PHASE_SHOOTOUT_CAPTION_MIN_GAP,
             )
             caption_y = min(
