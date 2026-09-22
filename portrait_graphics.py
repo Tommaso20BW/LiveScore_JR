@@ -116,15 +116,27 @@ def centered_logo_positions(marks, center, gap=20):
 
 
 def phase_logo(name, tid, key, assets, height):
-    """Load a phase-card crest without cropping its transparent PNG padding."""
+    """Load a phase-card crest preserving transparent padding.
+
+    The requested ``height`` refers to the visible crest height, not the full PNG
+    canvas. This keeps the transparent background intact while sizing the actual
+    visible logo consistently across teams.
+    """
     source, origin = g.resolve_team_logo_source(name, str(tid), assets)
     if source is None:
         return None
     source = source.convert('RGBA')
-    if source.height <= 0:
-        raise ValueError('Altezza logo non valida')
-    width = max(1, round(source.width * height / source.height))
-    source = source.resize((width, height), Image.Resampling.LANCZOS)
+    alpha = source.getchannel('A').point(lambda a: 255 if a > 100 else 0)
+    box = alpha.getbbox()
+    if not box:
+        raise ValueError('Logo vuoto')
+    visible_height = box[3] - box[1]
+    if visible_height <= 0:
+        raise ValueError('Altezza logo visibile non valida')
+    scale = height / visible_height
+    width = max(1, round(source.width * scale))
+    full_height = max(1, round(source.height * scale))
+    source = source.resize((width, full_height), Image.Resampling.LANCZOS)
     return textured(source, key, assets, True) if origin == 'FCLogo' else source
 
 
