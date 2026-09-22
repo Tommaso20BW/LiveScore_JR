@@ -9,6 +9,14 @@ IW, IH = W - 2*M, H - 2*M
 COLORS = dict(home='#FACA02', away='#ED95AE', third='#C7A852',
               ucl='#8DD6FF', uel='#FFAC38', conference='#A1EF46')
 
+# Layout phase cards (HALF / FULL / END OF 90) on canvas 1086x1448.
+PHASE_SCORE_FONT_SIZE = 300
+PHASE_LOGO_HEIGHT_RATIO = 0.43
+PHASE_LOGO_GAP = 28
+PHASE_GROUP_RAISE = 65
+PHASE_SHOOTOUT_CAPTION_MIN_GAP = 36
+PHASE_SHOOTOUT_BOTTOM_MARGIN = 28
+
 def theme(kit='home', competition='', saved=False):
     value = competition.lower()
     if 'conference' in value or 'europa.conf' in value or 'europa_conf' in value: return 'conference'
@@ -55,7 +63,7 @@ def anchored_player(source, target_height=1450):
     portrait = cropped.resize((width, target_height), Image.Resampling.LANCZOS)
 
     # Posizione, dentro il crop, del centro X del canvas sorgente.
-    # Sarà questa coordinata ad essere allineata al centro della card.
+    # Sara questa coordinata ad essere allineata al centro della card.
     anchor_x = (source.width / 2 - box[0]) * scale
     return portrait, anchor_x
 
@@ -266,18 +274,21 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
             draw.line((0,y,IW,y),fill=(0,0,0,round(240*max(0,(y-IH*.48)/(IH*.52))**1.1)))
         bg.alpha_composite(fade)
         card.alpha_composite(bg,(M,M))
-        score = number(f'{home_goals}-{away_goals}',200,key,assets)
-        y = 1210 if shootout else 1220
+        score = number(f'{home_goals}-{away_goals}',PHASE_SCORE_FONT_SIZE,key,assets)
+        y = (1210 if shootout else 1220) - PHASE_GROUP_RAISE
+        score_top = y-score.height//2
+        score_bottom = score_top + score.height
 
         # Keep the score fixed at card center, independent of crest widths.
         # Measure gaps from visible alpha bounds, preserving PNG padding.
-        home_mark = phase_logo(home_name,home_id,key,assets,score.height)
-        away_mark = phase_logo(away_name,away_id,key,assets,score.height)
+        logo_height = max(1, round(score.height * PHASE_LOGO_HEIGHT_RATIO))
+        home_mark = phase_logo(home_name,home_id,key,assets,logo_height)
+        away_mark = phase_logo(away_name,away_id,key,assets,logo_height)
         score_x, home_x, away_x = phase_group_positions(
-            home_mark, away_mark, score.width, W, gap=28
+            home_mark, away_mark, score.width, W, gap=PHASE_LOGO_GAP
         )
 
-        soft_place(card,score,(score_x,y-score.height//2),blur=9,opacity=.60)
+        soft_place(card,score,(score_x,score_top),blur=9,opacity=.60)
         if home_mark is not None:
             soft_place(card,home_mark,(home_x,y-home_mark.height//2),blur=9,opacity=.60)
         if away_mark is not None:
@@ -289,7 +300,15 @@ def phase(*, kind, home_name, away_name, home_id, away_id, home_goals=0, away_go
             text = f'{winner} VINCE {max(hp,ap)}-{min(hp,ap)} AI RIGORI'.upper()
             caption = number(text,36,key,assets)
             if caption.width > IW-40: caption = ImageOps.contain(caption,(IW-40,caption.height))
-            soft_place(card,caption,((W-caption.width)//2,1320),blur=5,opacity=.50)
+            caption_y = max(
+                1320 - PHASE_GROUP_RAISE,
+                score_bottom + PHASE_SHOOTOUT_CAPTION_MIN_GAP,
+            )
+            caption_y = min(
+                caption_y,
+                H - M - caption.height - PHASE_SHOOTOUT_BOTTOM_MARGIN,
+            )
+            soft_place(card,caption,((W-caption.width)//2,caption_y),blur=5,opacity=.50)
     return png(brand(card,key,assets))
 
 
