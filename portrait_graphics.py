@@ -15,7 +15,7 @@ PHASE_LOGO_HEIGHT_RATIO = 0.43
 PHASE_LOGO_GAP = 28
 PHASE_GROUP_RAISE = 38
 PHASE_SHOOTOUT_CAPTION_MIN_GAP = 52
-PHASE_SHOOTOUT_BOTTOM_MARGIN = 28
+PHASE_SHOOTOUT_BOTTOM_MARGIN = 32
 
 def theme(kit='home', competition='', saved=False):
     value = competition.lower()
