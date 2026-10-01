@@ -27,6 +27,9 @@
     {"name": "Kamil Grabara", "slug": "kamil_grabara", "role": "goalkeeper", "aliases": ["Kamil Grabara", "K. Grabara", "Grabara"]},
     {"name": "Khéphren Thuram-Ulien", "slug": "khephren_thuram_ulien", "role": "outfield", "aliases": ["Khéphren Thuram-Ulien", "Khephren Thuram-Ulien", "Khéphren Thuram", "Khephren Thuram", "K. Thuram", "Thuram"]},
     {"name": "Jeff Ekhator", "slug": "jeff_ekhator", "role": "outfield", "aliases": ["Jeff Ekhator", "J. Ekhator", "Ekhator"]},
-    {"name": "Nick Woltemade", "slug": "nick_woltemade", "role": "outfield", "aliases": ["Nick Woltemade", "N. Woltemade", "Woltemade"]}
+    {"name": "Nick Woltemade", "slug": "nick_woltemade", "role": "outfield", "aliases": ["Nick Woltemade", "N. Woltemade", "Woltemade"]},
+    {"name": "Neto", "slug": "neto", "role": "goalkeeper", "aliases": ["Neto", "Neto Murara", "Norberto Neto"]}
   ]
 }
+
+Questo mantiene **esattamente il formato su una riga per giocatore** del file che mi hai fornito.
