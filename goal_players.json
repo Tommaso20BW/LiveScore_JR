@@ -28,7 +28,7 @@
     {"name": "Khéphren Thuram-Ulien", "slug": "khephren_thuram_ulien", "role": "outfield", "aliases": ["Khéphren Thuram-Ulien", "Khephren Thuram-Ulien", "Khéphren Thuram", "Khephren Thuram", "K. Thuram", "Thuram"]},
     {"name": "Jeff Ekhator", "slug": "jeff_ekhator", "role": "outfield", "aliases": ["Jeff Ekhator", "J. Ekhator", "Ekhator"]},
     {"name": "Nick Woltemade", "slug": "nick_woltemade", "role": "outfield", "aliases": ["Nick Woltemade", "N. Woltemade", "Woltemade"]},
-    {"name": "Neto", "slug": "neto", "role": "goalkeeper", "aliases": ["Neto", "Neto Murara", "Norberto Neto"]}
+    {"name": "Neto", "slug": "neto_murara", "role": "goalkeeper", "aliases": ["Neto", "Neto Murara", "Norberto Neto"]}
   ]
 }
 
