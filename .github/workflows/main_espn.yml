@@ -38,6 +38,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Checkout asset privati (foto, font, loghi)
+        uses: actions/checkout@v6
+        with:
+          repository: Tommaso20BW/LiveScore_Assets_JR
+          token: ${{ secrets.ASSETS_PAT }}
+          path: _private_assets
+
+      - name: Installa asset privati
+        shell: bash
+        run: |
+          mkdir -p assets/goal_graphics
+          cp -a _private_assets/players _private_assets/fonts _private_assets/team_logos assets/goal_graphics/
+
       - name: Restore seasonal FCLogo team logos
         if: ${{ github.event.inputs.goal_graphics != 'false' }}
         uses: actions/cache@v6
@@ -79,17 +92,38 @@ jobs:
         # I PNG sono già disponibili nel runner: un push fallito non ferma il live.
         continue-on-error: true
         run: |
+          # I loghi vivono nel repo privato degli asset: allinea la copia e fai push li'.
+          rm -rf _private_assets/team_logos
+          cp -a assets/goal_graphics/team_logos _private_assets/team_logos
+          cd _private_assets
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/goal_graphics/team_logos/fclogo_cache
+          git add team_logos
           if git diff --cached --quiet; then
             echo "Nessun logo nuovo da pubblicare"
           else
             git commit -m "Update seasonal FCLogo team logos"
-            if ! git push origin "HEAD:${GITHUB_REF_NAME}"; then
+            if ! git push; then
               echo "::warning::Loghi non pubblicati su GitHub; il live prosegue con i file già disponibili nel runner."
               exit 1
             fi
+          fi
+
+      - name: Update public FCLogo manifest
+        if: ${{ github.event.inputs.goal_graphics != 'false' }}
+        # Solo metadati (nomi e alias dei club, nessuna immagine): serve alla web app di ImageGEN.
+        continue-on-error: true
+        run: |
+          mkdir -p data
+          cp assets/goal_graphics/team_logos/fclogo_cache/manifest.json data/fclogo_manifest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/fclogo_manifest.json
+          if git diff --cached --quiet; then
+            echo "Manifest pubblico già aggiornato"
+          else
+            git commit -m "Update public FCLogo manifest"
+            git push origin "HEAD:${GITHUB_REF_NAME}" || echo "::warning::Manifest pubblico non aggiornato."
           fi
 
       - name: Run Live Score Bot

@@ -36,6 +36,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Checkout asset privati (foto, font, loghi)
+        uses: actions/checkout@v6
+        with:
+          repository: Tommaso20BW/LiveScore_Assets_JR
+          token: ${{ secrets.ASSETS_PAT }}
+          path: _private_assets
+
+      - name: Installa asset privati
+        shell: bash
+        run: |
+          mkdir -p assets/goal_graphics
+          cp -a _private_assets/players _private_assets/fonts _private_assets/team_logos assets/goal_graphics/
+
       - name: Configura Python
         uses: actions/setup-python@v6
         with:
