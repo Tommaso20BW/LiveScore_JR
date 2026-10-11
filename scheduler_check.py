@@ -36,7 +36,6 @@ LEAGUES = [
     "uefa.europa_qual",           # Europa League - qualificazioni
     "uefa.europa.conf",           # Conference League
     "uefa.europa.conf_qual",      # Conference League - qualificazioni
-    "uefa.europa_conf",           # Conference League - alias ESPN
     "uefa.super_cup",             # Supercoppa UEFA
     "fifa.cwc",                   # Mondiale per Club FIFA
     "fifa.intercontinental_cup",  # Coppa Intercontinentale FIFA
