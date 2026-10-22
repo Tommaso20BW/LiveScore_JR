@@ -25,6 +25,7 @@ class MatchFoundNotificationTests(unittest.TestCase):
             ("rileva_kit_juve", {"return_value": "home"}),
             ("GOAL_GRAPHICS_ENABLED", {"new": True}),
             ("translate_team", {"side_effect": lambda name: name}),
+            ("get_league_emoji", {"return_value": "🏆"}),
         ):
             p = patch.object(runner.bot, target, **kwargs)
             p.start()
@@ -40,10 +41,12 @@ class MatchFoundNotificationTests(unittest.TestCase):
     def test_approved_format_and_italian_time(self):
         text = runner.messaggio_partita_trovata(self.match)
         self.assertIn("05/09/2026 · 21:00", text)
-        self.assertIn("Kit Juventus: Home", text)
-        self.assertIn("NEC Nijmegen: FCLogo", text)
+        self.assertIn("Kit: Home", text)
+        self.assertIn("Grafiche: pronte", text)
+        self.assertIn("Loghi: FCLogo", text)
+        self.assertIn("🏆 #", text)
         self.assertEqual(re.findall(r"<b>(.*?)</b>", text),
-                         ["PARTITA TROVATA", "GRAFICHE", "LOGHI", "LIVE SCORE", "ESPN"])
+                         ["PARTITA TROVATA", "Juventus — NEC Nijmegen"])
         for excluded in ("non ancora", "fallback", "locale"):
             self.assertNotIn(excluded, text.lower())
         self.assertLess(len(text), 4096)
@@ -51,22 +54,21 @@ class MatchFoundNotificationTests(unittest.TestCase):
     def test_kit_labels(self):
         for kit in ("home", "away", "third"):
             runner.bot.rileva_kit_juve.return_value = kit
-            self.assertIn(f"Kit Juventus: {kit.title()}", runner.messaggio_partita_trovata(self.match))
+            self.assertIn(f"Kit: {kit.title()}", runner.messaggio_partita_trovata(self.match))
 
     def test_sources_short_labels_and_original_espn_names(self):
         runner.bot.translate_team.side_effect = lambda name: "NEC tradotto" if name.startswith("NEC") else name
         self.source.side_effect = [(None, "FCLogo"), (None, "ESPN")]
         text = runner.messaggio_partita_trovata(self.match)
-        self.assertIn("NEC tradotto: ESPN", text)
+        self.assertIn("Juventus FCLogo · NEC tradotto ESPN", text)
         self.assertEqual(self.source.call_args_list[1].args[:2], ("NEC Nijmegen", "147"))
 
     def test_unavailable_logo_and_friendly_are_truthful(self):
         self.match["league_slug"] = "club.friendly"
         self.source.return_value = (None, "Non disponibile")
         text = runner.messaggio_partita_trovata(self.match)
-        self.assertIn("GOAL / SAVED: disabilitate (amichevole)", text)
-        self.assertNotIn("Background e scritte:", text)
-        self.assertIn("NEC Nijmegen: Non disponibile", text)
+        self.assertIn("Grafiche: disattivate (amichevole)", text)
+        self.assertIn("Loghi: Non disponibile", text)
 
     def test_missing_details_and_html_escaping(self):
         self.match["competition"] = {}
@@ -80,10 +82,12 @@ class MatchFoundNotificationTests(unittest.TestCase):
         self.competitors[0]["team"] = {"id": "109", "displayName": "Fiorentina"}
         self.competitors[1]["team"] = {"id": "239", "displayName": "Torino"}
         text = runner.messaggio_partita_trovata(self.match)
-        self.assertNotIn("Kit Juventus", text)
-        self.assertNotIn("Background e scritte", text)
-        self.assertNotIn("GOAL / SAVED", text)
-        self.assertNotIn("GRAFICHE", text)
+        self.assertNotIn("Kit:", text)
+        self.assertNotIn("Grafiche:", text)
+        self.assertNotIn("Loghi:", text)
+        self.assertIn("🏆 #", text)
+        self.source.assert_not_called()
+        runner.bot.rileva_kit_juve.assert_not_called()
         runner._asset_status.assert_not_called()
 
     def test_auto_delete_is_queued_silently(self):
@@ -106,7 +110,7 @@ class MatchFoundNotificationTests(unittest.TestCase):
         fetch.assert_called_once_with("123456", "uefa.europa")
         payload = post.call_args.kwargs["payload"]
         self.assertEqual(payload["chat_id"], "test-chat")
-        self.assertIn("Canale: Bot JR", payload["text"])
+        self.assertIn("PARTITA TROVATA", payload["text"])
 
     def test_telegram_failure_does_not_stop_discovery(self):
         with patch.object(runner, "_ORIGINAL_TROVA_PARTITA", return_value=self.match), \
