@@ -3,6 +3,7 @@ import io
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
 from livescore.graphics import goal as g
+from livescore.core import team_names
 
 W, H, M = 1086, 1448, 76
 IW, IH = W - 2 * M, H - 2 * M
@@ -403,7 +404,8 @@ def phase(
             hp, ap = shootout
             if hp == ap:
                 raise ValueError('Rigori non conclusi')
-            winner = home_name if hp > ap else away_name
+            # home_name/away_name sono nomi ESPN (servono ai loghi): il testo resta in italiano.
+            winner = team_names.translate_team(home_name if hp > ap else away_name)
             text = f'{winner} VINCE {max(hp, ap)}-{min(hp, ap)} AI RIGORI'.upper()
             caption = number(text, 36, key, assets)
             if caption.width > IW - 40:
