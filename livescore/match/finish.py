@@ -181,7 +181,7 @@ def handle_finish(ctx: MatchContext) -> Flow | None:
             msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}"
 
             ft_sent = media.send_phase_message(msg_finale, kind='full', data_espn=ctx.data,
-                home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name, away_name=ctx.away_name,
+                home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name_raw, away_name=ctx.away_name_raw,
                 league_slug=ctx.league_slug, league_name=ctx.league_name,
                 home_goals=ctx.g_home, away_goals=ctx.g_away,
                 shootout=(home_pen_goals, away_pen_goals) if has_shootout else None) is not None
@@ -210,7 +210,7 @@ def handle_finish(ctx: MatchContext) -> Flow | None:
             ft_pen_home = _ftp_h.count(E_PEN_OK)
             ft_pen_away = _ftp_a.count(E_PEN_OK)
             png_path = stats_job.recupera_e_genera_stats_html(data_fresh, ctx.home_id, ctx.away_id,
-                                                     ctx.home_name, ctx.away_name, ctx.g_home, ctx.g_away,
+                                                     ctx.home_name_raw, ctx.away_name_raw, ctx.g_home, ctx.g_away,
                                                      "FT", ctx.league_name, league_slug=ctx.league_slug,
                                                      pen_home=ft_pen_home, pen_away=ft_pen_away,
                                                      event_id=ctx.event_id)
