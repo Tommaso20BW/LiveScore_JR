@@ -48,11 +48,13 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
     league_slug = partita.get("league_slug", "")
     league_name = partita.get("league_name", "")
     kit_data = data if competitions else {**data, "header": {"competitions": [competition]}}
-    try:
-        kit = bot.rileva_kit_juve(kit_data, home_id, away_id, home_raw, away_raw,
-                                 league_slug, league_name)
-    except Exception:
-        kit = bot.determina_kit(home_id, away_id, league_slug, league_name)
+    kit = ""
+    if juventus_match:  # kit, grafiche e loghi riguardano solo la Juventus
+        try:
+            kit = bot.rileva_kit_juve(kit_data, home_id, away_id, home_raw, away_raw,
+                                     league_slug, league_name)
+        except Exception:
+            kit = bot.determina_kit(home_id, away_id, league_slug, league_name)
     kit_label = {"home": "Home", "away": "Away", "third": "Third"}.get(kit, "Non disponibile")
     date_raw = competition.get("date") or partita.get("date", "")
     try:
@@ -73,47 +75,45 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
         "home", "away", "third") and juventus_match else None
 
     mode_label = KIT_RUNTIME.mode_label_for(partita.get("event_id"))
-    kit_line = ""
-    if juventus_match:
-        kit_line = f"Kit Juventus: {kit_label}\n"
-        if mode_label:
-            kit_line += f"Modalità kit: {mode_label}\n"
 
-    asset_line = f"Background e scritte: {bot.esc(asset_status)}\n" if asset_status else ""
-    graphics_section = (
-        "🎨 <b>GRAFICHE</b>\n"
-        f"GOAL / SAVED: {graphics_status}\n{asset_line}\n"
-    ) if juventus_match else ""
-    sources = []
-    for name, team_id in ((home_raw, home_id), (away_raw, away_id)):
-        try:
-            _, source = bot.goal_graphics.resolve_team_logo_source(
-                name, team_id, bot.goal_graphics.DEFAULT_ASSET_DIR)
-        except Exception:
-            source = "Non disponibile"
-        sources.append(source)
-    channel = os.getenv("LIVE_SCORE_CHANNEL_NAME") or (
-        "Bot JR" if bot.CHAT_ID and bot.CHAT_ID == os.getenv("TELEGRAM_TO_BOT")
-        else "Juventus Reborn")
-    delay = bot.STATS_DELAY_SECONDS
-    delay_text = f"{delay // 60} minuti" if delay % 60 == 0 else f"{delay} secondi"
-    return (
-        "✅ <b>PARTITA TROVATA</b>\n\n"
-        f"{home} — {away}\n"
-        f"{bot.esc(league_name)} · {bot.esc(venue_name)}\n"
-        f"{kickoff_text}\n"
-        f"{kit_line}\n"
-        f"{graphics_section}"
-        "🛡 <b>LOGHI</b>\n"
-        f"{home}: {sources[0]}\n{away}: {sources[1]}\n\n"
-        "⚙️ <b>LIVE SCORE</b>\n"
-        f"Canale: {bot.esc(channel)}\n"
-        f"Statistiche: +{delay_text} da fine tempo/partita\n\n"
-        "📋 <b>ESPN</b>\n"
-        f"Evento: <code>{bot.esc(partita.get('event_id', ''))}</code>\n"
-        f"Squadre: {home} <code>{bot.esc(home_id)}</code> · "
-        f"{away} <code>{bot.esc(away_id)}</code>"
-    )
+    lines = [
+        "✅ <b>PARTITA TROVATA</b>",
+        "",
+        f"<b>{home} — {away}</b>",
+        f"{bot.esc(league_name)} · {bot.esc(venue_name)}",
+        kickoff_text,
+        "",
+    ]
+    if juventus_match:
+        kit_text = kit_label + (f" · {bot.esc(mode_label)}" if mode_label else "")
+        if friendly or not enabled:
+            graphics_text = "disattivate" + (" (amichevole)" if friendly else "")
+        elif asset_status and asset_status != "disponibili":
+            graphics_text = f"⚠️ {bot.esc(asset_status)}"
+        else:
+            graphics_text = "pronte"
+        sources = []
+        for name, team_id in ((home_raw, home_id), (away_raw, away_id)):
+            try:
+                _, source = bot.goal_graphics.resolve_team_logo_source(
+                    name, team_id, bot.goal_graphics.DEFAULT_ASSET_DIR)
+            except Exception:
+                source = "Non disponibile"
+            sources.append(source)
+        if sources[0] == sources[1]:
+            logos_text = sources[0]
+        else:
+            logos_text = f"{home} {sources[0]} · {away} {sources[1]}"
+        logos_icon = "🛡" if sources == ["FCLogo", "FCLogo"] else "⚠️"
+        lines += [f"👕 Kit: {kit_text}", f"🎨 Grafiche: {graphics_text}",
+                  f"{logos_icon} Loghi: {logos_text}"]
+    lines += [
+        f"{bot.get_league_emoji(league_slug)} {bot.build_hashtag(home_raw, away_raw)}",
+        "",
+        f"<code>ESPN {bot.esc(partita.get('event_id', ''))} · "
+        f"{bot.esc(home_id)} / {bot.esc(away_id)}</code>",
+    ]
+    return "\n".join(lines)
 
 
 def _response_message_id(response) -> int | None:
