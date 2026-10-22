@@ -45,7 +45,7 @@ def announce_kickoff(ctx: MatchContext) -> None:
     if ctx.status == "1H" and "1H" not in ctx.state["sent_periods"]:
         msg_id = media.send_phase_message(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{ctx.home_name} - {ctx.away_name}\n\n{ctx.e_comp} {ctx.hashtag}",
             kind='kick', data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id,
-            home_name=ctx.home_name, away_name=ctx.away_name, league_slug=ctx.league_slug, league_name=ctx.league_name)
+            home_name=ctx.home_name_raw, away_name=ctx.away_name_raw, league_slug=ctx.league_slug, league_name=ctx.league_name)
         if msg_id:
             log_line("EVENT", "MATCH", "INIZIO PARTITA | Telegram inviato")
             ctx.state["sent_periods"].append("1H")
@@ -63,7 +63,7 @@ def announce_halftime(ctx: MatchContext) -> None:
             scorers_line = fmt.phase_scorers_line(ctx.events, ctx.home_id, ctx.away_id, 'half')
             msg_id = media.send_phase_message(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}",
                 kind='half', data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id,
-                home_name=ctx.home_name, away_name=ctx.away_name, league_slug=ctx.league_slug, league_name=ctx.league_name,
+                home_name=ctx.home_name_raw, away_name=ctx.away_name_raw, league_slug=ctx.league_slug, league_name=ctx.league_name,
                 home_goals=ctx.g_home, away_goals=ctx.g_away)
             if msg_id:
                 log_line("EVENT", "MATCH", f"FINE 1° TEMPO | {ctx.home_name} {ctx.g_home}-{ctx.g_away} {ctx.away_name} | Telegram inviato")
@@ -113,7 +113,7 @@ def announce_extra_time(ctx: MatchContext) -> None:
         ctx.state["_break_et_seen"] = ctx.state.get("_break_et_seen", 0) + 1
         if ctx.state["_break_et_seen"] >= 2:
             scorers_line = fmt.phase_scorers_line(ctx.events, ctx.home_id, ctx.away_id, 'end_of_90')
-            msg_id = media.send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}", kind="end_of_90", data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name, away_name=ctx.away_name, league_slug=ctx.league_slug, league_name=ctx.league_name, home_goals=ctx.g_home, away_goals=ctx.g_away)
+            msg_id = media.send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}", kind="end_of_90", data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name_raw, away_name=ctx.away_name_raw, league_slug=ctx.league_slug, league_name=ctx.league_name, home_goals=ctx.g_home, away_goals=ctx.g_away)
             if msg_id:
                 log_line("EVENT", "MATCH", f"FINE REGOLAMENTARI | {ctx.home_name} {ctx.g_home}-{ctx.g_away} {ctx.away_name} | Telegram inviato")
                 ctx.state["sent_periods"].append("2H_END")
@@ -130,7 +130,7 @@ def announce_extra_time(ctx: MatchContext) -> None:
     # partirà comunque al ciclo successivo grazie a _2h_end_gia_inviato.
     if ctx.status in ("ET", "PEN", "AET") and "2H_END" not in ctx.state["sent_periods"] and "FT" not in ctx.state["sent_periods"]:
         scorers_line = fmt.phase_scorers_line(ctx.events, ctx.home_id, ctx.away_id, 'end_of_90')
-        msg_id = media.send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}", kind="end_of_90", data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name, away_name=ctx.away_name, league_slug=ctx.league_slug, league_name=ctx.league_name, home_goals=ctx.g_home, away_goals=ctx.g_away)
+        msg_id = media.send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}", kind="end_of_90", data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name_raw, away_name=ctx.away_name_raw, league_slug=ctx.league_slug, league_name=ctx.league_name, home_goals=ctx.g_home, away_goals=ctx.g_away)
         if msg_id:
             log_line("EVENT", "MATCH", f"FINE REGOLAMENTARI | {ctx.home_name} {ctx.g_home}-{ctx.g_away} {ctx.away_name} | Telegram inviato")
             ctx.state["sent_periods"].append("2H_END")
