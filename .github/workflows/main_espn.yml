@@ -4,9 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       team_id:
-        description: 'Team ID ESPN (Juventus: 111)'
+        description: 'Squadra da seguire'
+        required: true
+        default: '111 - Juventus'
+        type: choice
+        options:
+          - '111 - Juventus'
+          - '162 - Italia'
+          - 'Altro'
+      custom_team_id:
+        description: "ID ESPN squadra (usato solo se scegli 'Altro')"
         required: false
-        default: '111'
+        default: ''
+        type: string
       channel:
         description: 'Canale Telegram'
         required: true
@@ -15,11 +25,6 @@ on:
         options:
           - Juventus Reborn
           - Bot JR
-      goal_graphics:
-        description: 'Attiva le grafiche GOAL/SAVED'
-        required: true
-        default: true
-        type: boolean
 
 permissions:
   actions: write
@@ -52,7 +57,6 @@ jobs:
           cp -a _private_assets/players _private_assets/fonts _private_assets/team_logos _private_assets/overlays _private_assets/portrait _private_assets/word_textures assets/goal_graphics
 
       - name: Restore seasonal FCLogo team logos
-        if: ${{ github.event.inputs.goal_graphics != 'false' }}
         uses: actions/cache@v6
         with:
           # Il manifest arriva da Git, mai da una cache precedente agli alias manuali.
@@ -83,12 +87,11 @@ jobs:
 
       - name: Sync seasonal FCLogo team logos
         id: fclogo_sync
-        if: ${{ github.event.inputs.goal_graphics != 'false' }}
         continue-on-error: true
         run: python -u -m livescore sync-logos --output-dir assets/goal_graphics/team_logos/fclogo_cache
 
       - name: Publish seasonal FCLogo team logos
-        if: ${{ github.event.inputs.goal_graphics != 'false' && steps.fclogo_sync.outcome == 'success' }}
+        if: ${{ steps.fclogo_sync.outcome == 'success' }}
         # I PNG sono già disponibili nel runner: un push fallito non ferma il live.
         continue-on-error: true
         run: |
@@ -110,7 +113,6 @@ jobs:
           fi
 
       - name: Update public FCLogo manifest
-        if: ${{ github.event.inputs.goal_graphics != 'false' }}
         # Solo metadati (nomi e alias dei club, nessuna immagine): serve alla web app di ImageGEN.
         continue-on-error: true
         run: |
@@ -125,6 +127,25 @@ jobs:
             git commit -m "Update public FCLogo manifest"
             git push origin "HEAD:${GITHUB_REF_NAME}" || echo "::warning::Manifest pubblico non aggiornato."
           fi
+
+      - name: Risolvi la squadra da seguire
+        id: team
+        shell: bash
+        env:
+          TEAM_CHOICE: ${{ github.event.inputs.team_id || '111 - Juventus' }}
+          CUSTOM_TEAM_ID: ${{ github.event.inputs.custom_team_id }}
+        run: |
+          if [ "$TEAM_CHOICE" = "Altro" ]; then
+            TEAM_ID="$(echo "$CUSTOM_TEAM_ID" | tr -d '[:space:]')"
+          else
+            TEAM_ID="${TEAM_CHOICE%% *}"
+          fi
+          if ! [[ "$TEAM_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::Scegli 'Altro' solo insieme a un ID ESPN numerico valido (ricevuto: '$CUSTOM_TEAM_ID')."
+            exit 1
+          fi
+          echo "Squadra seguita: $TEAM_ID"
+          echo "team_id=$TEAM_ID" >> "$GITHUB_OUTPUT"
 
       - name: Run Live Score Bot
         env:
@@ -142,8 +163,10 @@ jobs:
           CANVA_CLIENT_ID:      ${{ secrets.CANVA_CLIENT_ID }}
           CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
-          TEAM_ID:              ${{ github.event.inputs.team_id || '111' }}
-          GOAL_GRAPHICS_ENABLED: ${{ github.event.inputs.goal_graphics || 'true' }}
+          TEAM_ID:              ${{ steps.team.outputs.team_id }}
+          # Le grafiche sono sempre attive; il codice le genera solo per gol/parate della Juve
+          # e mai per le amichevoli.
+          GOAL_GRAPHICS_ENABLED: 'true'
           # Checkpoint di stato ogni 5 minuti; eventi, cambi di fase ed errori restano immediati.
           LIVE_LOG_HEARTBEAT_MINUTES: '5'
           # Salta solo una sincronizzazione già riuscita; in caso di errore il bot ritenta.
