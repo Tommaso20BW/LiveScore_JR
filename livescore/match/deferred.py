@@ -27,7 +27,7 @@ def send_due_stats(ctx: MatchContext) -> None:
             continue
         data_fresh = espn_client.fetch_evento(ctx.event_id, ctx.league_slug) or ctx.data
         png_path = stats_job.recupera_e_genera_stats_html(data_fresh, ctx.home_id, ctx.away_id,
-                                                 ctx.home_name, ctx.away_name, ctx.g_home, ctx.g_away,
+                                                 ctx.home_name_raw, ctx.away_name_raw, ctx.g_home, ctx.g_away,
                                                  _momento, ctx.league_name, league_slug=ctx.league_slug,
                                                  event_id=ctx.event_id)
         if tg.send_telegram_stats_photo(png_path, _momento, f"{ctx.e_comp} {ctx.hashtag}"):
