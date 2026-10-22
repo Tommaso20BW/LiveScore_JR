@@ -56,7 +56,7 @@ class StatsGraphicsTests(unittest.TestCase):
 
     def test_home_brand_changes_only_logo_pixels_no_shadow(self):
         background = Image.new('RGBA', (portrait.W, portrait.H), '#eeeeee')
-        result = portrait.brand(background.copy(), 'home', __import__('goal_graphics').DEFAULT_ASSET_DIR)
+        result = portrait.brand(background.copy(), 'home', stats.g.DEFAULT_ASSET_DIR)
         self.assertEqual(result.getpixel((1000, 100)), background.getpixel((1000, 100)))
 
     def test_away_theme_juventus_is_right_and_layout_is_approved(self):
