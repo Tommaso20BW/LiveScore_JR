@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-import juve_bot_espn as bot
+from livescore.hooks import bot
 
 
 class GraphicRetryTests(unittest.TestCase):

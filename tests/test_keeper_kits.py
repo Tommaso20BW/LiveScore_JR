@@ -1,7 +1,7 @@
 import unittest
 from PIL import Image, ImageFont
-import goal_graphics as g
-import portrait_graphics as p
+from livescore.graphics import goal as g
+from livescore.graphics import portrait as p
 
 
 class KeeperKitsTests(unittest.TestCase):

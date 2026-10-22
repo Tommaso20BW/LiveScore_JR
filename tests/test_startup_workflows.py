@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import juve_bot_espn as bot
+from livescore.hooks import bot
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-import juve_bot_espn as bot
+from livescore.hooks import bot
 
 
 class StatsDelayTests(unittest.TestCase):

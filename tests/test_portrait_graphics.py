@@ -2,8 +2,8 @@ import io
 import unittest
 from unittest.mock import patch
 from PIL import Image
-import goal_graphics as g
-import portrait_graphics as p
+from livescore.graphics import goal as g
+from livescore.graphics import portrait as p
 
 class PortraitTests(unittest.TestCase):
     def test_domestic_saved_matches_goal_kit(self):

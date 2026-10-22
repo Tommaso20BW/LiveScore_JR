@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from live_logging import log_line
+from livescore.core.log import log_line
 
 
 def extract_layers(pdf: bytes, destination: Path) -> Path:

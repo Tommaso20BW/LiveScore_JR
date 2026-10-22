@@ -9,8 +9,8 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 
-import dynamic_kit_runtime as dkr
-import canva_snapshot_store as css
+from livescore.kits import runtime as dkr
+from livescore.canva import snapshot_store as css
 
 
 def png(color):

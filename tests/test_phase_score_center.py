@@ -1,6 +1,6 @@
 import unittest
 from PIL import Image
-from portrait_graphics import phase_group_positions, visible_logo_bbox
+from livescore.graphics.portrait import phase_group_positions, visible_logo_bbox
 
 
 class PhaseScoreCenterTests(unittest.TestCase):

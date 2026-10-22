@@ -38,7 +38,7 @@ jobs:
         run: |
           echo "Attendo 20 minuti dalla fine della partita..."
           sleep 1200
-          python -u telegram_autodelete.py
+          python -u -m livescore autodelete
 
       - name: Clean previous workflow runs
         if: always()

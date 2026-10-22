@@ -1,5 +1,5 @@
 import unittest
-import juve_bot_espn as bot
+from livescore.hooks import bot
 
 
 def goal(name, minute, period=0, team='111', kind='goal'):

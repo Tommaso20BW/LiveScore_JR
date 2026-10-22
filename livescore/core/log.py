@@ -12,6 +12,19 @@ from zoneinfo import ZoneInfo
 ITALY_TZ = ZoneInfo("Europe/Rome")
 
 
+_SECRET_ENV = ("TELEGRAM_TOKEN", "GH_PAT", "CANVA_CLIENT_SECRET", "CANVA_REFRESH_TOKEN")
+_BOT_TOKEN_RE = re.compile(r"(?<!\d)\d{6,}:[A-Za-z0-9_-]{30,}")
+
+
+def redact(message: str) -> str:
+    """Toglie token e segreti da un messaggio prima che finisca nel log (che e' pubblico su Actions)."""
+    for name in _SECRET_ENV:
+        secret = os.getenv(name)
+        if secret and len(secret) >= 8:
+            message = message.replace(secret, "***")
+    return _BOT_TOKEN_RE.sub("***", message)
+
+
 def log_line(level: str, area: str, message: str, *, timestamp: str | None = None) -> None:
     """Stampa una riga con colonne stabili, adatta ai log GitHub Actions."""
     normalized_level = level.upper()
@@ -22,7 +35,7 @@ def log_line(level: str, area: str, message: str, *, timestamp: str | None = Non
         return
     current_time = timestamp or datetime.now(ITALY_TZ).strftime("%H:%M:%S")
     print(
-        f"[{current_time}] {normalized_level:<6} {area.upper():<10} | {message}",
+        f"[{current_time}] {normalized_level:<6} {area.upper():<10} | {redact(str(message))}",
         flush=True,
     )
 

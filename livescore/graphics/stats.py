@@ -5,8 +5,8 @@ import math
 from html import escape
 from pathlib import Path
 from PIL import Image
-import portrait_graphics as p
-import goal_graphics as g
+from livescore.graphics import portrait as p
+from livescore.graphics import goal as g
 
 PHASES = {'HT': 'half', '2H_END': 'end_of_90', 'FT': 'full'}
 ORDER = ('POSSESSO', 'xG', 'TIRI', 'TIRI IN PORTA', 'CORNER', 'FALLI',
@@ -155,7 +155,7 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
         else ('#fff', p.COLORS[key])
     )
 
-    template = Path(__file__).with_name('stats.html').read_text(encoding='utf-8')
+    template = Path(__file__).parent / 'templates' / 'stats.html'.read_text(encoding='utf-8')
 
     values = dict(
         FONT=font,

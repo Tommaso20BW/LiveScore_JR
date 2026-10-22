@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 
-import livescore_runner as runner
+from livescore import runner
 
 
 class MatchFoundNotificationTests(unittest.TestCase):

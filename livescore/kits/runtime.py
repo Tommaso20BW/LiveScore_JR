@@ -30,7 +30,7 @@ from typing import Any, Callable
 
 from PIL import Image
 
-from canva_snapshot_store import GitHubSnapshotStore
+from livescore.canva.snapshot_store import GitHubSnapshotStore
 
 
 VALID_KITS = ("home", "away", "third")
@@ -204,9 +204,9 @@ class DynamicKitRuntime:
         if not hasattr(self.bot.goal_graphics, "io"):
             self.bot.goal_graphics.io = io
 
-        import canva_page_one
-        import stats_graphics
-        import portrait_graphics
+        from livescore.canva import page_one as canva_page_one
+        from livescore.graphics import stats as stats_graphics
+        from livescore.graphics import portrait as portrait_graphics
 
         self.canva_page_one = canva_page_one
         self.stats_graphics = stats_graphics

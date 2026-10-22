@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import patch, call
 from PIL import Image
-import stats_graphics as stats
-import juve_bot_espn as bot
-import portrait_graphics as portrait
+from livescore.graphics import stats
+from livescore.hooks import bot
+from livescore.graphics import portrait
 
 
 class StatsGraphicsTests(unittest.TestCase):

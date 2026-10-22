@@ -1,6 +1,6 @@
 import io
 import shutil
-import portrait_graphics
+from livescore.graphics import portrait as portrait_graphics
 import json
 import tempfile
 import unittest
@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from PIL import Image, ImageDraw
 
-import goal_graphics
-import juve_bot_espn as bot
+from livescore.graphics import goal as goal_graphics
+from livescore.hooks import bot
 
 
 class GoalGraphicsTests(unittest.TestCase):

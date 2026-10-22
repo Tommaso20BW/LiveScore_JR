@@ -8,7 +8,7 @@ from pathlib import Path
 import requests
 from PIL import Image
 
-import fclogo_sync
+from livescore.graphics import logos as fclogo_sync
 
 
 def png_bytes(color=(20, 80, 160, 255)) -> bytes:

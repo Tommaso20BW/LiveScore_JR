@@ -85,7 +85,7 @@ jobs:
         id: fclogo_sync
         if: ${{ github.event.inputs.goal_graphics != 'false' }}
         continue-on-error: true
-        run: python -u fclogo_sync.py --output-dir assets/goal_graphics/team_logos/fclogo_cache
+        run: python -u -m livescore sync-logos --output-dir assets/goal_graphics/team_logos/fclogo_cache
 
       - name: Publish seasonal FCLogo team logos
         if: ${{ github.event.inputs.goal_graphics != 'false' && steps.fclogo_sync.outcome == 'success' }}
@@ -148,7 +148,7 @@ jobs:
           LIVE_LOG_HEARTBEAT_MINUTES: '5'
           # Salta solo una sincronizzazione già riuscita; in caso di errore il bot ritenta.
           FCLOGO_SYNC_DONE: ${{ steps.fclogo_sync.outcome == 'success' && 'true' || 'false' }}
-        run: python -u livescore_runner.py
+        run: python -u -m livescore run
 
       - name: Start Bot JR auto-delete after the match
         if: ${{ always() && github.event.inputs.channel == 'Bot JR' }}

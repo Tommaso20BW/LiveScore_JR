@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 from PIL import Image
-import portrait_graphics as p
-import goal_graphics as g
+from livescore.graphics import portrait as p
+from livescore.graphics import goal as g
 
 class LogoAlignmentTests(unittest.TestCase):
     def test_unequal_widths_and_reversed_order(self):

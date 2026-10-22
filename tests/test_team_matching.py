@@ -1,6 +1,6 @@
 import unittest
 
-from team_matching import TeamIndex
+from livescore.core.team_matching import TeamIndex
 
 
 def team(name, team_id, **extra):

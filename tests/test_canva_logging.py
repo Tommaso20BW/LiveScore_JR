@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, call, patch
 
-import canva_page_one as canva
+from livescore.canva import page_one as canva
 
 
 class CanvaLoggingTests(unittest.TestCase):

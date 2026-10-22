@@ -3,7 +3,7 @@ import copy
 import unittest
 from pathlib import Path
 
-from fclogo_sync import preserve_manifest_aliases
+from livescore.graphics.logos import preserve_manifest_aliases
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,15 +49,25 @@ class ManualAliasTests(unittest.TestCase):
         self.assertNotIn("espn_aliases", new)
 
     def test_all_live_goal_saved_calls_pass_original_espn_names(self):
-        tree = ast.parse((ROOT / "juve_bot_espn.py").read_text(encoding="utf-8"))
-        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
-                 and isinstance(node.func, ast.Name) and node.func.id in
-                 ("prepara_grafica_goal", "prepara_grafica_parata_rigore")]
+        def name_of(node):
+            """Nome semplice di `x` oppure di `modulo.x` / `c.x`."""
+            if isinstance(node, ast.Name):
+                return node.id
+            if isinstance(node, ast.Attribute):
+                return node.attr
+            return None
+
+        calls = []
+        for path in sorted((ROOT / "livescore" / "match").glob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            calls += [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                      and name_of(node.func) in
+                      ("prepara_grafica_goal", "prepara_grafica_parata_rigore")]
         self.assertEqual(len(calls), 4)  # iniziale, live, correzione, SAVED
         for call in calls:
             args = {kw.arg: kw.value for kw in call.keywords}
-            self.assertEqual(args["home_name"].id, "home_name_raw")
-            self.assertEqual(args["away_name"].id, "away_name_raw")
+            self.assertEqual(name_of(args["home_name"]), "home_name_raw")
+            self.assertEqual(name_of(args["away_name"]), "away_name_raw")
 
     def test_workflow_caches_only_pngs_not_manual_manifest(self):
         workflow = (ROOT / ".github/workflows/main_espn.yml").read_text(encoding="utf-8")

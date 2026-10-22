@@ -23,18 +23,13 @@ import requests
 from PIL import Image
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from team_matching import normalize_team_name as _normalize, unique_aliases
+from livescore.core.team_matching import normalize_team_name as _normalize, unique_aliases
+from livescore.paths import ASSETS_DIR
 
 
 BASE_URL = "https://fclogo.top"
 ASSET_BASE_URL = "https://assets.fclogo.top/png"
-DEFAULT_LOGO_DIR = (
-    Path(__file__).resolve().parent
-    / "assets"
-    / "goal_graphics"
-    / "team_logos"
-    / "fclogo_cache"
-)
+DEFAULT_LOGO_DIR = ASSETS_DIR / "team_logos" / "fclogo_cache"
 MANIFEST_FILENAME = "manifest.json"
 USER_AGENT = "LiveScore_JR/1.0 (+https://github.com/Tommaso20BW/LiveScore_JR)"
 MAX_PACK_PAGES = 8

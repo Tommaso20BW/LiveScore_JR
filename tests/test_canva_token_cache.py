@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-import juve_bot_espn as bot
+from livescore.hooks import bot
 
 class CanvaTokenCacheTests(unittest.TestCase):
     def test_valid_token_reused_and_expired_token_refreshed(self):

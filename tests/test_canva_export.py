@@ -5,9 +5,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 from PIL import Image
-import canva_page_one as canva
-import juve_bot_espn as bot
-import portrait_graphics as portrait
+from livescore.canva import page_one as canva
+from livescore.hooks import bot
+from livescore.graphics import portrait
 
 
 def seed_cache(root):

@@ -42,7 +42,7 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
           ONLY_REFRESH_TOKEN: "true"
-        run: python -u juve_bot_espn.py
+        run: python -u -m livescore keepalive
 
       - name: Pulisci la cronologia dei run
         if: always()

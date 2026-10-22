@@ -2,7 +2,7 @@
 import io
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
-import goal_graphics as g
+from livescore.graphics import goal as g
 
 W, H, M = 1086, 1448, 76
 IW, IH = W - 2 * M, H - 2 * M

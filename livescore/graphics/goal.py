@@ -20,12 +20,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageFont, ImageOps
-from team_matching import TeamIndex, normalize_team_name
+from livescore.core.team_matching import TeamIndex, normalize_team_name
+from livescore.paths import ASSETS_DIR, DATA_DIR, ROOT
 
 
-BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_ASSET_DIR = BASE_DIR / "assets" / "goal_graphics"
-REGISTRY_PATH = BASE_DIR / "goal_players.json"
+DEFAULT_ASSET_DIR = ASSETS_DIR
+REGISTRY_PATH = DATA_DIR / "goal_players.json"
 FCLOGO_CACHE_DIRNAME = "fclogo_cache"
 FCLOGO_MANIFEST_FILENAME = "manifest.json"
 
@@ -357,7 +357,7 @@ def render_goal_card(
 
     kit = kit if kit in THEMES else "home"
     try:
-        from portrait_graphics import event
+        from livescore.graphics.portrait import event
         return event(player=card_player, scorer_name=scorer_name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit=kit, suffix=scorer_suffix,
@@ -389,7 +389,7 @@ def render_saved_card(
             f"Portiere non presente nel registro: {goalkeeper_name!r}"
         )
     try:
-        from portrait_graphics import event
+        from livescore.graphics.portrait import event
         return event(player=player, scorer_name=player.name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit=kit, saved=True,
@@ -418,7 +418,7 @@ def main() -> int:
     parser.add_argument("--away-goals", type=int, default=0)
     parser.add_argument("--event-key", default="preview")
     parser.add_argument("--asset-dir", type=Path, default=DEFAULT_ASSET_DIR)
-    parser.add_argument("--output", type=Path, default=BASE_DIR / "goal_preview.png")
+    parser.add_argument("--output", type=Path, default=ROOT / "goal_preview.png")
     args = parser.parse_args()
 
     try:

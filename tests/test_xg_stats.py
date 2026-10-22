@@ -1,6 +1,6 @@
 import unittest
 
-import juve_bot_espn as bot
+from livescore.hooks import bot
 
 
 def make_payload(*, team_one, team_two, cell_one, cell_two, stat_name="Expected Goals"):

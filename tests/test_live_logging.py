@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from live_logging import MatchProgressLog, _elapsed_minute, log_line
+from livescore.core.log import MatchProgressLog, _elapsed_minute, log_line
 
 
 class LiveLoggingTests(unittest.TestCase):

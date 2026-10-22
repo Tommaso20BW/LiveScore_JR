@@ -4,8 +4,8 @@ from datetime import datetime
 
 from PIL import Image
 
-import juve_bot_espn as bot
-from dynamic_kit_runtime import DynamicKitRuntime
+from livescore.hooks import bot
+from livescore.kits.runtime import DynamicKitRuntime
 
 
 # Installa gli hook una sola volta. Il cuore juve_bot_espn.py resta invariato.
@@ -14,7 +14,7 @@ _ORIGINAL_TROVA_PARTITA = bot.trova_partita_oggi
 
 
 def _asset_status(kit: str, competition: str = '') -> str:
-    from portrait_graphics import theme
+    from livescore.graphics.portrait import theme
     key = theme(kit, competition)
     saved_key = theme(kit, competition, True)
     root = bot.goal_graphics.DEFAULT_ASSET_DIR
@@ -200,8 +200,11 @@ def trova_partita_con_notifica(team_id: str):
     return partita
 
 
-# Il bot originale resta intatto: sostituiamo solo la funzione di discovery
-# durante questo run, aggiungendo notifica e controllo kit dinamico.
-if __name__ == "__main__":
+def main() -> None:
+    """Avvio del live: come il bot base, ma con notifica di servizio e controllo kit dinamico."""
     bot.trova_partita_oggi = trova_partita_con_notifica
     bot.main()
+
+
+if __name__ == "__main__":
+    main()

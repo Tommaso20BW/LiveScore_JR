@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 from PIL import Image, ImageStat
-from portrait_graphics import textured
+from livescore.graphics.portrait import textured
 
 
 class ThirdZoomTextureTests(unittest.TestCase):

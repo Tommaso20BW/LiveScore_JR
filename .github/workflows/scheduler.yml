@@ -33,7 +33,7 @@ jobs:
 
       - name: Controlla se c'e' una partita della Juve in arrivo
         id: check
-        run: python -u scheduler_check.py
+        run: python -u -m livescore schedule-check
 
       - name: Verifica che il bot non sia gia' in esecuzione
         id: running
