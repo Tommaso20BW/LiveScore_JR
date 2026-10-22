@@ -16,6 +16,9 @@ from livescore.match import media
 from livescore.match.context import MatchContext, Flow
 from livescore.telegram import api as tg
 
+# Attesa prima di annunciare un gol annullato (VAR), in secondi.
+CANCEL_CONFIRM_SECONDS = 15
+
 
 def catch_up_goals(ctx: MatchContext) -> None:
     """Partita gia' in corso con stato vuoto: annuncia i gol mancanti."""
@@ -284,7 +287,7 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
         # ======================================================
         # GOAL ANNULLATO — conferma non bloccante
         # ======================================================
-        # La diminuzione del punteggio viene osservata per 120 secondi,
+        # La diminuzione del punteggio viene osservata per CANCEL_CONFIRM_SECONDS secondi,
         # ma il normale polling continua: ESPN, eventi, kit e callback
         # restano attivi. Il timer è persistito nel Gist e sopravvive
         # quindi anche a un riavvio del workflow.
@@ -299,7 +302,7 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
                 "baseline_away": int(ctx.state.get("prev_away_goals", 0)),
                 "candidate_home": int(ctx.g_home),
                 "candidate_away": int(ctx.g_away),
-                "confirm_at": _cancel_now + 120,
+                "confirm_at": _cancel_now + CANCEL_CONFIRM_SECONDS,
             }
             ctx.state["pending_goal_cancellation"] = pending_cancel
             ctx.state_changed = True
@@ -307,7 +310,7 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
                 "WAIT",
                 "MATCH",
                 f"Possibile GOAL ANNULLATO | {ctx.g_home}-{ctx.g_away}; "
-                "conferma non bloccante tra 120s",
+                f"conferma non bloccante tra {CANCEL_CONFIRM_SECONDS}s",
             )
         else:
             try:
@@ -340,13 +343,13 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
             ):
                 pending_cancel["candidate_home"] = int(ctx.g_home)
                 pending_cancel["candidate_away"] = int(ctx.g_away)
-                pending_cancel["confirm_at"] = _cancel_now + 120
+                pending_cancel["confirm_at"] = _cancel_now + CANCEL_CONFIRM_SECONDS
                 ctx.state_changed = True
                 log_line(
                     "WAIT",
                     "MATCH",
                     f"GOAL ANNULLATO: candidato cambiato in "
-                    f"{ctx.g_home}-{ctx.g_away}; nuova conferma tra 120s",
+                    f"{ctx.g_home}-{ctx.g_away}; nuova conferma tra {CANCEL_CONFIRM_SECONDS}s",
                 )
 
             try:
@@ -392,13 +395,13 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
                 ):
                     pending_cancel["candidate_home"] = int(g_home_c)
                     pending_cancel["candidate_away"] = int(g_away_c)
-                    pending_cancel["confirm_at"] = _cancel_now + 120
+                    pending_cancel["confirm_at"] = _cancel_now + CANCEL_CONFIRM_SECONDS
                     ctx.state_changed = True
                     log_line(
                         "WAIT",
                         "MATCH",
                         f"GOAL ANNULLATO: ESPN ora mostra "
-                        f"{g_home_c}-{g_away_c}; nuova conferma tra 120s",
+                        f"{g_home_c}-{g_away_c}; nuova conferma tra {CANCEL_CONFIRM_SECONDS}s",
                     )
 
                 elif g_home_c + g_away_c < _baseline_total:
