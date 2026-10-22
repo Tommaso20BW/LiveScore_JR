@@ -31,7 +31,7 @@ jobs:
         run: |
           python -m pip install requests
 
-      - name: Controlla se c'e' una partita della Juve in arrivo
+      - name: Controlla se c'e' una partita di Juve o Italia in arrivo
         id: check
         run: python -u -m livescore schedule-check
 
@@ -69,9 +69,11 @@ jobs:
           echo "Dispatch per: ${{ steps.check.outputs.match_name }}"
           echo "Kickoff: ${{ steps.check.outputs.kickoff }}"
           echo "Competizione: ${{ steps.check.outputs.league }}"
+          echo "Squadra: ${{ steps.check.outputs.team_choice }}"
 
           gh workflow run main_espn.yml \
-            --repo "${{ github.repository }}"
+            --repo "${{ github.repository }}" \
+            -f team_id="${{ steps.check.outputs.team_choice }}"
 
       - name: Bot gia' in esecuzione
         if: >
@@ -84,7 +86,7 @@ jobs:
       - name: Nessuna partita da avviare
         if: steps.check.outputs.dispatch == 'false'
         run: |
-          echo "Nessuna partita della Juventus nella finestra di avvio."
+          echo "Nessuna partita di Juventus o Italia nella finestra di avvio."
 
       - name: Pulisci la cronologia dei run dello scheduler
         if: always()
