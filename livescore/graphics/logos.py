@@ -14,6 +14,8 @@ import io
 import json
 import re
 import shutil
+import threading
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from html.parser import HTMLParser
@@ -45,7 +47,13 @@ COMPETITION_FOLDERS = (
 )
 USER_AGENT = "LiveScore_JR/1.0 (+https://github.com/Tommaso20BW/LiveScore_JR)"
 MAX_PACK_PAGES = 8
-MAX_PARALLEL_DOWNLOADS = 3
+MAX_PARALLEL_DOWNLOADS = 2
+# FCLogo risponde 503 se riceve troppe richieste ravvicinate: tra una richiesta e
+# l'altra verso *.fclogo.top passa almeno questo intervallo (condiviso tra i thread).
+MIN_REQUEST_INTERVAL = 0.6
+REQUEST_TIMEOUT = 30
+_throttle_lock = threading.Lock()
+_last_request_at = 0.0
 
 
 class FCLogoSyncError(RuntimeError):
@@ -157,7 +165,19 @@ def _clean_alt_name(value: str) -> str:
     return clean
 
 
-def _get(session: requests.Session, url: str, timeout: int = 15) -> requests.Response:
+def _throttle(url: str) -> None:
+    global _last_request_at
+    if MIN_REQUEST_INTERVAL <= 0 or "fclogo.top/" not in url:
+        return
+    with _throttle_lock:
+        wait = _last_request_at + MIN_REQUEST_INTERVAL - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        _last_request_at = time.monotonic()
+
+
+def _get(session: requests.Session, url: str, timeout: int = REQUEST_TIMEOUT) -> requests.Response:
+    _throttle(url)
     response = session.get(
         url,
         headers={"User-Agent": USER_AGENT, "Accept": "text/html,image/png,*/*"},
@@ -170,11 +190,10 @@ def _get(session: requests.Session, url: str, timeout: int = 15) -> requests.Res
 def _new_session() -> requests.Session:
     session = requests.Session()
     # FCLogo risponde 503 se lo si interroga troppo in fretta: piu' tentativi con
-    # attese crescenti (1s, 2s, 4s, 8s) e rispetto di Retry-After, cosi' un picco
-    # non fa fallire il giro e non invalida la cache del manifest.
+    # attese crescenti (2s, 4s, 8s, 16s) e rispetto di Retry-After.
     retry = Retry(
         total=4,
-        backoff_factor=1.0,
+        backoff_factor=2.0,
         status_forcelist=(429, 500, 502, 503, 504),
         allowed_methods=frozenset({"GET"}),
         respect_retry_after_header=True,
@@ -575,6 +594,14 @@ def sync_current_season(
         if session is None and len(pending_downloads) > 1:
             executor.shutdown(wait=True)
 
+    # Giro incompleto: i loghi gia' presenti che non sono stati sostituiti restano
+    # nel manifest (anche quelli della stagione precedente), cosi' il bot continua
+    # a trovarli. Il giro successivo riprende solo da cio' che manca.
+    if report.failed:
+        for slug, old in previous_teams.items():
+            if slug not in updated_teams and slug not in clubs_by_slug:
+                updated_teams[slug] = dict(old)
+
     preserve_manifest_aliases(updated_teams, previous_teams)
 
     # Copie per competizione: il file principale nasce (o si sposta) nella prima
@@ -583,7 +610,7 @@ def sync_current_season(
         name = Path(str(item.get("file", ""))).name
         if not name:
             continue
-        folders = _club_folders(set(item.get("packs", []))) if club_slug in clubs_by_slug else []
+        folders = _club_folders(set(item.get("packs", [])))
         old = previous_teams.get(club_slug, {})
         sources = [output_dir / str(item["file"]), output_dir / str(old.get("file", ""))]
         source = next((path for path in sources if path.is_file() and _valid_png(path)), None)
@@ -603,6 +630,8 @@ def sync_current_season(
     manifest = {
         "source": f"{BASE_URL}/",
         "season": label,
+        # False finche' qualche logo della stagione non e' stato scaricato.
+        "complete": report.failed == 0,
         "packs": {
             slug: {
                 "url": f"{BASE_URL}/pack/{slug}",
@@ -613,14 +642,23 @@ def sync_current_season(
         },
         "teams": sorted(updated_teams.values(), key=lambda item: str(item.get("slug", ""))),
     }
-    if report.failed == 0:
-        temporary_manifest = manifest_path.with_suffix(".json.tmp")
-        temporary_manifest.write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        temporary_manifest.replace(manifest_path)
+    # Il manifest si salva anche se il giro e' incompleto: e' la cache dei progressi.
+    temporary_manifest = manifest_path.with_suffix(".json.tmp")
+    temporary_manifest.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temporary_manifest.replace(manifest_path)
 
+    still_legacy = any(
+        str(relative).startswith(f"{LEGACY_DIRNAME}/")
+        for item in manifest["teams"]
+        for relative in (item.get("files") or [item.get("file", "")])
+    )
+    if legacy_dir.is_dir() and not still_legacy:
+        shutil.rmtree(legacy_dir)
+
+    if report.failed == 0:
         # La cartella è dedicata al catalogo FCLogo: dopo aver pubblicato il
         # nuovo manifest rimuoviamo i PNG non più referenziati. Questo elimina
         # squadre uscite e vecchie versioni di stemmi al cambio stagione.
@@ -634,8 +672,6 @@ def sync_current_season(
             if logo_path.relative_to(output_dir).as_posix() not in referenced_files:
                 logo_path.unlink()
                 report.removed += 1
-        if legacy_dir.is_dir():
-            shutil.rmtree(legacy_dir)
         for folder in sorted(output_dir.iterdir()):
             if folder.is_dir() and not any(folder.iterdir()):
                 folder.rmdir()
@@ -656,7 +692,10 @@ def main() -> int:
     print(report.summary())
     for error in report.errors:
         print(f"FCLogo warning: {error}")
-    return 1 if report.failed else 0
+    if report.failed:
+        # Progressi salvati: il workflow pubblica comunque, il prossimo giro completa.
+        print(f"FCLogo: catalogo incompleto, {report.failed} loghi da riprovare al prossimo giro")
+    return 0
 
 
 if __name__ == "__main__":

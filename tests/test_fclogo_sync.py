@@ -71,6 +71,9 @@ class FCLogoSyncTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.output_dir = Path(self.tmp.name)
+        # Nessuna pausa tra le richieste finte.
+        self.addCleanup(setattr, fclogo_sync, "MIN_REQUEST_INTERVAL", fclogo_sync.MIN_REQUEST_INTERVAL)
+        fclogo_sync.MIN_REQUEST_INTERVAL = 0
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -392,7 +395,7 @@ class FCLogoSyncTests(unittest.TestCase):
         self.assertEqual((report.downloaded, report.removed, report.failed), (1, 1, 0))
         self.assertFalse(any("espn" in url for url in session.calls))
 
-    def test_failed_new_season_sync_does_not_delete_previous_files(self):
+    def test_failed_new_season_sync_keeps_previous_logos_and_saves_progress(self):
         old_filename = "Old-Club-v2025-mono.png"
         (self.output_dir / old_filename).write_bytes(png_bytes())
         (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(
@@ -434,7 +437,49 @@ class FCLogoSyncTests(unittest.TestCase):
         manifest = json.loads(
             (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
         )
-        self.assertEqual(manifest["season"], "2025-26")
+        # Progressi salvati, ma il vecchio logo resta usabile finche' manca il nuovo.
+        self.assertEqual(manifest["season"], "2026-27")
+        self.assertFalse(manifest["complete"])
+        old = {team["slug"]: team for team in manifest["teams"]}["Old-Club-v2025"]
+        self.assertTrue((self.output_dir / old["file"]).is_file())
+
+    def test_partial_sync_is_resumed_without_redownloading(self):
+        pack_slug = "2026-27-uefa-champions-league"
+        done, missing = "SL-Benfica-v2025", "AFC-Ajax-v2025"
+        done_url = f"{fclogo_sync.ASSET_BASE_URL}/{done}-mono.png"
+        missing_url = f"{fclogo_sync.ASSET_BASE_URL}/{missing}-mono.png"
+        base = {
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(text=pack_listing(pack_slug)),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(
+                text=pack_page((done, "Benfica", "one"), (missing, "Ajax", "one"))
+            ),
+        }
+        first = FakeSession({
+            **base,
+            f"{fclogo_sync.BASE_URL}/figc/club/{done}-mono": FakeResponse(text=detail_page(done_url)),
+            done_url: FakeResponse(content=png_bytes()),
+            f"{fclogo_sync.BASE_URL}/figc/club/{missing}-mono": FakeResponse(status=503),
+            f"{fclogo_sync.BASE_URL}/figc/club/{missing}": FakeResponse(status=503),
+        })
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir, session=first, today=date(2026, 9, 1),
+        )
+        self.assertEqual((report.downloaded, report.failed), (1, 1))
+
+        second = FakeSession({
+            **{url: FakeResponse(text=response.text) for url, response in base.items()},
+            f"{fclogo_sync.BASE_URL}/figc/club/{missing}-mono": FakeResponse(text=detail_page(missing_url)),
+            missing_url: FakeResponse(content=png_bytes()),
+        })
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir, session=second, today=date(2026, 9, 1),
+        )
+        # Benfica viene dalla cache del giro precedente: si scarica solo l'Ajax.
+        self.assertEqual((report.downloaded, report.reused, report.failed), (1, 1, 0))
+        self.assertFalse(any(done in url for url in second.calls if "/club/" in url))
+        manifest = json.loads((self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text())
+        self.assertTrue(manifest["complete"])
 
     def test_single_version_logo_is_already_mono_and_saved_as_is(self):
         pack_slug = "2026-27-serie-b"
