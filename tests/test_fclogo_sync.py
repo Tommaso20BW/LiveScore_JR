@@ -11,7 +11,7 @@ from PIL import Image
 from livescore.graphics import logos as fclogo_sync
 
 
-def png_bytes(color=(20, 80, 160, 255)) -> bytes:
+def png_bytes(color=(0, 0, 0, 255)) -> bytes:
     output = io.BytesIO()
     Image.new("RGBA", (24, 18), color).save(output, format="PNG")
     return output.getvalue()
@@ -510,11 +510,61 @@ class FCLogoSyncTests(unittest.TestCase):
         )
         team = manifest["teams"][0]
         # Una sola versione su FCLogo: e' gia' il mono, nessuna conversione.
-        self.assertEqual(team["variant"], "mono")
+        self.assertEqual(team["variant"], "single")
         self.assertEqual(team["source_url"], color_url)
         self.assertTrue(team["file"].endswith("-mono.png"))
         self.assertEqual(
             (self.output_dir / team["file"]).read_bytes(), png_bytes((220, 30, 60, 255))
+        )
+
+    def test_temporary_error_on_mono_page_never_saves_color_logo(self):
+        pack_slug = "2026-27-serie-a"
+        club_slug = "Bologna-FC-v2018"
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(text=pack_listing(pack_slug)),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(
+                text=pack_page((club_slug, "Bologna", "one"))
+            ),
+            # 503: la pagina mono esiste ma il sito e' sovraccarico. Nessuna
+            # richiesta alla pagina a colori (FakeSession fallirebbe).
+            f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono": FakeResponse(status=503),
+        })
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir, session=session, today=date(2026, 9, 1),
+        )
+        self.assertEqual((report.downloaded, report.failed), (0, 1))
+        self.assertFalse(list(self.output_dir.rglob("*.png")))
+
+    def test_colored_file_marked_mono_is_downloaded_again(self):
+        pack_slug = "2026-27-serie-a"
+        club_slug = "Bologna-FC-v2018"
+        (self.output_dir / "serie-a").mkdir()
+        (self.output_dir / "serie-a" / f"{club_slug}-mono.png").write_bytes(png_bytes((200, 30, 40, 255)))
+        (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(json.dumps({
+            "season": "2026-27",
+            "teams": [{
+                "name": "Bologna", "slug": club_slug, "file": f"serie-a/{club_slug}-mono.png",
+                "variant": "mono", "preview_url": f"https://cdn.example/{club_slug}-one.png",
+                "packs": [pack_slug],
+            }],
+        }), encoding="utf-8")
+        mono_url = f"{fclogo_sync.ASSET_BASE_URL}/{club_slug}-mono.png"
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(text=pack_listing(pack_slug)),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(
+                text=pack_page((club_slug, "Bologna", "one"))
+            ),
+            f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono": FakeResponse(text=detail_page(mono_url)),
+            mono_url: FakeResponse(content=png_bytes()),
+        })
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir, session=session, today=date(2026, 9, 1),
+        )
+        self.assertEqual((report.downloaded, report.reused), (1, 0))
+        self.assertEqual(
+            (self.output_dir / "serie-a" / f"{club_slug}-mono.png").read_bytes(), png_bytes()
         )
 
     def test_mono_tab_on_club_page_is_used_when_mono_page_is_missing(self):
@@ -556,12 +606,12 @@ class FCLogoSyncTests(unittest.TestCase):
         pack_slug = "2026-27-serie-b"
         club_slug = "US-Palermo-v2024"
         filename = f"{club_slug}-mono.png"
-        (self.output_dir / filename).write_bytes(png_bytes((0, 0, 0, 255)))
+        (self.output_dir / filename).write_bytes(png_bytes((220, 30, 60, 255)))
         (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(json.dumps({
             "season": "2026-27",
             "teams": [{
                 "slug": club_slug, "name": "Palermo", "file": filename,
-                "variant": "mono",
+                "variant": "single",
                 "preview_url": f"https://cdn.example/{club_slug}-one.png",
                 "packs": [pack_slug],
             }],
@@ -581,6 +631,32 @@ class FCLogoSyncTests(unittest.TestCase):
             today=date(2026, 9, 1),
         )
         self.assertEqual((report.downloaded, report.reused, report.failed), (0, 1, 0))
+
+
+class ESPNCoverageTests(unittest.TestCase):
+    def test_reports_exact_similar_missing_and_wrong_pack(self):
+        teams = [
+            {"name": "Sporting Clube DE Portugal", "aliases": ["Sporting CP"],
+             "packs": ["2026-27-uefa-champions-league"]},
+            {"name": "Arsenal FC", "aliases": [], "packs": ["2026-27-uefa-champions-league"]},
+            {"name": "SS Lazio", "aliases": ["Lazio"], "packs": ["2026-27-serie-a"]},
+        ]
+
+        def league(*names):
+            return FakeResponse(text=json.dumps({"sports": [{"leagues": [{"teams": [
+                {"team": {"id": str(i), "displayName": n, "logos": [{"href": f"https://espn/{i}.png"}]}}
+                for i, n in enumerate(names)
+            ]}]}]}))
+
+        base = "https://site.api.espn.com/apis/site/v2/sports/soccer"
+        responses = {f"{base}/{code}/teams": league() for code, _ in fclogo_sync.ESPN_LEAGUES}
+        responses[f"{base}/uefa.champions/teams"] = league("Sporting CP", "Arsenal", "PSV Eindhoven", "Lazio")
+        rows = fclogo_sync.espn_coverage(teams, session=FakeSession(responses))
+        self.assertEqual(
+            {row.espn_name: row.status for row in rows},
+            {"Sporting CP": "esatto", "Arsenal": "simile",
+             "PSV Eindhoven": "nessuno", "Lazio": "altro pack"},
+        )
 
 
 if __name__ == "__main__":

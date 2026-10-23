@@ -842,6 +842,7 @@
       "slug": "Racing-Club-de-Lens-v2014",
       "file": "ucl/Racing-Club-de-Lens-v2014-mono.png",
       "aliases": [
+        "Lens",
         "Racing Club DE Lens"
       ],
       "variant": "mono",
@@ -1157,6 +1158,7 @@
       "slug": "aarhus-gymnastikforening-v0000",
       "file": "uecl/aarhus-gymnastikforening-v0000-mono.png",
       "aliases": [
+        "AGF",
         "Aarhus Gymnastikforening"
       ],
       "variant": "mono",
@@ -1175,6 +1177,7 @@
       "slug": "aek-football-club-v2014",
       "file": "ucl/aek-football-club-v2014-mono.png",
       "aliases": [
+        "AEK Athens",
         "AEK Football Club"
       ],
       "variant": "mono",
@@ -1461,7 +1464,8 @@
       "slug": "cs-universitatea-craiova-v2015",
       "file": "uecl/cs-universitatea-craiova-v2015-mono.png",
       "aliases": [
-        "CS Universitatea Craiova"
+        "CS Universitatea Craiova",
+        "CSU Craiova"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/Universitatea-Craiova-v2015-mono.png",
@@ -1553,6 +1557,7 @@
       "slug": "football-club-copenhagen-v2024",
       "file": "uecl/football-club-copenhagen-v2024-mono.png",
       "aliases": [
+        "F.C. København",
         "Football Club Copenhagen"
       ],
       "variant": "mono",
@@ -1643,6 +1648,7 @@
       "slug": "football-club-nordsjlland-v2019",
       "file": "uecl/football-club-nordsjlland-v2019-mono.png",
       "aliases": [
+        "FC Nordsjælland",
         "Football Club Nordsjlland"
       ],
       "variant": "mono",
@@ -1716,6 +1722,7 @@
       "slug": "fotballklubben-bodglimt-v0000",
       "file": "ucl/fotballklubben-bodglimt-v0000-mono.png",
       "aliases": [
+        "Bodo/Glimt",
         "Fotballklubben Bodglimt"
       ],
       "variant": "mono",
@@ -1789,7 +1796,8 @@
       "slug": "fudbalski-klub-crvena-zvezda-v2019",
       "file": "uecl/fudbalski-klub-crvena-zvezda-v2019-mono.png",
       "aliases": [
-        "Fudbalski Klub Crvena Zvezda"
+        "Fudbalski Klub Crvena Zvezda",
+        "Red Star Belgrade"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/Red-Star-Belgrade-v2019-mono.png",
@@ -2028,6 +2036,7 @@
       "slug": "koninklijke-atletiek-associatie-gent-v2013",
       "file": "uecl/koninklijke-atletiek-associatie-gent-v2013-mono.png",
       "aliases": [
+        "KAA Gent",
         "Koninklijke Atletiek Associatie Gent"
       ],
       "variant": "mono",
@@ -2064,6 +2073,7 @@
       "slug": "kuopion-palloseura-v0000",
       "file": "uecl/kuopion-palloseura-v0000-mono.png",
       "aliases": [
+        "KuPS Kuopio",
         "Kuopion Palloseura"
       ],
       "variant": "mono",
@@ -2138,6 +2148,7 @@
       "slug": "linzer-athletik-sport-klub-v2023",
       "file": "ucl/linzer-athletik-sport-klub-v2023-mono.png",
       "aliases": [
+        "LASK Linz",
         "Linzer Athletik Sport Klub"
       ],
       "variant": "mono",
@@ -2343,6 +2354,7 @@
       "slug": "philips-sport-vereniging-v2016",
       "file": "ucl/philips-sport-vereniging-v2016-mono.png",
       "aliases": [
+        "PSV Eindhoven",
         "Philips Sport Vereniging"
       ],
       "variant": "mono",
@@ -2550,6 +2562,7 @@
       "slug": "sporting-clube-de-braga-v2018",
       "file": "uecl/sporting-clube-de-braga-v2018-mono.png",
       "aliases": [
+        "Braga",
         "Sporting Clube DE Braga"
       ],
       "variant": "mono",
@@ -2568,6 +2581,7 @@
       "slug": "sporting-clube-de-portugal-v2026",
       "file": "ucl/sporting-clube-de-portugal-v2026-mono.png",
       "aliases": [
+        "Sporting CP",
         "Sporting Clube DE Portugal"
       ],
       "variant": "mono",
@@ -2605,6 +2619,7 @@
       "slug": "sportovn-klub-slavia-praha-fotbal-v2022",
       "file": "ucl/sportovn-klub-slavia-praha-fotbal-v2022-mono.png",
       "aliases": [
+        "Slavia Prague",
         "Sportovn Klub Slavia Praha Fotbal"
       ],
       "variant": "mono",

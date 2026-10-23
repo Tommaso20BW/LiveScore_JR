@@ -309,6 +309,24 @@ def _valid_png(path: Path) -> bool:
         return False
 
 
+def _has_color(path: Path) -> bool:
+    """True se oltre il 5% dei pixel visibili e' colorato (non nero/grigio)."""
+    try:
+        with Image.open(path) as image:
+            rgba = image.convert("RGBA")
+    except (OSError, ValueError):
+        return False
+    rgba.thumbnail((96, 96))
+    visible = colored = 0
+    pixels = rgba.get_flattened_data() if hasattr(rgba, "get_flattened_data") else rgba.getdata()
+    for red, green, blue, alpha in pixels:
+        if alpha > 200:
+            visible += 1
+            if max(red, green, blue) - min(red, green, blue) > 40:
+                colored += 1
+    return bool(visible) and colored / visible > 0.05
+
+
 def _validate_png_bytes(content: bytes) -> None:
     try:
         with Image.open(io.BytesIO(content)) as image:
@@ -398,27 +416,41 @@ def _download_logo(
 ) -> tuple[str, str, str]:
     """Salva sempre il PNG mono. Ordine: pagina "-mono" ufficiale, linguetta Mono
     nella pagina del club; se FCLogo pubblica un'unica versione, quella e' gia'
-    il mono e si salva cosi' com'e'. Restituisce (file, variante, url)."""
+    il mono e si salva cosi' com'e' (variante "single").
+
+    Si ripiega sulla pagina del club SOLO se la pagina "-mono" non esiste (404):
+    con un 503 o un timeout la squadra fallisce e si riprova al giro dopo, invece
+    di salvare per errore il logo a colori come mono.
+    Restituisce (file, variante, url)."""
     base_slug = re.sub(r"-mono$", "", club.slug, flags=re.IGNORECASE)
-    errors: list[str] = []
-    for variant in ("mono", "color"):
+    try:
+        detail = _get(session, _detail_url(club, "mono"))
+        url = _asset_url_from_detail(detail.text, variant="mono")
+        variant = "mono"
+    except requests.HTTPError as exc:
+        if exc.response is None or exc.response.status_code != 404:
+            raise FCLogoSyncError(f"mono: {exc}") from exc
         try:
-            detail_response = _get(session, _detail_url(club, variant))
-            tab_url = _mono_tab_url(detail_response.text) if variant == "color" else ""
-            url = tab_url or _asset_url_from_detail(detail_response.text, variant=variant)
-            response = _get(session, url)
-            _validate_png_bytes(response.content)
-        except (requests.RequestException, FCLogoSyncError) as exc:
-            errors.append(f"{variant}: {exc}")
-            continue
-        filename = f"{folder}/{_safe_filename(base_slug, 'mono')}"
-        destination = output_dir / filename
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = destination.with_suffix(".png.tmp")
-        temporary.write_bytes(response.content)
-        temporary.replace(destination)
-        return filename, "mono", url
-    raise FCLogoSyncError("; ".join(errors))
+            detail = _get(session, _detail_url(club, "color"))
+        except requests.RequestException as color_exc:
+            raise FCLogoSyncError(f"mono: 404; pagina club: {color_exc}") from color_exc
+        tab_url = _mono_tab_url(detail.text)
+        url = tab_url or _asset_url_from_detail(detail.text, variant="color")
+        variant = "mono" if tab_url else "single"
+    except requests.RequestException as exc:
+        raise FCLogoSyncError(f"mono: {exc}") from exc
+    try:
+        response = _get(session, url)
+    except requests.RequestException as exc:
+        raise FCLogoSyncError(f"{variant}: {exc}") from exc
+    _validate_png_bytes(response.content)
+    filename = f"{folder}/{_safe_filename(base_slug, 'mono')}"
+    destination = output_dir / filename
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_suffix(".png.tmp")
+    temporary.write_bytes(response.content)
+    temporary.replace(destination)
+    return filename, variant, url
 
 
 def _club_aliases(club: ClubRecord) -> list[str]:
@@ -518,8 +550,12 @@ def sync_current_season(
         unchanged = (
             previous.get("season") == label
             and old.get("preview_url", "") == club.preview_url
-            and old.get("variant") == "mono"
             and _valid_png(old_path)
+            # Un "mono" che ha colori e' un vecchio ripiego sbagliato: si riscarica.
+            and (
+                old.get("variant") == "single"
+                or (old.get("variant") == "mono" and not _has_color(old_path))
+            )
         )
         if unchanged:
             filename = f"{_club_folders(club_packs[club_slug])[0]}/{old_path.name}"
@@ -680,6 +716,116 @@ def sync_current_season(
     return report
 
 
+# Competizioni ESPN da confrontare con il catalogo: (lega ESPN, suffisso pack FCLogo).
+ESPN_LEAGUES = (
+    ("ita.1", "serie-a"),
+    ("ita.2", "serie-b"),
+    ("uefa.champions", "uefa-champions-league"),
+    ("uefa.europa", "uefa-europa-league"),
+    ("uefa.europa.conf", "uefa-conference-league"),
+)
+
+
+@dataclass
+class CoverageRow:
+    league: str
+    espn_id: str
+    espn_name: str
+    espn_logo: str
+    team: dict | None
+    exact: bool
+    score: float
+    same_pack: bool
+
+    @property
+    def status(self) -> str:
+        if self.team is None:
+            return "nessuno"
+        if not self.same_pack:
+            return "altro pack"
+        return "esatto" if self.exact else "simile"
+
+
+def espn_coverage(
+    teams: list[dict], session: requests.Session | None = None
+) -> list[CoverageRow]:
+    """Abbina le squadre ESPN delle competizioni seguite ai loghi del manifest.
+
+    Stesso matching del bot (TeamIndex): serve a vedere in anticipo quali
+    squadre restano senza logo FCLogo e quali abbinamenti sono solo "simili".
+    """
+    from livescore.core.team_matching import TeamIndex, name_score
+
+    index = TeamIndex(teams)
+    http = session or requests.Session()
+    rows: list[CoverageRow] = []
+    for league, pack in ESPN_LEAGUES:
+        try:
+            payload = http.get(
+                f"https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams",
+                timeout=REQUEST_TIMEOUT,
+            ).json()
+            entries = payload["sports"][0]["leagues"][0]["teams"]
+        except (requests.RequestException, ValueError, KeyError, IndexError):
+            continue
+        for entry in entries:
+            espn = entry.get("team", {}) if isinstance(entry, dict) else {}
+            names = [
+                str(value)
+                for value in (espn.get("displayName"), espn.get("shortDisplayName"),
+                              espn.get("name"), espn.get("location"))
+                if value
+            ]
+            if not names:
+                continue
+            hit = index.match(names)
+            known = [hit.get("name", ""), *hit.get("aliases", [])] if hit else []
+            exact = bool(hit) and bool(
+                {_normalize(n) for n in names} & {_normalize(n) for n in known}
+            )
+            score = 1.0 if exact else max(
+                (name_score(a, b) for a in names for b in known), default=0.0
+            )
+            rows.append(CoverageRow(
+                league=league,
+                espn_id=str(espn.get("id", "")),
+                espn_name=names[0],
+                espn_logo=str(((espn.get("logos") or [{}])[0]).get("href", "")),
+                team=hit,
+                exact=exact,
+                score=round(score, 2),
+                same_pack=bool(hit) and any(
+                    str(slug).endswith(f"-{pack}") for slug in hit.get("packs", [])
+                ),
+            ))
+    return rows
+
+
+def print_espn_coverage(manifest_path: Path) -> None:
+    """Riepilogo nel log del workflow; non blocca mai il sync."""
+    try:
+        teams = _read_manifest(manifest_path).get("teams", [])
+        rows = espn_coverage(teams)
+    except Exception as exc:  # il controllo e' solo informativo
+        print(f"FCLogo/ESPN: controllo abbinamenti non riuscito ({exc})")
+        return
+    counts: dict[str, int] = {}
+    for row in rows:
+        counts[row.status] = counts.get(row.status, 0) + 1
+    print(
+        f"FCLogo/ESPN: {len(rows)} squadre ESPN | "
+        + ", ".join(f"{status} {count}" for status, count in sorted(counts.items()))
+    )
+    for row in rows:
+        if row.status == "nessuno":
+            print(f"FCLogo/ESPN senza logo: {row.espn_name} ({row.league}, id {row.espn_id})")
+        elif row.status == "altro pack":
+            print(
+                f"FCLogo/ESPN da controllare ({row.status}, {row.score}): "
+                f"{row.espn_name} -> {row.team.get('name')} ({row.league})"
+            )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sincronizza i loghi stagionali FCLogo")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_LOGO_DIR)
@@ -695,6 +841,7 @@ def main() -> int:
     if report.failed:
         # Progressi salvati: il workflow pubblica comunque, il prossimo giro completa.
         print(f"FCLogo: catalogo incompleto, {report.failed} loghi da riprovare al prossimo giro")
+    print_espn_coverage(args.output_dir / MANIFEST_FILENAME)
     return 0
 
 
