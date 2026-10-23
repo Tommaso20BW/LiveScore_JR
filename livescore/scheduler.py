@@ -57,9 +57,9 @@ NATIONAL_LEAGUES = [
 # Squadre monitorate, in ordine di priorita' (la prima vince).
 # label = valore dell'opzione 'team_id' di main_espn.yml.
 MONITORED_TEAMS = [
-    {"id": JUVENTUS_TEAM_ID, "name": "Juventus", "label": "111 - Juventus",
+    {"id": JUVENTUS_TEAM_ID, "name": "Juventus", "label": "Juventus",
      "leagues": CLUB_LEAGUES},
-    {"id": ITALY_TEAM_ID, "name": "Italia", "label": "162 - Italia",
+    {"id": ITALY_TEAM_ID, "name": "Italia", "label": "Italia",
      "leagues": NATIONAL_LEAGUES},
 ]
 

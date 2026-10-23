@@ -4,27 +4,26 @@ on:
   workflow_dispatch:
     inputs:
       team_id:
-        description: 'Squadra da seguire'
+        description: 'Squadra'
         required: true
-        default: '111 - Juventus'
+        default: 'Juventus'
         type: choice
         options:
-          - '111 - Juventus'
-          - '162 - Italia'
-          - 'Altro'
+          - 'Juventus'
+          - 'Italia'
       custom_team_id:
-        description: "ID ESPN squadra (usato solo se scegli 'Altro')"
+        description: 'Altra squadra: ID ESPN (se compilato vince sulla scelta sopra)'
         required: false
         default: ''
         type: string
       channel:
-        description: 'Canale Telegram'
+        description: 'Dove pubblicare'
         required: true
         default: 'Juventus Reborn'
         type: choice
         options:
           - Juventus Reborn
-          - Bot JR
+          - Bot JR (test, messaggi cancellati dopo 20 min)
 
 permissions:
   actions: write
@@ -132,16 +131,21 @@ jobs:
         id: team
         shell: bash
         env:
-          TEAM_CHOICE: ${{ github.event.inputs.team_id || '111 - Juventus' }}
+          TEAM_CHOICE: ${{ github.event.inputs.team_id || 'Juventus' }}
           CUSTOM_TEAM_ID: ${{ github.event.inputs.custom_team_id }}
         run: |
-          if [ "$TEAM_CHOICE" = "Altro" ]; then
-            TEAM_ID="$(echo "$CUSTOM_TEAM_ID" | tr -d '[:space:]')"
+          CUSTOM="$(echo "$CUSTOM_TEAM_ID" | tr -d '[:space:]')"
+          if [ -n "$CUSTOM" ]; then
+            TEAM_ID="$CUSTOM"
           else
-            TEAM_ID="${TEAM_CHOICE%% *}"
+            case "$TEAM_CHOICE" in
+              Juventus) TEAM_ID=111 ;;
+              Italia)   TEAM_ID=162 ;;
+              *)        TEAM_ID="${TEAM_CHOICE%% *}" ;;  # vecchio formato "111 - Juventus"
+            esac
           fi
           if ! [[ "$TEAM_ID" =~ ^[0-9]+$ ]]; then
-            echo "::error::Scegli 'Altro' solo insieme a un ID ESPN numerico valido (ricevuto: '$CUSTOM_TEAM_ID')."
+            echo "::error::L'ID ESPN deve essere un numero (ricevuto: '$CUSTOM_TEAM_ID')."
             exit 1
           fi
           echo "Squadra seguita: $TEAM_ID"
@@ -150,10 +154,10 @@ jobs:
       - name: Run Live Score Bot
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO:          ${{ github.event.inputs.channel == 'Bot JR' && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
+          TELEGRAM_TO:          ${{ startsWith(github.event.inputs.channel, 'Bot JR') && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
           TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
-          LIVE_SCORE_CHANNEL_NAME: ${{ github.event.inputs.channel || 'Juventus Reborn' }}
-          TELEGRAM_AUTO_DELETE_SECONDS: ${{ github.event.inputs.channel == 'Bot JR' && '1200' || '0' }}
+          LIVE_SCORE_CHANNEL_NAME: ${{ startsWith(github.event.inputs.channel, 'Bot JR') && 'Bot JR' || 'Juventus Reborn' }}
+          TELEGRAM_AUTO_DELETE_SECONDS: ${{ startsWith(github.event.inputs.channel, 'Bot JR') && '1200' || '0' }}
           GH_PAT:               ${{ secrets.GH_PAT }}
           # Token del run usato solo per il branch tecnico runtime-snapshots.
           # Il workflow ha già contents: write.
@@ -174,7 +178,7 @@ jobs:
         run: python -u -m livescore run
 
       - name: Start Bot JR auto-delete after the match
-        if: ${{ always() && github.event.inputs.channel == 'Bot JR' }}
+        if: ${{ always() && startsWith(github.event.inputs.channel, 'Bot JR') }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run telegram_bot_autodelete.yml --ref "${{ github.ref_name }}"

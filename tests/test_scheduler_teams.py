@@ -29,7 +29,7 @@ class SchedulerTeamTests(unittest.TestCase):
         matches = {"162": (ko, event(["162", "5"], ko), "fifa.friendly")}
         team, *_ = scheduler.choose_match(matches, NOW)
         self.assertEqual(team["id"], "162")
-        self.assertEqual(team["label"], "162 - Italia")
+        self.assertEqual(team["label"], "Italia")
 
     def test_juve_has_priority_when_both_in_window(self):
         ko = NOW + timedelta(minutes=30)
