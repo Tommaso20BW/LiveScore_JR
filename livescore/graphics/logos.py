@@ -1,8 +1,8 @@
-"""Sincronizza i loghi FCLogo delle competizioni stagionali della Juventus.
+"""Sincronizza i loghi FCLogo della stagione corrente.
 
-Serie A e Serie B vengono sempre incluse: la seconda copre anche le possibili
-avversarie di Coppa Italia. I pacchetti UEFA vengono inclusi soltanto quando
-contengono la Juventus nella stagione corrente.
+Scarica sempre i pack Serie A, Serie B, Champions League, Europa League e
+Conference League, indipendentemente da dove gioca la Juventus. Al cambio di
+stagione il catalogo precedente viene sostituito da quello nuovo.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
-from PIL import Image, ImageChops
+from PIL import Image
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from livescore.core.team_matching import normalize_team_name as _normalize, unique_aliases
@@ -227,15 +227,11 @@ def pack_fingerprint(clubs: list[ClubRecord]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _contains_juventus(clubs: list[ClubRecord]) -> bool:
-    return any("juventus" in _normalize(f"{club.slug} {club.name}") for club in clubs)
-
-
 def select_pack_records(
     session: requests.Session,
     pack_slugs: list[str],
 ) -> tuple[dict[str, list[ClubRecord]], list[str]]:
-    """Serie A/B sempre; UEFA soltanto se la Juventus e iscritta."""
+    """Tutti i pack Serie A/B e UEFA (UCL, UEL, UECL) della stagione."""
     selected: dict[str, list[ClubRecord]] = {}
     errors: list[str] = []
     for slug in candidate_pack_slugs(pack_slugs):
@@ -247,8 +243,7 @@ def select_pack_records(
         if not clubs:
             errors.append(f"{slug}: nessuna squadra trovata")
             continue
-        if _is_domestic_pack(slug) or _contains_juventus(clubs):
-            selected[slug] = clubs
+        selected[slug] = clubs
     return selected, errors
 
 
@@ -281,31 +276,6 @@ def _validate_png_bytes(content: bytes) -> None:
                 raise ValueError("PNG vuoto")
     except (OSError, ValueError) as exc:
         raise FCLogoSyncError(f"asset PNG non valido: {exc}") from exc
-
-
-def mono_from_color(content: bytes) -> bytes:
-    """Riduce a mono (nero su trasparente) un logo che su FCLogo ha una sola versione.
-
-    Quando manca la variante mono il logo e' gia' monocolore di suo: la luminanza
-    diventa opacita', il tono piu' scuro resta pieno e il bianco sparisce, cosi'
-    le parti chiare interne restano fori come nei mono ufficiali.
-    """
-    with Image.open(io.BytesIO(content)) as image:
-        rgba = image.convert("RGBA")
-    alpha = rgba.getchannel("A")
-    luminance = rgba.convert("L")
-    visible = alpha.point(lambda value: 255 if value > 128 else 0)
-    histogram = luminance.histogram(mask=visible)
-    darkest = next((level for level, count in enumerate(histogram) if count), 0)
-    span = max(1, 255 - darkest)
-    opacity = luminance.point(
-        [255 if level <= darkest else max(0, round(255 * (255 - level) / span)) for level in range(256)]
-    )
-    mono = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
-    mono.putalpha(ImageChops.multiply(alpha, opacity))
-    output = io.BytesIO()
-    mono.save(output, format="PNG", optimize=True)
-    return output.getvalue()
 
 
 def _safe_filename(slug: str, variant: str) -> str:
@@ -381,10 +351,10 @@ def _download_logo(
     session: requests.Session,
     club: ClubRecord,
     output_dir: Path,
-) -> tuple[str, str, str, bool]:
-    """Salva sempre un PNG mono. Ordine: pagina "-mono" ufficiale, linguetta Mono
-    nella pagina del club, e solo se FCLogo pubblica un'unica versione la si
-    converte in mono. Restituisce (file, variante, url, ricavato)."""
+) -> tuple[str, str, str]:
+    """Salva sempre il PNG mono. Ordine: pagina "-mono" ufficiale, linguetta Mono
+    nella pagina del club; se FCLogo pubblica un'unica versione, quella e' gia'
+    il mono e si salva cosi' com'e'. Restituisce (file, variante, url)."""
     base_slug = re.sub(r"-mono$", "", club.slug, flags=re.IGNORECASE)
     errors: list[str] = []
     for variant in ("mono", "color"):
@@ -394,19 +364,15 @@ def _download_logo(
             url = tab_url or _asset_url_from_detail(detail_response.text, variant=variant)
             response = _get(session, url)
             _validate_png_bytes(response.content)
-            derived = variant != "mono" and not tab_url
-            content = mono_from_color(response.content) if derived else response.content
-            if derived:
-                _validate_png_bytes(content)
         except (requests.RequestException, FCLogoSyncError) as exc:
             errors.append(f"{variant}: {exc}")
             continue
         filename = _safe_filename(base_slug, "mono")
         destination = output_dir / filename
         temporary = destination.with_suffix(".png.tmp")
-        temporary.write_bytes(content)
+        temporary.write_bytes(response.content)
         temporary.replace(destination)
-        return filename, "mono", url, derived
+        return filename, "mono", url
     raise FCLogoSyncError("; ".join(errors))
 
 
@@ -514,7 +480,6 @@ def sync_current_season(
                 "file": filename,
                 "aliases": _club_aliases(club),
                 "variant": variant,
-                "mono_derived": bool(old.get("mono_derived", False)),
                 "source_url": source_url,
                 "preview_url": club.preview_url,
                 "detail_path": club.detail_path,
@@ -525,14 +490,14 @@ def sync_current_season(
 
     def fetch_logo(
         item: tuple[str, ClubRecord, dict[str, Any], Path],
-    ) -> tuple[str, ClubRecord, str, str, str, bool, bool, str]:
+    ) -> tuple[str, ClubRecord, str, str, str, bool, str]:
         club_slug, club, old, old_path = item
         download_http = http if session is not None else _new_session()
         try:
-            filename, variant, source_url, derived = _download_logo(
+            filename, variant, source_url = _download_logo(
                 download_http, club, output_dir
             )
-            return club_slug, club, filename, variant, source_url, derived, True, ""
+            return club_slug, club, filename, variant, source_url, True, ""
         except FCLogoSyncError as exc:
             if previous.get("season") == label and _valid_png(old_path):
                 return (
@@ -541,11 +506,10 @@ def sync_current_season(
                     old_path.name,
                     str(old.get("variant", "cached")),
                     str(old.get("source_url", "")),
-                    bool(old.get("mono_derived", False)),
                     False,
                     "",
                 )
-            return club_slug, club, "", "", "", False, False, str(exc)
+            return club_slug, club, "", "", "", False, str(exc)
 
     if session is not None or len(pending_downloads) <= 1:
         fetched = map(fetch_logo, pending_downloads)
@@ -554,7 +518,7 @@ def sync_current_season(
         fetched = executor.map(fetch_logo, pending_downloads)
 
     try:
-        for club_slug, club, filename, variant, source_url, derived, downloaded, error in fetched:
+        for club_slug, club, filename, variant, source_url, downloaded, error in fetched:
             if error:
                 report.failed += 1
                 report.errors.append(f"{club.name}: {error}")
@@ -569,8 +533,6 @@ def sync_current_season(
                 "file": filename,
                 "aliases": _club_aliases(club),
                 "variant": variant,
-                # True: FCLogo pubblica una sola versione, il mono e' ricavato da quella.
-                "mono_derived": derived,
                 "source_url": source_url,
                 "preview_url": club.preview_url,
                 "detail_path": club.detail_path,

@@ -98,12 +98,13 @@ class FCLogoSyncTests(unittest.TestCase):
             ],
         )
 
-    def test_selects_serie_a_and_b_but_only_juventus_uefa_pack(self):
+    def test_selects_all_serie_a_b_and_uefa_packs_regardless_of_juventus(self):
         slugs = [
             "2026-27-serie-a",
             "2026-27-serie-b",
             "2026-27-uefa-europa-league",
             "2026-27-uefa-champions-league",
+            "2026-27-uefa-conference-league",
             "2026-27-brazilian-serie-a",
         ]
         juve = ("Juventus-FC-v2020", "Juventus", "one")
@@ -114,12 +115,11 @@ class FCLogoSyncTests(unittest.TestCase):
             f"{fclogo_sync.BASE_URL}/pack/{slugs[1]}": FakeResponse(text=pack_page(inter)),
             f"{fclogo_sync.BASE_URL}/pack/{slugs[2]}": FakeResponse(text=pack_page(juve, benfica)),
             f"{fclogo_sync.BASE_URL}/pack/{slugs[3]}": FakeResponse(text=pack_page(benfica)),
+            f"{fclogo_sync.BASE_URL}/pack/{slugs[4]}": FakeResponse(text=pack_page(benfica)),
         })
         selected, errors = fclogo_sync.select_pack_records(session, slugs)
-        self.assertEqual(
-            set(selected),
-            {slugs[0], slugs[1], slugs[2]},
-        )
+        # Anche i pack UEFA senza la Juventus: il brasiliano resta fuori.
+        self.assertEqual(set(selected), set(slugs[:5]))
         self.assertEqual(errors, [])
 
     def test_unchanged_valid_mono_logo_is_reused(self):
@@ -367,7 +367,7 @@ class FCLogoSyncTests(unittest.TestCase):
         )
         self.assertEqual(manifest["season"], "2025-26")
 
-    def test_single_version_logo_is_converted_to_mono(self):
+    def test_single_version_logo_is_already_mono_and_saved_as_is(self):
         pack_slug = "2026-27-serie-b"
         club_slug = "US-Palermo-v2024"
         mono_detail_url = f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono"
@@ -395,15 +395,13 @@ class FCLogoSyncTests(unittest.TestCase):
             (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
         )
         team = manifest["teams"][0]
+        # Una sola versione su FCLogo: e' gia' il mono, nessuna conversione.
         self.assertEqual(team["variant"], "mono")
-        self.assertTrue(team["mono_derived"])
         self.assertEqual(team["source_url"], color_url)
         self.assertTrue(team["file"].endswith("-mono.png"))
-        with Image.open(self.output_dir / team["file"]) as image:
-            rgba = image.convert("RGBA")
-        # Nero su trasparente, con la sagoma originale ancora piena.
-        self.assertEqual(rgba.convert("RGB").getextrema(), ((0, 0), (0, 0), (0, 0)))
-        self.assertEqual(rgba.getchannel("A").getextrema(), (255, 255))
+        self.assertEqual(
+            (self.output_dir / team["file"]).read_bytes(), png_bytes((220, 30, 60, 255))
+        )
 
     def test_mono_tab_on_club_page_is_used_when_mono_page_is_missing(self):
         pack_slug = "2026-27-serie-a"
@@ -437,23 +435,10 @@ class FCLogoSyncTests(unittest.TestCase):
             (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
         )
         team = manifest["teams"][0]
-        self.assertEqual((team["variant"], team["mono_derived"], team["source_url"]), ("mono", False, tab_url))
+        self.assertEqual((team["variant"], team["source_url"]), ("mono", tab_url))
         self.assertEqual((self.output_dir / team["file"]).read_bytes(), official_mono)
 
-    def test_mono_from_color_turns_light_areas_into_holes(self):
-        source = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
-        for x in range(10):
-            source.putpixel((x, 0), (30, 60, 150, 255))   # tono scuro: pieno
-            source.putpixel((x, 1), (255, 255, 255, 255))  # bianco interno: foro
-        output = io.BytesIO()
-        source.save(output, format="PNG")
-        with Image.open(io.BytesIO(fclogo_sync.mono_from_color(output.getvalue()))) as image:
-            alpha = image.convert("RGBA").getchannel("A")
-        self.assertEqual(alpha.getpixel((0, 0)), 255)
-        self.assertEqual(alpha.getpixel((0, 1)), 0)
-        self.assertEqual(alpha.getpixel((0, 5)), 0)
-
-    def test_derived_mono_logo_is_reused_like_official_mono(self):
+    def test_single_version_logo_is_reused_from_cache(self):
         pack_slug = "2026-27-serie-b"
         club_slug = "US-Palermo-v2024"
         filename = f"{club_slug}-mono.png"
@@ -462,7 +447,7 @@ class FCLogoSyncTests(unittest.TestCase):
             "season": "2026-27",
             "teams": [{
                 "slug": club_slug, "name": "Palermo", "file": filename,
-                "variant": "mono", "mono_derived": True,
+                "variant": "mono",
                 "preview_url": f"https://cdn.example/{club_slug}-one.png",
                 "packs": [pack_slug],
             }],
@@ -482,10 +467,6 @@ class FCLogoSyncTests(unittest.TestCase):
             today=date(2026, 9, 1),
         )
         self.assertEqual((report.downloaded, report.reused, report.failed), (0, 1, 0))
-        manifest = json.loads(
-            (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
-        )
-        self.assertTrue(manifest["teams"][0]["mono_derived"])
 
 
 if __name__ == "__main__":
