@@ -1,6 +1,7 @@
 {
   "source": "https://fclogo.top/",
   "season": "2026-27",
+  "complete": true,
   "packs": {
     "2026-27-serie-a": {
       "url": "https://fclogo.top/pack/2026-27-serie-a",
@@ -54,6 +55,90 @@
         "virtus-entella-v2026"
       ]
     },
+    "2026-27-uefa-champions-league": {
+      "url": "https://fclogo.top/pack/2026-27-uefa-champions-league",
+      "fingerprint": "cc46f68eef1e8a25d4b849b91a1ea1f14fb3ea4cde655f495bbabd7e93679626",
+      "clubs": [
+        "aek-football-club-v2014",
+        "Arsenal-FC-v2002",
+        "associazione-sportiva-roma-v2026",
+        "Aston-Villa-Football-Club-v2024",
+        "Atletico-Madrid-v2024",
+        "Borussia-Dortmund-v1993",
+        "club-brugge-koninklijke-voetbalvereniging-v2017",
+        "Como-1907-v2019",
+        "FC-Barcelona-v2002",
+        "FC-Bayern-Munchen-v2024",
+        "FC-Inter-Milan-v2021",
+        "fenerbahce-spor-kulubu-v2026-comm",
+        "feyenoord-rotterdam-v2024",
+        "football-club-shakhtar-donetsk-v2007",
+        "fotballklubben-bodglimt-v0000",
+        "Futebol-Clube-do-Porto-v2002",
+        "galatasaray-spor-kulb-v2007",
+        "linzer-athletik-sport-klub-v2023",
+        "Liverpool-Football-Club-v2024-minor",
+        "LOSC-Lille-v2018",
+        "Manchester-City-v2016",
+        "Manchester-United-Football-Club-v1998",
+        "Paris-Saint-Germain-v2013",
+        "philips-sport-vereniging-v2016",
+        "Racing-Club-de-Lens-v2014",
+        "RB-Leipzig-v2020",
+        "Real-Betis-v2022",
+        "Real-Madrid-CF-v2002",
+        "sabah-futbol-klubu-v2023",
+        "societ-sportiva-calcio-napoli-v2024",
+        "sporting-clube-de-portugal-v2026",
+        "sportovn-klub-slavia-praha-fotbal-v2022",
+        "sportovy-klub-slovan-bratislava-v0000",
+        "VfB-Stuttgart-v2014",
+        "viking-fotballklubb-v2020",
+        "Villarreal-Club-de-Futbol-v2009"
+      ]
+    },
+    "2026-27-uefa-conference-league": {
+      "url": "https://fclogo.top/pack/2026-27-uefa-conference-league",
+      "fingerprint": "9ea730b3084d6f9e7f36754b989058a71f798b2cdeb710eb51e08709a5a0cae7",
+      "clubs": [
+        "aarhus-gymnastikforening-v0000",
+        "amsterdamsche-football-club-ajax-v2025",
+        "AS-Monaco-v2021",
+        "atalanta-bergamasca-calcio-v2026",
+        "Brighton-Hove-Albion-v2011",
+        "cs-universitatea-craiova-v2015",
+        "football-club-copenhagen-v2024",
+        "football-club-iberia-1999-v0000",
+        "football-club-kairat-v2019",
+        "football-club-lugano-v2025",
+        "football-club-midtjylland-v2026",
+        "football-club-nordsjlland-v2019",
+        "football-club-twente-v2006",
+        "fotbalovy-klub-jablonec-v2026",
+        "fudbalski-klub-borac-banja-luka-v0000",
+        "fudbalski-klub-crvena-zvezda-v2019",
+        "fussballclub-thun-1898-v0000",
+        "futbolo-klubas-kauno-zalgiris-v2023",
+        "Getafe-Club-de-Futbol-v2011",
+        "heart-of-midlothian-football-club-v1977",
+        "hrvatski-nogometni-klub-hajduk-split-v1990",
+        "inter-club-descaldes-v0000",
+        "klubi-i-futbollit-egnatia-v0000",
+        "koninklijke-atletiek-associatie-gent-v2013",
+        "koninklijke-sint-truidense-voetbalvereniging-v0000",
+        "kuopion-palloseura-v0000",
+        "lincoln-red-imps-football-club-v0000",
+        "mjallby-allmanna-idrottsforening-v0000",
+        "pafos-football-club-v0000",
+        "panathinaikos-football-club-v1995",
+        "professional-football-club-cska-sofia-v0000",
+        "riga-football-club-v0000",
+        "SC-Freiburg-v2008",
+        "sporting-clube-de-braga-v2018",
+        "sportsklubben-brann-v0000",
+        "trabzonspor-kulubu-v2022"
+      ]
+    },
     "2026-27-uefa-europa-league": {
       "url": "https://fclogo.top/pack/2026-27-uefa-europa-league",
       "fingerprint": "729a57c253823a1d5010f49d9e287121c9caca65f7c06a4befe7557b13f9e3a0",
@@ -101,1255 +186,2621 @@
     {
       "name": "AC Milan",
       "slug": "AC-Milan-v2009",
-      "file": "AC-Milan-v2009-mono.png",
+      "file": "serie-a/AC-Milan-v2009-mono.png",
       "aliases": [
         "AC Milan"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/AC-Milan-v2009-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/211a060d2f3a2ddec55070a3a632f3a37afb5b1d-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/AC-Milan-v2009",
       "packs": [
         "2026-27-serie-a",
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "serie-a/AC-Milan-v2009-mono.png",
+        "uel/AC-Milan-v2009-mono.png"
       ]
     },
     {
       "name": "AC Monza",
       "slug": "AC-Monza-v2021",
-      "file": "AC-Monza-v2021-mono.png",
+      "file": "serie-a/AC-Monza-v2021-mono.png",
       "aliases": [
         "AC Monza",
         "Monza"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/AC-Monza-v2021-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/06a5be92a45e1e539435325d2275806f9ffad02c-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/AC-Monza-v2021",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/AC-Monza-v2021-mono.png"
       ]
     },
     {
       "name": "ACF Fiorentina",
       "slug": "ACF-Fiorentina-v2022",
-      "file": "ACF-Fiorentina-v2022-mono.png",
+      "file": "serie-a/ACF-Fiorentina-v2022-mono.png",
       "aliases": [
         "ACF Fiorentina",
         "Fiorentina"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/ACF-Fiorentina-v2022-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/f56d49f6525be500ff8a26192fae7dda6924ce44-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/ACF-Fiorentina-v2022",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/ACF-Fiorentina-v2022-mono.png"
       ]
     },
     {
       "name": "AFC Bournemouth",
       "slug": "AFC-Bournemouth-v2013",
-      "file": "AFC-Bournemouth-v2013-mono.png",
+      "file": "uel/AFC-Bournemouth-v2013-mono.png",
       "aliases": [
         "AFC Bournemouth"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/AFC-Bournemouth-v2013-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/e4a5aed2f18783706a0c13a41c69306b937f245b-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/thefa/club/AFC-Bournemouth-v2013",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/AFC-Bournemouth-v2013-mono.png"
+      ]
+    },
+    {
+      "name": "AS Monaco",
+      "slug": "AS-Monaco-v2021",
+      "file": "uecl/AS-Monaco-v2021-mono.png",
+      "aliases": [
+        "AS Monaco"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/AS-Monaco-v2021-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/806b3b084e0b3f5eb72c9982954a3492d2e130df-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fff/club/AS-Monaco-v2021",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/AS-Monaco-v2021-mono.png"
+      ]
+    },
+    {
+      "name": "Arsenal FC",
+      "slug": "Arsenal-FC-v2002",
+      "file": "ucl/Arsenal-FC-v2002-mono.png",
+      "aliases": [
+        "Arsenal FC"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Arsenal-FC-v2002-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/bd47ca20b58586b3f1691861edf4dfd655df520b-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/thefa/club/Arsenal-FC-v2002",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Arsenal-FC-v2002-mono.png"
+      ]
+    },
+    {
+      "name": "Aston Villa Football Club",
+      "slug": "Aston-Villa-Football-Club-v2024",
+      "file": "ucl/Aston-Villa-Football-Club-v2024-mono.png",
+      "aliases": [
+        "Aston Villa Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Aston-Villa-Football-Club-v2024-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/e34ffce39bdc42ded3fa1c2d78acb95f6cad30e0-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/thefa/club/Aston-Villa-Football-Club-v2024",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Aston-Villa-Football-Club-v2024-mono.png"
+      ]
+    },
+    {
+      "name": "Atletico Madrid",
+      "slug": "Atletico-Madrid-v2024",
+      "file": "ucl/Atletico-Madrid-v2024-mono.png",
+      "aliases": [
+        "Atletico Madrid"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Atletico-Madrid-v2024-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/a6135590ec39adc06ca1179b2bb09bd26157e4d5-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/rfef/club/Atletico-Madrid-v2024",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Atletico-Madrid-v2024-mono.png"
       ]
     },
     {
       "name": "Bayer 04 Leverkusen",
       "slug": "Bayer-04-Leverkusen-v2006",
-      "file": "Bayer-04-Leverkusen-v2006-mono.png",
+      "file": "uel/Bayer-04-Leverkusen-v2006-mono.png",
       "aliases": [
         "Bayer 04 Leverkusen",
         "Bayer Leverkusen"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Bayer-04-Leverkusen-v2006-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/f5e17a86cfb6fa60ef440e7f6d185343f8291292-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/dfb/club/Bayer-04-Leverkusen-v2006",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/Bayer-04-Leverkusen-v2006-mono.png"
       ]
     },
     {
       "name": "Bologna FC",
       "slug": "Bologna-FC-v2018",
-      "file": "Bologna-FC-v2018-mono.png",
+      "file": "serie-a/Bologna-FC-v2018-mono.png",
       "aliases": [
         "Bologna FC",
         "Bologna"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Bologna-FC-v2018-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/91642206f9d3c9ef28995ab74b38cdc013ffcfb9-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Bologna-FC-v2018",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/Bologna-FC-v2018-mono.png"
+      ]
+    },
+    {
+      "name": "Borussia Dortmund",
+      "slug": "Borussia-Dortmund-v1993",
+      "file": "ucl/Borussia-Dortmund-v1993-mono.png",
+      "aliases": [
+        "Borussia Dortmund"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Borussia-Dortmund-v1993-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/2c800bcdac457132026a21f8a92abca7cba9e710-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dfb/club/Borussia-Dortmund-v1993",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Borussia-Dortmund-v1993-mono.png"
+      ]
+    },
+    {
+      "name": "Brighton Hove Albion",
+      "slug": "Brighton-Hove-Albion-v2011",
+      "file": "uecl/Brighton-Hove-Albion-v2011-mono.png",
+      "aliases": [
+        "Brighton Hove Albion"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Brighton-Hove-Albion-v2011-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/322aa6e06a9648870db9225e7166147e9c5f3cdf-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/thefa/club/Brighton-Hove-Albion-v2011",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/Brighton-Hove-Albion-v2011-mono.png"
       ]
     },
     {
       "name": "Cagliari Calcio",
       "slug": "Cagliari-Calcio-v2015",
-      "file": "Cagliari-Calcio-v2015-mono.png",
+      "file": "serie-a/Cagliari-Calcio-v2015-mono.png",
       "aliases": [
         "Cagliari Calcio",
         "Cagliari"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Cagliari-Calcio-v2015-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/187fb9d9db6fb5b536e3b339cdaa986059a59809-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Cagliari-Calcio-v2015",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/Cagliari-Calcio-v2015-mono.png"
       ]
     },
     {
       "name": "Como 1907",
       "slug": "Como-1907-v2019",
-      "file": "Como-1907-v2019-mono.png",
+      "file": "serie-a/Como-1907-v2019-mono.png",
       "aliases": [
         "Como 1907",
         "Como"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Como-1907-v2019-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/7dbaae17f5874eb36291956e4bc5a43119997912-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Como-1907-v2019",
       "packs": [
-        "2026-27-serie-a"
+        "2026-27-serie-a",
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "serie-a/Como-1907-v2019-mono.png",
+        "ucl/Como-1907-v2019-mono.png"
       ]
     },
     {
       "name": "Crystal Palace Football Club",
       "slug": "Crystal-Palace-Football-Club-v2022",
-      "file": "Crystal-Palace-Football-Club-v2022-mono.png",
+      "file": "uel/Crystal-Palace-Football-Club-v2022-mono.png",
       "aliases": [
         "Crystal Palace Football Club",
         "Crystal Palace"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Crystal-Palace-Football-Club-v2022-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/cfe15f3cf2dbb1c664dd1f900768ea42a05ca3e7-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/thefa/club/Crystal-Palace-Football-Club-v2022",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/Crystal-Palace-Football-Club-v2022-mono.png"
       ]
     },
     {
       "name": "Empoli FC",
       "slug": "Empoli-FC-v2021",
-      "file": "Empoli-FC-v2021-mono.png",
+      "file": "serie-b/Empoli-FC-v2021-mono.png",
       "aliases": [
         "Empoli FC",
         "Empoli"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Empoli-FC-v2021-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/2fb0b8925f7b9f790307b8d0cc6e6242fd503ee6-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Empoli-FC-v2021",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/Empoli-FC-v2021-mono.png"
+      ]
+    },
+    {
+      "name": "FC Barcelona",
+      "slug": "FC-Barcelona-v2002",
+      "file": "ucl/FC-Barcelona-v2002-mono.png",
+      "aliases": [
+        "FC Barcelona"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC-Barcelona-v2002-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/cbbb1e9f7e8c6e89ae2d7d03e993fb4e9a02aeb8-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/rfef/club/FC-Barcelona-v2002",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/FC-Barcelona-v2002-mono.png"
+      ]
+    },
+    {
+      "name": "FC Bayern Munchen",
+      "slug": "FC-Bayern-Munchen-v2024",
+      "file": "ucl/FC-Bayern-Munchen-v2024-mono.png",
+      "aliases": [
+        "FC Bayern Munchen"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC-Bayern-Munchen-v2024-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/5c75114ca2bdde51e02147e53c25debc98760a04-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dfb/club/FC-Bayern-Munchen-v2024",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/FC-Bayern-Munchen-v2024-mono.png"
       ]
     },
     {
       "name": "FC Inter Milan",
       "slug": "FC-Inter-Milan-v2021",
-      "file": "FC-Inter-Milan-v2021-mono.png",
+      "file": "serie-a/FC-Inter-Milan-v2021-mono.png",
       "aliases": [
         "FC Inter Milan",
         "Internazionale"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/FC-Inter-Milan-v2021-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/2bb458bf74aba6c789a42397efcb6691c1579650-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/FC-Inter-Milan-v2021",
       "packs": [
-        "2026-27-serie-a"
+        "2026-27-serie-a",
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "serie-a/FC-Inter-Milan-v2021-mono.png",
+        "ucl/FC-Inter-Milan-v2021-mono.png"
       ]
     },
     {
       "name": "FC Salzburg",
       "slug": "FC-Salzburg-v2022-minor",
-      "file": "FC-Salzburg-v2022-minor-mono.png",
+      "file": "uel/FC-Salzburg-v2022-minor-mono.png",
       "aliases": [
         "FC Salzburg",
         "RB Salzburg"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/FC-Salzburg-v2022-minor-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0232337487be2802879ed56a1f574932f77d686e-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/oefb/club/FC-Salzburg-v2022-minor",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/FC-Salzburg-v2022-minor-mono.png"
+      ]
+    },
+    {
+      "name": "Futebol Clube DO Porto",
+      "slug": "Futebol-Clube-do-Porto-v2002",
+      "file": "ucl/Futebol-Clube-do-Porto-v2002-mono.png",
+      "aliases": [
+        "Futebol Clube DO Porto"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Futebol-Clube-do-Porto-v2002-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0f56aa967a518b848dcd9252afc67471412f2cc9-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fpf/club/Futebol-Clube-do-Porto-v2002",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Futebol-Clube-do-Porto-v2002-mono.png"
       ]
     },
     {
       "name": "Genoa CFC",
       "slug": "Genoa-CFC-v2022",
-      "file": "Genoa-CFC-v2022-mono.png",
+      "file": "serie-a/Genoa-CFC-v2022-mono.png",
       "aliases": [
         "Genoa CFC",
         "Genoa"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Genoa-CFC-v2022-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/b9725d3409445aba15d6de8b1e7f7f74e7463e72-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Genoa-CFC-v2022",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/Genoa-CFC-v2022-mono.png"
+      ]
+    },
+    {
+      "name": "Getafe Club DE Futbol",
+      "slug": "Getafe-Club-de-Futbol-v2011",
+      "file": "uecl/Getafe-Club-de-Futbol-v2011-mono.png",
+      "aliases": [
+        "Getafe Club DE Futbol"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Getafe-Club-de-Futbol-v2011-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/c5629bb480dcc88e51a4ad551e196b00350f20aa-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/rfef/club/Getafe-Club-de-Futbol-v2011",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/Getafe-Club-de-Futbol-v2011-mono.png"
       ]
     },
     {
       "name": "Hellas Verona",
       "slug": "Hellas-Verona-v2020",
-      "file": "Hellas-Verona-v2020-mono.png",
+      "file": "serie-b/Hellas-Verona-v2020-mono.png",
       "aliases": [
         "Hellas Verona"
       ],
       "variant": "mono",
-      "mono_derived": true,
       "source_url": "https://assets.fclogo.top/png/Hellas-Verona-v2020.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/b927b10d4484d39065ccc35947f48db3310dd5cc-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Hellas-Verona-v2020",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/Hellas-Verona-v2020-mono.png"
       ]
     },
     {
       "name": "Juventus FC",
       "slug": "Juventus-FC-v2017",
-      "file": "Juventus-FC-v2017-mono.png",
+      "file": "serie-a/Juventus-FC-v2017-mono.png",
       "aliases": [
         "Juventus FC",
         "Juventus"
       ],
       "variant": "mono",
-      "mono_derived": true,
       "source_url": "https://assets.fclogo.top/png/Juventus-FC-v2017.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/71521b8cd75c4c8e83bd584041b881200a5b896c-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Juventus-FC-v2017",
       "packs": [
         "2026-27-serie-a",
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "serie-a/Juventus-FC-v2017-mono.png",
+        "uel/Juventus-FC-v2017-mono.png"
+      ]
+    },
+    {
+      "name": "Losc Lille",
+      "slug": "LOSC-Lille-v2018",
+      "file": "ucl/LOSC-Lille-v2018-mono.png",
+      "aliases": [
+        "Losc Lille"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/LOSC-Lille-v2018-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/934981bfe3a3399cbc60979969453bca8154d689-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fff/club/LOSC-Lille-v2018",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/LOSC-Lille-v2018-mono.png"
+      ]
+    },
+    {
+      "name": "Liverpool Football Club",
+      "slug": "Liverpool-Football-Club-v2024-minor",
+      "file": "ucl/Liverpool-Football-Club-v2024-minor-mono.png",
+      "aliases": [
+        "Liverpool Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Liverpool-Football-Club-v2024-minor.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/735455c696d234ba62418562f5a522e4279dfe40-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/thefa/club/Liverpool-Football-Club-v2024-minor",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Liverpool-Football-Club-v2024-minor-mono.png"
+      ]
+    },
+    {
+      "name": "Manchester City",
+      "slug": "Manchester-City-v2016",
+      "file": "ucl/Manchester-City-v2016-mono.png",
+      "aliases": [
+        "Manchester City"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Manchester-City-v2016-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/4cea82be1f28a52d3d470371d89417803ab999a4-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/thefa/club/Manchester-City-v2016",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Manchester-City-v2016-mono.png"
+      ]
+    },
+    {
+      "name": "Manchester United Football Club",
+      "slug": "Manchester-United-Football-Club-v1998",
+      "file": "ucl/Manchester-United-Football-Club-v1998-mono.png",
+      "aliases": [
+        "Manchester United Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Manchester-United-Football-Club-v1998-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0558672e1b1c87382f36a21d2834d2dbe6ccaf97-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/thefa/club/Manchester-United-Football-Club-v1998",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Manchester-United-Football-Club-v1998-mono.png"
       ]
     },
     {
       "name": "Olympique Lyonnais",
       "slug": "Olympique-lyonnais-v2022",
-      "file": "Olympique-lyonnais-v2022-mono.png",
+      "file": "uel/Olympique-lyonnais-v2022-mono.png",
       "aliases": [
         "Olympique Lyonnais",
         "Lyon"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Olympique-lyonnais-v2022-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ad56ee5196fec559cec8260e354a226ba8ff5b0c-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/fff/club/Olympique-lyonnais-v2022",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/Olympique-lyonnais-v2022-mono.png"
+      ]
+    },
+    {
+      "name": "Paris Saint Germain",
+      "slug": "Paris-Saint-Germain-v2013",
+      "file": "ucl/Paris-Saint-Germain-v2013-mono.png",
+      "aliases": [
+        "Paris Saint Germain"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Paris-Saint-Germain-v2013-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/6ce153d642a5053914f7c143a11a0c70c3c75e63-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fff/club/Paris-Saint-Germain-v2013",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Paris-Saint-Germain-v2013-mono.png"
       ]
     },
     {
       "name": "Parma Calcio 1913",
       "slug": "Parma-Calcio-1913-v2016",
-      "file": "Parma-Calcio-1913-v2016-mono.png",
+      "file": "serie-a/Parma-Calcio-1913-v2016-mono.png",
       "aliases": [
         "Parma Calcio 1913",
         "Parma"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Parma-Calcio-1913-v2016-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0e9f108de9b0931e1a240fe91a2e1253922087da-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Parma-Calcio-1913-v2016",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/Parma-Calcio-1913-v2016-mono.png"
       ]
     },
     {
       "name": "Pisa SC",
       "slug": "Pisa-SC-v2017",
-      "file": "Pisa-SC-v2017-mono.png",
+      "file": "serie-b/Pisa-SC-v2017-mono.png",
       "aliases": [
         "Pisa SC",
         "Pisa"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Pisa-SC-v2017-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/48d3a6ab6d7060fa0e0b46f05f0af7e7a5c0f5c0-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Pisa-SC-v2017",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/Pisa-SC-v2017-mono.png"
+      ]
+    },
+    {
+      "name": "RB Leipzig",
+      "slug": "RB-Leipzig-v2020",
+      "file": "ucl/RB-Leipzig-v2020-mono.png",
+      "aliases": [
+        "RB Leipzig"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/RB-Leipzig-v2020-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/6f8cae5777813b1ed661414c027c470e4009fc45-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dfb/club/RB-Leipzig-v2020",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/RB-Leipzig-v2020-mono.png"
       ]
     },
     {
       "name": "RC Celta DE Vigo",
       "slug": "RC-Celta-de-Vigo-v2010",
-      "file": "RC-Celta-de-Vigo-v2010-mono.png",
+      "file": "uel/RC-Celta-de-Vigo-v2010-mono.png",
       "aliases": [
         "RC Celta DE Vigo",
         "Celta Vigo"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/RC-Celta-de-Vigo-v2010-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/9ff31224bf45b0915a7aca1b4911dd1e23eb15cd-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/rfef/club/RC-Celta-de-Vigo-v2010",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/RC-Celta-de-Vigo-v2010-mono.png"
+      ]
+    },
+    {
+      "name": "Racing Club DE Lens",
+      "slug": "Racing-Club-de-Lens-v2014",
+      "file": "ucl/Racing-Club-de-Lens-v2014-mono.png",
+      "aliases": [
+        "Racing Club DE Lens"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Racing-Club-de-Lens-v2014-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0543a25293c3402b92a05e6f1b4b497ee86ca246-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fff/club/Racing-Club-de-Lens-v2014",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Racing-Club-de-Lens-v2014-mono.png"
+      ]
+    },
+    {
+      "name": "Real Betis",
+      "slug": "Real-Betis-v2022",
+      "file": "ucl/Real-Betis-v2022-mono.png",
+      "aliases": [
+        "Real Betis"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Real-Betis-v2022-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/04e13bcc117978c7534aa895618307671f665480-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/rfef/club/Real-Betis-v2022",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Real-Betis-v2022-mono.png"
+      ]
+    },
+    {
+      "name": "Real Madrid CF",
+      "slug": "Real-Madrid-CF-v2002",
+      "file": "ucl/Real-Madrid-CF-v2002-mono.png",
+      "aliases": [
+        "Real Madrid CF"
+      ],
+      "variant": "mono",
+      "source_url": "https://cdn.sanity.io/images/11hmdf08/production/1c9fef15741a774e1850b0212f016f9ff8de5dfb-800x800.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/f041f6709a3ddcf2441db3dea31d250d1f356521-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/rfef/club/Real-Madrid-CF-v2002",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Real-Madrid-CF-v2002-mono.png"
       ]
     },
     {
       "name": "Real Sociedad DE Futbol",
       "slug": "Real-Sociedad-de-Futbol-v1997",
-      "file": "Real-Sociedad-de-Futbol-v1997-mono.png",
+      "file": "uel/Real-Sociedad-de-Futbol-v1997-mono.png",
       "aliases": [
         "Real Sociedad DE Futbol",
         "Real Sociedad"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Real-Sociedad-de-Futbol-v1997-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0390903ba7ed57831c80f3610f1692801a024de1-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/rfef/club/Real-Sociedad-de-Futbol-v1997",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/Real-Sociedad-de-Futbol-v1997-mono.png"
+      ]
+    },
+    {
+      "name": "SC Freiburg",
+      "slug": "SC-Freiburg-v2008",
+      "file": "uecl/SC-Freiburg-v2008-mono.png",
+      "aliases": [
+        "SC Freiburg"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/SC-Freiburg-v2008-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/27073bc3d046e4a6bdb03f2c94d8c632d328ca2b-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dfb/club/SC-Freiburg-v2008",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/SC-Freiburg-v2008-mono.png"
       ]
     },
     {
       "name": "SS Lazio",
       "slug": "SS-Lazio-v1993",
-      "file": "SS-Lazio-v1993-mono.png",
+      "file": "serie-a/SS-Lazio-v1993-mono.png",
       "aliases": [
         "SS Lazio",
         "Lazio"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/SS-Lazio-v1993-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/723a490df600a1f40540d68fc6b956cb4617e0fc-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/SS-Lazio-v1993",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/SS-Lazio-v1993-mono.png"
       ]
     },
     {
       "name": "Sport Lisboa E Benfica",
       "slug": "Sport-Lisboa-e-Benfica-v1999",
-      "file": "Sport-Lisboa-e-Benfica-v1999-mono.png",
+      "file": "uel/Sport-Lisboa-e-Benfica-v1999-mono.png",
       "aliases": [
         "Sport Lisboa E Benfica",
         "Benfica"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Sport-Lisboa-e-Benfica-v1999-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/57df728ecc770b748cf667712bb82a0cb1733b35-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/fpf/club/Sport-Lisboa-e-Benfica-v1999",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/Sport-Lisboa-e-Benfica-v1999-mono.png"
       ]
     },
     {
       "name": "Stade Rennais",
       "slug": "Stade-Rennais-v2003",
-      "file": "Stade-Rennais-v2003-mono.png",
+      "file": "uel/Stade-Rennais-v2003-mono.png",
       "aliases": [
         "Stade Rennais"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Stade-Rennais-v2003-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/40fb774de8ae94c4979b68e6f9b3f71a64894543-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/fff/club/Stade-Rennais-v2003",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/Stade-Rennais-v2003-mono.png"
       ]
     },
     {
       "name": "Sunderland AFC",
       "slug": "Sunderland-AFC-v1997",
-      "file": "Sunderland-AFC-v1997-mono.png",
+      "file": "uel/Sunderland-AFC-v1997-mono.png",
       "aliases": [
         "Sunderland AFC",
         "Sunderland"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Sunderland-AFC-v1997-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/f1258731b048bcff1988f188856c8f3108a252cd-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/thefa/club/Sunderland-AFC-v1997",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/Sunderland-AFC-v1997-mono.png"
       ]
     },
     {
       "name": "TSG Hoffenheim",
       "slug": "TSG-Hoffenheim-v2014",
-      "file": "TSG-Hoffenheim-v2014-mono.png",
+      "file": "uel/TSG-Hoffenheim-v2014-mono.png",
       "aliases": [
         "TSG Hoffenheim"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/TSG-Hoffenheim-v2014-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ce0b0d3e978382bb330478b099da2bd72b64c556-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/dfb/club/TSG-Hoffenheim-v2014",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/TSG-Hoffenheim-v2014-mono.png"
       ]
     },
     {
       "name": "Torino FC",
       "slug": "Torino-FC-v2005",
-      "file": "Torino-FC-v2005-mono.png",
+      "file": "serie-a/Torino-FC-v2005-mono.png",
       "aliases": [
         "Torino FC",
         "Torino"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Torino-FC-v2005-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/bbef6a5b245f71af0bbcdad6eabba66373fc5a44-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Torino-FC-v2005",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/Torino-FC-v2005-mono.png"
       ]
     },
     {
       "name": "US Cremonese",
       "slug": "US-Cremonese-v1997",
-      "file": "US-Cremonese-v1997-mono.png",
+      "file": "serie-b/US-Cremonese-v1997-mono.png",
       "aliases": [
         "US Cremonese",
         "Cremonese"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/US-Cremonese-v1997-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/1b342eafacc5e8fa5d1b8fc2734413a1ad79bf6e-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/US-Cremonese-v1997",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/US-Cremonese-v1997-mono.png"
       ]
     },
     {
       "name": "US Lecce",
       "slug": "US-Lecce-v2001",
-      "file": "US-Lecce-v2001-mono.png",
+      "file": "serie-a/US-Lecce-v2001-mono.png",
       "aliases": [
         "US Lecce",
         "Lecce"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/US-Lecce-v2001-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/f2dc99d53f881cca7c003b6251554a58e106a9e3-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/US-Lecce-v2001",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/US-Lecce-v2001-mono.png"
       ]
     },
     {
       "name": "US Sassuolo Calcio",
       "slug": "US-Sassuolo-Calcio-v2010",
-      "file": "US-Sassuolo-Calcio-v2010-mono.png",
+      "file": "serie-a/US-Sassuolo-Calcio-v2010-mono.png",
       "aliases": [
         "US Sassuolo Calcio",
         "Sassuolo"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/US-Sassuolo-Calcio-v2010-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/46026acd043e1eaccb7fdcff65e2ad3ed36a1e1b-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/US-Sassuolo-Calcio-v2010",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/US-Sassuolo-Calcio-v2010-mono.png"
       ]
     },
     {
       "name": "Udinese Calcio",
       "slug": "Udinese-Calcio-v2010",
-      "file": "Udinese-Calcio-v2010-mono.png",
+      "file": "serie-a/Udinese-Calcio-v2010-mono.png",
       "aliases": [
         "Udinese Calcio",
         "Udinese"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Udinese-Calcio-v2010-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/c87fd56f4de517ecab0f69cd48058b5a97f9b28a-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Udinese-Calcio-v2010",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/Udinese-Calcio-v2010-mono.png"
+      ]
+    },
+    {
+      "name": "VFB Stuttgart",
+      "slug": "VfB-Stuttgart-v2014",
+      "file": "ucl/VfB-Stuttgart-v2014-mono.png",
+      "aliases": [
+        "VFB Stuttgart"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/VfB-Stuttgart-v2014-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/9623bef85b5ea75a730acc8de46d8796ec73fa50-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dfb/club/VfB-Stuttgart-v2014",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/VfB-Stuttgart-v2014-mono.png"
+      ]
+    },
+    {
+      "name": "Villarreal Club DE Futbol",
+      "slug": "Villarreal-Club-de-Futbol-v2009",
+      "file": "ucl/Villarreal-Club-de-Futbol-v2009-mono.png",
+      "aliases": [
+        "Villarreal Club DE Futbol"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Villarreal-Club-de-Futbol-v2009-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ff4cd3e106e0a9acef8ebfa922554d888609d61c-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/rfef/club/Villarreal-Club-de-Futbol-v2009",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/Villarreal-Club-de-Futbol-v2009-mono.png"
+      ]
+    },
+    {
+      "name": "Aarhus Gymnastikforening",
+      "slug": "aarhus-gymnastikforening-v0000",
+      "file": "uecl/aarhus-gymnastikforening-v0000-mono.png",
+      "aliases": [
+        "Aarhus Gymnastikforening"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/AGF-Aarhus.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/8687793057e67202d98fd4b992ad60f49afe5d88-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dbu/club/aarhus-gymnastikforening-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/aarhus-gymnastikforening-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "AEK Football Club",
+      "slug": "aek-football-club-v2014",
+      "file": "ucl/aek-football-club-v2014-mono.png",
+      "aliases": [
+        "AEK Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/aek-football-club-v2014-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/aa213d53c8e1766adfbe4506ab02b288a4abd616-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/epo/club/aek-football-club-v2014",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/aek-football-club-v2014-mono.png"
       ]
     },
     {
       "name": "Alkmaar Zaanstreek",
       "slug": "alkmaar-zaanstreek-v1986",
-      "file": "alkmaar-zaanstreek-v1986-mono.png",
+      "file": "uel/alkmaar-zaanstreek-v1986-mono.png",
       "aliases": [
         "Alkmaar Zaanstreek",
         "AZ Alkmaar"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/AZ-Alkmaar-v1986-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/8ccb109c82807d3a4666d3332d8ae63bad247a83-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/knvb/club/alkmaar-zaanstreek-v1986",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/alkmaar-zaanstreek-v1986-mono.png"
+      ]
+    },
+    {
+      "name": "Amsterdamsche Football Club Ajax",
+      "slug": "amsterdamsche-football-club-ajax-v2025",
+      "file": "uecl/amsterdamsche-football-club-ajax-v2025-mono.png",
+      "aliases": [
+        "Amsterdamsche Football Club Ajax"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/AFC-Ajax-v2025-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/67f2caf13f5968a2c7584d9ee8ff9ada63b855e9-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/knvb/club/amsterdamsche-football-club-ajax-v2025",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/amsterdamsche-football-club-ajax-v2025-mono.png"
       ]
     },
     {
       "name": "Ascoli Calcio 1898 FC",
       "slug": "ascoli-calcio-1898-fc-v2026",
-      "file": "ascoli-calcio-1898-fc-v2026-mono.png",
+      "file": "serie-b/ascoli-calcio-1898-fc-v2026-mono.png",
       "aliases": [
         "Ascoli Calcio 1898 FC",
         "Ascoli"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Ascoli_Calcio_1898_FC-v2026-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/f17f3c37c3767848d97f1ebbafd03583574ec54b-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/ascoli-calcio-1898-fc-v2026",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/ascoli-calcio-1898-fc-v2026-mono.png"
       ]
     },
     {
       "name": "Associazione Sportiva Roma",
       "slug": "associazione-sportiva-roma-v2026",
-      "file": "associazione-sportiva-roma-v2026-mono.png",
+      "file": "serie-a/associazione-sportiva-roma-v2026-mono.png",
       "aliases": [
         "Associazione Sportiva Roma",
         "AS Roma"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/AS-Roma-v2026-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/5378968762981c568854e24e5e3066062d1b5baf-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/associazione-sportiva-roma-v2026",
       "packs": [
-        "2026-27-serie-a"
+        "2026-27-serie-a",
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "serie-a/associazione-sportiva-roma-v2026-mono.png",
+        "ucl/associazione-sportiva-roma-v2026-mono.png"
       ]
     },
     {
       "name": "Atalanta Bergamasca Calcio",
       "slug": "atalanta-bergamasca-calcio-v2026",
-      "file": "atalanta-bergamasca-calcio-v2026-mono.png",
+      "file": "serie-a/atalanta-bergamasca-calcio-v2026-mono.png",
       "aliases": [
         "Atalanta Bergamasca Calcio",
         "Atalanta"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Atalanta-BC-v2026-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ccdba340955642f422ac8ddf7945928611a2f8de-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/atalanta-bergamasca-calcio-v2026",
       "packs": [
-        "2026-27-serie-a"
+        "2026-27-serie-a",
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "serie-a/atalanta-bergamasca-calcio-v2026-mono.png",
+        "uecl/atalanta-bergamasca-calcio-v2026-mono.png"
       ]
     },
     {
       "name": "Athletic Club Omonoia Nicosia",
       "slug": "athletic-club-omonoia-nicosia-v0000",
-      "file": "athletic-club-omonoia-nicosia-v0000-mono.png",
+      "file": "uel/athletic-club-omonoia-nicosia-v0000-mono.png",
       "aliases": [
         "Athletic Club Omonoia Nicosia",
         "Omonia Nicosia"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Omonia-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/f1c730b8b99c279fd837bb6ce33e985dbed206ed-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/cfa/club/athletic-club-omonoia-nicosia-v0000",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/athletic-club-omonoia-nicosia-v0000-mono.png"
       ]
     },
     {
       "name": "Athletic Club Sparta Praha",
       "slug": "athletic-club-sparta-praha-v2021",
-      "file": "athletic-club-sparta-praha-v2021-mono.png",
+      "file": "uel/athletic-club-sparta-praha-v2021-mono.png",
       "aliases": [
         "Athletic Club Sparta Praha",
         "Sparta Prague"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Sparta-Praha-v2021-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/7e8a8e4b5ec3693bb73fd8e8cc58e24ef6313496-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/facr/club/athletic-club-sparta-praha-v2021",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/athletic-club-sparta-praha-v2021-mono.png"
       ]
     },
     {
       "name": "Benevento Calcio",
       "slug": "benevento-calcio-v0000",
-      "file": "benevento-calcio-v0000-mono.png",
+      "file": "serie-b/benevento-calcio-v0000-mono.png",
       "aliases": [
         "Benevento Calcio",
         "Benevento"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Benevento_Calcio-v0000-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/d5bc587585601bc8097df069a2c1ed77ae28e239-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/benevento-calcio-v0000",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/benevento-calcio-v0000-mono.png"
       ]
     },
     {
       "name": "Besiktas Jimnastik Kulubu",
       "slug": "besiktas-jimnastik-kulubu-v2000",
-      "file": "besiktas-jimnastik-kulubu-v2000-mono.png",
+      "file": "uel/besiktas-jimnastik-kulubu-v2000-mono.png",
       "aliases": [
         "Besiktas Jimnastik Kulubu",
         "Besiktas"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Besiktas-v2000-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/1c6b4cd2e6525e307983cb942fac21cafdbb61c1-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/tff/club/besiktas-jimnastik-kulubu-v2000",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/besiktas-jimnastik-kulubu-v2000-mono.png"
       ]
     },
     {
       "name": "Calcio Padova",
       "slug": "calcio-padova-v2018",
-      "file": "calcio-padova-v2018-mono.png",
+      "file": "serie-b/calcio-padova-v2018-mono.png",
       "aliases": [
         "Calcio Padova",
         "Padova"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Calcio-Padova-v2018-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/907437fe10785607ab5ad2268c0953a3cf635112-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/calcio-padova-v2018",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/calcio-padova-v2018-mono.png"
       ]
     },
     {
       "name": "Carrarese Calcio 1908",
       "slug": "carrarese-calcio-1908-v0000",
-      "file": "carrarese-calcio-1908-v0000-mono.png",
+      "file": "serie-b/carrarese-calcio-1908-v0000-mono.png",
       "aliases": [
         "Carrarese Calcio 1908",
         "Carrarese"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Carrarese-Calcio-1908-v0000-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/686bad3d89f6f0fac2faa27f8ce74f194205b4f6-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/carrarese-calcio-1908-v0000",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/carrarese-calcio-1908-v0000-mono.png"
       ]
     },
     {
       "name": "Celje Football Club",
       "slug": "celje-football-club-v0000",
-      "file": "celje-football-club-v0000-mono.png",
+      "file": "uel/celje-football-club-v0000-mono.png",
       "aliases": [
         "Celje Football Club",
         "NK Celje"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/NK-Celje-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/616bd1cf089e1a4d541fbca8dadca108a0275cc0-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/nzs/club/celje-football-club-v0000",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/celje-football-club-v0000-mono.png"
       ]
     },
     {
       "name": "Cesena Football Club",
       "slug": "cesena-football-club-v2018",
-      "file": "cesena-football-club-v2018-mono.png",
+      "file": "serie-b/cesena-football-club-v2018-mono.png",
       "aliases": [
         "Cesena Football Club",
         "Cesena"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Cesena-FC-v2018-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/6a271a93377b268b0288e4b7d44837017d8f9e26-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/cesena-football-club-v2018",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/cesena-football-club-v2018-mono.png"
+      ]
+    },
+    {
+      "name": "Club Brugge Koninklijke Voetbalvereniging",
+      "slug": "club-brugge-koninklijke-voetbalvereniging-v2017",
+      "file": "ucl/club-brugge-koninklijke-voetbalvereniging-v2017-mono.png",
+      "aliases": [
+        "Club Brugge Koninklijke Voetbalvereniging"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Club-Brugge-KV-v2017-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/c9aa60c34b10be1b0cde9683c5a3430a1d95f018-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/kbvb/club/club-brugge-koninklijke-voetbalvereniging-v2017",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/club-brugge-koninklijke-voetbalvereniging-v2017-mono.png"
+      ]
+    },
+    {
+      "name": "CS Universitatea Craiova",
+      "slug": "cs-universitatea-craiova-v2015",
+      "file": "uecl/cs-universitatea-craiova-v2015-mono.png",
+      "aliases": [
+        "CS Universitatea Craiova"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Universitatea-Craiova-v2015-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/5057dce7e437d9d6ccb54559bd806a0e36d3fbad-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/frf/club/cs-universitatea-craiova-v2015",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/cs-universitatea-craiova-v2015-mono.png"
+      ]
+    },
+    {
+      "name": "Fenerbahce Spor Kulubu",
+      "slug": "fenerbahce-spor-kulubu-v2026-comm",
+      "file": "ucl/fenerbahce-spor-kulubu-v2026-comm-mono.png",
+      "aliases": [
+        "Fenerbahce Spor Kulubu"
+      ],
+      "variant": "mono",
+      "source_url": "https://cdn.sanity.io/images/11hmdf08/production/a7404bbca04d4638f58a709ba637e54daeec4c78-800x800.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/6d9ec4c3e27bdefa7c188040ebac6b937ab00dc8-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/tff/club/fenerbahce-spor-kulubu-v2026-comm",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/fenerbahce-spor-kulubu-v2026-comm-mono.png"
       ]
     },
     {
       "name": "Ferencvarosi Torna Club",
       "slug": "ferencvarosi-torna-club-v2019",
-      "file": "ferencvarosi-torna-club-v2019-mono.png",
+      "file": "uel/ferencvarosi-torna-club-v2019-mono.png",
       "aliases": [
         "Ferencvarosi Torna Club",
         "Ferencvaros"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Ferencvaros-TC-v2019-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/45d08785d953fee662a755f7e748874112875598-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/mlsz/club/ferencvarosi-torna-club-v2019",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/ferencvarosi-torna-club-v2019-mono.png"
+      ]
+    },
+    {
+      "name": "Feyenoord Rotterdam",
+      "slug": "feyenoord-rotterdam-v2024",
+      "file": "ucl/feyenoord-rotterdam-v2024-mono.png",
+      "aliases": [
+        "Feyenoord Rotterdam"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Feyenoord-Rotterdam-v2024-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/4f5970e0d63b891ea7bbcd9ebd051d2799ac1167-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/knvb/club/feyenoord-rotterdam-v2024",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/feyenoord-rotterdam-v2024-mono.png"
       ]
     },
     {
       "name": "Football Club Ararat Armenia",
       "slug": "football-club-ararat-armenia-v0000",
-      "file": "football-club-ararat-armenia-v0000-mono.png",
+      "file": "uel/football-club-ararat-armenia-v0000-mono.png",
       "aliases": [
         "Football Club Ararat Armenia",
         "Ararat-Armenia"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/FC-Ararat-Armenia-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/4f9f794ec58bd6ac1d4f63338a799cf1313febdf-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/ffa/club/football-club-ararat-armenia-v0000",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/football-club-ararat-armenia-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Football Club Copenhagen",
+      "slug": "football-club-copenhagen-v2024",
+      "file": "uecl/football-club-copenhagen-v2024-mono.png",
+      "aliases": [
+        "Football Club Copenhagen"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC_Copenhagen_v2024-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/128a6d915a65fc40177c699661ed70aea3cc7608-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dbu/club/football-club-copenhagen-v2024",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/football-club-copenhagen-v2024-mono.png"
+      ]
+    },
+    {
+      "name": "Football Club Iberia 1999",
+      "slug": "football-club-iberia-1999-v0000",
+      "file": "uecl/football-club-iberia-1999-v0000-mono.png",
+      "aliases": [
+        "Football Club Iberia 1999"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC-Iberia-1999-Tbilisi.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ea10be7321a1c71b755820223dfa77af668f9d59-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/gff/club/football-club-iberia-1999-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/football-club-iberia-1999-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Football Club Kairat",
+      "slug": "football-club-kairat-v2019",
+      "file": "uecl/football-club-kairat-v2019-mono.png",
+      "aliases": [
+        "Football Club Kairat"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC-Kairat-Almaty-v2019-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0c15fabc8f9355ddc1da0c9b9e05e9d936077082-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/kff/club/football-club-kairat-v2019",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/football-club-kairat-v2019-mono.png"
+      ]
+    },
+    {
+      "name": "Football Club Lugano",
+      "slug": "football-club-lugano-v2025",
+      "file": "uecl/football-club-lugano-v2025-mono.png",
+      "aliases": [
+        "Football Club Lugano"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Lugano-v2025-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/aa44e09dfcbfe672d1508e87f63eb8cce89f66dd-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/sfv/club/football-club-lugano-v2025",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/football-club-lugano-v2025-mono.png"
+      ]
+    },
+    {
+      "name": "Football Club Midtjylland",
+      "slug": "football-club-midtjylland-v2026",
+      "file": "uecl/football-club-midtjylland-v2026-mono.png",
+      "aliases": [
+        "Football Club Midtjylland"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC-Midtjylland-v2026-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/aedc0497dcf3e568eda752652de69c4efd8ce175-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dbu/club/football-club-midtjylland-v2026",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/football-club-midtjylland-v2026-mono.png"
+      ]
+    },
+    {
+      "name": "Football Club Nordsjlland",
+      "slug": "football-club-nordsjlland-v2019",
+      "file": "uecl/football-club-nordsjlland-v2019-mono.png",
+      "aliases": [
+        "Football Club Nordsjlland"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC-Nordsj-lland-v2019-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/3bf05e8c14fdce1f58a96bd4988d46f231542fec-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/dbu/club/football-club-nordsjlland-v2019",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/football-club-nordsjlland-v2019-mono.png"
+      ]
+    },
+    {
+      "name": "Football Club Shakhtar Donetsk",
+      "slug": "football-club-shakhtar-donetsk-v2007",
+      "file": "ucl/football-club-shakhtar-donetsk-v2007-mono.png",
+      "aliases": [
+        "Football Club Shakhtar Donetsk"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Shakhtar-Donetsk-v2007-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/fd77a6104cda6a0b172a5da42c1ce2602b83a96a-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/uaf/club/football-club-shakhtar-donetsk-v2007",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/football-club-shakhtar-donetsk-v2007-mono.png"
+      ]
+    },
+    {
+      "name": "Football Club Twente",
+      "slug": "football-club-twente-v2006",
+      "file": "uecl/football-club-twente-v2006-mono.png",
+      "aliases": [
+        "Football Club Twente"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC-Twente-v2006-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/51486efed5862716fe19c052e024decf7ea9d432-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/knvb/club/football-club-twente-v2006",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/football-club-twente-v2006-mono.png"
       ]
     },
     {
       "name": "Football Club Viktoria Plzen",
       "slug": "football-club-viktoria-plzen-v1999",
-      "file": "football-club-viktoria-plzen-v1999-mono.png",
+      "file": "uel/football-club-viktoria-plzen-v1999-mono.png",
       "aliases": [
         "Football Club Viktoria Plzen",
         "Viktoria Plzen"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Viktoria-Plzen-v1999-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/fca217556aa1beae67addc075b1eae89bae46bca-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/facr/club/football-club-viktoria-plzen-v1999",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/football-club-viktoria-plzen-v1999-mono.png"
+      ]
+    },
+    {
+      "name": "Fotballklubben Bodglimt",
+      "slug": "fotballklubben-bodglimt-v0000",
+      "file": "ucl/fotballklubben-bodglimt-v0000-mono.png",
+      "aliases": [
+        "Fotballklubben Bodglimt"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FK-Bodo-Glimt-v0000-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/c2b4cc832bc571472a47e735462f94d3009c03bf-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/nff/club/fotballklubben-bodglimt-v0000",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/fotballklubben-bodglimt-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Fotbalovy Klub Jablonec",
+      "slug": "fotbalovy-klub-jablonec-v2026",
+      "file": "uecl/fotbalovy-klub-jablonec-v2026-mono.png",
+      "aliases": [
+        "Fotbalovy Klub Jablonec"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FK-Jablonec-v2026.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/e3b6dfe0604e0164c539ec4d191c5f0e2b48973d-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/facr/club/fotbalovy-klub-jablonec-v2026",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/fotbalovy-klub-jablonec-v2026-mono.png"
       ]
     },
     {
       "name": "Frosinone Calcio",
       "slug": "frosinone-calcio-v2011",
-      "file": "frosinone-calcio-v2011-mono.png",
+      "file": "serie-a/frosinone-calcio-v2011-mono.png",
       "aliases": [
         "Frosinone Calcio",
         "Frosinone"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Frosinone-Calcio-v2011-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/4358231ae1e8b25d6d411c2f5bcecebf66a5f45c-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/frosinone-calcio-v2011",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/frosinone-calcio-v2011-mono.png"
+      ]
+    },
+    {
+      "name": "Fudbalski Klub Borac Banja Luka",
+      "slug": "fudbalski-klub-borac-banja-luka-v0000",
+      "file": "uecl/fudbalski-klub-borac-banja-luka-v0000-mono.png",
+      "aliases": [
+        "Fudbalski Klub Borac Banja Luka"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Borac.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/510e71818955b40fedaa8bf26426e4c3eda33d7e-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/nfsbih/club/fudbalski-klub-borac-banja-luka-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/fudbalski-klub-borac-banja-luka-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Fudbalski Klub Crvena Zvezda",
+      "slug": "fudbalski-klub-crvena-zvezda-v2019",
+      "file": "uecl/fudbalski-klub-crvena-zvezda-v2019-mono.png",
+      "aliases": [
+        "Fudbalski Klub Crvena Zvezda"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Red-Star-Belgrade-v2019-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/c26c6d9c9f26d95a202d317abcc6e001bbcad429-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fss/club/fudbalski-klub-crvena-zvezda-v2019",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/fudbalski-klub-crvena-zvezda-v2019-mono.png"
       ]
     },
     {
       "name": "Fussball Club Sudtirol",
       "slug": "fussball-club-sudtirol-v2016",
-      "file": "fussball-club-sudtirol-v2016-mono.png",
+      "file": "serie-b/fussball-club-sudtirol-v2016-mono.png",
       "aliases": [
         "Fussball Club Sudtirol",
         "Suditrol"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/FC-Sudtirol-v2016-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/c831827e9eccecbca61273452c0aa8705536bfd3-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/fussball-club-sudtirol-v2016",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/fussball-club-sudtirol-v2016-mono.png"
+      ]
+    },
+    {
+      "name": "Fussballclub Thun 1898",
+      "slug": "fussballclub-thun-1898-v0000",
+      "file": "uecl/fussballclub-thun-1898-v0000-mono.png",
+      "aliases": [
+        "Fussballclub Thun 1898"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/FC-Thun-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/bb37df076a4628101f2b0a9915152f35e836f462-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/sfv/club/fussballclub-thun-1898-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/fussballclub-thun-1898-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Futbolo Klubas Kauno Zalgiris",
+      "slug": "futbolo-klubas-kauno-zalgiris-v2023",
+      "file": "uecl/futbolo-klubas-kauno-zalgiris-v2023-mono.png",
+      "aliases": [
+        "Futbolo Klubas Kauno Zalgiris"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Kauno-Zalgiris-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/8085d44211133c0d501e4dc91d8cfad269e92287-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/lff/club/futbolo-klubas-kauno-zalgiris-v2023",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/futbolo-klubas-kauno-zalgiris-v2023-mono.png"
+      ]
+    },
+    {
+      "name": "Galatasaray Spor Kulb",
+      "slug": "galatasaray-spor-kulb-v2007",
+      "file": "ucl/galatasaray-spor-kulb-v2007-mono.png",
+      "aliases": [
+        "Galatasaray Spor Kulb"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Galatasaray-SK-v2007-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/72ccdd95fa83a588402145f78e8e05c33b72b0e1-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/tff/club/galatasaray-spor-kulb-v2007",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/galatasaray-spor-kulb-v2007-mono.png"
       ]
     },
     {
       "name": "GNK Dinamo Zagreb",
       "slug": "gnk-dinamo-zagreb-v2024",
-      "file": "gnk-dinamo-zagreb-v2024-mono.png",
+      "file": "uel/gnk-dinamo-zagreb-v2024-mono.png",
       "aliases": [
         "GNK Dinamo Zagreb",
         "Dinamo Zagreb"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Dinamo-Zagreb-v2024-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/848b84f799295ff974f0e6fe3ebf762e6558c570-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/hns/club/gnk-dinamo-zagreb-v2024",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/gnk-dinamo-zagreb-v2024-mono.png"
       ]
     },
     {
       "name": "Hapoel Beer Sheva Football Club",
       "slug": "hapoel-beer-sheva-football-club-v2016",
-      "file": "hapoel-beer-sheva-football-club-v2016-mono.png",
+      "file": "uel/hapoel-beer-sheva-football-club-v2016-mono.png",
       "aliases": [
         "Hapoel Beer Sheva Football Club",
         "Hapoel Be'er"
       ],
       "variant": "mono",
-      "mono_derived": true,
       "source_url": "https://assets.fclogo.top/png/Hapoel-Beer-Sheva-v2016.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/8e6022d868d7ed1d709f8db1fe4aa5b0c6a78119-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/ifa/club/hapoel-beer-sheva-football-club-v2016",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/hapoel-beer-sheva-football-club-v2016-mono.png"
+      ]
+    },
+    {
+      "name": "Heart OF Midlothian Football Club",
+      "slug": "heart-of-midlothian-football-club-v1977",
+      "file": "uecl/heart-of-midlothian-football-club-v1977-mono.png",
+      "aliases": [
+        "Heart OF Midlothian Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Heart-of-Midlothian-v1977-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/9a60da5fd7e8d727c4607eb55c256dd8d1b7eabb-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/sfa/club/heart-of-midlothian-football-club-v1977",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/heart-of-midlothian-football-club-v1977-mono.png"
+      ]
+    },
+    {
+      "name": "Hrvatski Nogometni Klub Hajduk Split",
+      "slug": "hrvatski-nogometni-klub-hajduk-split-v1990",
+      "file": "uecl/hrvatski-nogometni-klub-hajduk-split-v1990-mono.png",
+      "aliases": [
+        "Hrvatski Nogometni Klub Hajduk Split"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Hajduk-Split-v1990-moon.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/96151efdcc1a5d37542b33fe012a462b79c9d642-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/hns/club/hrvatski-nogometni-klub-hajduk-split-v1990",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/hrvatski-nogometni-klub-hajduk-split-v1990-mono.png"
+      ]
+    },
+    {
+      "name": "Inter Club Descaldes",
+      "slug": "inter-club-descaldes-v0000",
+      "file": "uecl/inter-club-descaldes-v0000-mono.png",
+      "aliases": [
+        "Inter Club Descaldes"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Inter-Escaldes-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/4876b35472fe0fcb9adfcf0452de33337e7a0fd5-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/faf/club/inter-club-descaldes-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/inter-club-descaldes-v0000-mono.png"
       ]
     },
     {
       "name": "Jagiellonia Biaystok Sportowa Spoka Akcyjna",
       "slug": "jagiellonia-biaystok-sportowa-spoka-akcyjna-v2024",
-      "file": "jagiellonia-biaystok-sportowa-spoka-akcyjna-v2024-mono.png",
+      "file": "uel/jagiellonia-biaystok-sportowa-spoka-akcyjna-v2024-mono.png",
       "aliases": [
         "Jagiellonia Biaystok Sportowa Spoka Akcyjna",
         "Jagiellonia Bialystok"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Jagiellonia-Bia-ystok-v2024-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/7ab804b17a50320dda8c7813135e20a9cd25d333-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/pzpn/club/jagiellonia-biaystok-sportowa-spoka-akcyjna-v2024",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/jagiellonia-biaystok-sportowa-spoka-akcyjna-v2024-mono.png"
+      ]
+    },
+    {
+      "name": "Klubi I Futbollit Egnatia",
+      "slug": "klubi-i-futbollit-egnatia-v0000",
+      "file": "uecl/klubi-i-futbollit-egnatia-v0000-mono.png",
+      "aliases": [
+        "Klubi I Futbollit Egnatia"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/KF-Egnatia-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/297ce24e8a4abe4ddec8eda17cddf67b57bc978e-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fshf/club/klubi-i-futbollit-egnatia-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/klubi-i-futbollit-egnatia-v0000-mono.png"
       ]
     },
     {
       "name": "Kolejowy Klub Sportowy Lech Poznan SA",
       "slug": "kolejowy-klub-sportowy-lech-poznan-sa-v2006",
-      "file": "kolejowy-klub-sportowy-lech-poznan-sa-v2006-mono.png",
+      "file": "uel/kolejowy-klub-sportowy-lech-poznan-sa-v2006-mono.png",
       "aliases": [
         "Kolejowy Klub Sportowy Lech Poznan SA",
         "Lech Poznan"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Lech-Poznan-v2006-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/757e8922c89421476e2fed379bb870c8ca8aa602-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/pzpn/club/kolejowy-klub-sportowy-lech-poznan-sa-v2006",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/kolejowy-klub-sportowy-lech-poznan-sa-v2006-mono.png"
+      ]
+    },
+    {
+      "name": "Koninklijke Atletiek Associatie Gent",
+      "slug": "koninklijke-atletiek-associatie-gent-v2013",
+      "file": "uecl/koninklijke-atletiek-associatie-gent-v2013-mono.png",
+      "aliases": [
+        "Koninklijke Atletiek Associatie Gent"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/KAA-Gent-2013-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/8bb66af237fc753712699073ab383316842674e9-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/rbfa/club/koninklijke-atletiek-associatie-gent-v2013",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/koninklijke-atletiek-associatie-gent-v2013-mono.png"
+      ]
+    },
+    {
+      "name": "Koninklijke Sint Truidense Voetbalvereniging",
+      "slug": "koninklijke-sint-truidense-voetbalvereniging-v0000",
+      "file": "uecl/koninklijke-sint-truidense-voetbalvereniging-v0000-mono.png",
+      "aliases": [
+        "Koninklijke Sint Truidense Voetbalvereniging"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Sint-Truidense-VV-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/facee31156dd5d9301745866028c36e478ae625d-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/rbfa/club/koninklijke-sint-truidense-voetbalvereniging-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/koninklijke-sint-truidense-voetbalvereniging-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Kuopion Palloseura",
+      "slug": "kuopion-palloseura-v0000",
+      "file": "uecl/kuopion-palloseura-v0000-mono.png",
+      "aliases": [
+        "Kuopion Palloseura"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/KuPS-Kuopio-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/44b38b8d34f932e6089ed1c960c66cd4383d3da1-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/spl/club/kuopion-palloseura-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/kuopion-palloseura-v0000-mono.png"
       ]
     },
     {
       "name": "Lanerossi Vicenza",
       "slug": "lanerossi-vicenza-v2018",
-      "file": "lanerossi-vicenza-v2018-mono.png",
+      "file": "serie-b/lanerossi-vicenza-v2018-mono.png",
       "aliases": [
         "Lanerossi Vicenza",
         "Vicenza"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/LR_Vicenza_Virtus_v2018-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0cd11266ab22c7a12c8e5a9a40474d0b89b81a8f-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/lanerossi-vicenza-v2018",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/lanerossi-vicenza-v2018-mono.png"
       ]
     },
     {
       "name": "Lillestrm Sportsklubb",
       "slug": "lillestrm-sportsklubb-v0000",
-      "file": "lillestrm-sportsklubb-v0000-mono.png",
+      "file": "uel/lillestrm-sportsklubb-v0000-mono.png",
       "aliases": [
         "Lillestrm Sportsklubb",
         "Lillestrom"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Lillestrom-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/a92bd931242f5100b9b37fc4e8d337638402be0b-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/nff/club/lillestrm-sportsklubb-v0000",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/lillestrm-sportsklubb-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Lincoln RED Imps Football Club",
+      "slug": "lincoln-red-imps-football-club-v0000",
+      "file": "uecl/lincoln-red-imps-football-club-v0000-mono.png",
+      "aliases": [
+        "Lincoln RED Imps Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Lincoln-Red-Imps.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0cc0bc7ea66942a311e5b57c54bc096d15854aee-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/gfa/club/lincoln-red-imps-football-club-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/lincoln-red-imps-football-club-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Linzer Athletik Sport Klub",
+      "slug": "linzer-athletik-sport-klub-v2023",
+      "file": "ucl/linzer-athletik-sport-klub-v2023-mono.png",
+      "aliases": [
+        "Linzer Athletik Sport Klub"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/LASK-v2023-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/d01a80142f87341af30289a9ada4a0f0a78da92e-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/oefb/club/linzer-athletik-sport-klub-v2023",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/linzer-athletik-sport-klub-v2023-mono.png"
       ]
     },
     {
       "name": "Mantova 1911",
       "slug": "mantova-1911-v2017",
-      "file": "mantova-1911-v2017-mono.png",
+      "file": "serie-b/mantova-1911-v2017-mono.png",
       "aliases": [
         "Mantova 1911",
         "Mantova"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Mantova-1911-v2017-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/e55808f565eaa8e61b819949a77e39297382b735-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/mantova-1911-v2017",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/mantova-1911-v2017-mono.png"
+      ]
+    },
+    {
+      "name": "Mjallby Allmanna Idrottsforening",
+      "slug": "mjallby-allmanna-idrottsforening-v0000",
+      "file": "uecl/mjallby-allmanna-idrottsforening-v0000-mono.png",
+      "aliases": [
+        "Mjallby Allmanna Idrottsforening"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Mjallby-AIF-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/793ec236a7351d3183c537bc47bf71056940f004-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/svff/club/mjallby-allmanna-idrottsforening-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/mjallby-allmanna-idrottsforening-v0000-mono.png"
       ]
     },
     {
       "name": "Modena Football Club",
       "slug": "modena-football-club-v2018",
-      "file": "modena-football-club-v2018-mono.png",
+      "file": "serie-b/modena-football-club-v2018-mono.png",
       "aliases": [
         "Modena Football Club",
         "Modena"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Modena-FC-v2018-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/efa6fbabe32bedffde6d8b74d131484a1162d126-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/modena-football-club-v2018",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/modena-football-club-v2018-mono.png"
       ]
     },
     {
       "name": "Nijmegen Eendracht Combinatie",
       "slug": "nijmegen-eendracht-combinatie-v2001",
-      "file": "nijmegen-eendracht-combinatie-v2001-mono.png",
+      "file": "uel/nijmegen-eendracht-combinatie-v2001-mono.png",
       "aliases": [
         "Nijmegen Eendracht Combinatie",
         "NEC Nijmegen"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/NEC-Nijmegen-v2001-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/c5d743fd47dfde8e66d28e9a10148056170ff647-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/knvb/club/nijmegen-eendracht-combinatie-v2001",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/nijmegen-eendracht-combinatie-v2001-mono.png"
       ]
     },
     {
       "name": "OFI Football Club",
       "slug": "ofi-football-club-v2020",
-      "file": "ofi-football-club-v2020-mono.png",
+      "file": "uel/ofi-football-club-v2020-mono.png",
       "aliases": [
         "OFI Football Club",
         "OFI Crete"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/OFI-Crete-v2020-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0d772c6db9eee031038c10adefbe141c9e2c2dea-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/epo/club/ofi-football-club-v2020",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/ofi-football-club-v2020-mono.png"
       ]
     },
     {
       "name": "Olympiacos Football Club",
       "slug": "olympiacos-football-club-v2003",
-      "file": "olympiacos-football-club-v2003-mono.png",
+      "file": "uel/olympiacos-football-club-v2003-mono.png",
       "aliases": [
         "Olympiacos Football Club",
         "Olympiacos"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Olympiacos-Football-Club-v2003-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/d6313bc57bb7a94b74f2081b23d352ba71adf86a-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/epo/club/olympiacos-football-club-v2003",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/olympiacos-football-club-v2003-mono.png"
       ]
     },
     {
       "name": "Olympique DE Marseille",
       "slug": "olympique-de-marseille-v2026",
-      "file": "olympique-de-marseille-v2026-mono.png",
+      "file": "uel/olympique-de-marseille-v2026-mono.png",
       "aliases": [
         "Olympique DE Marseille",
         "Marseille"
       ],
       "variant": "mono",
-      "mono_derived": true,
       "source_url": "https://assets.fclogo.top/png/Marseille-v2026.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/742e01aac838f776c44799d41f8cabbbd3990f6a-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/fff/club/olympique-de-marseille-v2026",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/olympique-de-marseille-v2026-mono.png"
+      ]
+    },
+    {
+      "name": "Pafos Football Club",
+      "slug": "pafos-football-club-v0000",
+      "file": "uecl/pafos-football-club-v0000-mono.png",
+      "aliases": [
+        "Pafos Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Pafos-FC-v0000-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/19fee7bb7cb0e4c2473c8a90430d83ca78692676-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/cfa/club/pafos-football-club-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/pafos-football-club-v0000-mono.png"
       ]
     },
     {
       "name": "Palermo Football Club",
       "slug": "palermo-football-club-v2019",
-      "file": "palermo-football-club-v2019-mono.png",
+      "file": "serie-b/palermo-football-club-v2019-mono.png",
       "aliases": [
         "Palermo Football Club",
         "Palermo"
       ],
       "variant": "mono",
-      "mono_derived": true,
       "source_url": "https://assets.fclogo.top/png/Palermo-FC-v2019.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/4c2e0a4e05da82481a0ae006d0bc3995559c49d3-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/palermo-football-club-v2019",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/palermo-football-club-v2019-mono.png"
+      ]
+    },
+    {
+      "name": "Panathinaikos Football Club",
+      "slug": "panathinaikos-football-club-v1995",
+      "file": "uecl/panathinaikos-football-club-v1995-mono.png",
+      "aliases": [
+        "Panathinaikos Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Panathinaikos-FC-v1995-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/83c42fba569102568b8c4ac2215ec9e9e92d025a-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/epo/club/panathinaikos-football-club-v1995",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/panathinaikos-football-club-v1995-mono.png"
+      ]
+    },
+    {
+      "name": "Philips Sport Vereniging",
+      "slug": "philips-sport-vereniging-v2016",
+      "file": "ucl/philips-sport-vereniging-v2016-mono.png",
+      "aliases": [
+        "Philips Sport Vereniging"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/PSV-Eindhoven-v2016-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/80ad6f476d0f60710cb44774427d97ed4522a2ce-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/knvb/club/philips-sport-vereniging-v2016",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/philips-sport-vereniging-v2016-mono.png"
       ]
     },
     {
       "name": "Profesionalen Futbolen Klub Levski",
       "slug": "profesionalen-futbolen-klub-levski-v2026",
-      "file": "profesionalen-futbolen-klub-levski-v2026-mono.png",
+      "file": "uel/profesionalen-futbolen-klub-levski-v2026-mono.png",
       "aliases": [
         "Profesionalen Futbolen Klub Levski",
         "Levski Sofia"
       ],
       "variant": "mono",
-      "mono_derived": true,
       "source_url": "https://assets.fclogo.top/png/Levski-Sofia-v2026.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ff3940dd327f05e75ef939185b9b2d4748cd33d3-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/bfu/club/profesionalen-futbolen-klub-levski-v2026",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/profesionalen-futbolen-klub-levski-v2026-mono.png"
+      ]
+    },
+    {
+      "name": "Professional Football Club Cska Sofia",
+      "slug": "professional-football-club-cska-sofia-v0000",
+      "file": "uecl/professional-football-club-cska-sofia-v0000-mono.png",
+      "aliases": [
+        "Professional Football Club Cska Sofia"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/PFC-CSKA-Sofia.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/a8f0bacae1a8b8a296204c2fb1dbe8f77b84c084-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/bfu/club/professional-football-club-cska-sofia-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/professional-football-club-cska-sofia-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Riga Football Club",
+      "slug": "riga-football-club-v0000",
+      "file": "uecl/riga-football-club-v0000-mono.png",
+      "aliases": [
+        "Riga Football Club"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Riga-FC-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/1c68d9b6988427e63ffe0ec315c76f2d39a65b9f-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/lff/club/riga-football-club-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/riga-football-club-v0000-mono.png"
       ]
     },
     {
       "name": "Royal Sporting Club Anderlecht",
       "slug": "royal-sporting-club-anderlecht-v2024",
-      "file": "royal-sporting-club-anderlecht-v2024-mono.png",
+      "file": "uel/royal-sporting-club-anderlecht-v2024-mono.png",
       "aliases": [
         "Royal Sporting Club Anderlecht",
         "Anderlecht"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/RSC-Anderlecht-v2024-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/7eedf58f4c54df56c8547111950b191e7815b030-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/rbfa/club/royal-sporting-club-anderlecht-v2024",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/royal-sporting-club-anderlecht-v2024-mono.png"
       ]
     },
     {
       "name": "Royale Union Saint Gilloise",
       "slug": "royale-union-saint-gilloise-v2015",
-      "file": "royale-union-saint-gilloise-v2015-mono.png",
+      "file": "uel/royale-union-saint-gilloise-v2015-mono.png",
       "aliases": [
         "Royale Union Saint Gilloise",
         "Union St.-Gilloise"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Royale-Union-Saint-Gilloise-v2015-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/1cbab6e2425dc42abb9195aad98d0c891c6f49cd-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/kbvb/club/royale-union-saint-gilloise-v2015",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/royale-union-saint-gilloise-v2015-mono.png"
+      ]
+    },
+    {
+      "name": "Sabah Futbol Klubu",
+      "slug": "sabah-futbol-klubu-v2023",
+      "file": "ucl/sabah-futbol-klubu-v2023-mono.png",
+      "aliases": [
+        "Sabah Futbol Klubu"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Sabah-v2023-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/e25fb1dfa115c1376bfae4cac25cd30db3f74112-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/affa/club/sabah-futbol-klubu-v2023",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/sabah-futbol-klubu-v2023-mono.png"
       ]
     },
     {
       "name": "Societ Sportiva Calcio Napoli",
       "slug": "societ-sportiva-calcio-napoli-v2024",
-      "file": "societ-sportiva-calcio-napoli-v2024-mono.png",
+      "file": "serie-a/societ-sportiva-calcio-napoli-v2024-mono.png",
       "aliases": [
         "Societ Sportiva Calcio Napoli",
         "Napoli"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://cdn.sanity.io/images/11hmdf08/production/34010068d740b45640f270732a342150e22f803f-800x800.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/58e62d96f7e702c343714247d6c83c2dc16bec9a-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/societ-sportiva-calcio-napoli-v2024",
       "packs": [
-        "2026-27-serie-a"
+        "2026-27-serie-a",
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "serie-a/societ-sportiva-calcio-napoli-v2024-mono.png",
+        "ucl/societ-sportiva-calcio-napoli-v2024-mono.png"
       ]
     },
     {
       "name": "Societ Sportiva Juve Stabia",
       "slug": "societ-sportiva-juve-stabia-v2022",
-      "file": "societ-sportiva-juve-stabia-v2022-mono.png",
+      "file": "serie-b/societ-sportiva-juve-stabia-v2022-mono.png",
       "aliases": [
         "Societ Sportiva Juve Stabia",
         "Juve Stabia"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/SS-Juve-Stabia-v2022-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/04d0394ceac1421a226eb5b7062561adf8876603-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/societ-sportiva-juve-stabia-v2022",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/societ-sportiva-juve-stabia-v2022-mono.png"
       ]
     },
     {
       "name": "Societa Sportiva Arezzo",
       "slug": "societa-sportiva-arezzo-v0000",
-      "file": "societa-sportiva-arezzo-v0000-mono.png",
+      "file": "serie-b/societa-sportiva-arezzo-v0000-mono.png",
       "aliases": [
         "Societa Sportiva Arezzo",
         "Arezzo"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/SS-Arezzo-v0000-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ccbcfd24626e922d7805009202323d42b06ae5df-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/societa-sportiva-arezzo-v0000",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/societa-sportiva-arezzo-v0000-mono.png"
       ]
     },
     {
       "name": "Sport Clube Uniao Torreense",
       "slug": "sport-clube-uniao-torreense-v0000",
-      "file": "sport-clube-uniao-torreense-v0000-mono.png",
+      "file": "uel/sport-clube-uniao-torreense-v0000-mono.png",
       "aliases": [
         "Sport Clube Uniao Torreense",
         "Torreense"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/SCU-Torreense-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/a71f767ff8430582c10fea4bc1e9cf59b086c3a7-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/fpf/club/sport-clube-uniao-torreense-v0000",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/sport-clube-uniao-torreense-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Sporting Clube DE Braga",
+      "slug": "sporting-clube-de-braga-v2018",
+      "file": "uecl/sporting-clube-de-braga-v2018-mono.png",
+      "aliases": [
+        "Sporting Clube DE Braga"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/SK-Braga-v2018-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/52751ed31c28c3228bc4b0d67cc8fcfb1edbceed-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fpf/club/sporting-clube-de-braga-v2018",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/sporting-clube-de-braga-v2018-mono.png"
+      ]
+    },
+    {
+      "name": "Sporting Clube DE Portugal",
+      "slug": "sporting-clube-de-portugal-v2026",
+      "file": "ucl/sporting-clube-de-portugal-v2026-mono.png",
+      "aliases": [
+        "Sporting Clube DE Portugal"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Sporting-CP-v2026-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/f7018476dcee39b9ae38f00487017fb23e458900-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/fpf/club/sporting-clube-de-portugal-v2026",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/sporting-clube-de-portugal-v2026-mono.png"
       ]
     },
     {
       "name": "Sportklub Sturm Graz",
       "slug": "sportklub-sturm-graz-v2013",
-      "file": "sportklub-sturm-graz-v2013-mono.png",
+      "file": "uel/sportklub-sturm-graz-v2013-mono.png",
       "aliases": [
         "Sportklub Sturm Graz",
         "SK Sturm Graz"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Sturm-Graz-v2013-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/5c1bf81003fbb6587207022fb23dba410528da4f-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/oefb/club/sportklub-sturm-graz-v2013",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/sportklub-sturm-graz-v2013-mono.png"
+      ]
+    },
+    {
+      "name": "Sportovn Klub Slavia Praha Fotbal",
+      "slug": "sportovn-klub-slavia-praha-fotbal-v2022",
+      "file": "ucl/sportovn-klub-slavia-praha-fotbal-v2022-mono.png",
+      "aliases": [
+        "Sportovn Klub Slavia Praha Fotbal"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/SK-Slavia-Praha-v0000-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/472c1cd39be97fbfc18019c5dcc2b9fea7ca9b92-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/facr/club/sportovn-klub-slavia-praha-fotbal-v2022",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/sportovn-klub-slavia-praha-fotbal-v2022-mono.png"
+      ]
+    },
+    {
+      "name": "Sportovy Klub Slovan Bratislava",
+      "slug": "sportovy-klub-slovan-bratislava-v0000",
+      "file": "ucl/sportovy-klub-slovan-bratislava-v0000-mono.png",
+      "aliases": [
+        "Sportovy Klub Slovan Bratislava"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Slovan-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/dfe5fc493cf0ef4a593f097c3673fceac3a024ab-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/sfz/club/sportovy-klub-slovan-bratislava-v0000",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/sportovy-klub-slovan-bratislava-v0000-mono.png"
+      ]
+    },
+    {
+      "name": "Sportsklubben Brann",
+      "slug": "sportsklubben-brann-v0000",
+      "file": "uecl/sportsklubben-brann-v0000-mono.png",
+      "aliases": [
+        "Sportsklubben Brann"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/SK-Brann.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/b88067d862b5ccf4f1593ccddb7502d28d8dd432-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/nff/club/sportsklubben-brann-v0000",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/sportsklubben-brann-v0000-mono.png"
       ]
     },
     {
       "name": "THE Celtic Football Club",
       "slug": "the-celtic-football-club-v1995",
-      "file": "the-celtic-football-club-v1995-mono.png",
+      "file": "uel/the-celtic-football-club-v1995-mono.png",
       "aliases": [
         "THE Celtic Football Club",
         "Celtic"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Celtic-v1995-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/9b032a854488c8704a79f99fa31d0e75aa557d13-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/sfa/club/the-celtic-football-club-v1995",
       "packs": [
         "2026-27-uefa-europa-league"
+      ],
+      "files": [
+        "uel/the-celtic-football-club-v1995-mono.png"
+      ]
+    },
+    {
+      "name": "Trabzonspor Kulubu",
+      "slug": "trabzonspor-kulubu-v2022",
+      "file": "uecl/trabzonspor-kulubu-v2022-mono.png",
+      "aliases": [
+        "Trabzonspor Kulubu"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Trabzonspor-v2022-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/9e49c6e0aeda3d47b6bee63497dcab6e2d774bac-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/tff/club/trabzonspor-kulubu-v2022",
+      "packs": [
+        "2026-27-uefa-conference-league"
+      ],
+      "files": [
+        "uecl/trabzonspor-kulubu-v2022-mono.png"
       ]
     },
     {
       "name": "Unione Calcio Sampdoria",
       "slug": "unione-calcio-sampdoria-v1997",
-      "file": "unione-calcio-sampdoria-v1997-mono.png",
+      "file": "serie-b/unione-calcio-sampdoria-v1997-mono.png",
       "aliases": [
         "Unione Calcio Sampdoria",
         "Sampdoria"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Unione-Calcio-Sampdoria-v1997-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/fe93dbaba19e4a05a80b7a4fe79b469d697be1b2-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/unione-calcio-sampdoria-v1997",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/unione-calcio-sampdoria-v1997-mono.png"
       ]
     },
     {
       "name": "Unione Sportiva Avellino 1912",
       "slug": "unione-sportiva-avellino-1912-v2015",
-      "file": "unione-sportiva-avellino-1912-v2015-mono.png",
+      "file": "serie-b/unione-sportiva-avellino-1912-v2015-mono.png",
       "aliases": [
         "Unione Sportiva Avellino 1912",
         "US Avellino"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/US-Avellino-1912-v2015-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/d741be7462371328b2242c5c49708cf937da2f19-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/unione-sportiva-avellino-1912-v2015",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/unione-sportiva-avellino-1912-v2015-mono.png"
       ]
     },
     {
       "name": "Unione Sportiva Catanzaro 1929",
       "slug": "unione-sportiva-catanzaro-1929-v2018",
-      "file": "unione-sportiva-catanzaro-1929-v2018-mono.png",
+      "file": "serie-b/unione-sportiva-catanzaro-1929-v2018-mono.png",
       "aliases": [
         "Unione Sportiva Catanzaro 1929",
         "Catanzaro"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/US-Catanzaro-1929-v2018-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/61c36c16275d8eca7b29fbc44c85d12934b226c2-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/unione-sportiva-catanzaro-1929-v2018",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/unione-sportiva-catanzaro-1929-v2018-mono.png"
       ]
     },
     {
       "name": "Venezia Football Club",
       "slug": "venezia-football-club-v2026",
-      "file": "venezia-football-club-v2026-mono.png",
+      "file": "serie-a/venezia-football-club-v2026-mono.png",
       "aliases": [
         "Venezia Football Club",
         "Venezia"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Venezia-FC-v2026-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/1a4b205550fd0cc48bbb1e553b740e478c1225b4-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/venezia-football-club-v2026",
       "packs": [
         "2026-27-serie-a"
+      ],
+      "files": [
+        "serie-a/venezia-football-club-v2026-mono.png"
+      ]
+    },
+    {
+      "name": "Viking Fotballklubb",
+      "slug": "viking-fotballklubb-v2020",
+      "file": "ucl/viking-fotballklubb-v2020-mono.png",
+      "aliases": [
+        "Viking Fotballklubb"
+      ],
+      "variant": "mono",
+      "source_url": "https://assets.fclogo.top/png/Viking-FK-mono.png",
+      "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/62467af8f1f98ea9d116000bea67dd2772d18a6c-800x800.png?w=320&fm=webp&q=80",
+      "detail_path": "/nff/club/viking-fotballklubb-v2020",
+      "packs": [
+        "2026-27-uefa-champions-league"
+      ],
+      "files": [
+        "ucl/viking-fotballklubb-v2020-mono.png"
       ]
     },
     {
       "name": "Virtus Entella",
       "slug": "virtus-entella-v2026",
-      "file": "virtus-entella-v2026-mono.png",
+      "file": "serie-b/virtus-entella-v2026-mono.png",
       "aliases": [
         "Virtus Entella"
       ],
       "variant": "mono",
-      "mono_derived": false,
       "source_url": "https://assets.fclogo.top/png/Virtus-Entella-v2026-mono.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/5a17e560f4ffafcb37f2ed503f16621dc619e009-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/virtus-entella-v2026",
       "packs": [
         "2026-27-serie-b"
+      ],
+      "files": [
+        "serie-b/virtus-entella-v2026-mono.png"
       ]
     }
   ]
