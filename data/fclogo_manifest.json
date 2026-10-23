@@ -678,7 +678,7 @@
       "aliases": [
         "Liverpool Football Club"
       ],
-      "variant": "mono",
+      "variant": "single",
       "source_url": "https://assets.fclogo.top/png/Liverpool-Football-Club-v2024-minor.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/735455c696d234ba62418562f5a522e4279dfe40-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/thefa/club/Liverpool-Football-Club-v2024-minor",
@@ -842,8 +842,8 @@
       "slug": "Racing-Club-de-Lens-v2014",
       "file": "ucl/Racing-Club-de-Lens-v2014-mono.png",
       "aliases": [
-        "Lens",
-        "Racing Club DE Lens"
+        "Racing Club DE Lens",
+        "Lens"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/Racing-Club-de-Lens-v2014-mono.png",
@@ -1158,10 +1158,10 @@
       "slug": "aarhus-gymnastikforening-v0000",
       "file": "uecl/aarhus-gymnastikforening-v0000-mono.png",
       "aliases": [
-        "AGF",
-        "Aarhus Gymnastikforening"
+        "Aarhus Gymnastikforening",
+        "AGF"
       ],
-      "variant": "mono",
+      "variant": "single",
       "source_url": "https://assets.fclogo.top/png/AGF-Aarhus.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/8687793057e67202d98fd4b992ad60f49afe5d88-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/dbu/club/aarhus-gymnastikforening-v0000",
@@ -1177,8 +1177,8 @@
       "slug": "aek-football-club-v2014",
       "file": "ucl/aek-football-club-v2014-mono.png",
       "aliases": [
-        "AEK Athens",
-        "AEK Football Club"
+        "AEK Football Club",
+        "AEK Athens"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/aek-football-club-v2014-mono.png",
@@ -1557,8 +1557,8 @@
       "slug": "football-club-copenhagen-v2024",
       "file": "uecl/football-club-copenhagen-v2024-mono.png",
       "aliases": [
-        "F.C. København",
-        "Football Club Copenhagen"
+        "Football Club Copenhagen",
+        "F.C. København"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/FC_Copenhagen_v2024-mono.png",
@@ -1578,7 +1578,7 @@
       "aliases": [
         "Football Club Iberia 1999"
       ],
-      "variant": "mono",
+      "variant": "single",
       "source_url": "https://assets.fclogo.top/png/FC-Iberia-1999-Tbilisi.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ea10be7321a1c71b755820223dfa77af668f9d59-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/gff/club/football-club-iberia-1999-v0000",
@@ -1648,8 +1648,8 @@
       "slug": "football-club-nordsjlland-v2019",
       "file": "uecl/football-club-nordsjlland-v2019-mono.png",
       "aliases": [
-        "FC Nordsjælland",
-        "Football Club Nordsjlland"
+        "Football Club Nordsjlland",
+        "FC Nordsjælland"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/FC-Nordsj-lland-v2019-mono.png",
@@ -1722,8 +1722,8 @@
       "slug": "fotballklubben-bodglimt-v0000",
       "file": "ucl/fotballklubben-bodglimt-v0000-mono.png",
       "aliases": [
-        "Bodo/Glimt",
-        "Fotballklubben Bodglimt"
+        "Fotballklubben Bodglimt",
+        "Bodo/Glimt"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/FK-Bodo-Glimt-v0000-mono.png",
@@ -1743,7 +1743,7 @@
       "aliases": [
         "Fotbalovy Klub Jablonec"
       ],
-      "variant": "mono",
+      "variant": "single",
       "source_url": "https://assets.fclogo.top/png/FK-Jablonec-v2026.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/e3b6dfe0604e0164c539ec4d191c5f0e2b48973d-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/facr/club/fotbalovy-klub-jablonec-v2026",
@@ -2036,8 +2036,8 @@
       "slug": "koninklijke-atletiek-associatie-gent-v2013",
       "file": "uecl/koninklijke-atletiek-associatie-gent-v2013-mono.png",
       "aliases": [
-        "KAA Gent",
-        "Koninklijke Atletiek Associatie Gent"
+        "Koninklijke Atletiek Associatie Gent",
+        "KAA Gent"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/KAA-Gent-2013-mono.png",
@@ -2073,8 +2073,8 @@
       "slug": "kuopion-palloseura-v0000",
       "file": "uecl/kuopion-palloseura-v0000-mono.png",
       "aliases": [
-        "KuPS Kuopio",
-        "Kuopion Palloseura"
+        "Kuopion Palloseura",
+        "KuPS Kuopio"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/KuPS-Kuopio-mono.png",
@@ -2132,7 +2132,7 @@
       "aliases": [
         "Lincoln RED Imps Football Club"
       ],
-      "variant": "mono",
+      "variant": "single",
       "source_url": "https://assets.fclogo.top/png/Lincoln-Red-Imps.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/0cc0bc7ea66942a311e5b57c54bc096d15854aee-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/gfa/club/lincoln-red-imps-football-club-v0000",
@@ -2148,8 +2148,8 @@
       "slug": "linzer-athletik-sport-klub-v2023",
       "file": "ucl/linzer-athletik-sport-klub-v2023-mono.png",
       "aliases": [
-        "LASK Linz",
-        "Linzer Athletik Sport Klub"
+        "Linzer Athletik Sport Klub",
+        "LASK Linz"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/LASK-v2023-mono.png",
@@ -2354,8 +2354,8 @@
       "slug": "philips-sport-vereniging-v2016",
       "file": "ucl/philips-sport-vereniging-v2016-mono.png",
       "aliases": [
-        "PSV Eindhoven",
-        "Philips Sport Vereniging"
+        "Philips Sport Vereniging",
+        "PSV Eindhoven"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/PSV-Eindhoven-v2016-mono.png",
@@ -2394,7 +2394,7 @@
       "aliases": [
         "Professional Football Club Cska Sofia"
       ],
-      "variant": "mono",
+      "variant": "single",
       "source_url": "https://assets.fclogo.top/png/PFC-CSKA-Sofia.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/a8f0bacae1a8b8a296204c2fb1dbe8f77b84c084-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/bfu/club/professional-football-club-cska-sofia-v0000",
@@ -2562,8 +2562,8 @@
       "slug": "sporting-clube-de-braga-v2018",
       "file": "uecl/sporting-clube-de-braga-v2018-mono.png",
       "aliases": [
-        "Braga",
-        "Sporting Clube DE Braga"
+        "Sporting Clube DE Braga",
+        "Braga"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/SK-Braga-v2018-mono.png",
@@ -2581,8 +2581,8 @@
       "slug": "sporting-clube-de-portugal-v2026",
       "file": "ucl/sporting-clube-de-portugal-v2026-mono.png",
       "aliases": [
-        "Sporting CP",
-        "Sporting Clube DE Portugal"
+        "Sporting Clube DE Portugal",
+        "Sporting CP"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/Sporting-CP-v2026-mono.png",
@@ -2619,8 +2619,8 @@
       "slug": "sportovn-klub-slavia-praha-fotbal-v2022",
       "file": "ucl/sportovn-klub-slavia-praha-fotbal-v2022-mono.png",
       "aliases": [
-        "Slavia Prague",
-        "Sportovn Klub Slavia Praha Fotbal"
+        "Sportovn Klub Slavia Praha Fotbal",
+        "Slavia Prague"
       ],
       "variant": "mono",
       "source_url": "https://assets.fclogo.top/png/SK-Slavia-Praha-v0000-mono.png",
@@ -2658,7 +2658,7 @@
       "aliases": [
         "Sportsklubben Brann"
       ],
-      "variant": "mono",
+      "variant": "single",
       "source_url": "https://assets.fclogo.top/png/SK-Brann.png",
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/b88067d862b5ccf4f1593ccddb7502d28d8dd432-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/nff/club/sportsklubben-brann-v0000",
