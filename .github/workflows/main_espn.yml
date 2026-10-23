@@ -23,7 +23,7 @@ on:
         type: choice
         options:
           - Juventus Reborn
-          - Bot JR (test, messaggi cancellati dopo 20 min)
+          - Bot JR (test)
 
 permissions:
   actions: write
