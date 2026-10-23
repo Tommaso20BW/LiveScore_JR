@@ -60,10 +60,10 @@ jobs:
         uses: actions/cache@v6
         with:
           # Il manifest arriva da Git, mai da una cache precedente agli alias manuali.
-          path: assets/goal_graphics/team_logos/fclogo_cache/*.png
-          key: fclogo-pngs-v2-${{ runner.os }}-${{ github.run_id }}
+          path: assets/goal_graphics/team_logos/**/*.png
+          key: fclogo-pngs-v3-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
-            fclogo-pngs-v2-${{ runner.os }}-
+            fclogo-pngs-v3-${{ runner.os }}-
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -88,7 +88,7 @@ jobs:
       - name: Sync seasonal FCLogo team logos
         id: fclogo_sync
         continue-on-error: true
-        run: python -u -m livescore sync-logos --output-dir assets/goal_graphics/team_logos/fclogo_cache
+        run: python -u -m livescore sync-logos --output-dir assets/goal_graphics/team_logos
 
       - name: Publish seasonal FCLogo team logos
         if: ${{ steps.fclogo_sync.outcome == 'success' }}
@@ -117,7 +117,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p data
-          cp assets/goal_graphics/team_logos/fclogo_cache/manifest.json data/fclogo_manifest.json
+          cp assets/goal_graphics/team_logos/manifest.json data/fclogo_manifest.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/fclogo_manifest.json

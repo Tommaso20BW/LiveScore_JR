@@ -26,7 +26,6 @@ from livescore.paths import ASSETS_DIR, DATA_DIR, ROOT
 
 DEFAULT_ASSET_DIR = ASSETS_DIR
 REGISTRY_PATH = DATA_DIR / "goal_players.json"
-FCLOGO_CACHE_DIRNAME = "fclogo_cache"
 FCLOGO_MANIFEST_FILENAME = "manifest.json"
 
 POSES = ("arms_crossed", "pointing")
@@ -254,7 +253,8 @@ def _local_team_logo_path(
     team_id: str = "",
 ) -> Path | None:
     """Risolve gli alias ESPN verso i loghi locali provenienti da FCLogo."""
-    dynamic_dir = asset_dir / "team_logos" / FCLOGO_CACHE_DIRNAME
+    # Manifest in team_logos/, PNG nelle sottocartelle per competizione (campo "file").
+    dynamic_dir = asset_dir / "team_logos"
     return _logo_path_from_manifest(
         team_name,
         dynamic_dir / FCLOGO_MANIFEST_FILENAME,

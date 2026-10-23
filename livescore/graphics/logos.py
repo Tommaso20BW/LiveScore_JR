@@ -13,6 +13,7 @@ import hashlib
 import io
 import json
 import re
+import shutil
 from dataclasses import dataclass, field
 from datetime import date
 from html.parser import HTMLParser
@@ -29,8 +30,19 @@ from livescore.paths import ASSETS_DIR
 
 BASE_URL = "https://fclogo.top"
 ASSET_BASE_URL = "https://assets.fclogo.top/png"
-DEFAULT_LOGO_DIR = ASSETS_DIR / "team_logos" / "fclogo_cache"
+DEFAULT_LOGO_DIR = ASSETS_DIR / "team_logos"
 MANIFEST_FILENAME = "manifest.json"
+# Vecchia sottocartella unica: letta una volta per migrare manifest e alias, poi rimossa.
+LEGACY_DIRNAME = "fclogo_cache"
+# Una cartella per competizione, in ordine di priorita': la prima e' quella del
+# campo "file" del manifest; una squadra in piu' competizioni ha una copia in ognuna.
+COMPETITION_FOLDERS = (
+    ("serie-a", "serie-a"),
+    ("serie-b", "serie-b"),
+    ("uefa-champions-league", "ucl"),
+    ("uefa-europa-league", "uel"),
+    ("uefa-conference-league", "uecl"),
+)
 USER_AGENT = "LiveScore_JR/1.0 (+https://github.com/Tommaso20BW/LiveScore_JR)"
 MAX_PACK_PAGES = 8
 MAX_PARALLEL_DOWNLOADS = 3
@@ -247,6 +259,18 @@ def select_pack_records(
     return selected, errors
 
 
+def competition_folder(pack_slug: str) -> str:
+    for suffix, folder in COMPETITION_FOLDERS:
+        if pack_slug.endswith(f"-{suffix}"):
+            return folder
+    return "altro"
+
+
+def _club_folders(pack_slugs: set[str]) -> list[str]:
+    order = [folder for _, folder in COMPETITION_FOLDERS] + ["altro"]
+    return sorted({competition_folder(slug) for slug in pack_slugs}, key=order.index)
+
+
 def _read_manifest(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -351,6 +375,7 @@ def _download_logo(
     session: requests.Session,
     club: ClubRecord,
     output_dir: Path,
+    folder: str,
 ) -> tuple[str, str, str]:
     """Salva sempre il PNG mono. Ordine: pagina "-mono" ufficiale, linguetta Mono
     nella pagina del club; se FCLogo pubblica un'unica versione, quella e' gia'
@@ -367,8 +392,9 @@ def _download_logo(
         except (requests.RequestException, FCLogoSyncError) as exc:
             errors.append(f"{variant}: {exc}")
             continue
-        filename = _safe_filename(base_slug, "mono")
+        filename = f"{folder}/{_safe_filename(base_slug, 'mono')}"
         destination = output_dir / filename
+        destination.parent.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_suffix(".png.tmp")
         temporary.write_bytes(response.content)
         temporary.replace(destination)
@@ -417,6 +443,13 @@ def sync_current_season(
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir / MANIFEST_FILENAME
     previous = _read_manifest(manifest_path)
+    legacy_dir = output_dir / LEGACY_DIRNAME
+    if not previous and (legacy_dir / MANIFEST_FILENAME).is_file():
+        # Migrazione da team_logos/fclogo_cache: i file vecchi restano riusabili.
+        previous = _read_manifest(legacy_dir / MANIFEST_FILENAME)
+        for item in previous.get("teams", []):
+            if isinstance(item, dict) and item.get("file"):
+                item["file"] = f"{LEGACY_DIRNAME}/{item['file']}"
     previous_teams = {
         str(item.get("slug", "")): item
         for item in previous.get("teams", [])
@@ -470,7 +503,7 @@ def sync_current_season(
             and _valid_png(old_path)
         )
         if unchanged:
-            filename = old_path.name
+            filename = f"{_club_folders(club_packs[club_slug])[0]}/{old_path.name}"
             variant = str(old.get("variant", "mono"))
             source_url = str(old.get("source_url", ""))
             report.reused += 1
@@ -495,7 +528,7 @@ def sync_current_season(
         download_http = http if session is not None else _new_session()
         try:
             filename, variant, source_url = _download_logo(
-                download_http, club, output_dir
+                download_http, club, output_dir, _club_folders(club_packs[club_slug])[0]
             )
             return club_slug, club, filename, variant, source_url, True, ""
         except FCLogoSyncError as exc:
@@ -503,7 +536,7 @@ def sync_current_season(
                 return (
                     club_slug,
                     club,
-                    old_path.name,
+                    f"{_club_folders(club_packs[club_slug])[0]}/{old_path.name}",
                     str(old.get("variant", "cached")),
                     str(old.get("source_url", "")),
                     False,
@@ -544,6 +577,29 @@ def sync_current_season(
 
     preserve_manifest_aliases(updated_teams, previous_teams)
 
+    # Copie per competizione: il file principale nasce (o si sposta) nella prima
+    # cartella, poi si copia nelle altre competizioni della squadra.
+    for club_slug, item in updated_teams.items():
+        name = Path(str(item.get("file", ""))).name
+        if not name:
+            continue
+        folders = _club_folders(set(item.get("packs", []))) if club_slug in clubs_by_slug else []
+        old = previous_teams.get(club_slug, {})
+        sources = [output_dir / str(item["file"]), output_dir / str(old.get("file", ""))]
+        source = next((path for path in sources if path.is_file() and _valid_png(path)), None)
+        if source is None:
+            continue
+        files = [f"{folder}/{name}" for folder in folders] or [str(item["file"])]
+        for relative in files:
+            target = output_dir / relative
+            if target.resolve() == source.resolve():
+                continue
+            if not target.is_file() or target.read_bytes() != source.read_bytes():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, target)
+        item["file"] = files[0]
+        item["files"] = files
+
     manifest = {
         "source": f"{BASE_URL}/",
         "season": label,
@@ -569,14 +625,20 @@ def sync_current_season(
         # nuovo manifest rimuoviamo i PNG non più referenziati. Questo elimina
         # squadre uscite e vecchie versioni di stemmi al cambio stagione.
         referenced_files = {
-            str(item.get("file", ""))
+            relative
             for item in manifest["teams"]
-            if item.get("file")
+            for relative in (item.get("files") or [item.get("file", "")])
+            if relative
         }
-        for logo_path in output_dir.glob("*.png"):
-            if logo_path.name not in referenced_files:
+        for logo_path in sorted(output_dir.rglob("*.png")):
+            if logo_path.relative_to(output_dir).as_posix() not in referenced_files:
                 logo_path.unlink()
                 report.removed += 1
+        if legacy_dir.is_dir():
+            shutil.rmtree(legacy_dir)
+        for folder in sorted(output_dir.iterdir()):
+            if folder.is_dir() and not any(folder.iterdir()):
+                folder.rmdir()
 
     report.teams = len(clubs_by_slug)
     return report

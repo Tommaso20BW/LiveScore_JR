@@ -71,5 +71,5 @@ class ManualAliasTests(unittest.TestCase):
 
     def test_workflow_caches_only_pngs_not_manual_manifest(self):
         workflow = (ROOT / ".github/workflows/main_espn.yml").read_text(encoding="utf-8")
-        self.assertIn("path: assets/goal_graphics/team_logos/fclogo_cache/*.png", workflow)
+        self.assertIn("path: assets/goal_graphics/team_logos/**/*.png", workflow)
         self.assertNotIn("fclogo-team-logos-", workflow)

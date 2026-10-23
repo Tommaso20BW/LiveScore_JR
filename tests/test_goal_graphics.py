@@ -115,7 +115,7 @@ class GoalGraphicsTests(unittest.TestCase):
 
 
     def test_dynamic_fclogo_manifest_is_preferred_and_fuzzy_matched(self):
-        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir = self.root / "team_logos"
         dynamic_dir.mkdir()
         Image.new("RGBA", (20, 20), (25, 80, 170, 255)).save(
             dynamic_dir / "SL-Benfica-v2025-mono.png"
@@ -135,7 +135,7 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertEqual(resolved.parent, dynamic_dir)
 
     def test_team_logo_layer_uses_goal_color_and_preserves_transparency(self):
-        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir = self.root / "team_logos"
         dynamic_dir.mkdir()
         source_path = dynamic_dir / "Original-Club-v2026-mono.png"
         source = Image.new("RGBA", (20, 10), (15, 90, 210, 255))
@@ -171,7 +171,7 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertEqual(logo.getpixel((0, 0))[:3], (15, 90, 210))
 
     def test_manual_espn_alias_selects_logo_without_legacy_registry(self):
-        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir = self.root / "team_logos"
         dynamic_dir.mkdir()
         Image.new("RGBA", (20, 20), "white").save(dynamic_dir / "nec.png")
         (dynamic_dir / "manifest.json").write_text(json.dumps({"teams": [{
@@ -187,7 +187,7 @@ class GoalGraphicsTests(unittest.TestCase):
             "Unrelated Club", self.root, "999"))
 
     def test_exact_manual_alias_wins_over_fuzzy_but_duplicate_is_rejected(self):
-        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir = self.root / "team_logos"
         dynamic_dir.mkdir()
         Image.new("RGBA", (20, 20), "white").save(dynamic_dir / "club.png")
         teams = [
@@ -203,7 +203,7 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertIsNone(goal_graphics._local_team_logo_path("ESPN Aurora", self.root))
 
     def test_ambiguous_manifest_uses_original_remote_logo(self):
-        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir = self.root / "team_logos"
         dynamic_dir.mkdir()
         Image.new("RGBA", (20, 20), "white").save(dynamic_dir / "club.png")
         (dynamic_dir / "manifest.json").write_text(json.dumps({"teams": [
@@ -217,7 +217,7 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertEqual(logo.getpixel((0, 0))[:3], (15, 90, 210))
 
     def test_espn_fallback_stays_original_when_local_logo_is_invalid(self):
-        dynamic_dir = self.root / "team_logos" / "fclogo_cache"
+        dynamic_dir = self.root / "team_logos"
         dynamic_dir.mkdir()
         (dynamic_dir / "invalid.png").write_bytes(b"not an image")
         (dynamic_dir / "manifest.json").write_text(
