@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
-from PIL import Image
+from PIL import Image, ImageChops
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from livescore.core.team_matching import normalize_team_name as _normalize, unique_aliases
@@ -33,6 +33,7 @@ DEFAULT_LOGO_DIR = ASSETS_DIR / "team_logos" / "fclogo_cache"
 MANIFEST_FILENAME = "manifest.json"
 USER_AGENT = "LiveScore_JR/1.0 (+https://github.com/Tommaso20BW/LiveScore_JR)"
 MAX_PACK_PAGES = 8
+MAX_PARALLEL_DOWNLOADS = 3
 
 
 class FCLogoSyncError(RuntimeError):
@@ -156,11 +157,15 @@ def _get(session: requests.Session, url: str, timeout: int = 15) -> requests.Res
 
 def _new_session() -> requests.Session:
     session = requests.Session()
+    # FCLogo risponde 503 se lo si interroga troppo in fretta: piu' tentativi con
+    # attese crescenti (1s, 2s, 4s, 8s) e rispetto di Retry-After, cosi' un picco
+    # non fa fallire il giro e non invalida la cache del manifest.
     retry = Retry(
-        total=2,
-        backoff_factor=0.5,
+        total=4,
+        backoff_factor=1.0,
         status_forcelist=(429, 500, 502, 503, 504),
         allowed_methods=frozenset({"GET"}),
+        respect_retry_after_header=True,
     )
     session.mount("https://", HTTPAdapter(max_retries=retry, pool_maxsize=8))
     return session
@@ -278,6 +283,31 @@ def _validate_png_bytes(content: bytes) -> None:
         raise FCLogoSyncError(f"asset PNG non valido: {exc}") from exc
 
 
+def mono_from_color(content: bytes) -> bytes:
+    """Riduce a mono (nero su trasparente) un logo che su FCLogo ha una sola versione.
+
+    Quando manca la variante mono il logo e' gia' monocolore di suo: la luminanza
+    diventa opacita', il tono piu' scuro resta pieno e il bianco sparisce, cosi'
+    le parti chiare interne restano fori come nei mono ufficiali.
+    """
+    with Image.open(io.BytesIO(content)) as image:
+        rgba = image.convert("RGBA")
+    alpha = rgba.getchannel("A")
+    luminance = rgba.convert("L")
+    visible = alpha.point(lambda value: 255 if value > 128 else 0)
+    histogram = luminance.histogram(mask=visible)
+    darkest = next((level for level, count in enumerate(histogram) if count), 0)
+    span = max(1, 255 - darkest)
+    opacity = luminance.point(
+        [255 if level <= darkest else max(0, round(255 * (255 - level) / span)) for level in range(256)]
+    )
+    mono = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
+    mono.putalpha(ImageChops.multiply(alpha, opacity))
+    output = io.BytesIO()
+    mono.save(output, format="PNG", optimize=True)
+    return output.getvalue()
+
+
 def _safe_filename(slug: str, variant: str) -> str:
     base = re.sub(r"[^A-Za-z0-9._-]+", "-", re.sub(r"-mono$", "", slug, flags=re.I))
     return f"{base}-{variant}.png"
@@ -311,6 +341,34 @@ def _asset_url_from_detail(page_html: str, *, variant: str) -> str:
     raise FCLogoSyncError("pagina senza URL PNG ufficiale")
 
 
+class _VariantTabParser(HTMLParser):
+    """Legge le linguette "Color"/"Mono" sotto il logo nella pagina del club.
+
+    Alcuni club non hanno una pagina "-mono" separata: la versione mono e' solo
+    una linguetta, gia' presente nell'HTML del server (immagine su Sanity con
+    alt "<club> - Mono"). Senza parametri l'URL Sanity restituisce il PNG originale.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.urls: dict[str, str] = {}
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag != "img":
+            return
+        attributes = dict(attrs)
+        match = re.search(r"\s-\s(mono|color)\s*$", attributes.get("alt") or "", re.IGNORECASE)
+        source = (attributes.get("src") or "").split("?", 1)[0]
+        if match and source.startswith("https://cdn.sanity.io/") and source.casefold().endswith(".png"):
+            self.urls.setdefault(match.group(1).casefold(), source)
+
+
+def _mono_tab_url(page_html: str) -> str:
+    parser = _VariantTabParser()
+    parser.feed(page_html)
+    return parser.urls.get("mono", "")
+
+
 def _detail_url(club: ClubRecord, variant: str) -> str:
     path = club.detail_path or f"/club/{club.slug}"
     path = re.sub(r"-mono$", "", path, flags=re.IGNORECASE)
@@ -323,24 +381,32 @@ def _download_logo(
     session: requests.Session,
     club: ClubRecord,
     output_dir: Path,
-) -> tuple[str, str, str]:
+) -> tuple[str, str, str, bool]:
+    """Salva sempre un PNG mono. Ordine: pagina "-mono" ufficiale, linguetta Mono
+    nella pagina del club, e solo se FCLogo pubblica un'unica versione la si
+    converte in mono. Restituisce (file, variante, url, ricavato)."""
     base_slug = re.sub(r"-mono$", "", club.slug, flags=re.IGNORECASE)
     errors: list[str] = []
     for variant in ("mono", "color"):
         try:
             detail_response = _get(session, _detail_url(club, variant))
-            url = _asset_url_from_detail(detail_response.text, variant=variant)
+            tab_url = _mono_tab_url(detail_response.text) if variant == "color" else ""
+            url = tab_url or _asset_url_from_detail(detail_response.text, variant=variant)
             response = _get(session, url)
             _validate_png_bytes(response.content)
+            derived = variant != "mono" and not tab_url
+            content = mono_from_color(response.content) if derived else response.content
+            if derived:
+                _validate_png_bytes(content)
         except (requests.RequestException, FCLogoSyncError) as exc:
             errors.append(f"{variant}: {exc}")
             continue
-        filename = _safe_filename(base_slug, variant)
+        filename = _safe_filename(base_slug, "mono")
         destination = output_dir / filename
         temporary = destination.with_suffix(".png.tmp")
-        temporary.write_bytes(response.content)
+        temporary.write_bytes(content)
         temporary.replace(destination)
-        return filename, variant, url
+        return filename, "mono", url, derived
     raise FCLogoSyncError("; ".join(errors))
 
 
@@ -448,6 +514,7 @@ def sync_current_season(
                 "file": filename,
                 "aliases": _club_aliases(club),
                 "variant": variant,
+                "mono_derived": bool(old.get("mono_derived", False)),
                 "source_url": source_url,
                 "preview_url": club.preview_url,
                 "detail_path": club.detail_path,
@@ -458,14 +525,14 @@ def sync_current_season(
 
     def fetch_logo(
         item: tuple[str, ClubRecord, dict[str, Any], Path],
-    ) -> tuple[str, ClubRecord, str, str, str, bool, str]:
+    ) -> tuple[str, ClubRecord, str, str, str, bool, bool, str]:
         club_slug, club, old, old_path = item
         download_http = http if session is not None else _new_session()
         try:
-            filename, variant, source_url = _download_logo(
+            filename, variant, source_url, derived = _download_logo(
                 download_http, club, output_dir
             )
-            return club_slug, club, filename, variant, source_url, True, ""
+            return club_slug, club, filename, variant, source_url, derived, True, ""
         except FCLogoSyncError as exc:
             if previous.get("season") == label and _valid_png(old_path):
                 return (
@@ -474,19 +541,20 @@ def sync_current_season(
                     old_path.name,
                     str(old.get("variant", "cached")),
                     str(old.get("source_url", "")),
+                    bool(old.get("mono_derived", False)),
                     False,
                     "",
                 )
-            return club_slug, club, "", "", "", False, str(exc)
+            return club_slug, club, "", "", "", False, False, str(exc)
 
     if session is not None or len(pending_downloads) <= 1:
         fetched = map(fetch_logo, pending_downloads)
     else:
-        executor = ThreadPoolExecutor(max_workers=min(6, len(pending_downloads)))
+        executor = ThreadPoolExecutor(max_workers=min(MAX_PARALLEL_DOWNLOADS, len(pending_downloads)))
         fetched = executor.map(fetch_logo, pending_downloads)
 
     try:
-        for club_slug, club, filename, variant, source_url, downloaded, error in fetched:
+        for club_slug, club, filename, variant, source_url, derived, downloaded, error in fetched:
             if error:
                 report.failed += 1
                 report.errors.append(f"{club.name}: {error}")
@@ -501,6 +569,8 @@ def sync_current_season(
                 "file": filename,
                 "aliases": _club_aliases(club),
                 "variant": variant,
+                # True: FCLogo pubblica una sola versione, il mono e' ricavato da quella.
+                "mono_derived": derived,
                 "source_url": source_url,
                 "preview_url": club.preview_url,
                 "detail_path": club.detail_path,

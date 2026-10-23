@@ -367,7 +367,7 @@ class FCLogoSyncTests(unittest.TestCase):
         )
         self.assertEqual(manifest["season"], "2025-26")
 
-    def test_color_asset_is_used_only_when_mono_is_unavailable(self):
+    def test_single_version_logo_is_converted_to_mono(self):
         pack_slug = "2026-27-serie-b"
         club_slug = "US-Palermo-v2024"
         mono_detail_url = f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono"
@@ -394,7 +394,98 @@ class FCLogoSyncTests(unittest.TestCase):
         manifest = json.loads(
             (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
         )
-        self.assertEqual(manifest["teams"][0]["variant"], "color")
+        team = manifest["teams"][0]
+        self.assertEqual(team["variant"], "mono")
+        self.assertTrue(team["mono_derived"])
+        self.assertEqual(team["source_url"], color_url)
+        self.assertTrue(team["file"].endswith("-mono.png"))
+        with Image.open(self.output_dir / team["file"]) as image:
+            rgba = image.convert("RGBA")
+        # Nero su trasparente, con la sagoma originale ancora piena.
+        self.assertEqual(rgba.convert("RGB").getextrema(), ((0, 0), (0, 0), (0, 0)))
+        self.assertEqual(rgba.getchannel("A").getextrema(), (255, 255))
+
+    def test_mono_tab_on_club_page_is_used_when_mono_page_is_missing(self):
+        pack_slug = "2026-27-serie-a"
+        club_slug = "ssc-napoli-v2024"
+        color_url = f"{fclogo_sync.ASSET_BASE_URL}/SSC-Napoli-v2024.png"
+        tab_url = "https://cdn.sanity.io/images/x/production/abc-800x800.png"
+        club_page = (
+            detail_page(color_url)
+            + f'<img alt="SSC Napoli - Color" src="https://cdn.sanity.io/images/x/production/def-800x800.png?w=160">'
+            + f'<img alt="SSC Napoli - Mono" src="{tab_url}?w=160&amp;fm=webp">'
+        )
+        official_mono = png_bytes((0, 0, 0, 255))
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(
+                text=pack_listing(pack_slug)
+            ),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(
+                text=pack_page((club_slug, "Napoli", "one"))
+            ),
+            f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono": FakeResponse(status=404),
+            f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}": FakeResponse(text=club_page),
+            tab_url: FakeResponse(content=official_mono),
+        })
+        fclogo_sync.sync_current_season(
+            output_dir=self.output_dir,
+            session=session,
+            today=date(2026, 9, 1),
+        )
+        manifest = json.loads(
+            (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
+        )
+        team = manifest["teams"][0]
+        self.assertEqual((team["variant"], team["mono_derived"], team["source_url"]), ("mono", False, tab_url))
+        self.assertEqual((self.output_dir / team["file"]).read_bytes(), official_mono)
+
+    def test_mono_from_color_turns_light_areas_into_holes(self):
+        source = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+        for x in range(10):
+            source.putpixel((x, 0), (30, 60, 150, 255))   # tono scuro: pieno
+            source.putpixel((x, 1), (255, 255, 255, 255))  # bianco interno: foro
+        output = io.BytesIO()
+        source.save(output, format="PNG")
+        with Image.open(io.BytesIO(fclogo_sync.mono_from_color(output.getvalue()))) as image:
+            alpha = image.convert("RGBA").getchannel("A")
+        self.assertEqual(alpha.getpixel((0, 0)), 255)
+        self.assertEqual(alpha.getpixel((0, 1)), 0)
+        self.assertEqual(alpha.getpixel((0, 5)), 0)
+
+    def test_derived_mono_logo_is_reused_like_official_mono(self):
+        pack_slug = "2026-27-serie-b"
+        club_slug = "US-Palermo-v2024"
+        filename = f"{club_slug}-mono.png"
+        (self.output_dir / filename).write_bytes(png_bytes((0, 0, 0, 255)))
+        (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(json.dumps({
+            "season": "2026-27",
+            "teams": [{
+                "slug": club_slug, "name": "Palermo", "file": filename,
+                "variant": "mono", "mono_derived": True,
+                "preview_url": f"https://cdn.example/{club_slug}-one.png",
+                "packs": [pack_slug],
+            }],
+        }), encoding="utf-8")
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(
+                text=pack_listing(pack_slug)
+            ),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(
+                text=pack_page((club_slug, "Palermo", "one"))
+            ),
+        })
+        report = fclogo_sync.sync_current_season(
+            output_dir=self.output_dir,
+            session=session,
+            today=date(2026, 9, 1),
+        )
+        self.assertEqual((report.downloaded, report.reused, report.failed), (0, 1, 0))
+        manifest = json.loads(
+            (self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8")
+        )
+        self.assertTrue(manifest["teams"][0]["mono_derived"])
 
 
 if __name__ == "__main__":
