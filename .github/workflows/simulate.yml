@@ -1,5 +1,9 @@
 name: Simulazione partita
 
+# Partita finita        -> replay accelerato (pochi minuti reali).
+# Partita in corso/oggi -> live vero: il bot segue ESPN in tempo reale fino al fischio finale.
+# In entrambi i casi i messaggi vanno solo su Bot JR e a fine partita vengono cancellati.
+
 on:
   workflow_dispatch:
     inputs:
@@ -17,16 +21,44 @@ permissions:
   contents: read
   actions: write     # per cancellare i run vecchi della simulazione
 
-# Stesso gruppo del Live Score: la simulazione aspetta che il live finisca
-# (il token Canva ruota e due processi insieme si invaliderebbero a vicenda).
-concurrency:
-  group: juve-live-bot
-  cancel-in-progress: false
-
 jobs:
-  simulate:
+  mode:
+    name: Stato della partita
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.check.outputs.mode }}
+    steps:
+      - name: Replay o live?
+        id: check
+        shell: bash
+        env:
+          EVENT_ID: ${{ inputs.event_id }}
+        run: |
+          ID="$(echo "$EVENT_ID" | tr -d '[:space:]')"
+          STATE="$(curl -fsS --retry 3 "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/summary?event=$ID" \
+            | jq -r '.header.competitions[0].status.type.state // empty')" || true
+          case "$STATE" in
+            post)   MODE=replay ;;
+            pre|in) MODE=live ;;
+            *)      echo "::error::Partita $ID non trovata su ESPN"; exit 1 ;;
+          esac
+          echo "Stato ESPN: $STATE -> modalita' $MODE"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+  simulate:
+    name: Simulazione (${{ needs.mode.outputs.mode }})
+    needs: mode
+    runs-on: ubuntu-latest
+    # Il live dura quanto la partita vera (supplementari, rigori e post partita compresi).
+    timeout-minutes: 300
+
+    # Replay: stesso gruppo del Live Score, aspetta che il live finisca (usa Canva,
+    # e il token Canva ruota: due processi insieme si invaliderebbero a vicenda).
+    # Live: Canva spento, quindi puo' girare insieme al Live Score vero.
+    concurrency:
+      group: ${{ needs.mode.outputs.mode == 'live' && 'simulazione-live' || 'juve-live-bot' }}
+      cancel-in-progress: false
 
     steps:
       - name: Checkout repository
@@ -74,10 +106,12 @@ jobs:
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           EVENT_ID:             ${{ inputs.event_id }}
           SIM_DRY_RUN:          ${{ inputs.dry_run }}
+          SIM_MODE:             ${{ needs.mode.outputs.mode }}
         shell: bash
         run: |
-          ARGS=("$(echo "$EVENT_ID" | tr -d '[:space:]')")
+          ARGS=("$(echo "$EVENT_ID" | tr -d '[:space:]')" --mode "$SIM_MODE")
           [ "$SIM_DRY_RUN" = "true" ] && ARGS+=(--dry-run)
+          [ "$SIM_MODE" = "live" ] && ARGS+=(--no-canva)
           python -u -m livescore simulate "${ARGS[@]}" --output sim_output
 
       - name: Cancella i messaggi rimasti
@@ -96,13 +130,22 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  cleanup:
+    name: Pulisci la cronologia dei run
+    needs: [mode, simulate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
       - name: Pulisci la cronologia dei run
-        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-          KEEP: "5"   # tiene gli ultimi 5 run completati (piu' quello in corso)
+          KEEP: "0"   # 0 = cancella TUTTI i run precedenti; resta visibile solo quello in corso
+                      # (un run non puo' cancellare se' stesso mentre gira: limite di GitHub)
         run: |
-          gh api "repos/${{ github.repository }}/actions/workflows/simulate.yml/runs?status=completed&per_page=100"             --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
+          # Cancella i run COMPLETATI di questo stesso workflow,
+          # tenendo solo gli ultimi $KEEP.
+          gh api "repos/${{ github.repository }}/actions/workflows/simulate.yml/runs?status=completed&per_page=100" \
+            --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
           while read -r RUN_ID; do
             echo "Elimino run $RUN_ID"
             gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$RUN_ID" || true

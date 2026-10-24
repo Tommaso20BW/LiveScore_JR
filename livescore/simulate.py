@@ -1,16 +1,26 @@
-"""Simulazione di una partita ESPN gia' giocata, con il codice vero del LiveScore.
+"""Simulazione di una partita ESPN con il codice vero del LiveScore.
 
 Il bot gira esattamente come in diretta (stesse regole: grafiche solo per la
-Juventus e mai nelle amichevoli). Cambia solo cio' che sta intorno:
+Juventus e mai nelle amichevoli). Cambia solo cio' che sta intorno.
 
-- ESPN: il summary finale viene "riavvolto" e servito minuto per minuto;
-- orologio: avanza da solo, la partita dura pochi minuti reali;
-- Telegram: i messaggi vanno sul canale di test (Bot JR), uno ogni 20 secondi,
-  e a fine partita, dopo 5 minuti, vengono cancellati tutti;
+Due modalita', scelte da sole guardando lo stato della partita su ESPN:
+
+- **replay** (partita gia' finita): il summary finale viene "riavvolto" e
+  servito minuto per minuto, con un orologio che avanza da solo: la partita
+  dura pochi minuti reali; un messaggio ogni 20 secondi.
+- **live** (partita in corso o non ancora iniziata): ESPN e orologio sono
+  quelli veri, il bot segue la partita in tempo reale fino al fischio finale.
+  I click sui kit non arrivano (``getUpdates`` resta al LiveScore vero, che
+  puo' girare in contemporanea con lo stesso bot Telegram).
+
+In entrambe:
+
+- Telegram: i messaggi vanno solo sul canale di test (Bot JR) e a fine
+  partita, dopo 5 minuti, vengono cancellati tutti;
   con ``--dry-run`` non parte nulla e i messaggi restano solo nel report;
 - Gist e snapshot Canva: disattivati, nessuno stato reale toccato.
 
-Uso:  python -m livescore simulate <event_id> [--dry-run]
+Uso:  python -m livescore simulate <event_id> [--dry-run] [--mode auto|replay|live]
 """
 
 from __future__ import annotations
@@ -57,6 +67,9 @@ BREAK_STATUS = {
 CANVA_POLL_SECONDS = 3
 # Oltre questo margine dopo il fischio finale la simulazione si ferma comunque.
 POST_TIMEOUT_SECONDS = 3 * 3600
+# Secondi tra due messaggi: nel replay per leggerli con calma, nel live solo
+# per non superare i limiti di Telegram (gli eventi arrivano gia' distanziati).
+DEFAULT_INTERVAL = {"replay": 20.0, "live": 3.0}
 
 
 class SimulationTimeout(SystemExit):
@@ -285,11 +298,29 @@ def _file_bytes(value: Any) -> bytes | None:
     return None
 
 
+def match_state(summary: dict) -> str:
+    """Stato ESPN della partita: "pre", "in" o "post"."""
+    comp = (summary.get("header", {}).get("competitions") or [{}])[0]
+    return str(comp.get("status", {}).get("type", {}).get("state", "")).lower()
+
+
+def resolve_mode(summary: dict, mode: str = "auto") -> str:
+    """auto: replay se la partita e' finita, altrimenti live."""
+    if mode in ("replay", "live"):
+        return mode
+    return "replay" if match_state(summary) == "post" else "live"
+
+
 class Simulation:
     def __init__(self, final: dict, *, team_id: str, chat_id: str, dry_run: bool,
-                 interval: float, allow_canva: bool, output: Path) -> None:
+                 interval: float, allow_canva: bool, output: Path,
+                 live: bool = False, espn_session: Any = None) -> None:
+        self.live = live
         self.timeline = Timeline(final)
         self.final = final
+        # Nel live: ultimo summary vero letto dal bot (minuto nei log, risultato nel report).
+        self.latest = final
+        self.espn = espn_session or requests.Session()
         self.team_id = team_id
         self.chat_id = chat_id
         self.dry_run = dry_run
@@ -313,20 +344,47 @@ class Simulation:
         if self.started is None:
             self.started = self.clock.monotonic()
         value = self.clock.monotonic() - self.started
-        if value > self.timeline.end + POST_TIMEOUT_SECONDS:
+        # Nel live la durata la decide la partita vera (e il timeout del workflow).
+        if not self.live and value > self.timeline.end + POST_TIMEOUT_SECONDS:
             raise SimulationTimeout("Simulazione: il bot non ha chiuso la partita, mi fermo")
         return value
+
+    def minute(self) -> str:
+        """Minuto di gioco da mostrare nei log e nel report."""
+        if not self.live:
+            return self.timeline.label(self.elapsed())
+        comp = (self.latest.get("header", {}).get("competitions") or [{}])[0]
+        status = comp.get("status", {})
+        state = match_state(self.latest)
+        if state == "post":
+            return "FT"
+        if state == "pre":
+            return "pre"
+        return str(status.get("displayClock") or status.get("type", {}).get("shortDetail") or "live")
 
     # --- ESPN ---
     def summary(self) -> dict:
         return self.timeline.snapshot(self.elapsed())
+
+    def espn_get(self, url: str, params=None, **kwargs):
+        """Live: ESPN vero (con i retry del bot); il summary letto resta per log e report."""
+        response = self.espn.get(url, params=params, **kwargs)
+        if url.rstrip("/").endswith("/summary") and response.status_code == 200:
+            try:
+                data = response.json()
+                if data.get("header", {}).get("competitions"):
+                    self.latest = data
+            except ValueError:
+                pass
+        return response
 
     def partita(self) -> dict:
         comp = self.final["header"]["competitions"][0]
         league = self.final["header"].get("league", {})
         competitors = copy.deepcopy(comp["competitors"])
         for competitor in competitors:
-            competitor["score"] = "0"
+            if not self.live:          # nel replay la partita riparte da 0-0
+                competitor["score"] = "0"
         return {
             "event_id": str(self.final["header"].get("id") or comp.get("id")),
             "league_slug": league.get("slug") or "",
@@ -345,7 +403,9 @@ class Simulation:
             # arrivano dal Telegram vero, come nel live (live e simulazione non
             # girano mai insieme). Con l'orologio accelerato il ciclo e' rapidissimo:
             # al massimo una lettura vera ogni 2 secondi. In prova non c'e' niente da leggere.
-            if self.dry_run or REAL_TIME() - self.last_updates < 2:
+            # Nel live il LiveScore vero puo' girare insieme con lo stesso bot: i click
+            # restano a lui, altrimenti la simulazione glieli ruberebbe.
+            if self.dry_run or self.live or REAL_TIME() - self.last_updates < 2:
                 return FakeResponse({"ok": True, "result": []})
             self.last_updates = REAL_TIME()
             return self.real.post(url, json=payload, data=data, timeout=timeout)
@@ -425,7 +485,7 @@ class Simulation:
             except Exception:
                 text = ""
         self.log.append({
-            "minuto": self.timeline.label(self.elapsed()),
+            "minuto": self.minute(),
             "metodo": method,
             "testo": str(text),
             "immagine": image,
@@ -445,13 +505,16 @@ class Simulation:
         delete_pending(self.output)
 
     def write_report(self) -> Path:
-        home = self.timeline.home["team"]["displayName"]
-        away = self.timeline.away["team"]["displayName"]
+        comp = self.latest["header"]["competitions"][0]
+        home_c = next(c for c in comp["competitors"] if c.get("homeAway") == "home")
+        away_c = next(c for c in comp["competitors"] if c.get("homeAway") == "away")
+        home = home_c["team"]["displayName"]
+        away = away_c["team"]["displayName"]
         lines = [
-            f"# Simulazione {home} {self.timeline.home.get('score')}-"
-            f"{self.timeline.away.get('score')} {away}",
+            f"# Simulazione {home} {home_c.get('score')}-{away_c.get('score')} {away}",
             "",
             f"Event ID {self.partita()['event_id']} · {self.partita()['league_name']} · "
+            f"{'live vero' if self.live else 'replay'} · "
             f"{'prova senza invii' if self.dry_run else 'inviata su Bot JR'}",
             "",
         ]
@@ -482,6 +545,8 @@ class SimSession:
         pass
 
     def get(self, url, params=None, **kwargs):
+        if self.sim.live and "espn.com" in url:
+            return self.sim.espn_get(url, params=params, **kwargs)
         if "site.api.espn.com" in url and url.rstrip("/").endswith("/summary"):
             return FakeResponse(self.sim.summary())
         if "site.api.espn.com" in url and url.rstrip("/").endswith("/scoreboard"):
@@ -493,8 +558,9 @@ class SimSession:
         if "api.canva.com/rest/v1/exports/" in url:
             # Il bot aspetta 3 s tra un controllo e l'altro dell'export, ma con
             # l'orologio accelerato quella pausa sparirebbe e Canva risponderebbe
-            # 429: qui la pausa e' vera.
-            REAL_SLEEP(CANVA_POLL_SECONDS)
+            # 429: qui la pausa e' vera. Nel live l'orologio e' gia' quello vero.
+            if not self.sim.live:
+                REAL_SLEEP(CANVA_POLL_SECONDS)
         return self.real.get(url, params=params, **kwargs)
 
     def post(self, url, json=None, data=None, files=None, timeout=10, **kwargs):
@@ -608,11 +674,15 @@ def load_summary(event_id: str, league: str = "eng.1") -> dict:
 
 
 def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: bool = False,
-        interval: float = 20.0, delete_after: float = 300.0, allow_canva: bool = True,
-        output: Path | str = "sim_output") -> int:
+        interval: float | None = None, delete_after: float = 300.0, allow_canva: bool = True,
+        output: Path | str = "sim_output", mode: str = "auto") -> int:
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     final = load_summary(event_id, league)
+    mode = resolve_mode(final, mode)
+    live = mode == "live"
+    if interval is None:
+        interval = DEFAULT_INTERVAL[mode]
     comp = final["header"]["competitions"][0]
     # Al bot la squadra serve solo per trovare la partita del giorno: qui la
     # partita e' gia' data, e le regole guardano solo se in campo c'e' la Juve.
@@ -638,11 +708,13 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     if not allow_canva:
         os.environ.pop("CANVA_REFRESH_TOKEN", None)
 
-    sim = Simulation(final, team_id=team_id, chat_id=chat_id, dry_run=dry_run,
-                     interval=interval, allow_canva=allow_canva, output=output)
-
     from livescore import settings
     from livescore.core import http as net
+
+    sim = Simulation(final, team_id=team_id, chat_id=chat_id, dry_run=dry_run,
+                     interval=interval, allow_canva=allow_canva, output=output,
+                     live=live, espn_session=net.SESSION)
+
     settings.TEAM_ID = team_id
     settings.CHAT_ID = chat_id
     settings.BOT_JR_CHAT_ID = chat_id
@@ -663,14 +735,17 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     from livescore.espn import client as espn_client
     espn_client.trova_partita_oggi = lambda _team_id: sim.partita()
 
-    _time.time = sim.clock.time
-    _time.monotonic = sim.clock.monotonic
-    _time.sleep = sim.clock.sleep
+    if not live:   # nel live l'orologio resta quello vero
+        _time.time = sim.clock.time
+        _time.monotonic = sim.clock.monotonic
+        _time.sleep = sim.clock.sleep
 
     partita = sim.partita()
     print(f"[SIM] {sim.timeline.home['team']['displayName']} - "
           f"{sim.timeline.away['team']['displayName']} | {partita['league_name']} | "
-          f"{'prova senza invii' if dry_run else 'invio su Bot JR'}",
+          f"{'live vero' if live else 'replay'} (stato ESPN: {match_state(final) or '?'}) | "
+          f"{'prova senza invii' if dry_run else 'invio su Bot JR'}"
+          f"{'' if allow_canva else ' | Canva spento'}",
           flush=True)
     for name in ("SIGINT", "SIGTERM"):
         if hasattr(signal, name):

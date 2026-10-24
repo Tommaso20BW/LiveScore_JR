@@ -6,7 +6,7 @@ Senza argomenti apre un menu. Con argomenti:
     python -m livescore keepalive              rinnova solo il token Canva
     python -m livescore sync-logos             scarica i loghi FCLogo
     python -m livescore schedule-check         controlla se c'e' una partita (scheduler)
-    python -m livescore simulate <event_id>    simula una partita gia' giocata (su Bot JR)
+    python -m livescore simulate <event_id>    simula una partita su Bot JR (finita: replay, in corso: live)
     python -m livescore config                 mostra i parametri regolabili
     python -m livescore config set poll_seconds 5
     python -m livescore config reset poll_seconds
@@ -367,6 +367,7 @@ def cmd_simulate(args) -> int:
         delete_after=args.delete_after,
         allow_canva=not args.no_canva,
         output=args.output,
+        mode=args.mode,
     )
 
 
@@ -466,10 +467,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output-dir")
     p.set_defaults(func=cmd_sync_logos)
     sub.add_parser("schedule-check", help="controllo scheduler").set_defaults(func=cmd_schedule_check)
-    p = sub.add_parser("simulate", help="simula una partita ESPN gia' giocata")
+    p = sub.add_parser("simulate", help="simula una partita ESPN (finita: replay; in corso: live vero)")
     p.add_argument("event_id", help="ID ESPN della partita")
     p.add_argument("--dry-run", action="store_true", help="nessun invio: solo log e report")
-    p.add_argument("--interval", type=float, default=20.0, help="secondi tra un messaggio e l'altro")
+    p.add_argument("--mode", choices=("auto", "replay", "live"), default="auto",
+                   help="auto: replay se la partita e' finita, live se in corso o da giocare")
+    p.add_argument("--interval", type=float, default=None,
+                   help="secondi tra un messaggio e l'altro (default: 20 replay, 3 live)")
     p.add_argument("--delete-after", type=float, default=300.0, help="secondi prima di cancellare tutto")
     p.add_argument("--no-canva", action="store_true", help="niente export Canva (HT/FT senza sfondo)")
     p.add_argument("--output", default="sim_output", help="cartella del report e delle immagini")
