@@ -87,7 +87,7 @@ class GoalGraphicsTests(unittest.TestCase):
         )
 
     def test_missing_portrait_background_raises_without_legacy_fallback(self):
-        (self.root / 'portrait/home_goal_1086x1448.png').unlink()
+        (self.root / 'portrait/home_clean_1086x1448.png').unlink()
         with self.assertRaises(goal_graphics.GoalGraphicUnavailable):
             goal_graphics.render_goal_card(scorer_name='Kenan Yildiz', minute=12,
                 home_name='Juventus', away_name='Inter', home_goals=1, away_goals=0,
@@ -294,7 +294,7 @@ class GoalGraphicsTests(unittest.TestCase):
             registry_path=self.registry,
         )
         self.assertEqual(rendered.kit, "home")
-        self.assertEqual(rendered.background_path.name, "home_goal_1086x1448.png")
+        self.assertEqual(rendered.background_path.name, "home_clean_1086x1448.png")
         self.assertIn("keeper_blue", rendered.player_path.name)
 
     def test_saved_renderer_uses_home_background_for_goalkeeper(self):

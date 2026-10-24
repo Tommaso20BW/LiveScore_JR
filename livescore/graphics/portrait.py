@@ -203,14 +203,25 @@ def png(card):
     return stream.getvalue()
 
 
-def saved_heading(assets):
-    heading = tight(Image.open(Path(assets) / 'overlays/front_saved.png'), True)
+# Big lettering behind the player: (file, width, offset inside the panel).
+HEADINGS = {
+    True: ('front_saved.png', 1034, (-50, -22)),
+    False: ('front_goal.png', 988, (-69, -58)),
+}
+
+
+def event_heading(assets, saved):
+    name, width, offset = HEADINGS[saved]
+    heading = tight(Image.open(Path(assets) / 'overlays' / name), True)
     # Uniform scaling preserves the supplied lettering's original proportions.
-    width = 1034
     heading = heading.resize((width, round(heading.height * width / heading.width)), Image.Resampling.LANCZOS)
     layer = Image.new('RGBA', (IW, IH))
-    layer.alpha_composite(heading, (-50, -22))
+    layer.alpha_composite(heading, offset)
     return layer
+
+
+def saved_heading(assets):
+    return event_heading(assets, True)
 
 
 def saved_minute_position(heading, text, font):
@@ -247,15 +258,14 @@ def event(
 ):
     assets = Path(assets)
     key = theme(kit, competition, saved)
-    background = assets / 'portrait' / f'{key}_{"clean" if saved else "goal"}_1086x1448.png'
+    background = assets / 'portrait' / f'{key}_clean_1086x1448.png'
     card = Image.open(background).convert('RGBA')
     if key == 'ucl':
         card = vivid_background(card)
 
     panel = card.crop((M, M, W - M, H - M))
-    if saved:
-        heading = saved_heading(assets)
-        panel.alpha_composite(textured(heading, key, assets))
+    heading = event_heading(assets, saved)
+    panel.alpha_composite(textured(heading, key, assets))
 
     path = None
     pose = pose or 'arms_crossed'

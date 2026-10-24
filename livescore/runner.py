@@ -19,7 +19,6 @@ def _asset_status(kit: str, competition: str = '') -> str:
     saved_key = theme(kit, competition, True)
     root = bot.goal_graphics.DEFAULT_ASSET_DIR
     files = [root / folder / filename for folder, filename in (
-        ("portrait", f"{key}_goal_1086x1448.png"),
         ("portrait", f"{saved_key}_clean_1086x1448.png"),
         ("portrait", f"{key}_clean_1086x1448.png"),
         ("overlays", "front_goal.png"), ("overlays", "front_saved.png"),
