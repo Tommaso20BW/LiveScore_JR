@@ -53,6 +53,8 @@ BREAK_STATUS = {
     "HT_ET": ("STATUS_HALFTIME_ET", "Extra Time Halftime", 3),
     "BREAK_PEN": ("STATUS_END_OF_EXTRATIME", "End of Extra Time", 4),
 }
+# Pausa reale tra due controlli dello stato di un export Canva.
+CANVA_POLL_SECONDS = 3
 # Oltre questo margine dopo il fischio finale la simulazione si ferma comunque.
 POST_TIMEOUT_SECONDS = 3 * 3600
 
@@ -463,6 +465,11 @@ class SimSession:
             if self.sim.allow_canva and "/actions/secrets/" in url:
                 return self.real.get(url, params=params, **kwargs)
             return FakeResponse({"message": "bloccato dalla simulazione"}, 404)
+        if "api.canva.com/rest/v1/exports/" in url:
+            # Il bot aspetta 3 s tra un controllo e l'altro dell'export, ma con
+            # l'orologio accelerato quella pausa sparirebbe e Canva risponderebbe
+            # 429: qui la pausa e' vera.
+            REAL_SLEEP(CANVA_POLL_SECONDS)
         return self.real.get(url, params=params, **kwargs)
 
     def post(self, url, json=None, data=None, files=None, timeout=10, **kwargs):
