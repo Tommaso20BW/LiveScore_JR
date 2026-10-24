@@ -482,6 +482,13 @@ class SimSession:
     def patch(self, url, **kwargs):
         return FakeResponse({"message": "bloccato dalla simulazione"}, 403)
 
+    def request(self, method, url, **kwargs):
+        # Stesse regole dei metodi singoli, per chi usa session.request(...).
+        handler = getattr(self, str(method).lower(), None)
+        if handler is None:
+            return FakeResponse({"message": "bloccato dalla simulazione"}, 403)
+        return handler(url, **kwargs)
+
     def delete(self, url, **kwargs):
         return FakeResponse({"message": "bloccato dalla simulazione"}, 403)
 
@@ -574,6 +581,8 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     code = 0
     try:
         from livescore import runner
+        # Gli snapshot Canva del live (branch runtime-snapshots) restano intatti.
+        runner.KIT_RUNTIME.snapshot_store.token = ""
         runner.main()
     except SimulationTimeout as exc:
         print(f"[SIM] {exc}", flush=True)
