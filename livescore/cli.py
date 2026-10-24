@@ -6,6 +6,7 @@ Senza argomenti apre un menu. Con argomenti:
     python -m livescore keepalive              rinnova solo il token Canva
     python -m livescore sync-logos             scarica i loghi FCLogo
     python -m livescore schedule-check         controlla se c'e' una partita (scheduler)
+    python -m livescore simulate <event_id>    simula una partita gia' giocata (su Bot JR)
     python -m livescore autodelete             cancella i messaggi Telegram scaduti
     python -m livescore config                 mostra i parametri regolabili
     python -m livescore config set poll_seconds 5
@@ -358,6 +359,19 @@ def cmd_sync_logos(args) -> int:
     return logos.main()
 
 
+def cmd_simulate(args) -> int:
+    from livescore import simulate
+    return simulate.run(
+        args.event_id,
+        team_id=args.team or "",
+        dry_run=args.dry_run,
+        interval=args.interval,
+        delete_after=args.delete_after,
+        allow_canva=not args.no_canva,
+        output=args.output,
+    )
+
+
 def cmd_schedule_check(_args) -> int:
     from livescore import scheduler
     scheduler.main()
@@ -453,6 +467,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output-dir")
     p.set_defaults(func=cmd_sync_logos)
     sub.add_parser("schedule-check", help="controllo scheduler").set_defaults(func=cmd_schedule_check)
+    p = sub.add_parser("simulate", help="simula una partita ESPN gia' giocata")
+    p.add_argument("event_id", help="ID ESPN della partita")
+    p.add_argument("--team", help="ID ESPN della squadra seguita (default: Juventus se gioca)")
+    p.add_argument("--dry-run", action="store_true", help="nessun invio: solo log e report")
+    p.add_argument("--interval", type=float, default=20.0, help="secondi tra un messaggio e l'altro")
+    p.add_argument("--delete-after", type=float, default=600.0, help="secondi prima di cancellare tutto")
+    p.add_argument("--no-canva", action="store_true", help="niente export Canva (HT/FT senza sfondo)")
+    p.add_argument("--output", default="sim_output", help="cartella del report e delle immagini")
+    p.set_defaults(func=cmd_simulate)
     sub.add_parser("autodelete", help="cancella messaggi scaduti").set_defaults(func=cmd_autodelete)
 
     p = sub.add_parser("config", help="parametri regolabili")

@@ -1,0 +1,96 @@
+name: Simulazione partita
+
+on:
+  workflow_dispatch:
+    inputs:
+      event_id:
+        description: 'ID ESPN della partita (es. 401915547)'
+        required: true
+        type: string
+      team_id:
+        description: 'ID ESPN squadra seguita (vuoto = Juventus se gioca)'
+        required: false
+        default: ''
+        type: string
+      dry_run:
+        description: 'Solo prova: nessun messaggio su Bot JR, solo report'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# Stesso gruppo del Live Score: la simulazione aspetta che il live finisca
+# (il token Canva ruota e due processi insieme si invaliderebbero a vicenda).
+concurrency:
+  group: juve-live-bot
+  cancel-in-progress: false
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Checkout asset privati (foto, font, loghi)
+        uses: actions/checkout@v6
+        with:
+          repository: Tommaso20BW/LiveScore_Assets_JR
+          token: ${{ secrets.ASSETS_PAT }}
+          path: _private_assets
+
+      - name: Installa asset privati
+        shell: bash
+        run: |
+          mkdir -p assets/goal_graphics
+          cp -a _private_assets/players _private_assets/fonts _private_assets/team_logos _private_assets/overlays _private_assets/portrait _private_assets/word_textures assets/goal_graphics
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Simula la partita
+        env:
+          TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
+          # Solo il canale di test: la simulazione non scrive mai su Juventus Reborn.
+          TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
+          GH_PAT:               ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY:    ${{ github.repository }}
+          CANVA_CLIENT_ID:      ${{ secrets.CANVA_CLIENT_ID }}
+          CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
+          CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
+          EVENT_ID:             ${{ inputs.event_id }}
+          SIM_TEAM:             ${{ inputs.team_id }}
+          SIM_DRY_RUN:          ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          ARGS=("$(echo "$EVENT_ID" | tr -d '[:space:]')")
+          [ -n "$(echo "$SIM_TEAM" | tr -d '[:space:]')" ] && ARGS+=(--team "$(echo "$SIM_TEAM" | tr -d '[:space:]')")
+          [ "$SIM_DRY_RUN" = "true" ] && ARGS+=(--dry-run)
+          python -u -m livescore simulate "${ARGS[@]}" --output sim_output
+
+      - name: Report e immagini
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulazione-${{ inputs.event_id }}
+          path: sim_output/
+          if-no-files-found: ignore
+          retention-days: 7
