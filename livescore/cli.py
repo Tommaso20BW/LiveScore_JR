@@ -464,7 +464,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("event_id", help="ID ESPN della partita")
     p.add_argument("--dry-run", action="store_true", help="nessun invio: solo log e report")
     p.add_argument("--interval", type=float, default=20.0, help="secondi tra un messaggio e l'altro")
-    p.add_argument("--delete-after", type=float, default=600.0, help="secondi prima di cancellare tutto")
+    p.add_argument("--delete-after", type=float, default=300.0, help="secondi prima di cancellare tutto")
     p.add_argument("--no-canva", action="store_true", help="niente export Canva (HT/FT senza sfondo)")
     p.add_argument("--output", default="sim_output", help="cartella del report e delle immagini")
     p.set_defaults(func=cmd_simulate)

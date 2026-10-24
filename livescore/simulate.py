@@ -6,7 +6,7 @@ Juventus e mai nelle amichevoli). Cambia solo cio' che sta intorno:
 - ESPN: il summary finale viene "riavvolto" e servito minuto per minuto;
 - orologio: avanza da solo, la partita dura pochi minuti reali;
 - Telegram: i messaggi vanno sul canale di test (Bot JR), uno ogni 20 secondi,
-  e a fine partita, dopo 10 minuti, vengono cancellati tutti;
+  e a fine partita, dopo 5 minuti, vengono cancellati tutti;
   con ``--dry-run`` non parte nulla e i messaggi restano solo nel report;
 - Gist e snapshot Canva: disattivati, nessuno stato reale toccato.
 
@@ -548,7 +548,7 @@ def load_summary(event_id: str, league: str = "eng.1") -> dict:
 
 
 def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: bool = False,
-        interval: float = 20.0, delete_after: float = 600.0, allow_canva: bool = True,
+        interval: float = 20.0, delete_after: float = 300.0, allow_canva: bool = True,
         output: Path | str = "sim_output") -> int:
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
