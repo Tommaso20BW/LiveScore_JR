@@ -16,14 +16,6 @@ on:
         required: false
         default: ''
         type: string
-      channel:
-        description: 'Dove pubblicare'
-        required: true
-        default: 'Juventus Reborn'
-        type: choice
-        options:
-          - Juventus Reborn
-          - Bot JR (test)
 
 permissions:
   actions: write
@@ -153,10 +145,10 @@ jobs:
       - name: Run Live Score Bot
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_TO:          ${{ startsWith(github.event.inputs.channel, 'Bot JR') && secrets.TELEGRAM_TO_BOT || secrets.TELEGRAM_TO }}
+          # Il live pubblica sempre su Juventus Reborn; per le prove c'e' "Simulazione partita".
+          TELEGRAM_TO:          ${{ secrets.TELEGRAM_TO }}
           TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
-          LIVE_SCORE_CHANNEL_NAME: ${{ startsWith(github.event.inputs.channel, 'Bot JR') && 'Bot JR' || 'Juventus Reborn' }}
-          TELEGRAM_AUTO_DELETE_SECONDS: ${{ startsWith(github.event.inputs.channel, 'Bot JR') && '1200' || '0' }}
+          LIVE_SCORE_CHANNEL_NAME: 'Juventus Reborn'
           GH_PAT:               ${{ secrets.GH_PAT }}
           # Token del run usato solo per il branch tecnico runtime-snapshots.
           # Il workflow ha già contents: write.
@@ -175,12 +167,6 @@ jobs:
           # Salta solo una sincronizzazione già riuscita; in caso di errore il bot ritenta.
           FCLOGO_SYNC_DONE: ${{ steps.fclogo_sync.outcome == 'success' && 'true' || 'false' }}
         run: python -u -m livescore run
-
-      - name: Start Bot JR auto-delete after the match
-        if: ${{ always() && startsWith(github.event.inputs.channel, 'Bot JR') }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run telegram_bot_autodelete.yml --ref "${{ github.ref_name }}"
 
       - name: Pulisci la cronologia dei run
         if: always()
