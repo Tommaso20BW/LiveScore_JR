@@ -904,7 +904,7 @@ class DynamicKitRuntime:
         pose = getattr(rendered, "pose", None)
         if pose:
             render["pose"] = pose
-        render["kit"] = self.active_kit
+        render["kit"] = _normalise_kit(kwargs.get("kit")) or self.active_kit
 
         return {
             "type": kind,
@@ -915,6 +915,7 @@ class DynamicKitRuntime:
 
     def _build_phase_graphic_proxy(self, *args, **kwargs):
         kind = str(kwargs.get("kind") or "")
+        drawn_kit = self.active_kit
         self._capturing_phase = True
         self._last_canva_snapshot = None
         try:
@@ -976,6 +977,7 @@ class DynamicKitRuntime:
                 "type": kind,
                 "render": render,
                 "event_key": "",
+                "kit": drawn_kit,
                 "canva_snapshot": local_snapshot,
                 "canva_snapshot_remote": remote_snapshot,
             }
@@ -1015,11 +1017,12 @@ class DynamicKitRuntime:
                     "away_name",
                 }
             }
-            render["kit"] = self.active_kit
+            render["kit"] = _normalise_kit(kwargs.get("kit")) or self.active_kit
             self.pending_render["stats"] = {
                 "type": "stats",
                 "render": render,
                 "event_key": "",
+                "kit": render["kit"],
                 "canva_snapshot": None,
             }
             self.last_pending_label = "stats"
@@ -1028,7 +1031,11 @@ class DynamicKitRuntime:
     def _set_pending(self, label: str, context: dict, png: bytes) -> None:
         context = copy.deepcopy(context)
         context["visual_hash"] = _pixel_hash(png)
-        context["kit"] = self.active_kit
+        context["kit"] = (
+            context.get("kit")
+            or (context.get("render") or {}).get("kit")
+            or self.active_kit
+        )
         self.pending_render[str(label).lower()] = context
         self.last_pending_label = str(label).lower()
 
@@ -1087,7 +1094,6 @@ class DynamicKitRuntime:
                 # Use the actual bytes passed to Telegram, not a previous attempt.
                 context = copy.deepcopy(context)
                 context["visual_hash"] = _pixel_hash(photo_bytes)
-                context["kit"] = self.active_kit
                 self._register_media(
                     message_id=int(message_id),
                     caption=text,
@@ -1193,7 +1199,6 @@ class DynamicKitRuntime:
             if message_id and context is not None:
                 context = copy.deepcopy(context)
                 context["visual_hash"] = _pixel_hash(png_bytes)
-                context["kit"] = self.active_kit
                 self._register_media(
                     message_id=int(message_id),
                     caption=caption,
@@ -1239,13 +1244,24 @@ class DynamicKitRuntime:
             # che un click arrivato nel frattempo potrebbe aver cambiato).
             record["kit"] = context.get("kit") or record["kit"]
             self.volatile_media[str(message_id)] = record
+            outdated = record["kit"] != self.active_kit
         self._persist_state()
         self._log(
             "DEBUG",
             "KIT",
             f"Media registrato | type={record['type']} | "
-            f"message_id={message_id} | kit={self.active_kit}",
+            f"message_id={message_id} | kit={record['kit']}",
         )
+        if outdated:
+            # Il kit e' cambiato mentre questa grafica veniva disegnata o inviata:
+            # la rigenerazione gia' partita non la conosceva, quindi va ripresa.
+            self._log(
+                "INFO",
+                "KIT",
+                f"Media inviato col kit {record['kit']} ma attivo {self.active_kit}: "
+                f"rigenero | message_id={message_id}",
+            )
+            self._schedule_refresh()
 
     # ------------------------------------------------------------------
     # Regeneration / edit in place

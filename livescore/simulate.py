@@ -20,6 +20,7 @@ import html
 import json
 import os
 import re
+import signal
 import sys
 import time as _time
 from contextlib import contextmanager
@@ -301,6 +302,8 @@ class Simulation:
         self.real = requests.Session()
         self.last_send = 0.0
         self.last_updates = 0.0
+        self.sending = False
+        self.interrupted = False
         self.next_id = 1000
         self.sent: list[tuple[str, int]] = []
         self.log: list[dict] = []
@@ -373,22 +376,39 @@ class Simulation:
                 return FakeResponse({"ok": True, "result": result})
             return FakeResponse({"ok": True, "result": True})
 
-        response = self.real.post(
-            url,
-            json=body if payload is not None else None,
-            data=body if data is not None else None,
-            files=files,
-            timeout=timeout,
-        )
-        if method in SEND_METHODS:
-            try:
-                result = response.json().get("result")
-                for message in result if isinstance(result, list) else [result]:
-                    self.sent.append((str(self.chat_id), int(message["message_id"])))
-            except Exception:
-                pass
-            save_pending(self.output, self.sent)
+        sending = method in SEND_METHODS
+        if sending:
+            # Annullamento durante un invio: il messaggio parte comunque, quindi
+            # ci si ferma solo dopo averne salvato l'ID (vedi _on_signal).
+            self.sending = True
+        try:
+            response = self.real.post(
+                url,
+                json=body if payload is not None else None,
+                data=body if data is not None else None,
+                files=files,
+                timeout=timeout,
+            )
+            if sending:
+                try:
+                    result = response.json().get("result")
+                    for message in result if isinstance(result, list) else [result]:
+                        self.sent.append((str(self.chat_id), int(message["message_id"])))
+                except Exception:
+                    pass
+                save_pending(self.output, self.sent)
+        finally:
+            if sending:
+                self.sending = False
+        if sending and self.interrupted:
+            raise KeyboardInterrupt
         return response
+
+    def _on_signal(self, signum, frame) -> None:
+        """Annullamento del run (SIGINT/SIGTERM da GitHub o Ctrl+C)."""
+        self.interrupted = True
+        if not self.sending:
+            raise KeyboardInterrupt
 
     def _record(self, method: str, body: dict, files: dict | None) -> str | None:
         image = None
@@ -653,6 +673,10 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
           f"{sim.timeline.away['team']['displayName']} | {partita['league_name']} | "
           f"{'prova senza invii' if dry_run else 'invio su Bot JR'}",
           flush=True)
+    for name in ("SIGINT", "SIGTERM"):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), sim._on_signal)
+
     code = 0
     try:
         from livescore import runner
@@ -662,12 +686,23 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     except SimulationTimeout as exc:
         print(f"[SIM] {exc}", flush=True)
         code = 1
+    except KeyboardInterrupt:
+        sim.interrupted = True
+        print("[SIM] Simulazione annullata", flush=True)
+        code = 130
     except SystemExit as exc:
         code = exc.code if isinstance(exc.code, int) else 0
     finally:
+        for name in ("SIGINT", "SIGTERM"):
+            if hasattr(signal, name):
+                signal.signal(getattr(signal, name), signal.SIG_IGN)   # la pulizia non va interrotta
         _time.time, _time.monotonic, _time.sleep = REAL_TIME, REAL_MONOTONIC, REAL_SLEEP
         report = sim.write_report()
         print(f"[SIM] {len(sim.log)} chiamate Telegram, {sim.images} immagini | report: {report}",
               flush=True)
-        sim.cleanup(delete_after)
+        if sim.interrupted:
+            if not sim.dry_run:
+                delete_pending(output)          # annullata: niente attesa, si pulisce subito
+        else:
+            sim.cleanup(delete_after)
     return code

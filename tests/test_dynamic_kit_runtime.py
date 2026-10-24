@@ -569,14 +569,34 @@ class DynamicKitRuntimeTests(unittest.TestCase):
         self.runtime._edit_media_record.assert_not_called()
         self.assertEqual(self.runtime.volatile_media["55"]["kit"], "home")
 
-    def test_media_is_registered_with_the_kit_it_was_drawn_with(self):
-        self.runtime.active_kit = "third"           # click arrivato dopo il disegno
+    def test_media_sent_with_old_kit_is_registered_and_refreshed(self):
+        self.runtime.active_kit = "third"           # click arrivato durante l'invio
+        self.runtime._schedule_refresh = Mock()
         self.runtime._register_media(
             message_id=77, caption="goal",
             context={"type": "goal", "kit": "home", "visual_hash": "x", "render": {}},
             chat_id="-100-live",
         )
         self.assertEqual(self.runtime.volatile_media["77"]["kit"], "home")
+        self.runtime._schedule_refresh.assert_called_once_with()
+
+    def test_media_sent_with_current_kit_is_not_refreshed(self):
+        self.runtime.active_kit = "home"
+        self.runtime._schedule_refresh = Mock()
+        self.runtime._register_media(
+            message_id=78, caption="goal",
+            context={"type": "goal", "kit": "home", "visual_hash": "x", "render": {}},
+            chat_id="-100-live",
+        )
+        self.runtime._schedule_refresh.assert_not_called()
+
+    def test_goal_context_keeps_the_kit_used_to_draw_it(self):
+        self.runtime.active_kit = "away"            # cambiato dopo il disegno
+        context = self.runtime._goal_context(
+            {"kit": "home", "scorer_name": "Kenan Yildiz"}, SimpleNamespace(pose=None), "goal")
+        self.runtime._set_pending("goal", context, png((1, 2, 3, 255)))
+        self.assertEqual(self.runtime.pending_render["goal"]["kit"], "home")
+        self.assertEqual(self.runtime.pending_render["goal"]["render"]["kit"], "home")
 
 
 if __name__ == "__main__":
