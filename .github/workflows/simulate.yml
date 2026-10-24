@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: write     # per cancellare i run vecchi della simulazione
 
 # Stesso gruppo del Live Score: la simulazione aspetta che il live finisca
 # (il token Canva ruota e due processi insieme si invaliderebbero a vicenda).
@@ -87,3 +88,16 @@ jobs:
           path: sim_output/
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Pulisci la cronologia dei run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: "5"   # tiene gli ultimi 5 run completati (piu' quello in corso)
+        run: |
+          gh api "repos/${{ github.repository }}/actions/workflows/simulate.yml/runs?status=completed&per_page=100"             --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
+          while read -r RUN_ID; do
+            echo "Elimino run $RUN_ID"
+            gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$RUN_ID" || true
+          done
+          echo "Pulizia completata."
