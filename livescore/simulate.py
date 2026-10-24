@@ -10,7 +10,7 @@ Juventus e mai nelle amichevoli). Cambia solo cio' che sta intorno:
   con ``--dry-run`` non parte nulla e i messaggi restano solo nel report;
 - Gist, snapshot e auto-delete di Bot JR: disattivati, nessuno stato reale toccato.
 
-Uso:  python -m livescore simulate <event_id> [--team 111] [--dry-run]
+Uso:  python -m livescore simulate <event_id> [--dry-run]
 """
 
 from __future__ import annotations
@@ -511,11 +511,10 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     output.mkdir(parents=True, exist_ok=True)
     final = load_summary(event_id, league)
     comp = final["header"]["competitions"][0]
+    # Al bot la squadra serve solo per trovare la partita del giorno: qui la
+    # partita e' gia' data, e le regole guardano solo se in campo c'e' la Juve.
     ids = [str(c["team"]["id"]) for c in comp["competitors"]]
     team_id = str(team_id or ("111" if "111" in ids else ids[0]))
-    if team_id not in ids:
-        print(f"[SIM] La squadra {team_id} non gioca questa partita (squadre: {', '.join(ids)})")
-        return 2
 
     chat_id = os.getenv("TELEGRAM_TO_BOT") or os.getenv("TELEGRAM_TO") or "simulazione"
     if not dry_run and (not os.getenv("TELEGRAM_TOKEN") or chat_id == "simulazione"):
@@ -570,7 +569,7 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     partita = sim.partita()
     print(f"[SIM] {sim.timeline.home['team']['displayName']} - "
           f"{sim.timeline.away['team']['displayName']} | {partita['league_name']} | "
-          f"squadra seguita {team_id} | {'prova senza invii' if dry_run else 'invio su Bot JR'}",
+          f"{'prova senza invii' if dry_run else 'invio su Bot JR'}",
           flush=True)
     code = 0
     try:

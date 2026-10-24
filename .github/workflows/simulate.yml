@@ -7,11 +7,6 @@ on:
         description: 'ID ESPN della partita (es. 401915547)'
         required: true
         type: string
-      team_id:
-        description: 'ID ESPN squadra seguita (vuoto = Juventus se gioca)'
-        required: false
-        default: ''
-        type: string
       dry_run:
         description: 'Solo prova: nessun messaggio su Bot JR, solo report'
         required: false
@@ -77,12 +72,10 @@ jobs:
           CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
           CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           EVENT_ID:             ${{ inputs.event_id }}
-          SIM_TEAM:             ${{ inputs.team_id }}
           SIM_DRY_RUN:          ${{ inputs.dry_run }}
         shell: bash
         run: |
           ARGS=("$(echo "$EVENT_ID" | tr -d '[:space:]')")
-          [ -n "$(echo "$SIM_TEAM" | tr -d '[:space:]')" ] && ARGS+=(--team "$(echo "$SIM_TEAM" | tr -d '[:space:]')")
           [ "$SIM_DRY_RUN" = "true" ] && ARGS+=(--dry-run)
           python -u -m livescore simulate "${ARGS[@]}" --output sim_output
 

@@ -363,7 +363,6 @@ def cmd_simulate(args) -> int:
     from livescore import simulate
     return simulate.run(
         args.event_id,
-        team_id=args.team or "",
         dry_run=args.dry_run,
         interval=args.interval,
         delete_after=args.delete_after,
@@ -469,7 +468,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("schedule-check", help="controllo scheduler").set_defaults(func=cmd_schedule_check)
     p = sub.add_parser("simulate", help="simula una partita ESPN gia' giocata")
     p.add_argument("event_id", help="ID ESPN della partita")
-    p.add_argument("--team", help="ID ESPN della squadra seguita (default: Juventus se gioca)")
     p.add_argument("--dry-run", action="store_true", help="nessun invio: solo log e report")
     p.add_argument("--interval", type=float, default=20.0, help="secondi tra un messaggio e l'altro")
     p.add_argument("--delete-after", type=float, default=600.0, help="secondi prima di cancellare tutto")
