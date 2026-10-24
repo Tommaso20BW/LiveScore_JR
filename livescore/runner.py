@@ -203,6 +203,9 @@ def trova_partita_con_notifica(team_id: str):
 def main() -> None:
     """Avvio del live: come il bot base, ma con notifica di servizio e controllo kit dinamico."""
     bot.trova_partita_oggi = trova_partita_con_notifica
+    # Click sui kit e rigenerazione delle grafiche in thread separati: il ciclo
+    # live non si ferma e il click arriva subito.
+    KIT_RUNTIME.background = True
     bot.main()
 
 

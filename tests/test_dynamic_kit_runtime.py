@@ -499,5 +499,85 @@ class DynamicKitRuntimeTests(unittest.TestCase):
         )
 
 
+    # --- thread di supporto: click e rigenerazione fuori dal ciclo live ---
+    def test_fetch_wrapper_leaves_clicks_to_background_threads(self):
+        self.runtime._originals["fetch_evento"] = Mock(return_value=summary("home"))
+        self.runtime.start_background = Mock(return_value=True)
+        self.runtime.poll_callbacks = Mock()
+
+        self.runtime._fetch_evento_proxy("123", "ita.1")
+
+        self.runtime.poll_callbacks.assert_not_called()
+
+    def test_click_with_background_queues_refresh_instead_of_blocking(self):
+        self.runtime.refresh_all_media = Mock()
+        self.runtime._background_active = Mock(return_value=True)
+        self.runtime._edit_recap = Mock()
+        self._queue_callback(30, "cb-away", "kit:123:away")
+
+        self.runtime.poll_callbacks()
+
+        self.assertEqual(self.runtime.active_kit, "away")
+        self.runtime.refresh_all_media.assert_not_called()
+        self.assertTrue(self.runtime._refresh_wanted.is_set())
+        answer = [p for p in self.bot.posts if p[0] == "answerCallbackQuery"]
+        self.assertEqual(len(answer), 1)
+
+    def test_background_threads_start_only_in_the_live_process(self):
+        self.assertFalse(self.runtime.start_background())     # test / import: spento
+        self.runtime.background = True
+        self.runtime.poll_callbacks = Mock()
+        try:
+            self.assertTrue(self.runtime.start_background())
+            self.assertTrue(self.runtime._background_active())
+        finally:
+            self.runtime.stop_background()
+            for thread in self.runtime._threads:
+                thread.join(timeout=5)
+        self.assertFalse(self.runtime._background_active())
+
+    def test_suppress_flag_is_per_thread(self):
+        import threading
+        seen = []
+        self.runtime._suppress_capture = True
+        worker = threading.Thread(target=lambda: seen.append(self.runtime._suppress_capture))
+        worker.start()
+        worker.join()
+        self.assertEqual(seen, [False])
+        self.assertTrue(self.runtime._suppress_capture)
+        self.runtime._suppress_capture = False
+
+    def test_refresh_does_not_publish_old_kit_after_a_new_click(self):
+        old = png((10, 20, 30, 255))
+        new = png((40, 50, 60, 255))
+        self.runtime.active_kit = "away"
+        self.runtime.volatile_media = {
+            "55": {"message_id": 55, "chat_id": "-100-live", "type": "goal",
+                   "caption": "goal", "kit": "home",
+                   "visual_hash": dkr._pixel_hash(old), "render": {}},
+        }
+
+        def render_then_click(record, kit):
+            self.runtime.active_kit = "third"      # click arrivato durante il disegno
+            return new
+
+        self.runtime._render_record = Mock(side_effect=render_then_click)
+        self.runtime._edit_media_record = Mock(return_value=True)
+
+        self.runtime.refresh_all_media()
+
+        self.runtime._edit_media_record.assert_not_called()
+        self.assertEqual(self.runtime.volatile_media["55"]["kit"], "home")
+
+    def test_media_is_registered_with_the_kit_it_was_drawn_with(self):
+        self.runtime.active_kit = "third"           # click arrivato dopo il disegno
+        self.runtime._register_media(
+            message_id=77, caption="goal",
+            context={"type": "goal", "kit": "home", "visual_hash": "x", "render": {}},
+            chat_id="-100-live",
+        )
+        self.assertEqual(self.runtime.volatile_media["77"]["kit"], "home")
+
+
 if __name__ == "__main__":
     unittest.main()

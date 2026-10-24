@@ -24,6 +24,7 @@ import io
 import json
 import os
 import shutil
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -141,6 +142,10 @@ def keyboard_for(event_id: str, kit_mode: str, active_kit: str) -> dict:
     }
 
 
+# Attesa massima di una lettura dei click (Telegram risponde appena arriva un click).
+LONG_POLL_SECONDS = 25
+
+
 class DynamicKitRuntime:
     def __init__(self, bot):
         self.bot = bot
@@ -175,7 +180,16 @@ class DynamicKitRuntime:
         self.last_pending_label: str | None = None
         self._capturing_phase = False
         self._last_canva_snapshot: str | None = None
-        self._suppress_capture = False
+
+        # Click e rigenerazioni in thread separati dal ciclo live (vedi
+        # start_background). Il lock protegge solo i dati condivisi: kit
+        # attivo, elenco dei media e salvataggio dello stato.
+        self._lock = threading.RLock()
+        self._thread_local = threading.local()
+        self.background = False          # True solo nel processo LiveScore (runner.main)
+        self._stop = threading.Event()
+        self._refresh_wanted = threading.Event()
+        self._threads: list[threading.Thread] = []
 
         self._originals: dict[str, Any] = {}
         self.canva_page_one = None
@@ -191,6 +205,86 @@ class DynamicKitRuntime:
             session=getattr(bot, "SESSION", None),
             log=self._log,
         )
+
+    @property
+    def _suppress_capture(self) -> bool:
+        # Per thread: mentre il thread kit rigenera le vecchie grafiche, un gol
+        # pubblicato in quel momento dal ciclo live va comunque registrato.
+        return bool(getattr(self._thread_local, "suppress", False))
+
+    @_suppress_capture.setter
+    def _suppress_capture(self, value: bool) -> None:
+        self._thread_local.suppress = bool(value)
+
+    # ------------------------------------------------------------------
+    # Thread di supporto: click Telegram e rigenerazione media
+    # ------------------------------------------------------------------
+    def start_background(self) -> bool:
+        """Avvia (una volta) ascoltatore dei click e rigeneratore dei media.
+
+        Il ciclo live non legge piu' i click e non rigenera le grafiche: un
+        click viene ricevuto subito (long polling) e la rigenerazione non
+        ritarda la lettura di ESPN. Restituisce True se i thread sono attivi."""
+        if self._background_active():
+            return True
+        if not self.background or not self.enabled or not self.bot.BOT_TOKEN:
+            return False
+        self._stop.clear()
+        self._threads = [
+            threading.Thread(target=self._listen_loop, name="kit-click", daemon=True),
+            threading.Thread(target=self._refresh_loop, name="kit-refresh", daemon=True),
+        ]
+        for thread in self._threads:
+            thread.start()
+        self._log("DEBUG", "KIT", "Ascolto click kit in background avviato")
+        return True
+
+    def stop_background(self) -> None:
+        self._stop.set()
+        self._refresh_wanted.set()
+
+    def _background_active(self) -> bool:
+        return bool(self._threads) and all(t.is_alive() for t in self._threads)
+
+    def _listen_loop(self) -> None:
+        while not self._stop.is_set() and self.enabled and self.bot.BOT_TOKEN:
+            started = time.monotonic()
+            try:
+                self.poll_callbacks(long_poll=LONG_POLL_SECONDS)
+            except Exception as exc:
+                self._log("DEBUG", "KIT", f"Ascolto click: {exc}")
+                self._stop.wait(2)
+            # Se Telegram risponde subito (errore, o lettura senza attesa) non
+            # interroga a raffica.
+            if time.monotonic() - started < 1:
+                self._stop.wait(1)
+
+    def _refresh_loop(self) -> None:
+        while not self._stop.is_set():
+            if not self._refresh_wanted.wait(1.0):
+                continue
+            self._refresh_wanted.clear()
+            if self._stop.is_set():
+                break
+            try:
+                # Un altro click durante la rigenerazione: si ripete col kit nuovo.
+                while True:
+                    target = self.active_kit
+                    self.refresh_all_media()
+                    if self.active_kit == target:
+                        break
+                self._persist_state()
+                self._edit_recap()
+            except Exception as exc:
+                self._log("WARN", "KIT", f"Rigenerazione in background fallita: {exc}")
+
+    def _schedule_refresh(self) -> None:
+        """Rigenera i media gia' inviati: nel thread kit se attivo, altrimenti subito."""
+        if self._background_active():
+            self._refresh_wanted.set()
+            return
+        self.refresh_all_media()
+        self._persist_state()
 
     # ------------------------------------------------------------------
     # Installation / compatibility hooks
@@ -303,6 +397,7 @@ class DynamicKitRuntime:
         self.manual_kit = None
         self.active_kit = self.espn_kit or self.fallback_kit
 
+        self.stop_background()
         self.state_ref = None
         self.volatile_media = {}
         self.processed_callback_ids = []
@@ -456,13 +551,14 @@ class DynamicKitRuntime:
         state["kit_recap_message_id"] = self.recap_message_id
 
     def _persist_state(self) -> None:
-        if not self._state_matches_current(self.state_ref):
-            return
-        try:
-            self._sync_to_state(self.state_ref)
-            self._originals["salva_stato_su_gist"](self.state_ref)
-        except Exception as exc:
-            self._log("WARN", "STATE", f"Kit dinamico: salvataggio Gist fallito: {exc}")
+        with self._lock:
+            if not self._state_matches_current(self.state_ref):
+                return
+            try:
+                self._sync_to_state(self.state_ref)
+                self._originals["salva_stato_su_gist"](self.state_ref)
+            except Exception as exc:
+                self._log("WARN", "STATE", f"Kit dinamico: salvataggio Gist fallito: {exc}")
 
     def _read_state_proxy(self):
         result = self._originals["leggi_stato_da_gist"]()
@@ -471,19 +567,21 @@ class DynamicKitRuntime:
         except Exception:
             return result
         if ok and self._state_matches_current(state):
-            self._hydrate_from_state(state)
+            with self._lock:
+                self._hydrate_from_state(state)
         return result
 
     def _save_state_proxy(self, state: dict):
-        if self._state_matches_current(state):
-            self.state_ref = state
-            if self.volatile_media:
-                existing = state.get("kit_media")
-                if isinstance(existing, dict):
-                    existing.update(self.volatile_media)
-                    self.volatile_media = existing
-            self._sync_to_state(state)
-        return self._originals["salva_stato_su_gist"](state)
+        with self._lock:
+            if self._state_matches_current(state):
+                self.state_ref = state
+                if self.volatile_media:
+                    existing = state.get("kit_media")
+                    if isinstance(existing, dict):
+                        existing.update(self.volatile_media)
+                        self.volatile_media = existing
+                self._sync_to_state(state)
+            return self._originals["salva_stato_su_gist"](state)
 
     def _reset_state_proxy(self):
         # Current juve_bot_espn calls resetta_gist only at final shutdown.
@@ -529,7 +627,8 @@ class DynamicKitRuntime:
         ):
             self.latest_summary = data
             self.observe_summary(data)
-            self.poll_callbacks()
+            if not self.start_background():
+                self.poll_callbacks()
         return data
 
     def observe_summary(self, data: dict) -> None:
@@ -540,9 +639,12 @@ class DynamicKitRuntime:
             # last valid ESPN uniform -> fallback if ESPN has never provided one.
             return
 
-        old_espn = self.espn_kit
-        old_active = self.active_kit
-        self.espn_kit = detected
+        with self._lock:
+            old_espn = self.espn_kit
+            old_active = self.active_kit
+            self.espn_kit = detected
+            if self.kit_mode == "auto":
+                self.active_kit = self.espn_kit or self.fallback_kit
 
         if old_espn != self.espn_kit:
             self._log(
@@ -550,9 +652,6 @@ class DynamicKitRuntime:
                 "KIT",
                 f"ESPN uniform: {_display_kit(old_espn)} -> {_display_kit(self.espn_kit)}",
             )
-
-        if self.kit_mode == "auto":
-            self.active_kit = self.espn_kit or self.fallback_kit
 
         if old_espn != self.espn_kit:
             self._persist_state()
@@ -564,8 +663,7 @@ class DynamicKitRuntime:
                 "KIT",
                 f"ACTIVE KIT: {old_active} -> {self.active_kit} | mode=AUTO",
             )
-            self.refresh_all_media()
-            self._persist_state()
+            self._schedule_refresh()
             self._edit_recap()
 
     # ------------------------------------------------------------------
@@ -595,12 +693,12 @@ class DynamicKitRuntime:
         except Exception as exc:
             self._log("DEBUG", "KIT", f"Drain callback saltato: {exc}")
 
-    def poll_callbacks(self) -> None:
+    def poll_callbacks(self, long_poll: int = 0) -> None:
         if not self.enabled or not self.bot.BOT_TOKEN:
             return
 
         data = {
-            "timeout": "0",
+            "timeout": str(int(long_poll)),
             "allowed_updates": json.dumps(["callback_query"]),
         }
         if self.update_offset is not None:
@@ -610,7 +708,7 @@ class DynamicKitRuntime:
             response = self.bot._tg_post(
                 "getUpdates",
                 data=data,
-                timeout=5,
+                timeout=5 + int(long_poll),
             )
             if response is None or response.status_code != 200:
                 return
@@ -659,25 +757,27 @@ class DynamicKitRuntime:
                 self._answer_callback(callback_id, "Scelta non valida")
                 continue
 
-            self.processed_callback_ids.append(callback_id)
-            self.processed_callback_ids = self.processed_callback_ids[
-                -MAX_PROCESSED_CALLBACKS:
-            ]
+            with self._lock:
+                self.processed_callback_ids.append(callback_id)
+                self.processed_callback_ids = self.processed_callback_ids[
+                    -MAX_PROCESSED_CALLBACKS:
+                ]
 
-            old_active = self.active_kit
-            if choice == "auto":
-                self.kit_mode = "auto"
-                self.manual_kit = None
-                self.active_kit = self.espn_kit or self.fallback_kit
-                answer = f"AUTO · {_display_kit(self.active_kit)}"
-            else:
-                self.kit_mode = "manual"
-                self.manual_kit = choice
-                self.active_kit = choice
-                answer = f"MANUALE · {_display_kit(self.active_kit)}"
+                old_active = self.active_kit
+                if choice == "auto":
+                    self.kit_mode = "auto"
+                    self.manual_kit = None
+                    self.active_kit = self.espn_kit or self.fallback_kit
+                    answer = f"AUTO · {_display_kit(self.active_kit)}"
+                else:
+                    self.kit_mode = "manual"
+                    self.manual_kit = choice
+                    self.active_kit = choice
+                    answer = f"MANUALE · {_display_kit(self.active_kit)}"
 
-            self._persist_state()
+            # Prima la risposta al click: chi tocca il pulsante la vede subito.
             self._answer_callback(callback_id, answer)
+            self._persist_state()
 
             if old_active != self.active_kit:
                 self._log(
@@ -686,8 +786,7 @@ class DynamicKitRuntime:
                     f"Override Bot JR: {old_active} -> {self.active_kit} | "
                     f"mode={self.kit_mode.upper()}",
                 )
-                self.refresh_all_media()
-                self._persist_state()
+                self._schedule_refresh()
 
             self._edit_recap()
 
@@ -996,20 +1095,24 @@ class DynamicKitRuntime:
                     chat_id=self.bot.CHAT_ID,
                 )
             else:
-                record = self.volatile_media.get(str(message_id))
+                with self._lock:
+                    record = self.volatile_media.get(str(message_id))
+                    if isinstance(record, dict):
+                        record["caption"] = text
+                        record["visual_hash"] = _pixel_hash(photo_bytes)
+                        record["kit"] = self.active_kit
                 if isinstance(record, dict):
-                    record["caption"] = text
-                    record["visual_hash"] = _pixel_hash(photo_bytes)
-                    record["kit"] = self.active_kit
                     self._persist_state()
         return ok
 
     def _edit_goal_caption_proxy(self, message_id: int, text: str) -> bool:
         ok = self._originals["edit_goal_caption"](message_id, text)
         if ok:
-            record = self.volatile_media.get(str(message_id))
+            with self._lock:
+                record = self.volatile_media.get(str(message_id))
+                if isinstance(record, dict):
+                    record["caption"] = text
             if isinstance(record, dict):
-                record["caption"] = text
                 self._persist_state()
         return ok
 
@@ -1131,7 +1234,11 @@ class DynamicKitRuntime:
             ),
             "last_edit_error": None,
         }
-        self.volatile_media[str(message_id)] = record
+        with self._lock:
+            # Kit con cui la grafica e' stata disegnata (non quello di adesso,
+            # che un click arrivato nel frattempo potrebbe aver cambiato).
+            record["kit"] = context.get("kit") or record["kit"]
+            self.volatile_media[str(message_id)] = record
         self._persist_state()
         self._log(
             "DEBUG",
@@ -1144,8 +1251,21 @@ class DynamicKitRuntime:
     # Regeneration / edit in place
     # ------------------------------------------------------------------
     def refresh_all_media(self) -> tuple[int, int, int]:
-        if not self.enabled or not self.volatile_media:
-            return 0, 0, 0
+        """Ridisegna con il kit attivo le grafiche gia' inviate e le sostituisce.
+
+        Il disegno avviene fuori dal lock (e' la parte lenta): il ciclo live
+        intanto continua. La sostituzione del messaggio avviene sotto lock, con
+        la didascalia piu' recente, e solo se nel frattempo il kit non e' cambiato.
+        """
+        with self._lock:
+            if not self.enabled or not self.volatile_media:
+                return 0, 0, 0
+            target = self.active_kit
+            todo = [
+                (key, copy.deepcopy(record))
+                for key, record in self.volatile_media.items()
+                if isinstance(record, dict) and record.get("kit") != target
+            ]
 
         edited = 0
         identical = 0
@@ -1153,18 +1273,35 @@ class DynamicKitRuntime:
 
         self._suppress_capture = True
         try:
-            for message_key, record in list(self.volatile_media.items()):
-                if not isinstance(record, dict):
-                    continue
-                if record.get("kit") == self.active_kit:
+            for message_key, snapshot in todo:
+                if self.active_kit != target:
+                    break                       # nuovo click: si riparte col kit nuovo
+                try:
+                    png = self._render_record(snapshot, target)
+                except Exception as exc:
+                    with self._lock:
+                        record = self.volatile_media.get(message_key)
+                        if isinstance(record, dict):
+                            record["last_edit_error"] = f"{type(exc).__name__}: {exc}"
+                    failed += 1
+                    self._log(
+                        "WARN",
+                        "KIT",
+                        f"Rigenerazione {snapshot.get('type')} fallita | "
+                        f"message_id={snapshot.get('message_id')} | {exc}",
+                    )
                     continue
 
-                try:
-                    png = self._render_record(record, self.active_kit)
-                    new_hash = _pixel_hash(png)
+                new_hash = _pixel_hash(png)
+                with self._lock:
+                    record = self.volatile_media.get(message_key)
+                    if not isinstance(record, dict) or self.active_kit != target:
+                        continue
+                    if snapshot.get("canva_snapshot") != record.get("canva_snapshot"):
+                        record["canva_snapshot"] = snapshot.get("canva_snapshot")
 
                     if new_hash == record.get("visual_hash"):
-                        record["kit"] = self.active_kit
+                        record["kit"] = target
                         record["last_edit_error"] = None
                         identical += 1
                         self._log(
@@ -1176,27 +1313,15 @@ class DynamicKitRuntime:
                         continue
 
                     if self._edit_media_record(record, png):
-                        record["kit"] = self.active_kit
+                        record["kit"] = target
                         record["visual_hash"] = new_hash
                         record["last_edit_error"] = None
                         edited += 1
                     else:
                         record["last_edit_error"] = (
-                            f"editMessageMedia fallito verso {self.active_kit}"
+                            f"editMessageMedia fallito verso {target}"
                         )
                         failed += 1
-
-                except Exception as exc:
-                    record["last_edit_error"] = (
-                        f"{type(exc).__name__}: {exc}"
-                    )
-                    failed += 1
-                    self._log(
-                        "WARN",
-                        "KIT",
-                        f"Rigenerazione {record.get('type')} fallita | "
-                        f"message_id={record.get('message_id')} | {exc}",
-                    )
         finally:
             self._suppress_capture = False
 
@@ -1204,7 +1329,7 @@ class DynamicKitRuntime:
         self._log(
             "INFO",
             "KIT",
-            f"Propagazione kit {self.active_kit}: "
+            f"Propagazione kit {target}: "
             f"edit={edited}, invariati={identical}, errori={failed}",
         )
         return edited, identical, failed
@@ -1339,6 +1464,7 @@ class DynamicKitRuntime:
     # End of match / cleanup
     # ------------------------------------------------------------------
     def finish_match(self) -> None:
+        self.stop_background()
         self.remove_recap_buttons()
         self._cleanup_remote_canva_snapshots()
         self._cleanup_canva_snapshots()
