@@ -24,7 +24,6 @@ import signal
 import sys
 import time as _time
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -191,8 +190,8 @@ class Timeline:
 
         if kind == "PRE":
             keep = lambda key: False  # noqa: E731
-            comp["date"] = (datetime.now(timezone.utc) + timedelta(seconds=PRE_SECONDS - elapsed + 60)) \
-                .strftime("%Y-%m-%dT%H:%MZ")
+            # La data resta quella vera (nei messaggi deve vedersi quella): un
+            # calcio d'inizio gia' passato al bot va bene, aspetta solo il fischio.
             comp["status"] = {"clock": 0, "displayClock": "0'", "period": 0,
                               "type": {"name": "STATUS_SCHEDULED", "state": "pre",
                                        "description": "Scheduled", "completed": False}}
