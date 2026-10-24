@@ -370,6 +370,12 @@ def cmd_simulate(args) -> int:
     )
 
 
+def cmd_simulate_cleanup(args) -> int:
+    from livescore import simulate
+    simulate.delete_pending(args.output)
+    return 0
+
+
 def cmd_schedule_check(_args) -> int:
     from livescore import scheduler
     scheduler.main()
@@ -468,6 +474,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-canva", action="store_true", help="niente export Canva (HT/FT senza sfondo)")
     p.add_argument("--output", default="sim_output", help="cartella del report e delle immagini")
     p.set_defaults(func=cmd_simulate)
+    p = sub.add_parser("simulate-cleanup", help="cancella i messaggi rimasti di una simulazione")
+    p.add_argument("--output", default="sim_output", help="cartella della simulazione")
+    p.set_defaults(func=cmd_simulate_cleanup)
 
     p = sub.add_parser("config", help="parametri regolabili")
     p.add_argument("action", nargs="?", choices=["show", "set", "reset"])

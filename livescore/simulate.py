@@ -387,6 +387,7 @@ class Simulation:
                     self.sent.append((str(self.chat_id), int(message["message_id"])))
             except Exception:
                 pass
+            save_pending(self.output, self.sent)
         return response
 
     def _record(self, method: str, body: dict, files: dict | None) -> str | None:
@@ -422,18 +423,7 @@ class Simulation:
         print(f"[SIM] Fine simulazione: cancello {len(self.sent)} messaggi tra "
               f"{int(delete_after // 60)} minuti", flush=True)
         REAL_SLEEP(delete_after)
-        token = os.getenv("TELEGRAM_TOKEN", "")
-        deleted = 0
-        for chat_id, message_id in self.sent:
-            try:
-                response = self.real.post(
-                    f"https://api.telegram.org/bot{token}/deleteMessage",
-                    json={"chat_id": chat_id, "message_id": message_id}, timeout=10)
-                deleted += bool(response.ok)
-            except requests.RequestException:
-                pass
-            REAL_SLEEP(0.2)
-        print(f"[SIM] Cancellati {deleted}/{len(self.sent)} messaggi", flush=True)
+        delete_pending(self.output)
 
     def write_report(self) -> Path:
         home = self.timeline.home["team"]["displayName"]
@@ -514,6 +504,51 @@ class SimSession:
 
     def delete(self, url, **kwargs):
         return FakeResponse({"message": "bloccato dalla simulazione"}, 403)
+
+
+# ==============================================================================
+# PULIZIA (anche se il run viene annullato)
+# ==============================================================================
+PENDING_FILE = "messaggi_da_cancellare.json"
+
+
+def save_pending(output: Path, sent: list[tuple[str, int]]) -> None:
+    """Elenco dei messaggi ancora su Bot JR, riscritto a ogni invio: se il run
+    viene annullato, lo step di pulizia del workflow li cancella da qui."""
+    path = Path(output) / PENDING_FILE
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps([list(item) for item in sent]), encoding="utf-8")
+    temporary.replace(path)
+
+
+def delete_pending(output: Path | str) -> int:
+    """Cancella da Telegram i messaggi rimasti nell'elenco; tiene solo quelli falliti."""
+    path = Path(output) / PENDING_FILE
+    try:
+        pending = [(str(chat), int(message)) for chat, message in json.loads(path.read_text("utf-8"))]
+    except (OSError, ValueError, TypeError):
+        print("[SIM] Nessun messaggio da cancellare", flush=True)
+        return 0
+    if not pending:
+        print("[SIM] Nessun messaggio da cancellare", flush=True)
+        return 0
+    token = os.getenv("TELEGRAM_TOKEN", "")
+    session = requests.Session()
+    failed: list[tuple[str, int]] = []
+    for chat_id, message_id in pending:
+        try:
+            response = session.post(
+                f"https://api.telegram.org/bot{token}/deleteMessage",
+                json={"chat_id": chat_id, "message_id": message_id}, timeout=10)
+            # 400 = gia' cancellato (per esempio dal bot stesso): va bene cosi'.
+            if not (response.ok or response.status_code == 400):
+                failed.append((chat_id, message_id))
+        except requests.RequestException:
+            failed.append((chat_id, message_id))
+        REAL_SLEEP(0.2)
+    save_pending(path.parent, failed)
+    print(f"[SIM] Cancellati {len(pending) - len(failed)}/{len(pending)} messaggi", flush=True)
+    return len(pending) - len(failed)
 
 
 @contextmanager

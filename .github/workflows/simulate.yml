@@ -80,6 +80,13 @@ jobs:
           [ "$SIM_DRY_RUN" = "true" ] && ARGS+=(--dry-run)
           python -u -m livescore simulate "${ARGS[@]}" --output sim_output
 
+      - name: Cancella i messaggi rimasti
+        # Anche se il run viene annullato o fallisce: niente messaggi lasciati su Bot JR.
+        if: always()
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: python -u -m livescore simulate-cleanup --output sim_output
+
       - name: Report e immagini
         if: always()
         uses: actions/upload-artifact@v4
