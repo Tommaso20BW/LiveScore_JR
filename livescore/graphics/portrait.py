@@ -309,7 +309,7 @@ def event(
     size = 29
     while size > 14 and g._font(size).getlength(label) > IW - 40:
         size -= 1
-    center_name(card, label, g._font(size))
+    center_name(card, label, g._font(size), key=key, assets=assets)
 
     return g.RenderedGoal(
         png(brand(card, key, assets)),
@@ -464,9 +464,12 @@ def soft_place(canvas, layer, position, blur=8, opacity=.55, offset=5):
     canvas.alpha_composite(layer, position)
 
 
-def center_name(card, label, font):
+def center_name(card, label, font, *, key=None, assets=None):
     box = font.getbbox(label)
     layer = Image.new('RGBA', (box[2] - box[0] + 8, box[3] - box[1] + 8))
     ImageDraw.Draw(layer).text((4 - box[0], 4 - box[1]), label, font=font, fill='white')
     layer = layer.crop(layer.getchannel('A').getbbox())
+    if key and assets is not None:
+        # Stessa texture del kit dei loghi e della scritta GOAL/SAVED, non bianco piatto.
+        layer = textured(layer, key, assets, True)
     card.alpha_composite(layer, ((card.width - layer.width) // 2, 1254))
