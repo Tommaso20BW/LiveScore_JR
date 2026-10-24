@@ -90,16 +90,6 @@ class MatchFoundNotificationTests(unittest.TestCase):
         runner.bot.rileva_kit_juve.assert_not_called()
         runner._asset_status.assert_not_called()
 
-    def test_auto_delete_is_queued_silently(self):
-        response = Mock(status_code=200)
-        with patch.object(runner.bot.SESSION, "post", return_value=response), \
-             patch.object(runner.bot, "should_enqueue", return_value=True), \
-             patch.object(runner.bot, "enqueue_response", return_value=1) as enqueue, \
-             patch("builtins.print") as log:
-            runner.bot._tg_post("sendMessage", payload={"chat_id": "test"})
-        enqueue.assert_called_once()
-        log.assert_not_called()
-
     def test_notification_only_to_bot_jr_even_if_summary_fails(self):
         response = Mock()
         with patch.dict(os.environ, {"TELEGRAM_TO_BOT": "test-chat", "LIVE_SCORE_CHANNEL_NAME": "Bot JR"}), \

@@ -8,7 +8,7 @@ Juventus e mai nelle amichevoli). Cambia solo cio' che sta intorno:
 - Telegram: i messaggi vanno sul canale di test (Bot JR), uno ogni 20 secondi,
   e a fine partita, dopo 10 minuti, vengono cancellati tutti;
   con ``--dry-run`` non parte nulla e i messaggi restano solo nel report;
-- Gist, snapshot e auto-delete di Bot JR: disattivati, nessuno stato reale toccato.
+- Gist e snapshot Canva: disattivati, nessuno stato reale toccato.
 
 Uso:  python -m livescore simulate <event_id> [--dry-run]
 """
@@ -540,7 +540,6 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
         "TEAM_ID": team_id,
         "TELEGRAM_TO": chat_id,
         "TELEGRAM_TO_BOT": chat_id,
-        "TELEGRAM_AUTO_DELETE_SECONDS": "0",   # la pulizia la fa la simulazione
         "GOAL_GRAPHICS_ENABLED": "true",
         "FCLOGO_SYNC_DONE": "true",
         "LIVE_SCORE_CHANNEL_NAME": "Bot JR",
@@ -558,7 +557,6 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     settings.TEAM_ID = team_id
     settings.CHAT_ID = chat_id
     settings.BOT_JR_CHAT_ID = chat_id
-    settings.TELEGRAM_AUTO_DELETE_SECONDS = 0
     settings.GOAL_GRAPHICS_ENABLED = True
     settings.BOT_TOKEN = os.environ["TELEGRAM_TOKEN"]
     settings.GH_PAT = settings.GH_PAT if allow_canva else None

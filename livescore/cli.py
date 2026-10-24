@@ -7,7 +7,6 @@ Senza argomenti apre un menu. Con argomenti:
     python -m livescore sync-logos             scarica i loghi FCLogo
     python -m livescore schedule-check         controlla se c'e' una partita (scheduler)
     python -m livescore simulate <event_id>    simula una partita gia' giocata (su Bot JR)
-    python -m livescore autodelete             cancella i messaggi Telegram scaduti
     python -m livescore config                 mostra i parametri regolabili
     python -m livescore config set poll_seconds 5
     python -m livescore config reset poll_seconds
@@ -377,11 +376,6 @@ def cmd_schedule_check(_args) -> int:
     return 0
 
 
-def cmd_autodelete(_args) -> int:
-    from livescore.telegram import autodelete
-    return autodelete.main()
-
-
 # ───────────────────────────── menu ─────────────────────────────
 def _ask(prompt: str) -> str:
     try:
@@ -474,7 +468,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-canva", action="store_true", help="niente export Canva (HT/FT senza sfondo)")
     p.add_argument("--output", default="sim_output", help="cartella del report e delle immagini")
     p.set_defaults(func=cmd_simulate)
-    sub.add_parser("autodelete", help="cancella messaggi scaduti").set_defaults(func=cmd_autodelete)
 
     p = sub.add_parser("config", help="parametri regolabili")
     p.add_argument("action", nargs="?", choices=["show", "set", "reset"])

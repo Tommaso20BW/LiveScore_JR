@@ -8,7 +8,6 @@ from livescore.constants import MOMENTI_CONFIG
 from livescore.core import http as net
 from livescore.core.log import log_line
 from livescore.graphics import goal as goal_graphics
-from livescore.telegram.autodelete import enqueue_response, should_enqueue
 
 
 # ==============================================================================
@@ -24,24 +23,6 @@ def _tg_post(method: str, payload: dict | None = None, data: dict | None = None,
     for _ in range(3):
         r = net.SESSION.post(url, json=payload, data=data, files=files, timeout=timeout)
         if r.status_code != 429:
-            target_chat_id = (payload or {}).get("chat_id") or (data or {}).get("chat_id")
-            if should_enqueue(
-                method,
-                target_chat_id,
-                settings.BOT_JR_CHAT_ID,
-                settings.TELEGRAM_AUTO_DELETE_SECONDS,
-            ):
-                try:
-                    enqueue_response(
-                        net.SESSION,
-                        r,
-                        settings.GH_PAT,
-                        settings.GIST_ID,
-                        target_chat_id,
-                        settings.TELEGRAM_AUTO_DELETE_SECONDS,
-                    )
-                except Exception as e:
-                    log_line("WARN", "TELEGRAM", f"Coda auto-delete Bot JR non aggiornata: {e}")
             return r
         try:
             retry_after = int(r.json().get("parameters", {}).get("retry_after", 3))

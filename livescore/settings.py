@@ -79,13 +79,6 @@ GOAL_GRAPHICS_ENABLED = os.getenv('GOAL_GRAPHICS_ENABLED', '0').strip().lower() 
     '1', 'true', 'yes', 'on'
 )
 
-try:
-    TELEGRAM_AUTO_DELETE_SECONDS = max(
-        0, int(os.getenv('TELEGRAM_AUTO_DELETE_SECONDS', '0'))
-    )
-except ValueError:
-    TELEGRAM_AUTO_DELETE_SECONDS = 0
-
 CANVA_DESIGN_ID = "DAHI3ytu6yQ"
 
 # ── Parametri regolabili ─────────────────────────────────────────────────────
