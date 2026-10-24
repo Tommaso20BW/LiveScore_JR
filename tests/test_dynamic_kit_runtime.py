@@ -599,5 +599,22 @@ class DynamicKitRuntimeTests(unittest.TestCase):
         self.assertEqual(self.runtime.pending_render["goal"]["render"]["kit"], "home")
 
 
+    def test_phase_is_registered_with_the_kit_read_after_canva_export(self):
+        # Click su Third durante l'export Canva, poi Auto (home) prima dell'invio.
+        def build(**kwargs):
+            self.runtime.active_kit = "third"
+            kit = self.runtime._rileva_kit_proxy({}, "111", "112", "Juventus", "Lazio", "ita.1", "Serie A")
+            self.assertEqual(kit, "third")
+            self.runtime._last_canva_snapshot = "/tmp/snap"
+            self.runtime.active_kit = "home"
+            return png((5, 5, 5, 255))
+
+        self.runtime.league_slug = "ita.1"
+        self.runtime.snapshot_store = SimpleNamespace(persist_snapshot=lambda **kw: {"path": "/tmp/snap"})
+        self.runtime._originals["build_phase_graphic"] = build
+        self.runtime._build_phase_graphic_proxy(kind="half", home_id="111", away_id="112",
+                                                league_slug="ita.1", league_name="Serie A")
+        self.assertEqual(self.runtime.pending_render["half"]["kit"], "third")
+
 if __name__ == "__main__":
     unittest.main()

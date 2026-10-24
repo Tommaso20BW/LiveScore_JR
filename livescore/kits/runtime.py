@@ -607,7 +607,11 @@ class DynamicKitRuntime:
             and str(self.bot.JUVE_ID) in (str(home_id), str(away_id))
             and str(league_slug or "") == str(self.league_slug or "")
         ):
-            return self.active_kit
+            kit = self.active_kit
+            # Il kit davvero usato da chi sta disegnando (per thread): una
+            # grafica va registrata con questo, non con quello attivo dopo.
+            self._thread_local.kit_used = kit
+            return kit
         return self._originals["rileva_kit_juve"](
             data_espn,
             home_id,
@@ -915,13 +919,16 @@ class DynamicKitRuntime:
 
     def _build_phase_graphic_proxy(self, *args, **kwargs):
         kind = str(kwargs.get("kind") or "")
-        drawn_kit = self.active_kit
+        self._thread_local.kit_used = None
         self._capturing_phase = True
         self._last_canva_snapshot = None
         try:
             png = self._originals["build_phase_graphic"](*args, **kwargs)
         finally:
             self._capturing_phase = False
+        # Il kit lo legge il disegno dopo l'export Canva (~10 s): se nel frattempo
+        # arriva un click, vale quello letto in quel momento.
+        drawn_kit = getattr(self._thread_local, "kit_used", None) or self.active_kit
 
         if self.enabled and not self._suppress_capture and png:
             allowed = {
