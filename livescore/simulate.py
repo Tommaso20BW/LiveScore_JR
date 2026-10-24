@@ -349,13 +349,22 @@ class Simulation:
             if wait > 0 and not self.dry_run:
                 REAL_SLEEP(wait)
             self.last_send = REAL_TIME()
-        self._record(method, body, files)
+        image = self._record(method, body, files)
 
         if self.dry_run:
             if method in SEND_METHODS:
                 self.next_id += 1
-                return FakeResponse({"ok": True, "result": {
-                    "message_id": self.next_id, "chat": {"id": self.chat_id}}})
+                result = {"message_id": self.next_id, "chat": {"id": self.chat_id}}
+                if image:
+                    # Come Telegram: le dimensioni della foto, che il bot controlla.
+                    try:
+                        from PIL import Image
+                        with Image.open(self.output / image) as picture:
+                            width, height = picture.size
+                        result["photo"] = [{"width": width, "height": height}]
+                    except Exception:
+                        pass
+                return FakeResponse({"ok": True, "result": result})
             return FakeResponse({"ok": True, "result": True})
 
         response = self.real.post(
@@ -374,7 +383,7 @@ class Simulation:
                 pass
         return response
 
-    def _record(self, method: str, body: dict, files: dict | None) -> None:
+    def _record(self, method: str, body: dict, files: dict | None) -> str | None:
         image = None
         for value in (files or {}).values():
             content = _file_bytes(value)
@@ -399,6 +408,7 @@ class Simulation:
         preview = re.sub(r"<[^>]+>", "", html.unescape(str(text))).replace("\n", " ")[:90]
         print(f"[SIM {self.log[-1]['minuto']:>7}] {method}{' + immagine' if image else ''} | {preview}",
               flush=True)
+        return image
 
     def cleanup(self, delete_after: float) -> None:
         if self.dry_run or not self.sent:
@@ -505,6 +515,25 @@ def _nothing():
     yield
 
 
+class LocalSnapshots:
+    """Al posto dello snapshot store su GitHub: il runtime pubblica una foto di
+    fase solo dopo averne salvato lo snapshot Canva. In simulazione resta nella
+    cartella locale del run, e il branch runtime-snapshots del live non si tocca."""
+
+    def enabled(self) -> bool:
+        return True
+
+    def persist_snapshot(self, *, event_id: str, kind: str, snapshot_dir: Path) -> dict:
+        return {"path": str(snapshot_dir), "event_id": str(event_id), "kind": kind,
+                "simulated": True}
+
+    def restore_snapshot(self, metadata: dict, *, destination_root: Path) -> Path:
+        return Path(str(metadata.get("path") or ""))
+
+    def cleanup_event(self, event_id: str) -> int:
+        return 0
+
+
 # ==============================================================================
 # AVVIO
 # ==============================================================================
@@ -587,7 +616,7 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     try:
         from livescore import runner
         # Gli snapshot Canva del live (branch runtime-snapshots) restano intatti.
-        runner.KIT_RUNTIME.snapshot_store.token = ""
+        runner.KIT_RUNTIME.snapshot_store = LocalSnapshots()
         runner.main()
     except SimulationTimeout as exc:
         print(f"[SIM] {exc}", flush=True)
