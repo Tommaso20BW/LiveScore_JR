@@ -16,6 +16,22 @@ from livescore.state import gist
 from livescore.telegram import api as tg
 
 
+# Oltre questo anticipo sul calcio d'inizio il live non parte (ci pensera' il
+# giro successivo dello scheduler) e non manda nemmeno "Partita trovata".
+KICKOFF_TOO_EARLY_MINUTES = 60
+
+
+def minutes_to_kickoff(start: str) -> float | None:
+    """Minuti al calcio d'inizio da una data ESPN (es. 2026-09-05T19:00Z)."""
+    try:
+        start_time = datetime.fromisoformat(str(start).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
+    return (start_time - datetime.now(timezone.utc)).total_seconds() / 60
+
+
 def wait_for_kickoff(ctx: MatchContext) -> Flow | None:
     """Prima del fischio d'inizio: attende senza inviare nulla."""
     # --- Non ancora iniziata ---
@@ -27,7 +43,7 @@ def wait_for_kickoff(ctx: MatchContext) -> Flow | None:
                 start_time         = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
                 now_utc            = datetime.now(timezone.utc)
                 minutes_to_kickoff = (start_time - now_utc).total_seconds() / 60
-                if minutes_to_kickoff > 60:
+                if minutes_to_kickoff > KICKOFF_TOO_EARLY_MINUTES:
                     log_line("STOP", "MATCH", f"Kickoff tra {minutes_to_kickoff:.0f} min; avvio troppo anticipato")
                     sys.exit(0)
                 if "_ns_logged" not in ctx.state:

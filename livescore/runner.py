@@ -195,7 +195,21 @@ def trova_partita_con_notifica(team_id: str):
     partita = _ORIGINAL_TROVA_PARTITA(team_id)
 
     if partita:
-        _notifica_partita_trovata_bot(partita)
+        from livescore.match import phases
+
+        start = partita.get("date") or (partita.get("competition") or {}).get("date", "")
+        minutes = phases.minutes_to_kickoff(start)
+        if minutes is not None and minutes > phases.KICKOFF_TOO_EARLY_MINUTES:
+            # Il live si fermera' subito ("avvio troppo anticipato"): niente
+            # "Partita trovata" su Telegram, la manda il giro che parte davvero.
+            bot.log_line(
+                "WAIT",
+                "TELEGRAM",
+                f"Partita trovata, calcio d'inizio tra {minutes:.0f} min: "
+                "notifica di servizio rimandata",
+            )
+        else:
+            _notifica_partita_trovata_bot(partita)
 
     return partita
 

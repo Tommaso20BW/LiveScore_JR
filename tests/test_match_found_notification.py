@@ -102,6 +102,25 @@ class MatchFoundNotificationTests(unittest.TestCase):
         self.assertEqual(payload["chat_id"], "test-chat")
         self.assertIn("PARTITA TROVATA", payload["text"])
 
+    def _match_in(self, minutes):
+        from datetime import datetime, timedelta, timezone
+        start = (datetime.now(timezone.utc) + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%MZ")
+        return {**self.match, "date": start, "competition": {**self.match["competition"], "date": start}}
+
+    def test_match_found_hours_before_kickoff_sends_nothing(self):
+        far = self._match_in(180)
+        with patch.object(runner, "_ORIGINAL_TROVA_PARTITA", return_value=far), \
+             patch.object(runner, "_notifica_partita_trovata_bot") as notify:
+            self.assertIs(runner.trova_partita_con_notifica("111"), far)
+        notify.assert_not_called()
+
+    def test_match_found_close_to_kickoff_is_notified(self):
+        near = self._match_in(30)
+        with patch.object(runner, "_ORIGINAL_TROVA_PARTITA", return_value=near), \
+             patch.object(runner, "_notifica_partita_trovata_bot") as notify:
+            runner.trova_partita_con_notifica("111")
+        notify.assert_called_once_with(near)
+
     def test_telegram_failure_does_not_stop_discovery(self):
         with patch.object(runner, "_ORIGINAL_TROVA_PARTITA", return_value=self.match), \
              patch.dict(os.environ, {"TELEGRAM_TO_BOT": "test-chat"}), \
