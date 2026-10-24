@@ -126,7 +126,7 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     title = uri(Image.open(assets / 'portrait' / f'stats_{key}.png'))
 
     word = p.tight(
-        Image.open(assets / 'portrait' / f'{PHASES[momento]}.png'),
+        Image.open(assets / 'overlays' / f'{PHASES[momento]}.png'),
         True
     )
     word = word.resize(

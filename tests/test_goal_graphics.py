@@ -28,8 +28,9 @@ class GoalGraphicsTests(unittest.TestCase):
         front_goal = Image.new("RGBA", (1254, 1254), (0, 0, 0, 0))
         ImageDraw.Draw(front_goal).text((420, 800), "GOAL", fill=(255, 255, 255, 255))
         front_goal.save(self.root / "overlays" / "front_goal.png")
-        shutil.copyfile(goal_graphics.DEFAULT_ASSET_DIR / "overlays/front_saved.png",
-                        self.root / "overlays/front_saved.png")
+        for name in ("front_saved", "jr", "kick", "half", "end_of_90", "full"):
+            shutil.copyfile(goal_graphics.DEFAULT_ASSET_DIR / "overlays" / f"{name}.png",
+                            self.root / "overlays" / f"{name}.png")
 
         player = Image.new("RGBA", (1254, 1254), (0, 0, 0, 0))
         draw = ImageDraw.Draw(player)

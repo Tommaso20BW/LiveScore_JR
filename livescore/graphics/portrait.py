@@ -121,7 +121,7 @@ def textured(source, key, assets, zoom=False, color=None, bright=False):
 
 
 def brand(card, key, assets):
-    mark = tight(Image.open(assets / 'portrait/jr.png'))
+    mark = tight(Image.open(assets / 'overlays/jr.png'))
     height = round(H * 58 / 1280)
     mark = mark.resize((round(mark.width * height / mark.height), height), Image.Resampling.LANCZOS)
     color = {
@@ -346,7 +346,7 @@ def phase(
     if key == 'ucl':
         card = vivid_background(card)
 
-    word = tight(Image.open(assets / 'portrait' / f'{kind}.png'), True)
+    word = tight(Image.open(assets / 'overlays' / f'{kind}.png'), True)
 
     if kind == 'kick':
         word = ImageOps.contain(word, (600, 600), Image.Resampling.LANCZOS)
