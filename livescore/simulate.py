@@ -300,6 +300,7 @@ class Simulation:
         self.started = None
         self.real = requests.Session()
         self.last_send = 0.0
+        self.last_updates = 0.0
         self.next_id = 1000
         self.sent: list[tuple[str, int]] = []
         self.log: list[dict] = []
@@ -338,9 +339,14 @@ class Simulation:
                  files: dict | None, timeout: int):
         method = url.rsplit("/", 1)[-1]
         if method == "getUpdates":
-            # I pulsanti del messaggio "partita trovata" non vengono letti in
-            # simulazione: niente aggiornamenti, e nessuna lettura sul bot vero.
-            return FakeResponse({"ok": True, "result": []})
+            # Click sui pulsanti kit del messaggio "partita trovata": su Bot JR
+            # arrivano dal Telegram vero, come nel live (live e simulazione non
+            # girano mai insieme). Con l'orologio accelerato il ciclo e' rapidissimo:
+            # al massimo una lettura vera ogni 2 secondi. In prova non c'e' niente da leggere.
+            if self.dry_run or REAL_TIME() - self.last_updates < 2:
+                return FakeResponse({"ok": True, "result": []})
+            self.last_updates = REAL_TIME()
+            return self.real.post(url, json=payload, data=data, timeout=timeout)
         body = dict(payload or data or {})
         if "chat_id" in body:
             body["chat_id"] = self.chat_id         # sempre e solo sul canale di test
