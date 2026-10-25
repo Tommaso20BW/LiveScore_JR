@@ -157,20 +157,18 @@ def main():
         return
 
     # Il workflow può aver già sincronizzato i loghi prima di pubblicarli.
-    # Se i loghi sono già presenti negli asset non si scarica nulla; se mancano,
-    # il sync gira in background e non ritarda mai la ricerca della partita.
+    # Il sync gira in background e non ritarda mai la ricerca della partita: a
+    # stagione completa controlla solo i loghi senza mono, il catalogo intero solo
+    # quando manca ancora qualche pack della stagione (vedi logos.sync_logos).
     if settings.GOAL_GRAPHICS_ENABLED and os.getenv('FCLOGO_SYNC_DONE', '').strip().lower() != 'true':
-        if any(fclogo_sync.DEFAULT_LOGO_DIR.rglob('*.png')):
-            log_line("DEBUG", "GRAPHICS", "FCLogo: loghi già presenti negli asset, nessun download")
-        else:
-            threading.Thread(target=_sync_logos_background, name="fclogo-sync", daemon=True).start()
+        threading.Thread(target=_sync_logos_background, name="fclogo-sync", daemon=True).start()
 
     avvia_ciclo_partita()
 
 
 def _sync_logos_background():
     try:
-        report = fclogo_sync.sync_current_season()
+        report = fclogo_sync.sync_logos()
         log_line("DEBUG", "GRAPHICS", report.summary())
         for warning in report.errors:
             log_line("WARN", "GRAPHICS", f"FCLogo: {warning}")

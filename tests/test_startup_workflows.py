@@ -21,7 +21,7 @@ class StartupTests(unittest.TestCase):
             patcher = patch.object(bot, target, **kwargs)
             patcher.start()
             self.addCleanup(patcher.stop)
-        patcher = patch.object(bot.fclogo_sync, "sync_current_season",
+        patcher = patch.object(bot.fclogo_sync, "sync_logos",
                                return_value=Mock(errors=[]))
         self.sync = patcher.start()
         self.addCleanup(patcher.stop)
@@ -60,14 +60,7 @@ class StartupTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def test_failed_workflow_sync_with_logos_present_does_not_download(self):
-        self._logo_dir(with_logo=True)
-        with patch.dict(os.environ, {"FCLOGO_SYNC_DONE": "false"}):
-            bot.main()
-        self.sync.assert_not_called()
-        bot.avvia_ciclo_partita.assert_called_once_with()
-
-    def test_failed_workflow_sync_without_logos_syncs_in_background(self):
+    def test_failed_workflow_sync_runs_in_background(self):
         self._logo_dir(with_logo=False)
         self._run_threads_inline()
         with patch.dict(os.environ, {"FCLOGO_SYNC_DONE": "false"}):
@@ -75,7 +68,7 @@ class StartupTests(unittest.TestCase):
         self.sync.assert_called_once_with()
         bot.avvia_ciclo_partita.assert_called_once_with()
 
-    def test_direct_start_without_logos_still_syncs(self):
+    def test_direct_start_still_syncs(self):
         self._logo_dir(with_logo=False)
         self._run_threads_inline()
         with patch.dict(os.environ):

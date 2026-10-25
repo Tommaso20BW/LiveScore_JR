@@ -139,9 +139,36 @@ class _ClubParser(HTMLParser):
             self._active_slug = ""
 
 
+# La stagione nuova inizia il 1 agosto. I pack possono uscire anche dopo: finche'
+# ne manca uno della stagione corrente il catalogo si ricontrolla a ogni partita.
+SEASON_START_MONTH = 8
+EXPECTED_PACK_KINDS = (
+    "serie-a",
+    "serie-b",
+    "uefa-champions-league",
+    "uefa-europa-league",
+    "uefa-conference-league",
+)
+
+
 def season_start_year(today: date | None = None) -> int:
     current = today or date.today()
-    return current.year if current.month >= 7 else current.year - 1
+    return current.year if current.month >= SEASON_START_MONTH else current.year - 1
+
+
+def pack_kind(slug: str) -> str:
+    """'2026-27-serie-a' -> 'serie-a' (competizione, senza stagione)."""
+    match = re.fullmatch(r"(?:\d{2}|\d{4})-\d{2}-(.+)", str(slug))
+    return match.group(1) if match else ""
+
+
+def pack_start_year(slug: str) -> int | None:
+    """'2026-27-serie-a' / '26-27-serie-a' -> 2026."""
+    match = re.match(r"(\d{2}|\d{4})-\d{2}-", str(slug))
+    if not match:
+        return None
+    year = int(match.group(1))
+    return year + 2000 if year < 100 else year
 
 
 def season_label(today: date | None = None) -> str:
@@ -509,7 +536,11 @@ def sync_current_season(
 
     http = session or _new_session()
     label = season_label(today)
-    slugs = discover_pack_slugs(http, season_start_year(today))
+    start_year = season_start_year(today)
+    slugs = [
+        slug for slug in discover_pack_slugs(http, start_year)
+        if pack_start_year(slug) in (None, start_year)
+    ]
     selected, errors = select_pack_records(http, slugs)
     report = SyncReport(
         season=label,
@@ -529,20 +560,34 @@ def sync_current_season(
             clubs_by_slug[club.slug] = club
             club_packs.setdefault(club.slug, set()).add(pack_slug)
 
-    # Non trasciniamo squadre di stagioni passate. Se un singolo pack della
-    # stagione corrente non risponde, conserviamo invece le sue ultime copie
-    # valide finche il controllo successivo non riesce.
-    failed_pack_slugs = {
-        error.split(":", 1)[0]
-        for error in errors
-        if ":" in error
+    # Sostituzione pack per pack: un pack della stagione nuova rimpiazza quello
+    # vecchio della stessa competizione (le sue squadre e i suoi file spariscono).
+    # Le competizioni il cui pack nuovo non e' ancora uscito, o non risponde,
+    # restano con l'ultimo pack valido finche' il controllo successivo non lo trova.
+    selected_kinds = {pack_kind(slug) for slug in selected}
+    previous_packs = previous.get("packs", {}) if isinstance(previous.get("packs"), dict) else {}
+    carried_packs = {
+        slug: entry
+        for slug, entry in previous_packs.items()
+        if pack_kind(slug) not in selected_kinds
     }
-    updated_teams = {
-        slug: item
-        for slug, item in previous_teams.items()
-        if previous.get("season") == label
-        and any(pack in failed_pack_slugs for pack in item.get("packs", []))
-    }
+    for item in previous_teams.values():
+        for slug in item.get("packs", []):
+            if pack_kind(slug) not in selected_kinds and slug not in carried_packs:
+                carried_packs[slug] = {"url": f"{BASE_URL}/pack/{slug}", "clubs": []}
+    new_by_key = {_club_key({"detail_path": club.detail_path, "slug": slug}): slug
+                  for slug, club in clubs_by_slug.items()}
+    updated_teams = {}
+    for slug, item in previous_teams.items():
+        kept = [pack for pack in item.get("packs", []) if pack in carried_packs]
+        if not kept:
+            continue
+        new_slug = slug if slug in clubs_by_slug else new_by_key.get(_club_key(item))
+        if new_slug:
+            # Stessa squadra anche nei pack nuovi: un solo logo, copiato in ogni cartella.
+            club_packs[new_slug].update(kept)
+            continue
+        updated_teams[slug] = {**item, "packs": sorted(kept)}
     pending_downloads: list[tuple[str, ClubRecord, dict[str, Any], Path]] = []
     for club_slug, club in sorted(clubs_by_slug.items()):
         old = previous_teams.get(club_slug, {})
@@ -666,15 +711,21 @@ def sync_current_season(
     manifest = {
         "source": f"{BASE_URL}/",
         "season": label,
-        # False finche' qualche logo della stagione non e' stato scaricato.
-        "complete": report.failed == 0,
+        # True solo quando tutte le competizioni hanno il pack della stagione e
+        # ogni logo e' scaricato: da li' in poi niente catalogo fino ad agosto.
+        "complete": report.failed == 0 and {
+            pack_kind(slug) for slug in selected if pack_start_year(slug) == start_year
+        } >= set(EXPECTED_PACK_KINDS),
         "packs": {
-            slug: {
-                "url": f"{BASE_URL}/pack/{slug}",
-                "fingerprint": pack_fingerprint(clubs),
-                "clubs": [club.slug for club in clubs],
-            }
-            for slug, clubs in sorted(selected.items())
+            **{slug: dict(entry) for slug, entry in sorted(carried_packs.items())},
+            **{
+                slug: {
+                    "url": f"{BASE_URL}/pack/{slug}",
+                    "fingerprint": pack_fingerprint(clubs),
+                    "clubs": [club.slug for club in clubs],
+                }
+                for slug, clubs in sorted(selected.items())
+            },
         },
         "teams": sorted(updated_teams.values(), key=lambda item: str(item.get("slug", ""))),
     }
@@ -714,6 +765,76 @@ def sync_current_season(
 
     report.teams = len(clubs_by_slug)
     return report
+
+
+def recheck_single_logos(
+    *,
+    output_dir: Path | str = DEFAULT_LOGO_DIR,
+    session: requests.Session | None = None,
+) -> SyncReport:
+    """Stagione completa: ricontrolla solo i loghi pubblicati senza versione mono."""
+    output_dir = Path(output_dir)
+    manifest_path = output_dir / MANIFEST_FILENAME
+    manifest = _read_manifest(manifest_path)
+    report = SyncReport(season=str(manifest.get("season", "")),
+                        selected_packs=tuple(sorted(manifest.get("packs", {}))))
+    teams = [item for item in manifest.get("teams", []) if isinstance(item, dict)]
+    report.teams = len(teams)
+    http = session or _new_session()
+    changed = False
+    for item in teams:
+        if item.get("variant") != "single" or not item.get("detail_path"):
+            continue
+        club = ClubRecord(
+            slug=str(item.get("slug", "")),
+            name=str(item.get("name", "")),
+            preview_url=str(item.get("preview_url", "")),
+            detail_path=str(item.get("detail_path", "")),
+        )
+        files = list(item.get("files") or [item.get("file", "")])
+        folder = Path(str(files[0])).parent.as_posix() if files and files[0] else _club_folders(set(item.get("packs", [])))[0]
+        try:
+            filename, variant, source_url = _download_logo(http, club, output_dir, folder)
+        except (FCLogoSyncError, ValueError) as exc:
+            report.failed += 1
+            report.errors.append(f"{club.name}: {exc}")
+            continue
+        if variant != "mono":
+            report.reused += 1
+            continue
+        source = output_dir / filename
+        for relative in files:
+            target = output_dir / str(relative)
+            if relative and target.resolve() != source.resolve():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, target)
+        item.update({"file": filename, "variant": "mono", "source_url": source_url})
+        if filename not in files:
+            item["files"] = [filename, *[f for f in files if f and f != filename]]
+        report.downloaded += 1
+        changed = True
+    if changed:
+        temporary = manifest_path.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(manifest_path)
+    return report
+
+
+def sync_logos(
+    *,
+    output_dir: Path | str = DEFAULT_LOGO_DIR,
+    session: requests.Session | None = None,
+    today: date | None = None,
+) -> SyncReport:
+    """Regola di sincronizzazione:
+    - stagione completa (tutti i pack usciti e scaricati): solo i loghi senza mono;
+    - altrimenti (dal 1 agosto, o pack ancora mancanti): controllo del catalogo.
+    Se FCLogo non risponde si alza FCLogoSyncError e il manifest resta com'era."""
+    output_dir = Path(output_dir)
+    previous = _read_manifest(output_dir / MANIFEST_FILENAME)
+    if previous.get("season") == season_label(today) and previous.get("complete"):
+        return recheck_single_logos(output_dir=output_dir, session=session)
+    return sync_current_season(output_dir=output_dir, session=session, today=today)
 
 
 # Competizioni ESPN da confrontare con il catalogo: (lega ESPN, suffisso pack FCLogo).
@@ -831,7 +952,7 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_LOGO_DIR)
     args = parser.parse_args()
     try:
-        report = sync_current_season(output_dir=args.output_dir)
+        report = sync_logos(output_dir=args.output_dir)
     except FCLogoSyncError as exc:
         print(f"FCLogo: sincronizzazione non riuscita ({exc})")
         return 1

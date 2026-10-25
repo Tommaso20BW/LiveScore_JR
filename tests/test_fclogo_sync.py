@@ -78,9 +78,9 @@ class FCLogoSyncTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_season_changes_in_july(self):
-        self.assertEqual(fclogo_sync.season_label(date(2026, 6, 30)), "2025-26")
-        self.assertEqual(fclogo_sync.season_label(date(2026, 7, 1)), "2026-27")
+    def test_season_changes_in_august(self):
+        self.assertEqual(fclogo_sync.season_label(date(2026, 7, 31)), "2025-26")
+        self.assertEqual(fclogo_sync.season_label(date(2026, 8, 1)), "2026-27")
 
     def test_pack_discovery_does_not_assume_slug_year_format(self):
         page_one = FakeResponse(text=pack_listing(
@@ -479,7 +479,8 @@ class FCLogoSyncTests(unittest.TestCase):
         self.assertEqual((report.downloaded, report.reused, report.failed), (1, 1, 0))
         self.assertFalse(any(done in url for url in second.calls if "/club/" in url))
         manifest = json.loads((self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text())
-        self.assertTrue(manifest["complete"])
+        # Tutti i loghi scaricati, ma esce solo il pack UCL: la stagione non e' completa.
+        self.assertFalse(manifest["complete"])
 
     def test_single_version_logo_is_already_mono_and_saved_as_is(self):
         pack_slug = "2026-27-serie-b"
@@ -631,6 +632,115 @@ class FCLogoSyncTests(unittest.TestCase):
             today=date(2026, 9, 1),
         )
         self.assertEqual((report.downloaded, report.reused, report.failed), (0, 1, 0))
+
+    # --- nuove regole: stagione completa, sostituzione pack per pack, sito giu' ---
+
+    def _write_manifest(self, payload):
+        (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(json.dumps(payload), encoding="utf-8")
+
+    def _read_manifest(self):
+        return json.loads((self.output_dir / fclogo_sync.MANIFEST_FILENAME).read_text(encoding="utf-8"))
+
+    def test_complete_season_only_rechecks_colour_only_logos(self):
+        (self.output_dir / "serie-a").mkdir()
+        (self.output_dir / "serie-a" / "Juve-v2020-mono.png").write_bytes(png_bytes())
+        (self.output_dir / "serie-a" / "Lecce-v2001-mono.png").write_bytes(png_bytes((200, 0, 0, 255)))
+        self._write_manifest({
+            "season": "2026-27",
+            "complete": True,
+            "packs": {"2026-27-serie-a": {"clubs": []}},
+            "teams": [
+                {"name": "Juventus", "slug": "Juve-v2020", "file": "serie-a/Juve-v2020-mono.png",
+                 "variant": "mono", "detail_path": "/figc/club/Juve-v2020", "packs": ["2026-27-serie-a"]},
+                {"name": "Lecce", "slug": "Lecce-v2001", "file": "serie-a/Lecce-v2001-mono.png",
+                 "variant": "single", "detail_path": "/figc/club/Lecce-v2001", "packs": ["2026-27-serie-a"]},
+            ],
+        })
+        mono_url = f"{fclogo_sync.ASSET_BASE_URL}/Lecce-v2001-mono.png"
+        # Nessun URL del catalogo: se il sync lo chiedesse, FakeSession fallirebbe.
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/figc/club/Lecce-v2001-mono": FakeResponse(text=detail_page(mono_url)),
+            mono_url: FakeResponse(content=png_bytes()),
+        })
+        report = fclogo_sync.sync_logos(output_dir=self.output_dir, session=session, today=date(2026, 10, 25))
+        self.assertEqual(report.downloaded, 1)
+        self.assertFalse(any("/pack" in url for url in session.calls))
+        lecce = {t["slug"]: t for t in self._read_manifest()["teams"]}["Lecce-v2001"]
+        self.assertEqual(lecce["variant"], "mono")
+
+    def test_incomplete_season_checks_the_catalog(self):
+        self._write_manifest({"season": "2026-27", "complete": False, "packs": {}, "teams": []})
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(status=503),
+        })
+        with self.assertRaises(fclogo_sync.FCLogoSyncError):
+            fclogo_sync.sync_logos(output_dir=self.output_dir, session=session, today=date(2026, 10, 25))
+        self.assertIn(f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1", session.calls)
+
+    def test_new_season_on_august_checks_the_catalog_even_if_old_season_was_complete(self):
+        self._write_manifest({"season": "2025-26", "complete": True, "packs": {}, "teams": []})
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(status=503),
+        })
+        with self.assertRaises(fclogo_sync.FCLogoSyncError):
+            fclogo_sync.sync_logos(output_dir=self.output_dir, session=session, today=date(2026, 8, 1))
+
+    def test_site_down_leaves_manifest_and_logos_untouched(self):
+        (self.output_dir / "serie-a").mkdir()
+        logo = self.output_dir / "serie-a" / "Juve-v2020-mono.png"
+        logo.write_bytes(png_bytes())
+        payload = {"season": "2025-26", "complete": True,
+                   "packs": {"2025-26-serie-a": {"clubs": ["Juve-v2020"]}},
+                   "teams": [{"name": "Juventus", "slug": "Juve-v2020", "file": "serie-a/Juve-v2020-mono.png",
+                              "variant": "mono", "packs": ["2025-26-serie-a"]}]}
+        self._write_manifest(payload)
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(status=503),
+        })
+        with self.assertRaises(fclogo_sync.FCLogoSyncError):
+            fclogo_sync.sync_logos(output_dir=self.output_dir, session=session, today=date(2026, 9, 1))
+        self.assertEqual(self._read_manifest(), payload)
+        self.assertTrue(logo.is_file())
+
+    def test_new_pack_replaces_only_its_own_competition(self):
+        # Stagione vecchia: Serie A (Old Club) e UCL (Benfica). Esce solo la Serie A nuova.
+        (self.output_dir / "serie-a").mkdir()
+        (self.output_dir / "ucl").mkdir()
+        (self.output_dir / "serie-a" / "Old-Club-v2025-mono.png").write_bytes(png_bytes())
+        (self.output_dir / "ucl" / "SL-Benfica-v2025-mono.png").write_bytes(png_bytes())
+        self._write_manifest({
+            "season": "2025-26",
+            "complete": True,
+            "packs": {"2025-26-serie-a": {"clubs": ["Old-Club-v2025"]},
+                      "2025-26-uefa-champions-league": {"clubs": ["SL-Benfica-v2025"]}},
+            "teams": [
+                {"name": "Old Club", "slug": "Old-Club-v2025", "file": "serie-a/Old-Club-v2025-mono.png",
+                 "variant": "mono", "detail_path": "/figc/club/Old-Club-v2025", "packs": ["2025-26-serie-a"]},
+                {"name": "Benfica", "slug": "SL-Benfica-v2025", "file": "ucl/SL-Benfica-v2025-mono.png",
+                 "variant": "mono", "detail_path": "/fpf/club/SL-Benfica-v2025",
+                 "packs": ["2025-26-uefa-champions-league"]},
+            ],
+        })
+        pack_slug, new_slug = "2026-27-serie-a", "New-Club-v2026"
+        mono_url = f"{fclogo_sync.ASSET_BASE_URL}/{new_slug}-mono.png"
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(text=pack_listing(pack_slug)),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(text=pack_page((new_slug, "New Club", "one"))),
+            f"{fclogo_sync.BASE_URL}/figc/club/{new_slug}-mono": FakeResponse(text=detail_page(mono_url)),
+            mono_url: FakeResponse(content=png_bytes()),
+        })
+        fclogo_sync.sync_logos(output_dir=self.output_dir, session=session, today=date(2026, 8, 20))
+        manifest = self._read_manifest()
+        teams = {t["slug"]: t for t in manifest["teams"]}
+        # Serie A vecchia sostituita (file cancellato), UCL vecchia ancora valida.
+        self.assertNotIn("Old-Club-v2025", teams)
+        self.assertFalse((self.output_dir / "serie-a" / "Old-Club-v2025-mono.png").exists())
+        self.assertIn(new_slug, teams)
+        self.assertIn("SL-Benfica-v2025", teams)
+        self.assertTrue((self.output_dir / "ucl" / "SL-Benfica-v2025-mono.png").is_file())
+        self.assertEqual(set(manifest["packs"]), {"2026-27-serie-a", "2025-26-uefa-champions-league"})
+        self.assertFalse(manifest["complete"])
 
 
 class ESPNCoverageTests(unittest.TestCase):
