@@ -34,6 +34,8 @@ SHADOW = dict(
 )
 # UCL GOAL/SAVED lettering: magenta -> electric violet -> ice blue, random direction every render.
 UCL_GRADIENT = ('#F052D2', '#A66BFF', '#63D8FF')
+# JR mark: same family, softer magenta end.
+UCL_MARK_GRADIENT = ('#C064E6', '#7F9CFF', '#63D8FF')
 
 # Final dimensions/positions taken from the local preview tests:
 # - score numbers: 300 instead of 200
@@ -146,9 +148,13 @@ def brand(card, key, assets):
     # Near-black (not pure black) so the texture still shows; UCL matches its lettering.
     color = '#63D8FF' if key == 'ucl' else '#2B2B2B'
     # Flat colour, no texture light: the mark stays clean on every frame.
-    flat = Image.new('RGBA', mark.size, ImageColor.getrgb(color) + (255,))
-    flat.putalpha(mark.convert('RGBA').getchannel('A'))
-    mark = flat
+    # UCL: same random gradient as the lettering, but without texture.
+    if key == 'ucl':
+        mark = ucl_gradient(mark, assets, random.Random(), lit=False, stops=UCL_MARK_GRADIENT)
+    else:
+        flat = Image.new('RGBA', mark.size, ImageColor.getrgb(color) + (255,))
+        flat.putalpha(mark.convert('RGBA').getchannel('A'))
+        mark = flat
     x = W - round(W * 16 / 960) - mark.width
     assert x > W - M
     card.alpha_composite(mark, (x, round(H * 13 / 1280)))
@@ -512,7 +518,7 @@ def soft_place(canvas, layer, position, blur=8, opacity=.55, offset=5, key='home
     canvas.alpha_composite(layer, position)
 
 
-def ucl_gradient(source, assets, rng):
+def ucl_gradient(source, assets, rng, lit=True, stops=None):
     """UCL lettering: 3-stop gradient with a random angle, a shifting middle stop and soft waves,
     lit by the same contour texture as the other themes."""
     source = source.convert('RGBA')
@@ -541,8 +547,12 @@ def ucl_gradient(source, assets, rng):
     grid.putdata([round(255 * (1 - (x - lo) / (hi - lo) if flip else (x - lo) / (hi - lo))) for x in values])
     ramp = Image.new('L', source.size, 0)
     ramp.paste(grid.resize((bw, bh), Image.Resampling.BICUBIC), box[:2])
-    magenta, violet, ice = UCL_GRADIENT
+    magenta, violet, ice = stops or UCL_GRADIENT
     base = ImageOps.colorize(ramp, black=magenta, white=ice, mid=violet, midpoint=round(255 * rng.uniform(.32, .58)))
+    if not lit:                       # plain gradient, no texture light (JR mark)
+        out = base.convert('RGBA')
+        out.putalpha(alpha)
+        return out
     # Same light modulation as the other themes' texture tint.
     texture = Image.open(Path(assets) / 'word_textures' / f'{texture_key("ucl")}.png').convert('RGB')
     gray = ImageOps.autocontrast(
