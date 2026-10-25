@@ -3,7 +3,7 @@ import io
 import math
 import random
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageMath, ImageEnhance
+from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
 from livescore.graphics import goal as g
 from livescore.core import team_names
 
@@ -34,7 +34,7 @@ SHADOW = dict(
     uel='#140800',
     conference='#011207',
 )
-# UCL lettering: electric blue -> light azure, random direction every render.
+# UCL lettering: electric blue (shade) -> light azure (light), following the texture light.
 UCL_GRADIENT = ('#3A5BFF', '#3D8BFF', '#55B8FF')
 # JR mark: same family, softer magenta end.
 UCL_MARK_GRADIENT = ('#3A5BFF', '#3D8BFF', '#55B8FF')
@@ -535,52 +535,19 @@ def soft_place(canvas, layer, position, blur=8, opacity=.55, offset=5, key='home
     canvas.alpha_composite(layer, position)
 
 
-def ucl_gradient(source, assets, rng, lit=True, stops=None):
-    """UCL lettering: 3-stop gradient with a random angle, a shifting middle stop and soft waves,
-    lit by the same contour texture as the other themes."""
+def ucl_gradient(source, assets, rng=None, lit=True, stops=None):
+    """UCL lettering: two blues blended by the contour texture light, like the UEL/Conference shading.
+    Lit areas go to the light blue, shaded areas to the electric blue. Always the same (rng is unused).
+    lit=False (JR mark): same blues, smoothed, without the contour lines."""
     source = source.convert('RGBA')
-    alpha = source.getchannel('A')
-    box = alpha.point(lambda a: 255 if a > 100 else 0).getbbox()
-    if not box:
-        return textured(source, 'ucl', assets)
-    bw, bh = box[2] - box[0], box[3] - box[1]
-    gw = 64
-    gh = max(8, round(gw * bh / bw))
-    angle = rng.uniform(0, 2 * math.pi)
-    waves = [(rng.uniform(1.5, 3.5), rng.uniform(0, 2 * math.pi), rng.uniform(.04, .09), rng.uniform(0, 2 * math.pi))
-             for _ in range(2)]
-    values = []
-    for j in range(gh):
-        v = (j / (gh - 1) - .5) * bh / bw
-        for i in range(gw):
-            u = i / (gw - 1) - .5
-            value = u * math.cos(angle) + v * math.sin(angle)
-            for f, ph, amp, b in waves:
-                value += amp * math.sin(f * math.pi * (u * math.cos(b) + v * math.sin(b)) * 2 + ph)
-            values.append(value)
-    lo, hi = min(values), max(values)
-    flip = rng.random() < .5
-    grid = Image.new('L', (gw, gh))
-    grid.putdata([round(255 * (1 - (x - lo) / (hi - lo) if flip else (x - lo) / (hi - lo))) for x in values])
-    ramp = Image.new('L', source.size, 0)
-    ramp.paste(grid.resize((bw, bh), Image.Resampling.BICUBIC), box[:2])
-    magenta, violet, ice = stops or UCL_GRADIENT
-    base = ImageOps.colorize(ramp, black=magenta, white=ice, mid=violet, midpoint=round(255 * rng.uniform(.32, .58)))
-    if not lit:                       # plain gradient, no texture light (JR mark)
-        out = base.convert('RGBA')
-        out.putalpha(alpha)
-        return out
-    # Same light modulation as the other themes' texture tint.
+    dark, _, light = stops or UCL_GRADIENT
     texture = Image.open(Path(assets) / 'word_textures' / f'{texture_key("ucl")}.png').convert('RGB')
     gray = ImageOps.autocontrast(
         ImageOps.grayscale(ImageOps.fit(texture, source.size, method=Image.Resampling.LANCZOS)), cutoff=1)
-    hist = gray.histogram()
-    mean = sum(i * c for i, c in enumerate(hist)) / sum(hist)
-    light = gray.point(lambda x: round(128 * (1 + .55 * (x - mean) / 255))).convert('F')
-    bands = [ImageMath.lambda_eval(lambda a: a['c'] * a['m'] / 128, c=band.convert('F'), m=light).convert('L')
-             for band in base.split()]
-    out = Image.merge('RGB', bands).convert('RGBA')
-    out.putalpha(alpha)
+    if not lit:
+        gray = gray.filter(ImageFilter.GaussianBlur(max(2, source.width // 20)))
+    out = ImageOps.colorize(gray, black=dark, white=light).convert('RGBA')
+    out.putalpha(source.getchannel('A'))
     return out
 
 
