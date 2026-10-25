@@ -304,8 +304,6 @@ def event(
             return ucl_gradient(source, assets, random.Random(seed))
         return textured(source, key, assets)
 
-    # Soft shadow under the top heading; drawn on the panel, so it is cut at the panel edges like the word.
-    tinted_shadow(panel, heading.getchannel('A'), key, blur=14, opacity=.55, offset=6)
     panel.alpha_composite(textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading))
 
     path = None
@@ -439,16 +437,13 @@ def phase(
         word = ImageOps.contain(word, (600, 600), Image.Resampling.LANCZOS)
         top = (H - 64 - 38 - word.height) // 2
         kw = textured(word, key, assets, color=AWAY_DARK) if key == 'away' else phase_word(word, key, assets)
-        kpos = ((W - word.width) // 2, top + 102)
-        mask = Image.new('L', card.size)
-        mask.paste(kw.getchannel('A'), kpos)
-        tinted_shadow(card, mask, key, blur=14, opacity=.55, offset=6)   # same shadow as the other headings
-        card.alpha_composite(kw, kpos)
+        # Flat panel: no shadow under KICK OFF or its crests.
+        card.alpha_composite(kw, ((W - word.width) // 2, top + 102))
         marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
         if key == 'away':
             marks = [flat_color(m, AWAY_DARK) for m in marks]
         for mark, x in centered_logo_positions(marks, W / 2):
-            soft_place(card, mark, (x, top), blur=6, opacity=.50, key=key)
+            card.alpha_composite(mark, (x, top))
     else:
         if layers is None:
             raise ValueError('Pagina 1 Canva non disponibile')
@@ -465,12 +460,7 @@ def phase(
             method=Image.Resampling.LANCZOS,
         )
         word = word.resize((IW - 36, round(word.height * (IW - 36) / word.width)), Image.Resampling.LANCZOS)
-        # Same soft shadow as the GOAL/SAVED top heading.
-        pw = phase_word(word, key, assets)
-        mask = Image.new('L', bg.size)
-        mask.paste(pw.getchannel('A'), (18, 28))
-        tinted_shadow(bg, mask, key, blur=14, opacity=.55, offset=6)
-        bg.alpha_composite(pw, (18, 28))
+        bg.alpha_composite(phase_word(word, key, assets), (18, 28))   # no shadow on the phase word
         bg.alpha_composite(player)
 
         fade = Image.new('RGBA', bg.size)
