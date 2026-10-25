@@ -282,7 +282,7 @@ class CanvaExportTests(unittest.TestCase):
 
         with patch.object(bot, 'GOAL_GRAPHICS_ENABLED', True), \
              patch.object(bot, 'get_valid_token') as token:
-            for kind in ('second_half', 'extra_time', 'penalties'):
+            for kind in ('second_half', 'extra_time', 'penalties'):  # 'second' e' supportato
                 self.assertIsNone(
                     bot.build_phase_graphic(kind=kind, **common)
                 )
@@ -331,6 +331,15 @@ class PhaseFreshnessTests(unittest.TestCase):
                 )
 
             self.assertEqual(export.call_count, 4)
+
+    def test_second_half_has_no_canva_and_full_passes_extra_time(self):
+        with patch.object(bot, 'GOAL_GRAPHICS_ENABLED', True),              patch.object(bot, 'get_valid_token', return_value='token'),              patch.object(bot, 'rileva_kit_juve', return_value='home'),              patch.object(canva, 'export_page_one', return_value=Path('x')) as export,              patch.object(portrait, 'phase', return_value=b'png') as render:
+            self.assertEqual(bot.build_phase_graphic(kind='second', home_goals=1, away_goals=0,
+                                                     **self.common), b'png')
+            export.assert_not_called()
+            self.assertIsNone(render.call_args.kwargs['layers'])
+            bot.build_phase_graphic(kind='full', extra_time=True, **self.common)
+            self.assertTrue(render.call_args.kwargs['extra_time'])
 
     def test_retry_after_export_failure_downloads_again_before_rendering(self):
         fresh = Path('fresh-export')

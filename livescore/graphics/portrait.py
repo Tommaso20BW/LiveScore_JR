@@ -47,6 +47,11 @@ UCL_TEXT_GRADIENT = ('#3A5BFF', '#3D8BFF', '#55B8FF')
 # - score/crest group: lifted by 65 px
 # - shootout caption: lifted from 1320 to 1285
 PHASE_SCORE_FONT_SIZE = 300
+# KICK OFF / inizio secondo tempo: altezza di stemmi e risultato sopra la scritta.
+KICK_LOGO_HEIGHT = 64
+SECOND_ROW_GAP = 24
+# Fasi con grafica: 'second' = inizio secondo tempo (senza Canva, come 'kick').
+PHASE_KINDS = ('kick', 'second', 'half', 'end_of_90', 'full')
 PHASE_LOGO_HEIGHT_FACTOR = 0.43
 PHASE_GROUP_LIFT = 65
 PHASE_PENALTY_CAPTION_Y = 1285
@@ -232,11 +237,21 @@ def phase_group_positions(home_mark, away_mark, score_width, canvas_width=W, gap
     return score_x, home_x, away_x
 
 
-def number(text, size, key, assets):
+def score_of_height(text, height, key, assets, color=None):
+    """Risultato con le cifre alte esattamente `height` px."""
+    font = ImageFont.truetype(str(assets / 'fonts/DharmaGothicEBold.otf'), 100)
+    box = font.getbbox(text)
+    size = max(1, round(100 * height / (box[3] - box[1])))
+    return number(text, size, key, assets, color)
+
+
+def number(text, size, key, assets, color=None):
     font = ImageFont.truetype(str(assets / 'fonts/DharmaGothicEBold.otf'), size)
     box = font.getbbox(text)
     layer = Image.new('RGBA', (max(1, box[2] - box[0]), max(1, box[3] - box[1])))
     ImageDraw.Draw(layer).text((-box[0], -box[1]), text, font=font, fill='white')
+    if color:
+        return textured(layer, key, assets, True, color)
     if key == 'ucl':
         return ucl_gradient(layer, assets, random.Random(), stops=UCL_TEXT_GRADIENT)
     return textured(layer, key, assets, True)
@@ -422,9 +437,10 @@ def phase(
     competition='',
     layers=None,
     shootout=None,
+    extra_time=False,
     assets=g.DEFAULT_ASSET_DIR,
 ):
-    if kind not in ('kick', 'half', 'full', 'end_of_90'):
+    if kind not in PHASE_KINDS:
         raise ValueError('Fase senza grafica')
 
     assets = Path(assets)
@@ -435,15 +451,40 @@ def phase(
 
     if kind == 'kick':
         word = ImageOps.contain(word, (600, 600), Image.Resampling.LANCZOS)
-        top = (H - 64 - 38 - word.height) // 2
+        top = (H - KICK_LOGO_HEIGHT - 38 - word.height) // 2
         kw = textured(word, key, assets, color=AWAY_DARK) if key == 'away' else phase_word(word, key, assets)
         # Flat panel: no shadow under KICK OFF or its crests.
         card.alpha_composite(kw, ((W - word.width) // 2, top + 102))
-        marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
+        marks = [logo(name, tid, key, assets, KICK_LOGO_HEIGHT) for name, tid in [(home_name, home_id), (away_name, away_id)]]
         if key == 'away':
             marks = [flat_color(m, AWAY_DARK) for m in marks]
         for mark, x in centered_logo_positions(marks, W / 2):
             card.alpha_composite(mark, (x, top))
+    elif kind == 'second':
+        # Inizio secondo tempo: identica a KICK OFF (stessa scritta, stessa posizione,
+        # niente ombre) ma la riga degli stemmi diventa "stemma 1-0 stemma",
+        # con il risultato alto quanto gli stemmi.
+        dark = AWAY_DARK if key == 'away' else None
+        # Stessa posizione e stessa altezza lettere di KICK OFF (entrambe su 2 righe).
+        kick_word = ImageOps.contain(tight(Image.open(assets / 'overlays' / 'kick.png'), True),
+                                     (600, 600), Image.Resampling.LANCZOS)
+        word = ImageOps.contain(word, (IW - 80, kick_word.height), Image.Resampling.LANCZOS)
+        top = (H - KICK_LOGO_HEIGHT - 38 - kick_word.height) // 2
+        sw = textured(word, key, assets, color=dark) if dark else phase_word(word, key, assets)
+        card.alpha_composite(sw, ((W - word.width) // 2, top + 102))
+        score = score_of_height(f'{home_goals}-{away_goals}', KICK_LOGO_HEIGHT, key, assets, dark)
+        home_mark = logo(home_name, home_id, key, assets, KICK_LOGO_HEIGHT)
+        away_mark = logo(away_name, away_id, key, assets, KICK_LOGO_HEIGHT)
+        if dark:
+            home_mark, away_mark = flat_color(home_mark, dark), flat_color(away_mark, dark)
+        # Risultato fisso al centro della card (come FULL TIME): stemmi larghi
+        # diversi non devono spostarlo.
+        score_x = round((W - score.width) / 2)
+        card.alpha_composite(score, (score_x, top + (KICK_LOGO_HEIGHT - score.height) // 2))
+        if home_mark is not None:
+            card.alpha_composite(home_mark, (score_x - SECOND_ROW_GAP - home_mark.width, top))
+        if away_mark is not None:
+            card.alpha_composite(away_mark, (score_x + score.width + SECOND_ROW_GAP, top))
     else:
         if layers is None:
             raise ValueError('Pagina 1 Canva non disponibile')
@@ -472,16 +513,22 @@ def phase(
 
         # Final production settings derived from the local preview script.
         score = number(f'{home_goals}-{away_goals}', PHASE_SCORE_FONT_SIZE, key, assets)
-        y = (1210 if shootout else 1220) - PHASE_GROUP_LIFT
+        y = (1210 if (shootout or (extra_time and kind == 'full')) else 1220) - PHASE_GROUP_LIFT
 
         # Keep the score fixed at card center, independent of crest widths.
         # Measure gaps from visible alpha bounds, preserving PNG padding.
         logo_height = max(1, round(score.height * PHASE_LOGO_HEIGHT_FACTOR))
         home_mark = phase_logo(home_name, home_id, key, assets, logo_height)
         away_mark = phase_logo(away_name, away_id, key, assets, logo_height)
-        score_x, home_x, away_x = phase_group_positions(
-            home_mark, away_mark, score.width, W, gap=28
-        )
+        # Risultato centrato sulla card in base ai pixel visibili; stemmi ai lati.
+        ink = score.getchannel('A').getbbox()
+        score_cx = (ink[0] + ink[2]) / 2
+        score_x = round(W / 2 - score_cx)
+        home_x = away_x = None
+        if home_mark is not None:
+            home_x = score_x + ink[0] - 28 - visible_logo_bbox(home_mark)[2]
+        if away_mark is not None:
+            away_x = score_x + ink[2] + 28 - visible_logo_bbox(away_mark)[0]
 
         soft_place(card, score, (score_x, y - score.height // 2), blur=9, opacity=.60, key=key)
         if home_mark is not None:
@@ -489,20 +536,28 @@ def phase(
         if away_mark is not None:
             soft_place(card, away_mark, (away_x, y - away_mark.height // 2), blur=9, opacity=.60, key=key)
 
+        caption_text = None
         if shootout:
             hp, ap = shootout
             if hp == ap:
                 raise ValueError('Rigori non conclusi')
             # home_name/away_name sono nomi ESPN (servono ai loghi): il testo resta in italiano.
             winner = team_names.translate_team(home_name if hp > ap else away_name)
-            text = f'{winner} VINCE {max(hp, ap)}-{min(hp, ap)} AI RIGORI'.upper()
+            caption_text = f'{winner} VINCE {max(hp, ap)}-{min(hp, ap)} AI RIGORI'.upper()
+        elif extra_time and kind == 'full':
+            caption_text = 'DOPO I TEMPI SUPPLEMENTARI'
+        if caption_text:
+            text = caption_text
             caption = number(text, 36, key, assets)
             if caption.width > IW - 40:
                 caption = ImageOps.contain(caption, (IW - 40, caption.height))
+            # Centro della scritta = centro visibile del SOLO risultato (mai dei loghi).
+            cap_ink = caption.getchannel('A').getbbox()
+            cap_x = round(score_x + score_cx - (cap_ink[0] + cap_ink[2]) / 2)
             soft_place(
                 card,
                 caption,
-                ((W - caption.width) // 2, PHASE_PENALTY_CAPTION_Y),
+                (cap_x, PHASE_PENALTY_CAPTION_Y),
                 blur=5,
                 opacity=.50,
                 key=key,

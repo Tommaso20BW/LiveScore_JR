@@ -100,7 +100,11 @@ def announce_second_half(ctx: MatchContext) -> None:
     """Messaggio INIZIO SECONDO TEMPO."""
     # --- Inizio secondo tempo ---
     if ctx.status == "2H" and "2H" not in ctx.state["sent_periods"]:
-        msg_id = tg.send_telegram_get_id(f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{ctx.score_str}\n\n{ctx.e_comp} {ctx.hashtag}")
+        msg_id = media.send_phase_message(
+            f"<b>INIZIO SECONDO TEMPO {E_BOLT}</b>\n\n{ctx.score_str}\n\n{ctx.e_comp} {ctx.hashtag}",
+            kind="second", data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id,
+            home_name=ctx.home_name_raw, away_name=ctx.away_name_raw, league_slug=ctx.league_slug,
+            league_name=ctx.league_name, home_goals=ctx.g_home, away_goals=ctx.g_away)
         if msg_id:
             log_line("EVENT", "MATCH", "INIZIO 2° TEMPO | Telegram inviato")
             ctx.state["sent_periods"].append("2H")

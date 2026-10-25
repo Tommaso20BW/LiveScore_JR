@@ -942,6 +942,7 @@ class DynamicKitRuntime:
                 "home_goals",
                 "away_goals",
                 "shootout",
+                "extra_time",
             }
             render = {
                 key: _json_safe(value)
@@ -950,11 +951,11 @@ class DynamicKitRuntime:
             }
             local_snapshot = (
                 self._last_canva_snapshot
-                if kind != "kick"
+                if kind not in ("kick", "second")
                 else None
             )
             remote_snapshot = None
-            if kind != "kick":
+            if kind not in ("kick", "second"):
                 if not local_snapshot:
                     self._log(
                         "ERROR",
@@ -1369,10 +1370,10 @@ class DynamicKitRuntime:
             render["kit"] = kit
             return self._originals["render_saved"](**render).png
 
-        if kind in ("kick", "half", "full", "end_of_90"):
+        if kind in ("kick", "second", "half", "full", "end_of_90"):
             snapshot = record.get("canva_snapshot")
             layers = None
-            if kind != "kick":
+            if kind not in ("kick", "second"):
                 layers = Path(snapshot) if snapshot else None
                 required_names = (
                     "source.pdf",
@@ -1429,6 +1430,7 @@ class DynamicKitRuntime:
                 ),
                 layers=layers,
                 shootout=render.get("shootout"),
+                extra_time=bool(render.get("extra_time")),
             )
 
         if kind == "stats":

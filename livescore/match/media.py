@@ -207,18 +207,24 @@ def prepara_grafica_parata_rigore(
         return None
 
 
+# Fasi con grafica. 'second' = inizio secondo tempo: come 'kick', senza Canva.
+PHASE_GRAPHIC_KINDS = ('kick', 'second', 'half', 'full', 'end_of_90')
+NO_CANVA_KINDS = ('kick', 'second')
+
+
 def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_name,
-                        league_slug, league_name, home_goals=0, away_goals=0, shootout=None):
+                        league_slug, league_name, home_goals=0, away_goals=0, shootout=None,
+                        extra_time=False):
     """Compose each supported phase with a fresh Canva page-one PDF download."""
     if (not settings.GOAL_GRAPHICS_ENABLED or JUVE_ID not in (str(home_id), str(away_id))
             or leagues.is_friendly_competition(league_slug, league_name)
-            or kind not in ('kick', 'half', 'full', 'end_of_90')):
+            or kind not in PHASE_GRAPHIC_KINDS):
         return None
     try:
         from livescore.graphics import portrait as portrait_graphics
         from livescore.canva.page_one import export_page_one
         layers = None
-        if kind != 'kick':
+        if kind not in NO_CANVA_KINDS:
             log_line("INFO", "CANVA", f"{kind.upper()}: scarico un nuovo PDF dalla pagina 1")
             layers = export_page_one(net.SESSION, canva_auth.get_valid_token(), settings.CANVA_DESIGN_ID,
                                      Path('canva_page1_cache'))
@@ -226,7 +232,8 @@ def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_na
                              league_slug, league_name)
         return portrait_graphics.phase(kind=kind, home_name=home_name, away_name=away_name,
             home_id=home_id, away_id=away_id, home_goals=home_goals, away_goals=away_goals,
-            kit=kit, competition=league_slug, layers=layers, shootout=shootout)
+            kit=kit, competition=league_slug, layers=layers, shootout=shootout,
+            extra_time=extra_time)
     except Exception as exc:
         log_line("WARN", "GRAPHICS", f"{kind.upper()} non disponibile: {type(exc).__name__}; invio testo")
         return None
@@ -237,6 +244,6 @@ def send_phase_message(text, **kwargs):
     eligible = (settings.GOAL_GRAPHICS_ENABLED
         and JUVE_ID in (str(kwargs['home_id']), str(kwargs['away_id']))
         and not leagues.is_friendly_competition(kwargs['league_slug'], kwargs['league_name'])
-        and kwargs['kind'] in ('kick', 'half', 'full', 'end_of_90'))
+        and kwargs['kind'] in PHASE_GRAPHIC_KINDS)
     return tg._send_telegram_event_photo_get_id(text, photo, filename='phase.png',
         label=kwargs['kind'], retry_factory=(lambda: build_phase_graphic(**kwargs)) if eligible else None)[0]

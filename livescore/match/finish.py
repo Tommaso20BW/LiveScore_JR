@@ -180,11 +180,15 @@ def handle_finish(ctx: MatchContext) -> Flow | None:
 
             msg_finale = f"<b>FINE PARTITA {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}"
 
+            # Supplementari giocati: FINE REGOLAMENTARI inviato solo quando si va ai supplementari.
+            went_extra_time = "2H_END" in ctx.state["sent_periods"] or ctx.status in ("ET", "AET")
+
             ft_sent = media.send_phase_message(msg_finale, kind='full', data_espn=ctx.data,
                 home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name_raw, away_name=ctx.away_name_raw,
                 league_slug=ctx.league_slug, league_name=ctx.league_name,
                 home_goals=ctx.g_home, away_goals=ctx.g_away,
-                shootout=(home_pen_goals, away_pen_goals) if has_shootout else None) is not None
+                shootout=(home_pen_goals, away_pen_goals) if has_shootout else None,
+                extra_time=went_extra_time and not has_shootout) is not None
 
             if not ft_sent:
                 log_line("RETRY", "TELEGRAM", "FINE PARTITA non inviata; nuovo tentativo al prossimo ciclo")

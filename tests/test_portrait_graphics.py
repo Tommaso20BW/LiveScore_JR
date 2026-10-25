@@ -32,6 +32,11 @@ class PortraitTests(unittest.TestCase):
         with patch.object(g,'resolve_team_logo_source',return_value=(source,'FCLogo')):
             self.assertNotEqual(p.logo('Test','1','ucl',g.DEFAULT_ASSET_DIR,40).getpixel((20,20)),(255,0,0,255))
 
+    def test_second_half_card_renders_portrait(self):
+        png = p.phase(kind='second', home_name='Juventus', away_name='Inter', home_id='111',
+                      away_id='110', home_goals=1, away_goals=0)
+        self.assertEqual(Image.open(io.BytesIO(png)).size, (1086, 1448))
+
     def test_phase_rejects_extra_time(self):
         with self.assertRaises(ValueError):
             p.phase(kind='extra_time',home_name='Juventus',away_name='Inter',home_id='111',away_id='110')
