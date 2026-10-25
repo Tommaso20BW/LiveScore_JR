@@ -119,9 +119,6 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
         assets / 'portrait' / f'{key}_clean_1086x1448.png'
     ).convert('RGBA')
 
-    if key == 'ucl':
-        bg = p.vivid_background(bg)
-
     bg = uri(p.brand(bg, key, assets))
     title = uri(Image.open(assets / 'portrait' / f'stats_{key}.png'))
 

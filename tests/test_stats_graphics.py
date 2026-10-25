@@ -64,7 +64,7 @@ class StatsGraphicsTests(unittest.TestCase):
             league_name='Serie A', momento='2H_END', home_id='110', away_id='111',
             home_name='Inter', away_name='Juventus')
         self.assertIn('.home{color:#fff}', html)
-        self.assertIn('.away{color:#FACA02}', html)
+        self.assertIn('.away{color:#F4C430}', html)
         self.assertIn('height:88px', html)
         self.assertIn('background:#39434d', html)
         self.assertIn('JR STATS • SERIE A', html)

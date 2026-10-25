@@ -1,20 +1,39 @@
 """Approved 3:4 compositor. No generation, Canva edits, or Telegram side effects."""
 import io
+import math
+import random
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
+from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageMath, ImageEnhance
 from livescore.graphics import goal as g
 from livescore.core import team_names
 
 W, H, M = 1086, 1448, 76
 IW, IH = W - 2 * M, H - 2 * M
+# Lowers the front word, crests and name on GOAL/SAVED cards (the big heading stays put).
+BOTTOM_SHIFT = 50
+# Top row under the heading: score on the left and minute on the right when True.
+SCORE_LEFT = True
+
+# Lettering / minute / name colour per theme (texture tint).
 COLORS = dict(
-    home='#FACA02',
-    away='#ED95AE',
-    third='#C7A852',
-    ucl='#8DD6FF',
-    uel='#FFAC38',
-    conference='#A1EF46',
+    home='#F4C430',
+    away='#EE9AB8',
+    third='#C2A564',
+    ucl='#63D8FF',
+    uel='#FF7A00',
+    conference='#16E36A',
 )
+# Shadow tint behind words and crests: each panel's deep tone instead of plain black.
+SHADOW = dict(
+    home='#000000',
+    away='#1A0710',
+    third='#120D04',
+    ucl='#08061E',
+    uel='#140800',
+    conference='#011207',
+)
+# UCL GOAL/SAVED lettering: magenta -> electric violet -> ice blue, random direction every render.
+UCL_GRADIENT = ('#F052D2', '#A66BFF', '#63D8FF')
 
 # Final dimensions/positions taken from the local preview tests:
 # - score numbers: 300 instead of 200
@@ -124,13 +143,8 @@ def brand(card, key, assets):
     mark = tight(Image.open(assets / 'overlays/jr.png'))
     height = round(H * 58 / 1280)
     mark = mark.resize((round(mark.width * height / mark.height), height), Image.Resampling.LANCZOS)
-    color = {
-        'home': '#102B46',
-        'ucl': '#8DD6FF',
-        'uel': '#232323',
-        'conference': '#232323',
-        'away': '#F6B5CA',
-    }.get(key, COLORS[key])
+    # Near-black (not pure black) so the texture still shows; UCL matches its lettering.
+    color = '#63D8FF' if key == 'ucl' else '#2B2B2B'
     mark = textured(mark, key, assets, True, color)
     x = W - round(W * 16 / 960) - mark.width
     assert x > W - M
@@ -205,8 +219,8 @@ def png(card):
 
 # Big lettering behind the player: (file, width, offset inside the panel).
 HEADINGS = {
-    True: ('front_saved.png', 1034, (-50, -22)),
-    False: ('front_goal.png', 988, (-69, -58)),
+    True: ('front_saved.png', 1072, (-69, -63)),   # cut 69px on both sides, same as GOAL
+    False: ('front_goal.png', 1072, (-69, -63)),
 }
 
 
@@ -224,19 +238,6 @@ def saved_heading(assets):
     return event_heading(assets, True)
 
 
-def saved_minute_position(heading, text, font):
-    """Keep the entire minute box plus 4px clearance in the S's upper hollow."""
-    box = font.getbbox(text)
-    width, height = box[2] - box[0], box[3] - box[1]
-    mask = heading.getchannel('A').point(lambda a: 255 if a > 100 else 0)
-    candidates = sorted(
-        ((x, y) for y in range(8, 51) for x in range(8, 81)),
-        key=lambda xy: (xy[0] - 20) ** 2 + (xy[1] - 14) ** 2
-    )
-    for x, y in candidates:
-        if mask.crop((x - 4, y - 4, x + width + 4, y + height + 4)).getbbox() is None:
-            return M + x, M + y
-    raise ValueError('Minuto SAVED senza spazio libero nella S')
 
 
 def event(
@@ -254,18 +255,25 @@ def event(
     competition='',
     pose=None,
     event_key='',
+    home_goals=None,
+    away_goals=None,
     assets=g.DEFAULT_ASSET_DIR,
 ):
     assets = Path(assets)
     key = theme(kit, competition, saved)
     background = assets / 'portrait' / f'{key}_clean_1086x1448.png'
     card = Image.open(background).convert('RGBA')
-    if key == 'ucl':
-        card = vivid_background(card)
 
     panel = card.crop((M, M, W - M, H - M))
     heading = event_heading(assets, saved)
-    panel.alpha_composite(textured(heading, key, assets))
+    seed = random.random()          # one random gradient per card, shared by both words
+
+    def letters(source):
+        if key == 'ucl':
+            return ucl_gradient(source, assets, random.Random(seed))
+        return textured(source, key, assets)
+
+    panel.alpha_composite(letters(heading))
 
     path = None
     pose = pose or 'arms_crossed'
@@ -303,17 +311,36 @@ def event(
 
     word = tight(Image.open(assets / 'overlays' / ('front_saved.png' if saved else 'front_goal.png')), True)
     word = ImageOps.contain(word, (IW + 44, 340), Image.Resampling.LANCZOS)
-    word = textured(word, key, assets)
-    place_word(card, word, saved)
+    word = letters(word)
+    place_word(card, word, saved, key)
 
-    font = ImageFont.truetype(str(assets / 'fonts/DharmaGothicEBold.otf'), 24 if saved else 36)
-    minute_text = str(minute).rstrip("'’") + "'"
-    minute_position = saved_minute_position(heading, minute_text, font) if saved else (M + 18, M + 30)
-    ImageDraw.Draw(card).text(minute_position, minute_text, font=font, fill=COLORS[key], anchor='lt')
+    # Minute left and score right, just under the big heading at the top (same on GOAL and SAVED).
+    # Everything sits on one baseline; edges are aligned on the drawn ink, not the font advance.
+    font = ImageFont.truetype(str(assets / 'fonts/DharmaGothicEBold.otf'), 52)
+    cap = -font.getbbox('0', anchor='ls')[1]
+    baseline = M + heading.getchannel('A').getbbox()[3] + 30 + cap
+    side = 24
+    draw = ImageDraw.Draw(card)
+
+    def put(parts, align):
+        """Draw parts edge to edge on their ink, flush to the left or right panel edge."""
+        boxes = [font.getbbox(s, anchor='ls') for s in parts]
+        width = sum(b[2] - b[0] for b in boxes)
+        x = M + side if align == 'left' else W - M - side - width
+        for s, b in zip(parts, boxes):
+            draw.text((x - b[0], baseline), s, font=font, fill=COLORS[key], anchor='ls')
+            x += b[2] - b[0]
+
+    minute_parts = [str(minute).rstrip("'’") + "'"]
+    score_parts = ([str(home_goals), '-', str(away_goals)]       # "1-0" with no space
+                   if home_goals is not None and away_goals is not None else None)
+    put(minute_parts, 'right' if SCORE_LEFT else 'left')
+    if score_parts:
+        put(score_parts, 'left' if SCORE_LEFT else 'right')
 
     marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
     for mark, x in centered_logo_positions(marks, W / 2):
-        soft_place(card, mark, (x, 1180 - mark.height // 2), blur=6, opacity=.50)
+        soft_place(card, mark, (x, 1180 + BOTTOM_SHIFT - mark.height // 2), blur=6, opacity=.50, key=key)
 
     label = (scorer_name + suffix).upper()
     size = 29
@@ -353,8 +380,6 @@ def phase(
     assets = Path(assets)
     key = theme(kit, competition)
     card = Image.open(assets / 'portrait' / f'{key}_clean_1086x1448.png').convert('RGBA')
-    if key == 'ucl':
-        card = vivid_background(card)
 
     word = tight(Image.open(assets / 'overlays' / f'{kind}.png'), True)
 
@@ -364,7 +389,7 @@ def phase(
         card.alpha_composite(textured(word, key, assets), ((W - word.width) // 2, top + 102))
         marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
         for mark, x in centered_logo_positions(marks, W / 2):
-            soft_place(card, mark, (x, top), blur=6, opacity=.50)
+            soft_place(card, mark, (x, top), blur=6, opacity=.50, key=key)
     else:
         if layers is None:
             raise ValueError('Pagina 1 Canva non disponibile')
@@ -381,7 +406,7 @@ def phase(
             method=Image.Resampling.LANCZOS,
         )
         word = word.resize((IW - 36, round(word.height * (IW - 36) / word.width)), Image.Resampling.LANCZOS)
-        soft_place(bg, textured(word, key, assets), (18, 28), blur=12, opacity=.60)
+        soft_place(bg, textured(word, key, assets), (18, 28), blur=12, opacity=.60, key=key)
         bg.alpha_composite(player)
 
         fade = Image.new('RGBA', bg.size)
@@ -404,11 +429,11 @@ def phase(
             home_mark, away_mark, score.width, W, gap=28
         )
 
-        soft_place(card, score, (score_x, y - score.height // 2), blur=9, opacity=.60)
+        soft_place(card, score, (score_x, y - score.height // 2), blur=9, opacity=.60, key=key)
         if home_mark is not None:
-            soft_place(card, home_mark, (home_x, y - home_mark.height // 2), blur=9, opacity=.60)
+            soft_place(card, home_mark, (home_x, y - home_mark.height // 2), blur=9, opacity=.60, key=key)
         if away_mark is not None:
-            soft_place(card, away_mark, (away_x, y - away_mark.height // 2), blur=9, opacity=.60)
+            soft_place(card, away_mark, (away_x, y - away_mark.height // 2), blur=9, opacity=.60, key=key)
 
         if shootout:
             hp, ap = shootout
@@ -426,52 +451,79 @@ def phase(
                 ((W - caption.width) // 2, PHASE_PENALTY_CAPTION_Y),
                 blur=5,
                 opacity=.50,
+                key=key,
             )
 
     return png(brand(card, key, assets))
 
 
-def vivid_background(card):
-    # Regrade only the fabric asset, never the player's photograph.
-    frame = ImageOps.colorize(
-        ImageOps.grayscale(card),
-        '#031426',
-        '#4EAEE0',
-        mid='#0B4776',
-        midpoint=150,
-    ).convert('RGBA')
-    panel = card.crop((76, 76, 1010, 1372))
-    # The baked source includes two bright antialiased frame pixels inside the
-    # right edge (x=1008/1009). Extend adjacent fabric across that seam only.
-    panel.paste(
-        panel.crop((panel.width - 6, 0, panel.width - 5, panel.height)).resize((3, panel.height)),
-        (panel.width - 3, 0),
-    )
-    panel = ImageEnhance.Color(panel).enhance(1.22)
-    panel = ImageEnhance.Contrast(panel).enhance(1.08)
-    panel = ImageEnhance.Brightness(panel).enhance(1.12)
-    frame.paste(panel, (76, 76))
-    return frame
+def tinted_shadow(canvas, mask, key, blur, opacity, offset):
+    shifted = Image.new('L', canvas.size)
+    shifted.paste(mask, (0, offset))
+    shadow = Image.new('RGBA', canvas.size, ImageColor.getrgb(SHADOW.get(key, '#000000')) + (255,))
+    shadow.putalpha(shifted.filter(ImageFilter.GaussianBlur(blur)).point(lambda a: round(a * opacity)))
+    canvas.alpha_composite(shadow)
 
 
-def place_word(card, word, saved):
+def place_word(card, word, saved, key='home'):
     x = (1086 - word.width) // 2
-    y = 1115 - word.height
+    y = 1115 + BOTTOM_SHIFT - word.height
     mask = Image.new('L', card.size)
-    mask.paste(word.getchannel('A'), (x, y + 10))
-    shadow = Image.new('RGBA', card.size, 'black')
-    shadow.putalpha(mask.filter(ImageFilter.GaussianBlur(18)).point(lambda a: round(a * .70)))
-    card.alpha_composite(shadow)
+    mask.paste(word.getchannel('A'), (x, y))
+    tinted_shadow(card, mask, key, blur=14, opacity=.55, offset=6)
     card.alpha_composite(word, (x, y))
 
 
-def soft_place(canvas, layer, position, blur=8, opacity=.55, offset=5):
+def soft_place(canvas, layer, position, blur=8, opacity=.55, offset=5, key='home'):
     mask = Image.new('L', canvas.size)
-    mask.paste(layer.getchannel('A'), (position[0], position[1] + offset))
-    shadow = Image.new('RGBA', canvas.size, 'black')
-    shadow.putalpha(mask.filter(ImageFilter.GaussianBlur(blur)).point(lambda a: round(a * opacity)))
-    canvas.alpha_composite(shadow)
+    mask.paste(layer.getchannel('A'), position)
+    tinted_shadow(canvas, mask, key, blur=max(4, blur * .8), opacity=opacity * .8, offset=min(offset, 4))
     canvas.alpha_composite(layer, position)
+
+
+def ucl_gradient(source, assets, rng):
+    """UCL lettering: 3-stop gradient with a random angle, a shifting middle stop and soft waves,
+    lit by the same contour texture as the other themes."""
+    source = source.convert('RGBA')
+    alpha = source.getchannel('A')
+    box = alpha.point(lambda a: 255 if a > 100 else 0).getbbox()
+    if not box:
+        return textured(source, 'ucl', assets)
+    bw, bh = box[2] - box[0], box[3] - box[1]
+    gw = 64
+    gh = max(8, round(gw * bh / bw))
+    angle = rng.uniform(0, 2 * math.pi)
+    waves = [(rng.uniform(1.5, 3.5), rng.uniform(0, 2 * math.pi), rng.uniform(.04, .09), rng.uniform(0, 2 * math.pi))
+             for _ in range(2)]
+    values = []
+    for j in range(gh):
+        v = (j / (gh - 1) - .5) * bh / bw
+        for i in range(gw):
+            u = i / (gw - 1) - .5
+            value = u * math.cos(angle) + v * math.sin(angle)
+            for f, ph, amp, b in waves:
+                value += amp * math.sin(f * math.pi * (u * math.cos(b) + v * math.sin(b)) * 2 + ph)
+            values.append(value)
+    lo, hi = min(values), max(values)
+    flip = rng.random() < .5
+    grid = Image.new('L', (gw, gh))
+    grid.putdata([round(255 * (1 - (x - lo) / (hi - lo) if flip else (x - lo) / (hi - lo))) for x in values])
+    ramp = Image.new('L', source.size, 0)
+    ramp.paste(grid.resize((bw, bh), Image.Resampling.BICUBIC), box[:2])
+    magenta, violet, ice = UCL_GRADIENT
+    base = ImageOps.colorize(ramp, black=magenta, white=ice, mid=violet, midpoint=round(255 * rng.uniform(.32, .58)))
+    # Same light modulation as the other themes' texture tint.
+    texture = Image.open(Path(assets) / 'word_textures' / f'{texture_key("ucl")}.png').convert('RGB')
+    gray = ImageOps.autocontrast(
+        ImageOps.grayscale(ImageOps.fit(texture, source.size, method=Image.Resampling.LANCZOS)), cutoff=1)
+    hist = gray.histogram()
+    mean = sum(i * c for i, c in enumerate(hist)) / sum(hist)
+    light = gray.point(lambda x: round(128 * (1 + .55 * (x - mean) / 255))).convert('F')
+    bands = [ImageMath.lambda_eval(lambda a: a['c'] * a['m'] / 128, c=band.convert('F'), m=light).convert('L')
+             for band in base.split()]
+    out = Image.merge('RGB', bands).convert('RGBA')
+    out.putalpha(alpha)
+    return out
 
 
 def center_name(card, label, font, *, key=None, assets=None):
@@ -482,4 +534,4 @@ def center_name(card, label, font, *, key=None, assets=None):
     if key and assets is not None:
         # Stessa texture del kit dei loghi e della scritta GOAL/SAVED, non bianco piatto.
         layer = textured(layer, key, assets, True)
-    card.alpha_composite(layer, ((card.width - layer.width) // 2, 1254))
+    card.alpha_composite(layer, ((card.width - layer.width) // 2, 1254 + BOTTOM_SHIFT))

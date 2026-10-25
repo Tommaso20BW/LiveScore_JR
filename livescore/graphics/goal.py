@@ -361,7 +361,8 @@ def render_goal_card(
         return event(player=card_player, scorer_name=scorer_name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit=kit, suffix=scorer_suffix,
-                     competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir)
+                     competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir,
+                     home_goals=home_goals, away_goals=away_goals)
     except (OSError, ValueError) as exc:
         raise GoalGraphicUnavailable(str(exc)) from exc
 
@@ -393,7 +394,8 @@ def render_saved_card(
         return event(player=player, scorer_name=player.name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit=kit, saved=True,
-                     competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir)
+                     competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir,
+                     home_goals=home_goals, away_goals=away_goals)
     except (OSError, ValueError) as exc:
         raise GoalGraphicUnavailable(str(exc)) from exc
 
