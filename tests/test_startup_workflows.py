@@ -1,5 +1,6 @@
 import os
 import re
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -37,13 +38,46 @@ class StartupTests(unittest.TestCase):
         self.sync.assert_not_called()
         bot.avvia_ciclo_partita.assert_called_once_with()
 
-    def test_failed_or_skipped_workflow_sync_is_retried(self):
+    def _logo_dir(self, with_logo):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        if with_logo:
+            (Path(tmp.name) / "serie-a").mkdir()
+            (Path(tmp.name) / "serie-a" / "Juventus.png").write_bytes(b"png")
+        patcher = patch.object(bot.fclogo_sync, "DEFAULT_LOGO_DIR", Path(tmp.name))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _run_threads_inline(self):
+        # The background sync runs immediately so the test can check it.
+        class Inline:
+            def __init__(self, target, **_):
+                self.target = target
+
+            def start(self):
+                self.target()
+        patcher = patch("livescore.match.session.threading.Thread", Inline)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_failed_workflow_sync_with_logos_present_does_not_download(self):
+        self._logo_dir(with_logo=True)
+        with patch.dict(os.environ, {"FCLOGO_SYNC_DONE": "false"}):
+            bot.main()
+        self.sync.assert_not_called()
+        bot.avvia_ciclo_partita.assert_called_once_with()
+
+    def test_failed_workflow_sync_without_logos_syncs_in_background(self):
+        self._logo_dir(with_logo=False)
+        self._run_threads_inline()
         with patch.dict(os.environ, {"FCLOGO_SYNC_DONE": "false"}):
             bot.main()
         self.sync.assert_called_once_with()
         bot.avvia_ciclo_partita.assert_called_once_with()
 
-    def test_direct_start_still_syncs(self):
+    def test_direct_start_without_logos_still_syncs(self):
+        self._logo_dir(with_logo=False)
+        self._run_threads_inline()
         with patch.dict(os.environ):
             os.environ.pop("FCLOGO_SYNC_DONE", None)
             bot.main()
@@ -51,6 +85,8 @@ class StartupTests(unittest.TestCase):
         bot.avvia_ciclo_partita.assert_called_once_with()
 
     def test_sync_error_does_not_block_live(self):
+        self._logo_dir(with_logo=False)
+        self._run_threads_inline()
         self.sync.side_effect = RuntimeError("FCLogo offline")
         with patch.dict(os.environ, {"FCLOGO_SYNC_DONE": "false"}):
             bot.main()

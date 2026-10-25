@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 
@@ -156,15 +157,23 @@ def main():
         return
 
     # Il workflow può aver già sincronizzato i loghi prima di pubblicarli.
-    # L'avvio diretto, o un primo tentativo fallito, mantiene il sync interno.
+    # Se i loghi sono già presenti negli asset non si scarica nulla; se mancano,
+    # il sync gira in background e non ritarda mai la ricerca della partita.
     if settings.GOAL_GRAPHICS_ENABLED and os.getenv('FCLOGO_SYNC_DONE', '').strip().lower() != 'true':
-        try:
-            report = fclogo_sync.sync_current_season()
-            log_line("DEBUG", "GRAPHICS", report.summary())
-            for warning in report.errors:
-                log_line("WARN", "GRAPHICS", f"FCLogo: {warning}")
-        except Exception as exc:
-            # Un problema del catalogo grafico non deve mai bloccare il live.
-            log_line("WARN", "GRAPHICS", f"FCLogo non sincronizzato: {exc}")
+        if any(fclogo_sync.DEFAULT_LOGO_DIR.rglob('*.png')):
+            log_line("DEBUG", "GRAPHICS", "FCLogo: loghi già presenti negli asset, nessun download")
+        else:
+            threading.Thread(target=_sync_logos_background, name="fclogo-sync", daemon=True).start()
 
     avvia_ciclo_partita()
+
+
+def _sync_logos_background():
+    try:
+        report = fclogo_sync.sync_current_season()
+        log_line("DEBUG", "GRAPHICS", report.summary())
+        for warning in report.errors:
+            log_line("WARN", "GRAPHICS", f"FCLogo: {warning}")
+    except Exception as exc:
+        # Un problema del catalogo grafico non deve mai bloccare il live.
+        log_line("WARN", "GRAPHICS", f"FCLogo non sincronizzato: {exc}")
