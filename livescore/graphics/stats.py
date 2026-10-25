@@ -160,7 +160,8 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     juve = (f'color:{p.COLORS[key]}', f'background:{p.COLORS[key]}')
     if key == 'ucl':
         # Juventus numbers and bars: the same random gradient + texture as the title.
-        fill = letters(Image.new('RGBA', (600, 120), (255, 255, 255, 255)))
+        fill = p.ucl_gradient(Image.new('RGBA', (600, 120), (255, 255, 255, 255)), assets, random.Random(seed),
+                              stops=p.UCL_TEXT_GRADIENT)
         src = f'url({uri(fill)}) center/100% 100%'
         juve = (f'background:{src};-webkit-background-clip:text;background-clip:text;color:transparent',
                 f'background:{src}')

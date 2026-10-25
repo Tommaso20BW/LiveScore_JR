@@ -36,6 +36,8 @@ SHADOW = dict(
 UCL_GRADIENT = ('#F052D2', '#A66BFF', '#63D8FF')
 # JR mark: same family, softer magenta end.
 UCL_MARK_GRADIENT = ('#C064E6', '#7F9CFF', '#63D8FF')
+# Small UCL texts (score, minute, name, phase score, shootout, STATS numbers): same softer palette, with texture.
+UCL_TEXT_GRADIENT = ('#A57EEA', '#7BA6FF', '#63D8FF')
 
 # Final dimensions/positions taken from the local preview tests:
 # - score numbers: 300 instead of 200
@@ -225,7 +227,7 @@ def number(text, size, key, assets):
     layer = Image.new('RGBA', (max(1, box[2] - box[0]), max(1, box[3] - box[1])))
     ImageDraw.Draw(layer).text((-box[0], -box[1]), text, font=font, fill='white')
     if key == 'ucl':
-        return ucl_gradient(layer, assets, random.Random())
+        return ucl_gradient(layer, assets, random.Random(), stops=UCL_TEXT_GRADIENT)
     return textured(layer, key, assets, True)
 
 
@@ -354,7 +356,7 @@ def event(
                 x += b[2] - b[0]
             area = layer.getchannel('A').getbbox()
             if area:
-                piece = letters(layer.crop(area))
+                piece = ucl_gradient(layer.crop(area), assets, random.Random(seed), stops=UCL_TEXT_GRADIENT)
                 card.alpha_composite(piece, area[:2])
             return
         for s, b in zip(parts, boxes):
@@ -575,5 +577,6 @@ def center_name(card, label, font, *, key=None, assets=None):
     if key and assets is not None:
         # Stessa texture del kit dei loghi e della scritta GOAL/SAVED, non bianco piatto.
         # UCL: sfumatura casuale con texture, come le scritte.
-        layer = ucl_gradient(layer, assets, random.Random()) if key == 'ucl' else textured(layer, key, assets, True)
+        layer = (ucl_gradient(layer, assets, random.Random(), stops=UCL_TEXT_GRADIENT) if key == 'ucl'
+                 else textured(layer, key, assets, True))
     card.alpha_composite(layer, ((card.width - layer.width) // 2, 1254 + BOTTOM_SHIFT))
