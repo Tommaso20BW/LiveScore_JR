@@ -1,102 +1,8 @@
 {
   "source": "https://fclogo.top/",
   "season": "2026-27",
-  "complete": true,
+  "complete": false,
   "packs": {
-    "2026-27-serie-a": {
-      "url": "https://fclogo.top/pack/2026-27-serie-a",
-      "fingerprint": "43dfdfef29fe1efa4eb4ebfe4fe9e30d99607d96862e9a58bbe595fb03a18c02",
-      "clubs": [
-        "AC-Milan-v2009",
-        "AC-Monza-v2021",
-        "ACF-Fiorentina-v2022",
-        "associazione-sportiva-roma-v2026",
-        "atalanta-bergamasca-calcio-v2026",
-        "Bologna-FC-v2018",
-        "Cagliari-Calcio-v2015",
-        "Como-1907-v2019",
-        "FC-Inter-Milan-v2021",
-        "frosinone-calcio-v2011",
-        "Genoa-CFC-v2022",
-        "Juventus-FC-v2017",
-        "Parma-Calcio-1913-v2016",
-        "societ-sportiva-calcio-napoli-v2024",
-        "SS-Lazio-v1993",
-        "Torino-FC-v2005",
-        "Udinese-Calcio-v2010",
-        "US-Lecce-v2001",
-        "US-Sassuolo-Calcio-v2010",
-        "venezia-football-club-v2026"
-      ]
-    },
-    "2026-27-serie-b": {
-      "url": "https://fclogo.top/pack/2026-27-serie-b",
-      "fingerprint": "9a7b3bd9f8d9d5ab5edc62003226dfebf8a2d51b344a6fe945ca5105e15d0087",
-      "clubs": [
-        "ascoli-calcio-1898-fc-v2026",
-        "benevento-calcio-v0000",
-        "calcio-padova-v2018",
-        "carrarese-calcio-1908-v0000",
-        "cesena-football-club-v2018",
-        "Empoli-FC-v2021",
-        "fussball-club-sudtirol-v2016",
-        "Hellas-Verona-v2020",
-        "lanerossi-vicenza-v2018",
-        "mantova-1911-v2017",
-        "modena-football-club-v2018",
-        "palermo-football-club-v2019",
-        "Pisa-SC-v2017",
-        "societ-sportiva-juve-stabia-v2022",
-        "societa-sportiva-arezzo-v0000",
-        "unione-calcio-sampdoria-v1997",
-        "unione-sportiva-avellino-1912-v2015",
-        "unione-sportiva-catanzaro-1929-v2018",
-        "US-Cremonese-v1997",
-        "virtus-entella-v2026"
-      ]
-    },
-    "2026-27-uefa-champions-league": {
-      "url": "https://fclogo.top/pack/2026-27-uefa-champions-league",
-      "fingerprint": "cc46f68eef1e8a25d4b849b91a1ea1f14fb3ea4cde655f495bbabd7e93679626",
-      "clubs": [
-        "aek-football-club-v2014",
-        "Arsenal-FC-v2002",
-        "associazione-sportiva-roma-v2026",
-        "Aston-Villa-Football-Club-v2024",
-        "Atletico-Madrid-v2024",
-        "Borussia-Dortmund-v1993",
-        "club-brugge-koninklijke-voetbalvereniging-v2017",
-        "Como-1907-v2019",
-        "FC-Barcelona-v2002",
-        "FC-Bayern-Munchen-v2024",
-        "FC-Inter-Milan-v2021",
-        "fenerbahce-spor-kulubu-v2026-comm",
-        "feyenoord-rotterdam-v2024",
-        "football-club-shakhtar-donetsk-v2007",
-        "fotballklubben-bodglimt-v0000",
-        "Futebol-Clube-do-Porto-v2002",
-        "galatasaray-spor-kulb-v2007",
-        "linzer-athletik-sport-klub-v2023",
-        "Liverpool-Football-Club-v2024-minor",
-        "LOSC-Lille-v2018",
-        "Manchester-City-v2016",
-        "Manchester-United-Football-Club-v1998",
-        "Paris-Saint-Germain-v2013",
-        "philips-sport-vereniging-v2016",
-        "Racing-Club-de-Lens-v2014",
-        "RB-Leipzig-v2020",
-        "Real-Betis-v2022",
-        "Real-Madrid-CF-v2002",
-        "sabah-futbol-klubu-v2023",
-        "societ-sportiva-calcio-napoli-v2024",
-        "sporting-clube-de-portugal-v2026",
-        "sportovn-klub-slavia-praha-fotbal-v2022",
-        "sportovy-klub-slovan-bratislava-v0000",
-        "VfB-Stuttgart-v2014",
-        "viking-fotballklubb-v2020",
-        "Villarreal-Club-de-Futbol-v2009"
-      ]
-    },
     "2026-27-uefa-conference-league": {
       "url": "https://fclogo.top/pack/2026-27-uefa-conference-league",
       "fingerprint": "9ea730b3084d6f9e7f36754b989058a71f798b2cdeb710eb51e08709a5a0cae7",
@@ -186,7 +92,7 @@
     {
       "name": "AC Milan",
       "slug": "AC-Milan-v2009",
-      "file": "serie-a/AC-Milan-v2009-mono.png",
+      "file": "uel/AC-Milan-v2009-mono.png",
       "aliases": [
         "AC Milan"
       ],
@@ -195,11 +101,9 @@
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/211a060d2f3a2ddec55070a3a632f3a37afb5b1d-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/AC-Milan-v2009",
       "packs": [
-        "2026-27-serie-a",
         "2026-27-uefa-europa-league"
       ],
       "files": [
-        "serie-a/AC-Milan-v2009-mono.png",
         "uel/AC-Milan-v2009-mono.png"
       ]
     },
@@ -635,7 +539,7 @@
     {
       "name": "Juventus FC",
       "slug": "Juventus-FC-v2017",
-      "file": "serie-a/Juventus-FC-v2017-mono.png",
+      "file": "uel/Juventus-FC-v2017-mono.png",
       "aliases": [
         "Juventus FC",
         "Juventus"
@@ -645,11 +549,9 @@
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/71521b8cd75c4c8e83bd584041b881200a5b896c-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/Juventus-FC-v2017",
       "packs": [
-        "2026-27-serie-a",
         "2026-27-uefa-europa-league"
       ],
       "files": [
-        "serie-a/Juventus-FC-v2017-mono.png",
         "uel/Juventus-FC-v2017-mono.png"
       ]
     },
@@ -1271,7 +1173,7 @@
     {
       "name": "Atalanta Bergamasca Calcio",
       "slug": "atalanta-bergamasca-calcio-v2026",
-      "file": "serie-a/atalanta-bergamasca-calcio-v2026-mono.png",
+      "file": "uecl/atalanta-bergamasca-calcio-v2026-mono.png",
       "aliases": [
         "Atalanta Bergamasca Calcio",
         "Atalanta"
@@ -1281,11 +1183,9 @@
       "preview_url": "https://cdn.sanity.io/images/11hmdf08/production/ccdba340955642f422ac8ddf7945928611a2f8de-800x800.png?w=320&fm=webp&q=80",
       "detail_path": "/figc/club/atalanta-bergamasca-calcio-v2026",
       "packs": [
-        "2026-27-serie-a",
         "2026-27-uefa-conference-league"
       ],
       "files": [
-        "serie-a/atalanta-bergamasca-calcio-v2026-mono.png",
         "uecl/atalanta-bergamasca-calcio-v2026-mono.png"
       ]
     },
