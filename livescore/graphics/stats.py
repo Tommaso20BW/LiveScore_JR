@@ -2,6 +2,7 @@
 import base64
 import io
 import math
+import random
 from html import escape
 from pathlib import Path
 from PIL import Image
@@ -120,7 +121,16 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     ).convert('RGBA')
 
     bg = uri(p.brand(bg, key, assets))
-    title = uri(Image.open(assets / 'portrait' / f'stats_{key}.png'))
+    # STATS title and phase word: coloured in code like GOAL/SAVED
+    # (contour texture; on UCL one random gradient shared by both words).
+    seed = random.random()
+
+    def letters(source):
+        if key == 'ucl':
+            return p.ucl_gradient(source, assets, random.Random(seed))
+        return p.textured(source, key, assets)
+
+    title = uri(letters(p.tight(Image.open(assets / 'overlays' / 'stats.png'), True)))
 
     word = p.tight(
         Image.open(assets / 'overlays' / f'{PHASES[momento]}.png'),
@@ -130,7 +140,7 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
         (300, round(word.height * 300 / word.width)),
         Image.Resampling.LANCZOS
     )
-    phase = uri(p.textured(word, key, assets))
+    phase = uri(letters(word))
 
     logos = []
     for name, tid in ((home_name, home_id), (away_name, away_id)):

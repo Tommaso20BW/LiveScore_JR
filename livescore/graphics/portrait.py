@@ -145,7 +145,10 @@ def brand(card, key, assets):
     mark = mark.resize((round(mark.width * height / mark.height), height), Image.Resampling.LANCZOS)
     # Near-black (not pure black) so the texture still shows; UCL matches its lettering.
     color = '#63D8FF' if key == 'ucl' else '#2B2B2B'
-    mark = textured(mark, key, assets, True, color)
+    # Flat colour, no texture light: the mark stays clean on every frame.
+    flat = Image.new('RGBA', mark.size, ImageColor.getrgb(color) + (255,))
+    flat.putalpha(mark.convert('RGBA').getchannel('A'))
+    mark = flat
     x = W - round(W * 16 / 960) - mark.width
     assert x > W - M
     card.alpha_composite(mark, (x, round(H * 13 / 1280)))
@@ -359,6 +362,13 @@ def event(
     )
 
 
+def phase_word(word, key, assets):
+    """KICK OFF / HALF TIME / ... word: random gradient on UCL, kit texture elsewhere."""
+    if key == 'ucl':
+        return ucl_gradient(word, assets, random.Random())
+    return textured(word, key, assets)
+
+
 def phase(
     *,
     kind,
@@ -386,7 +396,7 @@ def phase(
     if kind == 'kick':
         word = ImageOps.contain(word, (600, 600), Image.Resampling.LANCZOS)
         top = (H - 64 - 38 - word.height) // 2
-        card.alpha_composite(textured(word, key, assets), ((W - word.width) // 2, top + 102))
+        card.alpha_composite(phase_word(word, key, assets), ((W - word.width) // 2, top + 102))
         marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
         for mark, x in centered_logo_positions(marks, W / 2):
             soft_place(card, mark, (x, top), blur=6, opacity=.50, key=key)
@@ -406,7 +416,7 @@ def phase(
             method=Image.Resampling.LANCZOS,
         )
         word = word.resize((IW - 36, round(word.height * (IW - 36) / word.width)), Image.Resampling.LANCZOS)
-        soft_place(bg, textured(word, key, assets), (18, 28), blur=12, opacity=.60, key=key)
+        soft_place(bg, phase_word(word, key, assets), (18, 28), blur=12, opacity=.60, key=key)
         bg.alpha_composite(player)
 
         fade = Image.new('RGBA', bg.size)
