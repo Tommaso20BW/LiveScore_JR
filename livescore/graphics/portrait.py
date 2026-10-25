@@ -15,6 +15,8 @@ BOTTOM_SHIFT = 50
 SCORE_LEFT = True
 
 # Lettering / minute / name colour per theme (texture tint).
+AWAY_DARK = '#2B2B2B'   # black items on the pink Away panel
+
 COLORS = dict(
     home='#F4C430',
     away='#EE9AB8',
@@ -148,7 +150,7 @@ def brand(card, key, assets):
     height = round(H * 58 / 1280)
     mark = mark.resize((round(mark.width * height / mark.height), height), Image.Resampling.LANCZOS)
     # Near-black (not pure black) so the texture still shows; UCL matches its lettering.
-    color = '#63D8FF' if key == 'ucl' else '#2B2B2B'
+    color = '#63D8FF' if key == 'ucl' else ('#EE9AB8' if key == 'away' else '#2B2B2B')
     # Flat colour, no texture light: the mark stays clean on every frame.
     # UCL: same random gradient as the lettering, but without texture.
     if key == 'ucl':
@@ -168,6 +170,15 @@ def crest_texture(source, key, assets):
     if key == 'ucl':
         return ucl_gradient(source, assets, random.Random())
     return textured(source, key, assets, True)
+
+
+def flat_color(layer, color):
+    """Same shape, one flat colour (None passes through)."""
+    if layer is None:
+        return None
+    out = Image.new('RGBA', layer.size, ImageColor.getrgb(color) + (255,))
+    out.putalpha(layer.getchannel('A'))
+    return out
 
 
 def logo(name, tid, key, assets, height):
@@ -293,7 +304,7 @@ def event(
             return ucl_gradient(source, assets, random.Random(seed))
         return textured(source, key, assets)
 
-    panel.alpha_composite(letters(heading))
+    panel.alpha_composite(textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading))
 
     path = None
     pose = pose or 'arms_crossed'
@@ -360,7 +371,7 @@ def event(
                 card.alpha_composite(piece, area[:2])
             return
         for s, b in zip(parts, boxes):
-            draw.text((x - b[0], baseline), s, font=font, fill=COLORS[key], anchor='ls')
+            draw.text((x - b[0], baseline), s, font=font, fill=AWAY_DARK if key == 'away' else COLORS[key], anchor='ls')
             x += b[2] - b[0]
 
     minute_parts = [str(minute).rstrip("'’") + "'"]
@@ -425,8 +436,11 @@ def phase(
     if kind == 'kick':
         word = ImageOps.contain(word, (600, 600), Image.Resampling.LANCZOS)
         top = (H - 64 - 38 - word.height) // 2
-        card.alpha_composite(phase_word(word, key, assets), ((W - word.width) // 2, top + 102))
+        kw = textured(word, key, assets, color=AWAY_DARK) if key == 'away' else phase_word(word, key, assets)
+        card.alpha_composite(kw, ((W - word.width) // 2, top + 102))
         marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
+        if key == 'away':
+            marks = [flat_color(m, AWAY_DARK) for m in marks]
         for mark, x in centered_logo_positions(marks, W / 2):
             soft_place(card, mark, (x, top), blur=6, opacity=.50, key=key)
     else:

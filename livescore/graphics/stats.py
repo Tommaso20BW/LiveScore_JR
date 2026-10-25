@@ -128,6 +128,8 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     def letters(source):
         if key == 'ucl':
             return p.ucl_gradient(source, assets, random.Random(seed))
+        if key == 'away':
+            return p.textured(source, key, assets, color=p.AWAY_DARK)
         return p.textured(source, key, assets)
 
     title = uri(letters(p.tight(Image.open(assets / 'overlays' / 'stats.png'), True)))
@@ -146,6 +148,8 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     for name, tid in ((home_name, home_id), (away_name, away_id)):
         # Exactly the same resolver, alpha and zoomed texture as event/phase cards.
         mark = p.logo(name, tid, key, assets, 128)
+        if key == 'away':                     # pink panel: dark crests
+            mark = p.flat_color(mark, p.AWAY_DARK)
         if mark is None:
             raise g.GoalGraphicUnavailable(f'Logo non disponibile: {name}')
         logos.append(uri(mark))
@@ -158,6 +162,8 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     )
 
     juve = (f'color:{p.COLORS[key]}', f'background:{p.COLORS[key]}')
+    if key == 'away':
+        juve = (f'color:{p.AWAY_DARK}', f'background:{p.AWAY_DARK}')
     if key == 'ucl':
         # Juventus numbers and bars: the same random gradient + texture as the title.
         fill = p.ucl_gradient(Image.new('RGBA', (600, 120), (255, 255, 255, 255)), assets, random.Random(seed),
@@ -189,6 +195,10 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
 
     for name, value in values.items():
         template = template.replace('{{' + name + '}}', value)
+    if key == 'away':   # pink panel: dark labels and lines instead of white
+        template = (template.replace('color:white', 'color:#2B2B2B').replace('#ffffff26', '#2b2b2b33')
+                    .replace('color:#a5adb3', 'color:#5a3a46').replace('.track.empty{height:10px;background:#39434d}',
+                    '.track.empty{height:10px;background:#c98aa0}'))
 
     return template
 
