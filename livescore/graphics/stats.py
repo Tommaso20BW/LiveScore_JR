@@ -157,11 +157,15 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
         ).decode()
     )
 
-    left, right = (
-        (p.COLORS[key], '#fff')
-        if str(home_id) == '111'
-        else ('#fff', p.COLORS[key])
-    )
+    juve = (f'color:{p.COLORS[key]}', f'background:{p.COLORS[key]}')
+    if key == 'ucl':
+        # Juventus numbers and bars: the same random gradient + texture as the title.
+        fill = letters(Image.new('RGBA', (600, 120), (255, 255, 255, 255)))
+        src = f'url({uri(fill)}) center/100% 100%'
+        juve = (f'background:{src};-webkit-background-clip:text;background-clip:text;color:transparent',
+                f'background:{src}')
+    other = ('color:#fff', 'background:#fff')
+    (home_text, home_bar), (away_text, away_bar) = (juve, other) if str(home_id) == '111' else (other, juve)
 
     template = (TEMPLATES_DIR / 'stats.html').read_text(encoding='utf-8')
 
@@ -172,8 +176,10 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
         PHASE=phase,
         HOME_LOGO=logos[0],
         AWAY_LOGO=logos[1],
-        LEFT=left,
-        RIGHT=right,
+        HOME_TEXT=home_text,
+        AWAY_TEXT=away_text,
+        HOME_BAR=home_bar,
+        AWAY_BAR=away_bar,
         ROWS=rows_html(rows),
         COMPETITION=escape(
             competition_display_name(competition, league_name).upper()

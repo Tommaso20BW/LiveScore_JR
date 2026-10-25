@@ -155,13 +155,20 @@ def brand(card, key, assets):
     return card
 
 
+def crest_texture(source, key, assets):
+    """Mono crests: kit texture, or the random UCL gradient (with texture) on Champions League."""
+    if key == 'ucl':
+        return ucl_gradient(source, assets, random.Random())
+    return textured(source, key, assets, True)
+
+
 def logo(name, tid, key, assets, height):
     source, origin = g.resolve_team_logo_source(name, str(tid), assets)
     if source is None:
         return None
     source = tight(source)
     source = source.resize((round(source.width * height / source.height), height), Image.Resampling.LANCZOS)
-    return textured(source, key, assets, True) if origin == 'FCLogo' else source
+    return crest_texture(source, key, assets) if origin == 'FCLogo' else source
 
 
 def centered_logo_positions(marks, center, gap=20):
@@ -184,7 +191,7 @@ def phase_logo(name, tid, key, assets, height):
         raise ValueError('Altezza logo non valida')
     width = max(1, round(source.width * height / source.height))
     source = source.resize((width, height), Image.Resampling.LANCZOS)
-    return textured(source, key, assets, True) if origin == 'FCLogo' else source
+    return crest_texture(source, key, assets) if origin == 'FCLogo' else source
 
 
 def visible_logo_bbox(mark, threshold=100):
@@ -211,6 +218,8 @@ def number(text, size, key, assets):
     box = font.getbbox(text)
     layer = Image.new('RGBA', (max(1, box[2] - box[0]), max(1, box[3] - box[1])))
     ImageDraw.Draw(layer).text((-box[0], -box[1]), text, font=font, fill='white')
+    if key == 'ucl':
+        return ucl_gradient(layer, assets, random.Random())
     return textured(layer, key, assets, True)
 
 
@@ -330,6 +339,18 @@ def event(
         boxes = [font.getbbox(s, anchor='ls') for s in parts]
         width = sum(b[2] - b[0] for b in boxes)
         x = M + side if align == 'left' else W - M - side - width
+        if key == 'ucl':
+            # UCL: same random gradient + texture as the words, not flat light blue.
+            layer = Image.new('RGBA', card.size)
+            ld = ImageDraw.Draw(layer)
+            for s, b in zip(parts, boxes):
+                ld.text((x - b[0], baseline), s, font=font, fill='white', anchor='ls')
+                x += b[2] - b[0]
+            area = layer.getchannel('A').getbbox()
+            if area:
+                piece = letters(layer.crop(area))
+                card.alpha_composite(piece, area[:2])
+            return
         for s, b in zip(parts, boxes):
             draw.text((x - b[0], baseline), s, font=font, fill=COLORS[key], anchor='ls')
             x += b[2] - b[0]
@@ -543,5 +564,6 @@ def center_name(card, label, font, *, key=None, assets=None):
     layer = layer.crop(layer.getchannel('A').getbbox())
     if key and assets is not None:
         # Stessa texture del kit dei loghi e della scritta GOAL/SAVED, non bianco piatto.
-        layer = textured(layer, key, assets, True)
+        # UCL: sfumatura casuale con texture, come le scritte.
+        layer = ucl_gradient(layer, assets, random.Random()) if key == 'ucl' else textured(layer, key, assets, True)
     card.alpha_composite(layer, ((card.width - layer.width) // 2, 1254 + BOTTOM_SHIFT))
