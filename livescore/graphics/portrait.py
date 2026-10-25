@@ -11,10 +11,11 @@ W, H, M = 1086, 1448, 76
 IW, IH = W - 2 * M, H - 2 * M
 # Lowers the front word, crests and name on GOAL/SAVED cards (the big heading stays put).
 BOTTOM_SHIFT = 50
-# Nome del giocatore (GOAL/SAVED): Dharma Gothic, spaziato, sotto gli stemmi.
+# Nome del giocatore (GOAL/SAVED): Inter Medium (negli asset), sotto gli stemmi.
 NAME_TOP = 1254 + BOTTOM_SHIFT
-NAME_FONT_SIZE = 52
-NAME_TRACKING = 1.5   # spaziatura leggera tra le lettere
+NAME_FONT = 'fonts/Inter-Medium.ttf'
+NAME_FONT_SIZE = 29
+NAME_TRACKING = 0
 # Top row under the heading: score on the left and minute on the right when True.
 SCORE_LEFT = True
 
@@ -610,23 +611,27 @@ def ucl_gradient(source, assets, rng=None, lit=True, stops=None):
 
 
 def name_layer(label, assets, size=None, tracking=None):
-    """Nome del giocatore in Dharma Gothic (come minuto, risultato e scritte), con spaziatura."""
+    """Nome del giocatore in Inter Medium; senza il file negli asset usa il font di sistema."""
     size = size or NAME_FONT_SIZE
     tracking = NAME_TRACKING if tracking is None else tracking
-    path = str(Path(assets) / 'fonts/DharmaGothicEBold.otf')
+    path = Path(assets) / NAME_FONT
     while True:
-        font = ImageFont.truetype(path, size)
-        width = sum(font.getlength(ch) for ch in label) + tracking * max(0, len(label) - 1)
-        if width <= IW - 40 or size <= 20:
+        font = ImageFont.truetype(str(path), size) if path.is_file() else g._font(size)
+        width = (font.getlength(label) if not tracking
+                 else sum(font.getlength(ch) for ch in label) + tracking * (len(label) - 1))
+        if width <= IW - 40 or size <= 14:
             break
         size -= 1       # nomi lunghi: rimpicciolisce fino a stare nel pannello
     box = font.getbbox(label)
     layer = Image.new('RGBA', (round(width) + 16, box[3] - box[1] + 16))
     draw = ImageDraw.Draw(layer)
-    x = 8.0
-    for ch in label:
-        draw.text((x, 8 - box[1]), ch, font=font, fill='white')
-        x += font.getlength(ch) + tracking
+    if not tracking:
+        draw.text((8 - box[0], 8 - box[1]), label, font=font, fill='white')   # crenatura del font
+    else:
+        x = 8.0
+        for ch in label:
+            draw.text((x, 8 - box[1]), ch, font=font, fill='white')
+            x += font.getlength(ch) + tracking
     return layer.crop(layer.getchannel('A').getbbox())
 
 
