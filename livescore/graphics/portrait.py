@@ -14,7 +14,7 @@ BOTTOM_SHIFT = 50
 # Nome del giocatore (GOAL/SAVED): Dharma Gothic, spaziato, sotto gli stemmi.
 NAME_TOP = 1254 + BOTTOM_SHIFT
 NAME_FONT_SIZE = 52
-NAME_TRACKING = 0
+NAME_TRACKING = 1.5   # spaziatura leggera tra le lettere
 # Top row under the heading: score on the left and minute on the right when True.
 SCORE_LEFT = True
 
