@@ -22,8 +22,8 @@ COLORS = dict(
     away='#EE9AB8',
     third='#C2A564',
     ucl='#63D8FF',
-    uel='#FF7A00',
-    conference='#16E36A',
+    uel='#FA7A22',
+    conference='#30C033',
 )
 # Shadow tint behind words and crests: each panel's deep tone instead of plain black.
 SHADOW = dict(
@@ -34,12 +34,12 @@ SHADOW = dict(
     uel='#140800',
     conference='#011207',
 )
-# UCL GOAL/SAVED lettering: magenta -> electric violet -> ice blue, random direction every render.
-UCL_GRADIENT = ('#F052D2', '#A66BFF', '#63D8FF')
+# UCL lettering: electric blue -> light azure, random direction every render.
+UCL_GRADIENT = ('#3A5BFF', '#3D8BFF', '#55B8FF')
 # JR mark: same family, softer magenta end.
-UCL_MARK_GRADIENT = ('#C064E6', '#7F9CFF', '#63D8FF')
+UCL_MARK_GRADIENT = ('#3A5BFF', '#3D8BFF', '#55B8FF')
 # Small UCL texts (score, minute, name, phase score, shootout, STATS numbers): same softer palette, with texture.
-UCL_TEXT_GRADIENT = ('#A57EEA', '#7BA6FF', '#63D8FF')
+UCL_TEXT_GRADIENT = ('#3A5BFF', '#3D8BFF', '#55B8FF')
 
 # Final dimensions/positions taken from the local preview tests:
 # - score numbers: 300 instead of 200
@@ -304,6 +304,8 @@ def event(
             return ucl_gradient(source, assets, random.Random(seed))
         return textured(source, key, assets)
 
+    # Soft shadow under the top heading; drawn on the panel, so it is cut at the panel edges like the word.
+    tinted_shadow(panel, heading.getchannel('A'), key, blur=14, opacity=.55, offset=6)
     panel.alpha_composite(textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading))
 
     path = None
@@ -350,7 +352,7 @@ def event(
     font = ImageFont.truetype(str(assets / 'fonts/DharmaGothicEBold.otf'), 52)
     cap = -font.getbbox('0', anchor='ls')[1]
     baseline = M + heading.getchannel('A').getbbox()[3] + 30 + cap
-    side = 24
+    side = 16      # close to the panel edge, never touching it
     draw = ImageDraw.Draw(card)
 
     def put(parts, align):
