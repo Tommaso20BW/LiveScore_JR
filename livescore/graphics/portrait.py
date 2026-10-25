@@ -11,6 +11,10 @@ W, H, M = 1086, 1448, 76
 IW, IH = W - 2 * M, H - 2 * M
 # Lowers the front word, crests and name on GOAL/SAVED cards (the big heading stays put).
 BOTTOM_SHIFT = 50
+# Nome del giocatore (GOAL/SAVED): Dharma Gothic, spaziato, sotto gli stemmi.
+NAME_TOP = 1254 + BOTTOM_SHIFT
+NAME_FONT_SIZE = 52
+NAME_TRACKING = 0
 # Top row under the heading: score on the left and minute on the right when True.
 SCORE_LEFT = True
 
@@ -358,7 +362,7 @@ def event(
     word = tight(Image.open(assets / 'overlays' / ('front_saved.png' if saved else 'front_goal.png')), True)
     word = ImageOps.contain(word, (IW + 44, 340), Image.Resampling.LANCZOS)
     word = letters(word)
-    place_word(card, word, saved, key)
+    word_bottom = place_word(card, word, saved, key)
 
     # Minute left and score right, just under the big heading at the top (same on GOAL and SAVED).
     # Everything sits on one baseline; edges are aligned on the drawn ink, not the font advance.
@@ -396,15 +400,13 @@ def event(
     if score_parts:
         put(score_parts, 'left' if SCORE_LEFT else 'right')
 
+    # Stemmi a meta' tra la scritta GOAL/SAVED e il nome: stessa distanza sopra e sotto.
+    crest_cy = (word_bottom + NAME_TOP) / 2 - 1   # -1: compensa il bordo sfumato della scritta
     marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
     for mark, x in centered_logo_positions(marks, W / 2):
-        soft_place(card, mark, (x, 1180 + BOTTOM_SHIFT - mark.height // 2), blur=6, opacity=.50, key=key)
+        soft_place(card, mark, (x, round(crest_cy - mark.height / 2)), blur=6, opacity=.50, key=key)
 
-    label = (scorer_name + suffix).upper()
-    size = 29
-    while size > 14 and g._font(size).getlength(label) > IW - 40:
-        size -= 1
-    center_name(card, label, g._font(size), key=key, assets=assets)
+    center_name(card, (scorer_name + suffix).upper(), key=key, assets=assets)
 
     return g.RenderedGoal(
         png(brand(card, key, assets)),
@@ -581,6 +583,7 @@ def place_word(card, word, saved, key='home'):
     mask.paste(word.getchannel('A'), (x, y))
     tinted_shadow(card, mask, key, blur=14, opacity=.55, offset=6)
     card.alpha_composite(word, (x, y))
+    return y + word.getchannel('A').point(lambda v: 255 if v > 100 else 0).getbbox()[3]
 
 
 def soft_place(canvas, layer, position, blur=8, opacity=.55, offset=5, key='home'):
@@ -606,14 +609,32 @@ def ucl_gradient(source, assets, rng=None, lit=True, stops=None):
     return out
 
 
-def center_name(card, label, font, *, key=None, assets=None):
+def name_layer(label, assets, size=None, tracking=None):
+    """Nome del giocatore in Dharma Gothic (come minuto, risultato e scritte), con spaziatura."""
+    size = size or NAME_FONT_SIZE
+    tracking = NAME_TRACKING if tracking is None else tracking
+    path = str(Path(assets) / 'fonts/DharmaGothicEBold.otf')
+    while True:
+        font = ImageFont.truetype(path, size)
+        width = sum(font.getlength(ch) for ch in label) + tracking * max(0, len(label) - 1)
+        if width <= IW - 40 or size <= 20:
+            break
+        size -= 1       # nomi lunghi: rimpicciolisce fino a stare nel pannello
     box = font.getbbox(label)
-    layer = Image.new('RGBA', (box[2] - box[0] + 8, box[3] - box[1] + 8))
-    ImageDraw.Draw(layer).text((4 - box[0], 4 - box[1]), label, font=font, fill='white')
-    layer = layer.crop(layer.getchannel('A').getbbox())
+    layer = Image.new('RGBA', (round(width) + 16, box[3] - box[1] + 16))
+    draw = ImageDraw.Draw(layer)
+    x = 8.0
+    for ch in label:
+        draw.text((x, 8 - box[1]), ch, font=font, fill='white')
+        x += font.getlength(ch) + tracking
+    return layer.crop(layer.getchannel('A').getbbox())
+
+
+def center_name(card, label, *, key=None, assets=None):
+    layer = name_layer(label, assets if assets is not None else g.DEFAULT_ASSET_DIR)
     if key and assets is not None:
         # Stessa texture del kit dei loghi e della scritta GOAL/SAVED, non bianco piatto.
         # UCL: sfumatura casuale con texture, come le scritte.
         layer = (ucl_gradient(layer, assets, random.Random(), stops=UCL_TEXT_GRADIENT) if key == 'ucl'
                  else textured(layer, key, assets, True))
-    card.alpha_composite(layer, ((card.width - layer.width) // 2, 1254 + BOTTOM_SHIFT))
+    card.alpha_composite(layer, ((card.width - layer.width) // 2, NAME_TOP))
