@@ -53,9 +53,9 @@ jobs:
     # Il live dura quanto la partita vera (supplementari, rigori e post partita compresi).
     timeout-minutes: 300
 
-    # Replay: stesso gruppo del Live Score, aspetta che il live finisca (usa Canva,
-    # e il token Canva ruota: due processi insieme si invaliderebbero a vicenda).
-    # Live: Canva spento, quindi puo' girare insieme al Live Score vero.
+    # Replay: stesso gruppo del Live Score, aspetta che il live finisca: legge i
+    # click sui pulsanti kit (getUpdates) e li toglierebbe al Live Score vero.
+    # Live: i click restano al Live Score, quindi puo' girare insieme a lui.
     concurrency:
       group: ${{ needs.mode.outputs.mode == 'live' && 'simulazione-live' || 'juve-live-bot' }}
       cancel-in-progress: false
@@ -94,16 +94,29 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
 
+      # Foto di HALF TIME / END OF 90' / FULL TIME: la Mini App raggiunge il bot
+      # attraverso un tunnel temporaneo; il modello di scontorno resta in cache.
+      - name: Prepara tunnel e scontorno per le foto delle fasi
+        shell: bash
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64             -o "${RUNNER_TEMP}/cloudflared"
+          chmod +x "${RUNNER_TEMP}/cloudflared"
+          echo "CLOUDFLARED=${RUNNER_TEMP}/cloudflared" >> "$GITHUB_ENV"
+
+      - name: Cache modello scontorno
+        uses: actions/cache@v6
+        with:
+          path: ~/.rembg
+          key: rembg-isnet-general-use-v1
+
       - name: Simula la partita
         env:
           TELEGRAM_TOKEN:       ${{ secrets.TELEGRAM_TOKEN }}
           # Solo il canale di test: la simulazione non scrive mai su Juventus Reborn.
           TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
-          GH_PAT:               ${{ secrets.GH_PAT }}
+          # Avvisi per le foto delle fasi nella chat privata (la simulazione aspetta la conferma).
+          PHOTO_CHAT_ID:        ${{ secrets.PHOTO_CHAT_ID }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
-          CANVA_CLIENT_ID:      ${{ secrets.CANVA_CLIENT_ID }}
-          CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
-          CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           EVENT_ID:             ${{ inputs.event_id }}
           SIM_DRY_RUN:          ${{ inputs.dry_run }}
           SIM_MODE:             ${{ needs.mode.outputs.mode }}
@@ -111,7 +124,6 @@ jobs:
         run: |
           ARGS=("$(echo "$EVENT_ID" | tr -d '[:space:]')" --mode "$SIM_MODE")
           [ "$SIM_DRY_RUN" = "true" ] && ARGS+=(--dry-run)
-          [ "$SIM_MODE" = "live" ] && ARGS+=(--no-canva)
           python -u -m livescore simulate "${ARGS[@]}" --output sim_output
 
       - name: Cancella i messaggi rimasti

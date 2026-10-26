@@ -1,5 +1,5 @@
 """
-Persistent Canva snapshot storage on a dedicated GitHub branch.
+Persistent photo snapshot storage (HALF/END/FULL TIME layers) on a dedicated GitHub branch.
 
 Snapshots are stored as deterministic ZIP blobs under:
     runtime_snapshots/<event_id>/<kind>_<sha256-prefix>.zip
@@ -27,7 +27,6 @@ import requests
 
 
 REQUIRED_FILES = (
-    "source.pdf",
     "background.png",
     "player.png",
     "manifest.json",
@@ -50,7 +49,7 @@ def _deterministic_zip(snapshot_dir: Path) -> bytes:
     ]
     if missing:
         raise FileNotFoundError(
-            "Snapshot Canva incompleto: " + ", ".join(missing)
+            "Snapshot foto incompleto: " + ", ".join(missing)
         )
 
     stream = io.BytesIO()
@@ -201,7 +200,7 @@ class GitHubSnapshotStore:
             (
                 "# Runtime snapshots\n\n"
                 "Branch tecnico gestito automaticamente dal LiveScore JR.\n"
-                "Gli snapshot Canva delle partite vengono creati e rimossi "
+                "Gli snapshot delle foto di fase vengono creati e rimossi "
                 "automaticamente.\n"
             ).encode("utf-8")
         )
@@ -403,7 +402,7 @@ class GitHubSnapshotStore:
                     "sha": blob_sha,
                 }],
                 message=(
-                    f"Save Canva snapshot {safe_event} "
+                    f"Save photo snapshot {safe_event} "
                     f"{safe_kind}"
                 ),
             )
@@ -521,7 +520,7 @@ class GitHubSnapshotStore:
         ]
         self._commit_tree_entries(
             entries,
-            message=f"Cleanup Canva snapshots {safe_event}",
+            message=f"Cleanup photo snapshots {safe_event}",
         )
         self._emit(
             "INFO",

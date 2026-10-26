@@ -12,7 +12,7 @@ from livescore.core.log import log_line
 from livescore.espn import client as espn_client
 from livescore.espn import parser as espn_parser
 from livescore.match import formatting as fmt
-from livescore.match import media, stats_job
+from livescore.match import media, phase_photo, stats_job
 from livescore.match.context import MatchContext, Flow
 from livescore.state import gist
 from livescore.telegram import api as tg
@@ -182,6 +182,11 @@ def handle_finish(ctx: MatchContext) -> Flow | None:
 
             # Supplementari giocati: FINE REGOLAMENTARI inviato solo quando si va ai supplementari.
             went_extra_time = "2H_END" in ctx.state["sent_periods"] or ctx.status in ("ET", "AET")
+
+            if not phase_photo.ready('full', extra_time=went_extra_time and not has_shootout,
+                                     shootout=(home_pen_goals, away_pen_goals) if has_shootout else None):
+                time.sleep(ctx.sleep_time)   # la grafica aspetta la foto confermata nella Mini App
+                return Flow.CONTINUE
 
             ft_sent = media.send_phase_message(msg_finale, kind='full', data_espn=ctx.data,
                 home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name_raw, away_name=ctx.away_name_raw,

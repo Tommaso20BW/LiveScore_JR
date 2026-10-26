@@ -8,9 +8,9 @@ Production integration goals:
 - MANUAL keeps HOME/AWAY/THIRD until AUTO is selected again.
 - HOME/AWAY/THIRD/AUTO buttons live on the Bot JR "PARTITA TROVATA" message.
 - Already-published kit-dependent media are regenerated and edited in place.
-- Canva phase graphics reuse the exact page-one snapshot used when published.
+- HALF/END/FULL TIME graphics reuse the exact photo layers used when published.
 - Dynamic state and media metadata live inside the existing match Gist.
-- At match end the inline keyboard is removed and local Canva snapshots are cleaned.
+- At match end the inline keyboard is removed and local photo snapshots are cleaned.
 
 The module is installed by livescore_runner.py. It intentionally avoids changing
 juve_bot_espn.py so the existing match/event logic stays untouched.
@@ -31,7 +31,8 @@ from typing import Any, Callable
 
 from PIL import Image
 
-from livescore.canva.snapshot_store import GitHubSnapshotStore
+from livescore.state.snapshot_store import GitHubSnapshotStore
+from livescore.match import phase_photo
 
 
 VALID_KITS = ("home", "away", "third")
@@ -179,7 +180,7 @@ class DynamicKitRuntime:
         self.pending_render: dict[str, dict] = {}
         self.last_pending_label: str | None = None
         self._capturing_phase = False
-        self._last_canva_snapshot: str | None = None
+        self._last_photo_snapshot: str | None = None
 
         # Click e rigenerazioni in thread separati dal ciclo live (vedi
         # start_background). Il lock protegge solo i dati condivisi: kit
@@ -192,7 +193,6 @@ class DynamicKitRuntime:
         self._threads: list[threading.Thread] = []
 
         self._originals: dict[str, Any] = {}
-        self.canva_page_one = None
         self.stats_graphics = None
         self.portrait_graphics = None
 
@@ -298,11 +298,9 @@ class DynamicKitRuntime:
         if not hasattr(self.bot.goal_graphics, "io"):
             self.bot.goal_graphics.io = io
 
-        from livescore.canva import page_one as canva_page_one
         from livescore.graphics import stats as stats_graphics
         from livescore.graphics import portrait as portrait_graphics
 
-        self.canva_page_one = canva_page_one
         self.stats_graphics = stats_graphics
         self.portrait_graphics = portrait_graphics
 
@@ -320,7 +318,7 @@ class DynamicKitRuntime:
             "render_goal": self.bot.goal_graphics.render_goal_card,
             "render_saved": self.bot.goal_graphics.render_saved_card,
             "stats_build_html": stats_graphics.build_html,
-            "canva_export": canva_page_one.export_page_one,
+            "phase_layers": phase_photo.layers_for,
         }
 
         self.bot.rileva_kit_juve = self._rileva_kit_proxy
@@ -337,7 +335,7 @@ class DynamicKitRuntime:
         self.bot.goal_graphics.render_goal_card = self._render_goal_proxy
         self.bot.goal_graphics.render_saved_card = self._render_saved_proxy
         stats_graphics.build_html = self._stats_build_html_proxy
-        canva_page_one.export_page_one = self._canva_export_proxy
+        phase_photo.layers_for = self._phase_layers_proxy
 
         self.installed = True
         return self
@@ -404,7 +402,7 @@ class DynamicKitRuntime:
         self.update_offset = None
         self.pending_render = {}
         self.last_pending_label = None
-        self._last_canva_snapshot = None
+        self._last_photo_snapshot = None
         self.recap_message_id = None
         self.recap_chat_id = None
         self.recap_text_factory = None
@@ -914,19 +912,19 @@ class DynamicKitRuntime:
             "type": kind,
             "render": render,
             "event_key": str(render.get("event_key") or ""),
-            "canva_snapshot": None,
+            "photo_snapshot": None,
         }
 
     def _build_phase_graphic_proxy(self, *args, **kwargs):
         kind = str(kwargs.get("kind") or "")
         self._thread_local.kit_used = None
         self._capturing_phase = True
-        self._last_canva_snapshot = None
+        self._last_photo_snapshot = None
         try:
             png = self._originals["build_phase_graphic"](*args, **kwargs)
         finally:
             self._capturing_phase = False
-        # Il kit lo legge il disegno dopo l'export Canva (~10 s): se nel frattempo
+        # Il kit lo legge il disegno (qualche secondo): se nel frattempo
         # arriva un click, vale quello letto in quel momento.
         drawn_kit = getattr(self._thread_local, "kit_used", None) or self.active_kit
 
@@ -950,7 +948,7 @@ class DynamicKitRuntime:
                 if key in allowed
             }
             local_snapshot = (
-                self._last_canva_snapshot
+                self._last_photo_snapshot
                 if kind not in ("kick", "second")
                 else None
             )
@@ -959,7 +957,7 @@ class DynamicKitRuntime:
                 if not local_snapshot:
                     self._log(
                         "ERROR",
-                        "CANVA",
+                        "PHOTO",
                         f"Snapshot locale assente per {kind}; foto non pubblicata",
                     )
                     return None
@@ -975,7 +973,7 @@ class DynamicKitRuntime:
                     # activates the bot's existing text fallback/retry path.
                     self._log(
                         "ERROR",
-                        "CANVA",
+                        "PHOTO",
                         f"Persistenza snapshot remoto {kind} fallita: {exc}; "
                         "foto non pubblicata",
                     )
@@ -986,23 +984,23 @@ class DynamicKitRuntime:
                 "render": render,
                 "event_key": "",
                 "kit": drawn_kit,
-                "canva_snapshot": local_snapshot,
-                "canva_snapshot_remote": remote_snapshot,
+                "photo_snapshot": local_snapshot,
+                "photo_snapshot_remote": remote_snapshot,
             }
             self._set_pending(kind, context, png)
         return png
 
-    def _canva_export_proxy(self, *args, **kwargs):
-        result = self._originals["canva_export"](*args, **kwargs)
+    def _phase_layers_proxy(self, *args, **kwargs):
+        result = self._originals["phase_layers"](*args, **kwargs)
         if self._capturing_phase and result is not None:
             path = Path(result)
-            # export_page_one already stores a content-addressed folder containing
-            # source.pdf, background.png, player.png and manifest.json. That exact
-            # folder is the immutable snapshot for this published phase card.
-            self._last_canva_snapshot = str(path)
+            # The photo desk stores each confirmed photo in its own folder
+            # (background.png, player.png, manifest.json), never changed later:
+            # that folder is the snapshot for this published phase card.
+            self._last_photo_snapshot = str(path)
             self._log(
                 "DEBUG",
-                "CANVA",
+                "PHOTO",
                 f"Snapshot congelato: {path}",
             )
         return result
@@ -1031,7 +1029,7 @@ class DynamicKitRuntime:
                 "render": render,
                 "event_key": "",
                 "kit": render["kit"],
-                "canva_snapshot": None,
+                "photo_snapshot": None,
             }
             self.last_pending_label = "stats"
         return html
@@ -1241,9 +1239,9 @@ class DynamicKitRuntime:
             "visual_hash": context.get("visual_hash"),
             "event_key": str(context.get("event_key") or ""),
             "render": _json_safe(context.get("render") or {}),
-            "canva_snapshot": context.get("canva_snapshot"),
-            "canva_snapshot_remote": _json_safe(
-                context.get("canva_snapshot_remote")
+            "photo_snapshot": context.get("photo_snapshot"),
+            "photo_snapshot_remote": _json_safe(
+                context.get("photo_snapshot_remote")
             ),
             "last_edit_error": None,
         }
@@ -1321,8 +1319,8 @@ class DynamicKitRuntime:
                     record = self.volatile_media.get(message_key)
                     if not isinstance(record, dict) or self.active_kit != target:
                         continue
-                    if snapshot.get("canva_snapshot") != record.get("canva_snapshot"):
-                        record["canva_snapshot"] = snapshot.get("canva_snapshot")
+                    if snapshot.get("photo_snapshot") != record.get("photo_snapshot"):
+                        record["photo_snapshot"] = snapshot.get("photo_snapshot")
 
                     if new_hash == record.get("visual_hash"):
                         record["kit"] = target
@@ -1371,12 +1369,11 @@ class DynamicKitRuntime:
             return self._originals["render_saved"](**render).png
 
         if kind in ("kick", "second", "half", "full", "end_of_90"):
-            snapshot = record.get("canva_snapshot")
+            snapshot = record.get("photo_snapshot")
             layers = None
             if kind not in ("kick", "second"):
                 layers = Path(snapshot) if snapshot else None
                 required_names = (
-                    "source.pdf",
                     "background.png",
                     "player.png",
                     "manifest.json",
@@ -1392,16 +1389,16 @@ class DynamicKitRuntime:
                     )
 
                 if snapshot_missing(layers):
-                    remote = record.get("canva_snapshot_remote")
+                    remote = record.get("photo_snapshot_remote")
                     if not isinstance(remote, dict):
                         raise FileNotFoundError(
-                            f"Snapshot Canva locale e remoto assenti per {kind}"
+                            f"Snapshot foto locale e remoto assenti per {kind}"
                         )
                     layers = self.snapshot_store.restore_snapshot(
                         remote,
-                        destination_root=Path("canva_page1_cache"),
+                        destination_root=phase_photo.CACHE_DIR,
                     )
-                    record["canva_snapshot"] = str(layers)
+                    record["photo_snapshot"] = str(layers)
                     self._persist_state()
 
                 missing = [
@@ -1411,7 +1408,7 @@ class DynamicKitRuntime:
                 ]
                 if missing:
                     raise FileNotFoundError(
-                        "Snapshot Canva incompleto dopo ripristino: "
+                        "Snapshot foto incompleto dopo ripristino: "
                         + ", ".join(missing)
                     )
 
@@ -1491,10 +1488,10 @@ class DynamicKitRuntime:
     def finish_match(self) -> None:
         self.stop_background()
         self.remove_recap_buttons()
-        self._cleanup_remote_canva_snapshots()
-        self._cleanup_canva_snapshots()
+        self._cleanup_remote_photo_snapshots()
+        self._cleanup_photo_snapshots()
 
-    def _cleanup_remote_canva_snapshots(self) -> None:
+    def _cleanup_remote_photo_snapshots(self) -> None:
         if not self.current_event_id:
             return
         try:
@@ -1506,27 +1503,28 @@ class DynamicKitRuntime:
             # failed. Leftover files are harmless and can be removed later.
             self._log(
                 "WARN",
-                "CANVA",
+                "PHOTO",
                 f"Cleanup snapshot remoti fallito: {exc}",
             )
 
-    def _cleanup_canva_snapshots(self) -> None:
+    def _cleanup_photo_snapshots(self) -> None:
         # Production build_phase_graphic uses this cache. At FT all phase/media
         # retries are finished, so the complete temporary snapshot cache can go.
-        cache = Path("canva_page1_cache")
+        phase_photo.finish()
+        cache = phase_photo.CACHE_DIR
         try:
             if cache.exists():
                 shutil.rmtree(cache)
                 self._log(
                     "DEBUG",
-                    "CANVA",
-                    "Snapshot Canva temporanei eliminati a fine partita",
+                    "PHOTO",
+                    "Snapshot foto temporanei eliminati a fine partita",
                 )
         except Exception as exc:
             self._log(
                 "WARN",
-                "CANVA",
-                f"Pulizia snapshot Canva fallita: {exc}",
+                "PHOTO",
+                f"Pulizia snapshot foto fallita: {exc}",
             )
 
     # ------------------------------------------------------------------

@@ -23,11 +23,7 @@ import importlib
 OWNERS = {
     "BOT_JR_CHAT_ID": "livescore.settings",
     "BOT_TOKEN": "livescore.settings",
-    "CANVA_DESIGN_ID": "livescore.settings",
-    "CANVA_REFRESH_TOKEN": "livescore.canva.auth",
     "CHAT_ID": "livescore.settings",
-    "CLIENT_ID": "livescore.settings",
-    "CLIENT_SECRET": "livescore.settings",
     "ESPN_BASE": "livescore.constants",
     "ESPN_TZ": "livescore.constants",
     "EVENT_TYPE_MAP": "livescore.constants",
@@ -64,8 +60,6 @@ OWNERS = {
     "SUB_GROUP_SECONDS": "livescore.settings",
     "TEAM_ID": "livescore.settings",
     "TEAM_MAP": "livescore.core.team_names",
-    "_CANVA_ACCESS_EXPIRES_AT": "livescore.canva.auth",
-    "_CANVA_ACCESS_TOKEN": "livescore.canva.auth",
     "_CT_ASSIST_RX": "livescore.constants",
     "_CT_GOAL_RX": "livescore.constants",
     "_CT_RED_RX": "livescore.constants",
@@ -105,7 +99,6 @@ OWNERS = {
     "fetch_evento": "livescore.espn.client",
     "fmt_player": "livescore.core.text",
     "get_league_emoji": "livescore.core.leagues",
-    "get_valid_token": "livescore.canva.auth",
     "goal_player_lines": "livescore.match.formatting",
     "goal_scoring_team_id": "livescore.match.formatting",
     "is_cup_competition": "livescore.core.leagues",
@@ -139,7 +132,6 @@ OWNERS = {
     "translate_team": "livescore.core.team_names",
     "trova_partita_oggi": "livescore.espn.client",
     "trova_portiere_juve": "livescore.match.media",
-    "update_github_secret": "livescore.canva.auth",
 }
 
 # nomi che sono essi stessi dei moduli

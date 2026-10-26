@@ -9,13 +9,12 @@ import time
 from datetime import datetime
 
 from livescore import settings
-from livescore.canva import auth as canva_auth
 from livescore.constants import ESPN_BASE, ESPN_TZ
 from livescore.core import http as net
 from livescore.core.log import MatchProgressLog, log_line
 from livescore.espn import client as espn_client
 from livescore.graphics import logos as fclogo_sync
-from livescore.match import cycle, deferred, finish, goals, incidents, phases, substitutions
+from livescore.match import cycle, deferred, finish, goals, incidents, phase_photo, phases, substitutions
 from livescore.match.context import Flow, MatchContext
 from livescore.state import gist
 
@@ -94,6 +93,7 @@ def avvia_ciclo_partita():
                 continue
             if flow is Flow.STOP:
                 return
+            phase_photo.tick(ctx)            # avvisi foto per HALF/END/FULL TIME
             deferred.send_due_stats(ctx)
             flow = phases.wait_for_kickoff(ctx)
             if flow is Flow.CONTINUE:
@@ -151,10 +151,6 @@ def main():
         "SYSTEM",
         f"Live Score avviato | team_id={settings.TEAM_ID} | canale={channel} | grafiche={graphics}",
     )
-
-    if str(os.getenv('ONLY_REFRESH_TOKEN', '')).strip().lower() == "true":
-        canva_auth.get_valid_token()
-        return
 
     # Il workflow può aver già sincronizzato i loghi prima di pubblicarli.
     # Il sync gira in background e non ritarda mai la ricerca della partita: a

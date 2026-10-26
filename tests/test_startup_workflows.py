@@ -16,7 +16,6 @@ class StartupTests(unittest.TestCase):
         for target, kwargs in (
             ("GOAL_GRAPHICS_ENABLED", {"new": True}),
             ("avvia_ciclo_partita", {}),
-            ("get_valid_token", {}),
         ):
             patcher = patch.object(bot, target, **kwargs)
             patcher.start()
@@ -24,9 +23,6 @@ class StartupTests(unittest.TestCase):
         patcher = patch.object(bot.fclogo_sync, "sync_logos",
                                return_value=Mock(errors=[]))
         self.sync = patcher.start()
-        self.addCleanup(patcher.stop)
-        patcher = patch.dict(os.environ, {"ONLY_REFRESH_TOKEN": "false"})
-        patcher.start()
         self.addCleanup(patcher.stop)
         patcher = patch("builtins.print")
         patcher.start()
@@ -92,24 +88,8 @@ class StartupTests(unittest.TestCase):
         self.sync.assert_not_called()
         bot.avvia_ciclo_partita.assert_called_once_with()
 
-    def test_keepalive_only_reaches_mocked_refresh(self):
-        with patch.dict(os.environ, {"ONLY_REFRESH_TOKEN": "true",
-                                     "FCLOGO_SYNC_DONE": "false"}):
-            bot.main()
-        bot.get_valid_token.assert_called_once_with()
-        self.sync.assert_not_called()
-        bot.avvia_ciclo_partita.assert_not_called()
-
 
 class WorkflowConfigurationTests(unittest.TestCase):
-    def test_keepalive_installs_required_pillow_version(self):
-        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
-        pillow = re.search(r"(?im)^pillow==\S+", requirements).group(0)
-        workflow = (ROOT / ".github/workflows/canva_keep_alive.yml").read_text(encoding="utf-8")
-        install = next(line for line in workflow.splitlines()
-                       if "pip install requests==" in line)
-        self.assertIn(pillow, install)
-
     def test_publication_failure_is_non_blocking_and_sync_flag_uses_outcome(self):
         workflow = (ROOT / ".github/workflows/main_espn.yml").read_text(encoding="utf-8")
         publication = workflow.split("- name: Publish seasonal FCLogo team logos", 1)[1].split("- name:", 1)[0]

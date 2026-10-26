@@ -1,6 +1,6 @@
 __pycache__/
 *.pyc
-canva_page1_cache/
+phase_layers_cache/
 simulation_output/
 
 # Asset privati: repo separato LiveScore_Assets_JR, copiati dai workflow

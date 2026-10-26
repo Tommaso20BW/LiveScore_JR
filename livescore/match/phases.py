@@ -10,7 +10,7 @@ from livescore.constants import E_BOLT, E_FLAG, E_KICK
 from livescore.core.log import log_line
 from livescore.espn import parser as espn_parser
 from livescore.match import formatting as fmt
-from livescore.match import media, stats_job
+from livescore.match import media, phase_photo, stats_job
 from livescore.match.context import MatchContext, Flow
 from livescore.state import gist
 from livescore.telegram import api as tg
@@ -76,6 +76,8 @@ def announce_halftime(ctx: MatchContext) -> None:
     # --- Fine primo tempo ---
     if ctx.status == "HT":
         if "HT" not in ctx.state["sent_periods"]:
+            if not phase_photo.ready("half"):
+                return   # la grafica aspetta la foto confermata nella Mini App
             scorers_line = fmt.phase_scorers_line(ctx.events, ctx.home_id, ctx.away_id, 'half')
             msg_id = media.send_phase_message(f"<b>FINE PRIMO TEMPO {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}",
                 kind='half', data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id,
@@ -131,7 +133,7 @@ def announce_extra_time(ctx: MatchContext) -> None:
     # partita senza supplementari.
     if ctx.status == "BREAK_ET" and "2H_END" not in ctx.state["sent_periods"] and "FT" not in ctx.state["sent_periods"]:
         ctx.state["_break_et_seen"] = ctx.state.get("_break_et_seen", 0) + 1
-        if ctx.state["_break_et_seen"] >= 2:
+        if ctx.state["_break_et_seen"] >= 2 and phase_photo.ready("end_of_90"):
             scorers_line = fmt.phase_scorers_line(ctx.events, ctx.home_id, ctx.away_id, 'end_of_90')
             msg_id = media.send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}", kind="end_of_90", data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name_raw, away_name=ctx.away_name_raw, league_slug=ctx.league_slug, league_name=ctx.league_name, home_goals=ctx.g_home, away_goals=ctx.g_away)
             if msg_id:
@@ -148,7 +150,8 @@ def announce_extra_time(ctx: MatchContext) -> None:
     # Recovery: ESPN non ha mai esposto la pausa (o il bot era giù) e lo
     # status è già ET/PEN/AET → invia ora. L'INIZIO 1T SUPPLEMENTARE
     # partirà comunque al ciclo successivo grazie a _2h_end_gia_inviato.
-    if ctx.status in ("ET", "PEN", "AET") and "2H_END" not in ctx.state["sent_periods"] and "FT" not in ctx.state["sent_periods"]:
+    if (ctx.status in ("ET", "PEN", "AET") and "2H_END" not in ctx.state["sent_periods"]
+            and "FT" not in ctx.state["sent_periods"] and phase_photo.ready("end_of_90")):
         scorers_line = fmt.phase_scorers_line(ctx.events, ctx.home_id, ctx.away_id, 'end_of_90')
         msg_id = media.send_phase_message(f"<b>FINE REGOLAMENTARI {E_FLAG}</b>\n\n{ctx.score_str}\n{scorers_line}\n{ctx.e_comp} {ctx.hashtag}", kind="end_of_90", data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id, home_name=ctx.home_name_raw, away_name=ctx.away_name_raw, league_slug=ctx.league_slug, league_name=ctx.league_name, home_goals=ctx.g_home, away_goals=ctx.g_away)
         if msg_id:

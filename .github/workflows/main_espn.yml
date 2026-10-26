@@ -75,6 +75,21 @@ jobs:
           pip install -r requirements.txt
           playwright install chromium
 
+      # Foto di HALF TIME / END OF 90' / FULL TIME: la Mini App raggiunge il bot
+      # attraverso un tunnel temporaneo; il modello di scontorno resta in cache.
+      - name: Prepara tunnel e scontorno per le foto delle fasi
+        shell: bash
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64             -o "${RUNNER_TEMP}/cloudflared"
+          chmod +x "${RUNNER_TEMP}/cloudflared"
+          echo "CLOUDFLARED=${RUNNER_TEMP}/cloudflared" >> "$GITHUB_ENV"
+
+      - name: Cache modello scontorno
+        uses: actions/cache@v6
+        with:
+          path: ~/.rembg
+          key: rembg-isnet-general-use-v1
+
       - name: Sync seasonal FCLogo team logos
         id: fclogo_sync
         continue-on-error: true
@@ -148,6 +163,8 @@ jobs:
           # Il live pubblica sempre su Juventus Reborn; per le prove c'e' "Simulazione partita".
           TELEGRAM_TO:          ${{ secrets.TELEGRAM_TO }}
           TELEGRAM_TO_BOT:      ${{ secrets.TELEGRAM_TO_BOT }}
+          # Chat privata con il bot (come ImageGEN): avvisi per le foto di HT/END/FT.
+          PHOTO_CHAT_ID:        ${{ secrets.PHOTO_CHAT_ID }}
           LIVE_SCORE_CHANNEL_NAME: 'Juventus Reborn'
           GH_PAT:               ${{ secrets.GH_PAT }}
           # Token del run usato solo per il branch tecnico runtime-snapshots.
@@ -155,9 +172,6 @@ jobs:
           SNAPSHOT_GH_TOKEN:    ${{ github.token }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
           GIST_ID:              ${{ secrets.GIST_ID }}
-          CANVA_CLIENT_ID:      ${{ secrets.CANVA_CLIENT_ID }}
-          CANVA_CLIENT_SECRET:  ${{ secrets.CANVA_CLIENT_SECRET }}
-          CANVA_REFRESH_TOKEN:  ${{ secrets.CANVA_REFRESH_TOKEN }}
           TEAM_ID:              ${{ steps.team.outputs.team_id }}
           # Le grafiche sono sempre attive; il codice le genera solo per gol/parate della Juve
           # e mai per le amichevoli.

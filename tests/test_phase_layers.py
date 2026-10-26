@@ -1,0 +1,79 @@
+import io
+import json
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from PIL import Image
+
+from livescore.graphics import phase_layers as pl
+
+
+def png(image):
+    out = io.BytesIO()
+    image.save(out, 'PNG')
+    return out.getvalue()
+
+
+class PhaseLayersTest(unittest.TestCase):
+    def test_background_always_covers_page(self):
+        left, top, width, height = pl.box((1000, 1000), {'x': 0.9, 'y': -0.9, 'zoom': 1})
+        self.assertLessEqual(left, 0)
+        self.assertLessEqual(top, 0)
+        self.assertGreaterEqual(left + width, pl.SIZE[0] - 0.01)
+        self.assertGreaterEqual(top + height, pl.SIZE[1] - 0.01)
+
+    def test_person_can_move_freely(self):
+        left, top, _, _ = pl.box((1086, 1448), {'x': 0.25, 'zoom': 0.5}, cover=False)
+        self.assertGreater(left, 0)
+        self.assertGreater(top, 0)
+
+    def test_uploaded_transparent_person_is_used_as_is(self):
+        bg = Image.new('RGB', (600, 800), (0, 128, 0))
+        person = Image.new('RGBA', (600, 800))
+        person.paste((255, 0, 0, 255), (200, 200, 400, 600))
+        with tempfile.TemporaryDirectory() as tmp, patch.object(pl, 'cutout') as cutout:
+            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person))
+            cutout.assert_not_called()
+            with Image.open(out / 'player.png') as im:
+                player = im.copy()
+            with Image.open(out / 'background.png') as im:
+                background = im.copy()
+            self.assertEqual(player.size, pl.SIZE)
+            self.assertEqual(background.size, pl.SIZE)
+            self.assertEqual(player.getpixel((543, 724))[:3], (255, 0, 0))
+            self.assertEqual(player.getpixel((10, 10))[3], 0)
+            self.assertEqual(json.loads((out / 'manifest.json').read_text())['source'], 'upload')
+
+    def test_single_photo_is_cut_out_and_follows_background(self):
+        bg = Image.new('RGB', (900, 1200), (0, 0, 255))
+        frame = {'x': 0.1, 'zoom': 1.5}
+        with tempfile.TemporaryDirectory() as tmp, patch.object(pl, 'cutout', side_effect=lambda im: im) as cutout:
+            out = pl.build_layers(Path(tmp), background=png(bg), background_frame=frame)
+            cutout.assert_called_once()
+            manifest = json.loads((out / 'manifest.json').read_text())
+            self.assertEqual(manifest['person_frame'], frame)
+            self.assertFalse(manifest['person_uploaded'])
+
+    def test_person_with_own_frame_moves_alone(self):
+        bg = Image.new('RGB', (600, 800), (0, 128, 0))
+        person = Image.new('RGBA', (600, 800))
+        person.paste((255, 0, 0, 255), (250, 350, 350, 450))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person),
+                                  person_frame={'x': 0.25, 'y': 0, 'zoom': 1})
+            with Image.open(out / 'player.png') as im:
+                player = im.copy()
+            # Centro della persona spostato di un quarto di pagina a destra.
+            self.assertEqual(player.getpixel((543 + 271, 724))[:3], (255, 0, 0))
+            self.assertEqual(player.getpixel((543, 724))[3], 0)
+            self.assertFalse(json.loads((out / 'manifest.json').read_text())['person_follows_background'])
+
+    def test_invalid_photo(self):
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaises(ValueError):
+            pl.build_layers(Path(tmp), background=b'not an image')
+
+
+if __name__ == '__main__':
+    unittest.main()

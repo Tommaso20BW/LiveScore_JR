@@ -1,4 +1,4 @@
-"""Approved 3:4 compositor. No generation, Canva edits, or Telegram side effects."""
+"""Approved 3:4 compositor. No generation, photo edits, or Telegram side effects."""
 import io
 import math
 import random
@@ -55,7 +55,7 @@ PHASE_SCORE_FONT_SIZE = 300
 # KICK OFF / inizio secondo tempo: altezza di stemmi e risultato sopra la scritta.
 KICK_LOGO_HEIGHT = 64
 SECOND_ROW_GAP = 24
-# Fasi con grafica: 'second' = inizio secondo tempo (senza Canva, come 'kick').
+# Fasi con grafica: 'second' = inizio secondo tempo (senza foto, come 'kick').
 PHASE_KINDS = ('kick', 'second', 'half', 'end_of_90', 'full')
 PHASE_LOGO_HEIGHT_FACTOR = 0.43
 PHASE_GROUP_LIFT = 65
@@ -490,7 +490,7 @@ def phase(
             card.alpha_composite(away_mark, (score_x + score.width + SECOND_ROW_GAP, top))
     else:
         if layers is None:
-            raise ValueError('Pagina 1 Canva non disponibile')
+            raise ValueError('Foto della fase non disponibile')
 
         # Both extracted layers share the PDF page coordinates and transform.
         bg = ImageOps.fit(

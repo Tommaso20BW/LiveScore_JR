@@ -18,7 +18,10 @@ In entrambe:
 - Telegram: i messaggi vanno solo sul canale di test (Bot JR) e a fine
   partita, dopo 5 minuti, vengono cancellati tutti;
   con ``--dry-run`` non parte nulla e i messaggi restano solo nel report;
-- Gist e snapshot Canva: disattivati, nessuno stato reale toccato.
+- Gist e snapshot delle foto: disattivati, nessuno stato reale toccato;
+- foto di HALF TIME / END OF 90' / FULL TIME: l'avviso arriva nella tua chat
+  privata (etichetta SIMULAZIONE) e la fase aspetta SENZA LIMITE la foto
+  confermata. Nel replay intanto l'orologio della partita resta fermo.
 
 Uso:  python -m livescore simulate <event_id> [--dry-run] [--mode auto|replay|live]
 """
@@ -63,8 +66,6 @@ BREAK_STATUS = {
     "HT_ET": ("STATUS_HALFTIME_ET", "Extra Time Halftime", 3),
     "BREAK_PEN": ("STATUS_END_OF_EXTRATIME", "End of Extra Time", 4),
 }
-# Pausa reale tra due controlli dello stato di un export Canva.
-CANVA_POLL_SECONDS = 3
 # Oltre questo margine dopo il fischio finale la simulazione si ferma comunque.
 POST_TIMEOUT_SECONDS = 3 * 3600
 # Secondi tra due messaggi: nel replay per leggerli con calma, nel live solo
@@ -80,10 +81,15 @@ class SimulationTimeout(SystemExit):
 # OROLOGIO FINTO
 # ==============================================================================
 class FakeClock:
-    """time.time/monotonic che avanzano con le sleep del bot, senza aspettare."""
+    """time.time/monotonic che avanzano con le sleep del bot, senza aspettare.
+
+    Mentre una fase aspetta la foto (hold), l'orologio si ferma: la partita
+    riprende solo dopo la conferma nella Mini App.
+    """
 
     def __init__(self) -> None:
         self.offset = 0.0
+        self.hold = lambda: False
 
     def time(self) -> float:
         return REAL_TIME() + self.offset
@@ -92,6 +98,12 @@ class FakeClock:
         return REAL_MONOTONIC() + self.offset
 
     def sleep(self, seconds: float) -> None:
+        if self.hold():
+            # Attesa vera, ma il tempo di partita non avanza.
+            before = REAL_MONOTONIC()
+            REAL_SLEEP(1.0)
+            self.offset -= REAL_MONOTONIC() - before
+            return
         self.offset += max(0.0, float(seconds or 0))
 
 
@@ -313,7 +325,7 @@ def resolve_mode(summary: dict, mode: str = "auto") -> str:
 
 class Simulation:
     def __init__(self, final: dict, *, team_id: str, chat_id: str, dry_run: bool,
-                 interval: float, allow_canva: bool, output: Path,
+                 interval: float, output: Path,
                  live: bool = False, espn_session: Any = None) -> None:
         self.live = live
         self.timeline = Timeline(final)
@@ -325,7 +337,6 @@ class Simulation:
         self.chat_id = chat_id
         self.dry_run = dry_run
         self.interval = interval
-        self.allow_canva = allow_canva
         self.output = output
         self.clock = FakeClock()
         self.started = None
@@ -552,29 +563,15 @@ class SimSession:
         if "site.api.espn.com" in url and url.rstrip("/").endswith("/scoreboard"):
             return FakeResponse({"leagues": [], "events": []})
         if "api.github.com" in url:
-            if self.sim.allow_canva and "/actions/secrets/" in url:
-                return self.real.get(url, params=params, **kwargs)
             return FakeResponse({"message": "bloccato dalla simulazione"}, 404)
-        if "api.canva.com/rest/v1/exports/" in url:
-            # Il bot aspetta 3 s tra un controllo e l'altro dell'export, ma con
-            # l'orologio accelerato quella pausa sparirebbe e Canva risponderebbe
-            # 429: qui la pausa e' vera. Nel live l'orologio e' gia' quello vero.
-            if not self.sim.live:
-                REAL_SLEEP(CANVA_POLL_SECONDS)
         return self.real.get(url, params=params, **kwargs)
 
     def post(self, url, json=None, data=None, files=None, timeout=10, **kwargs):
         if "api.telegram.org" in url:
             return self.sim.telegram(url, json, data, files, timeout)
-        if "api.canva.com" in url and self.sim.allow_canva:
-            return self.real.post(url, json=json, data=data, files=files, timeout=timeout, **kwargs)
         return FakeResponse({"message": "bloccato dalla simulazione"}, 403)
 
     def put(self, url, **kwargs):
-        # Unica scrittura ammessa: il refresh token Canva ruotato va salvato,
-        # altrimenti il LiveScore vero perderebbe l'accesso a Canva.
-        if self.sim.allow_canva and "api.github.com" in url and "/actions/secrets/" in url:
-            return self.real.put(url, **kwargs)
         return FakeResponse({"message": "bloccato dalla simulazione"}, 403)
 
     def patch(self, url, **kwargs):
@@ -643,7 +640,7 @@ def _nothing():
 
 class LocalSnapshots:
     """Al posto dello snapshot store su GitHub: il runtime pubblica una foto di
-    fase solo dopo averne salvato lo snapshot Canva. In simulazione resta nella
+    fase solo dopo averne salvato lo snapshot della foto. In simulazione resta nella
     cartella locale del run, e il branch runtime-snapshots del live non si tocca."""
 
     def enabled(self) -> bool:
@@ -674,7 +671,7 @@ def load_summary(event_id: str, league: str = "eng.1") -> dict:
 
 
 def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: bool = False,
-        interval: float | None = None, delete_after: float = 300.0, allow_canva: bool = True,
+        interval: float | None = None, delete_after: float = 300.0,
         output: Path | str = "sim_output", mode: str = "auto") -> int:
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
@@ -705,14 +702,12 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
         "SNAPSHOT_GH_TOKEN": "",
     })
     os.environ.setdefault("TELEGRAM_TOKEN", "simulazione")
-    if not allow_canva:
-        os.environ.pop("CANVA_REFRESH_TOKEN", None)
 
     from livescore import settings
     from livescore.core import http as net
 
     sim = Simulation(final, team_id=team_id, chat_id=chat_id, dry_run=dry_run,
-                     interval=interval, allow_canva=allow_canva, output=output,
+                     interval=interval, output=output,
                      live=live, espn_session=net.SESSION)
 
     settings.TEAM_ID = team_id
@@ -720,7 +715,7 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     settings.BOT_JR_CHAT_ID = chat_id
     settings.GOAL_GRAPHICS_ENABLED = True
     settings.BOT_TOKEN = os.environ["TELEGRAM_TOKEN"]
-    settings.GH_PAT = settings.GH_PAT if allow_canva else None
+    settings.GH_PAT = None
     settings.GIST_ID = None
     net.SESSION = SimSession(sim)
 
@@ -735,6 +730,15 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     from livescore.espn import client as espn_client
     espn_client.trova_partita_oggi = lambda _team_id: sim.partita()
 
+    # Foto delle fasi: e' un test, quindi si aspetta la foto senza limite.
+    # Senza invii (dry run) l'avviso non parte e le fasi restano solo testo.
+    from livescore.match import phase_photo
+    phase_photo.WAIT_SECONDS = None
+    phase_photo.LABEL = "SIMULAZIONE"
+    if dry_run:
+        settings.PHOTO_CHAT_ID = None
+    sim.clock.hold = phase_photo.holding
+
     if not live:   # nel live l'orologio resta quello vero
         _time.time = sim.clock.time
         _time.monotonic = sim.clock.monotonic
@@ -744,8 +748,7 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     print(f"[SIM] {sim.timeline.home['team']['displayName']} - "
           f"{sim.timeline.away['team']['displayName']} | {partita['league_name']} | "
           f"{'live vero' if live else 'replay'} (stato ESPN: {match_state(final) or '?'}) | "
-          f"{'prova senza invii' if dry_run else 'invio su Bot JR'}"
-          f"{'' if allow_canva else ' | Canva spento'}",
+          f"{'prova senza invii' if dry_run else 'invio su Bot JR'}",
           flush=True)
     for name in ("SIGINT", "SIGTERM"):
         if hasattr(signal, name):
@@ -754,7 +757,7 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     code = 0
     try:
         from livescore import runner
-        # Gli snapshot Canva del live (branch runtime-snapshots) restano intatti.
+        # Gli snapshot delle foto del live (branch runtime-snapshots) restano intatti.
         runner.KIT_RUNTIME.snapshot_store = LocalSnapshots()
         runner.main()
     except SimulationTimeout as exc:

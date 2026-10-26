@@ -4,13 +4,13 @@ import html
 from pathlib import Path
 
 from livescore import settings
-from livescore.canva import auth as canva_auth
 from livescore.constants import JUVE_ID
 from livescore.core import http as net
 from livescore.core import leagues
 from livescore.core.log import log_line
 from livescore.graphics import goal as goal_graphics
 from livescore.kits import detect as kit_detect
+from livescore.match import phase_photo
 from livescore.telegram import api as tg
 
 
@@ -207,27 +207,27 @@ def prepara_grafica_parata_rigore(
         return None
 
 
-# Fasi con grafica. 'second' = inizio secondo tempo: come 'kick', senza Canva.
+# Fasi con grafica. 'second' = inizio secondo tempo: come 'kick', senza foto.
 PHASE_GRAPHIC_KINDS = ('kick', 'second', 'half', 'full', 'end_of_90')
-NO_CANVA_KINDS = ('kick', 'second')
+NO_PHOTO_KINDS = ('kick', 'second')
 
 
 def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_name,
                         league_slug, league_name, home_goals=0, away_goals=0, shootout=None,
                         extra_time=False):
-    """Compose each supported phase with a fresh Canva page-one PDF download."""
+    """Compose each supported phase; HALF/END/FULL TIME use the photo confirmed in the Mini App."""
     if (not settings.GOAL_GRAPHICS_ENABLED or JUVE_ID not in (str(home_id), str(away_id))
             or leagues.is_friendly_competition(league_slug, league_name)
             or kind not in PHASE_GRAPHIC_KINDS):
         return None
     try:
         from livescore.graphics import portrait as portrait_graphics
-        from livescore.canva.page_one import export_page_one
         layers = None
-        if kind not in NO_CANVA_KINDS:
-            log_line("INFO", "CANVA", f"{kind.upper()}: scarico un nuovo PDF dalla pagina 1")
-            layers = export_page_one(net.SESSION, canva_auth.get_valid_token(), settings.CANVA_DESIGN_ID,
-                                     Path('canva_page1_cache'))
+        if kind not in NO_PHOTO_KINDS:
+            layers = phase_photo.layers_for(kind, extra_time=extra_time, shootout=shootout)
+            if layers is None:
+                log_line("INFO", "GRAPHICS", f"{kind.upper()}: nessuna foto confermata; invio testo")
+                return None
         kit = kit_detect.rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
                              league_slug, league_name)
         return portrait_graphics.phase(kind=kind, home_name=home_name, away_name=away_name,

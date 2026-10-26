@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 ITALY_TZ = ZoneInfo("Europe/Rome")
 
 
-_SECRET_ENV = ("TELEGRAM_TOKEN", "GH_PAT", "CANVA_CLIENT_SECRET", "CANVA_REFRESH_TOKEN")
+_SECRET_ENV = ("TELEGRAM_TOKEN", "GH_PAT")
 _BOT_TOKEN_RE = re.compile(r"(?<!\d)\d{6,}:[A-Za-z0-9_-]{30,}")
 
 

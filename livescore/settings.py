@@ -73,13 +73,14 @@ TEAM_ID             = os.getenv('TEAM_ID', '111')
 GH_PAT              = os.getenv('GH_PAT')
 GITHUB_REPOSITORY   = os.getenv('GITHUB_REPOSITORY')
 GIST_ID             = os.getenv('GIST_ID')
-CLIENT_ID           = os.getenv('CANVA_CLIENT_ID')
-CLIENT_SECRET       = os.getenv('CANVA_CLIENT_SECRET')
 GOAL_GRAPHICS_ENABLED = os.getenv('GOAL_GRAPHICS_ENABLED', '0').strip().lower() in (
     '1', 'true', 'yes', 'on'
 )
 
-CANVA_DESIGN_ID = "DAHI3ytu6yQ"
+# Foto per HALF TIME / END OF 90' / FULL TIME: avviso nella chat privata con il bot
+# (la stessa di ImageGEN) e editor nella Mini App di ImageGEN in modalita' live.
+PHOTO_CHAT_ID = os.getenv('PHOTO_CHAT_ID') or os.getenv('MANUAL_GRAPHICS_TELEGRAM_CHAT_ID')
+PHOTO_WEBAPP_URL = os.getenv('PHOTO_WEBAPP_URL', 'https://tommaso20bw.github.io/ImageGEN_JR/')
 
 # ── Parametri regolabili ─────────────────────────────────────────────────────
 POLL_SECONDS = tunable("poll_seconds")

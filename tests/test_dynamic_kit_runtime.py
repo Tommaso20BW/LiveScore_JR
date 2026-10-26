@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 from PIL import Image
 
 from livescore.kits import runtime as dkr
-from livescore.canva import snapshot_store as css
+from livescore.state import snapshot_store as css
 
 
 def png(color):
@@ -297,7 +297,7 @@ class DynamicKitRuntimeTests(unittest.TestCase):
         self.assertEqual(record["message_id"], 55)
         self.assertEqual(record["kit"], "away")
 
-    def test_phase_regeneration_requires_original_canva_snapshot(self):
+    def test_phase_regeneration_requires_original_photo_snapshot(self):
         self.runtime.portrait_graphics = SimpleNamespace(phase=Mock(return_value=b"png"))
         self.runtime.active_kit = "third"
 
@@ -308,7 +308,7 @@ class DynamicKitRuntimeTests(unittest.TestCase):
 
             record = {
                 "type": "half",
-                "canva_snapshot": str(snap),
+                "photo_snapshot": str(snap),
                 "render": {
                     "kind": "half",
                     "home_name": "Juventus",
@@ -326,10 +326,10 @@ class DynamicKitRuntimeTests(unittest.TestCase):
             self.assertEqual(kwargs["layers"], snap)
             self.assertEqual(kwargs["kit"], "third")
 
-    def test_missing_snapshot_does_not_silently_download_new_canva(self):
+    def test_missing_snapshot_is_never_replaced_by_another_photo(self):
         record = {
             "type": "half",
-            "canva_snapshot": "/definitely/missing/snapshot",
+            "photo_snapshot": "/definitely/missing/snapshot",
             "render": {"kind": "half"},
         }
         with self.assertRaises(FileNotFoundError):
@@ -344,9 +344,9 @@ class DynamicKitRuntimeTests(unittest.TestCase):
             old = Path.cwd()
             try:
                 os.chdir(tmp)
-                cache = Path("canva_page1_cache")
+                cache = Path("phase_layers_cache")
                 cache.mkdir()
-                (cache / "source.pdf").write_bytes(b"pdf")
+                (cache / "background.png").write_bytes(b"png")
                 self.runtime.finish_match()
                 self.assertFalse(cache.exists())
             finally:
@@ -438,8 +438,8 @@ class DynamicKitRuntimeTests(unittest.TestCase):
 
             record = {
                 "type": "half",
-                "canva_snapshot": "/missing/runner/path",
-                "canva_snapshot_remote": {
+                "photo_snapshot": "/missing/runner/path",
+                "photo_snapshot_remote": {
                     "branch": "runtime-snapshots",
                     "path": "runtime_snapshots/123/half_abc.zip",
                     "sha256": "abc",
@@ -460,7 +460,7 @@ class DynamicKitRuntimeTests(unittest.TestCase):
 
             store.restore_snapshot.assert_called_once()
             self.assertEqual(
-                record["canva_snapshot"],
+                record["photo_snapshot"],
                 str(restored),
             )
             kwargs = self.runtime.portrait_graphics.phase.call_args.kwargs
@@ -599,13 +599,13 @@ class DynamicKitRuntimeTests(unittest.TestCase):
         self.assertEqual(self.runtime.pending_render["goal"]["render"]["kit"], "home")
 
 
-    def test_phase_is_registered_with_the_kit_read_after_canva_export(self):
-        # Click su Third durante l'export Canva, poi Auto (home) prima dell'invio.
+    def test_phase_is_registered_with_the_kit_read_while_drawing(self):
+        # Click su Third durante il disegno, poi Auto (home) prima dell'invio.
         def build(**kwargs):
             self.runtime.active_kit = "third"
             kit = self.runtime._rileva_kit_proxy({}, "111", "112", "Juventus", "Lazio", "ita.1", "Serie A")
             self.assertEqual(kit, "third")
-            self.runtime._last_canva_snapshot = "/tmp/snap"
+            self.runtime._last_photo_snapshot = "/tmp/snap"
             self.runtime.active_kit = "home"
             return png((5, 5, 5, 255))
 

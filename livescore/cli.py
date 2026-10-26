@@ -3,7 +3,6 @@
 Senza argomenti apre un menu. Con argomenti:
 
     python -m livescore run                    avvia il live (come fa GitHub Actions)
-    python -m livescore keepalive              rinnova solo il token Canva
     python -m livescore sync-logos             scarica i loghi FCLogo
     python -m livescore schedule-check         controlla se c'e' una partita (scheduler)
     python -m livescore simulate <event_id>    simula una partita su Bot JR (finita: replay, in corso: live)
@@ -345,13 +344,6 @@ def cmd_run(_args) -> int:
     return 0
 
 
-def cmd_keepalive(_args) -> int:
-    os.environ["ONLY_REFRESH_TOKEN"] = "true"
-    from livescore.match import session
-    session.main()
-    return 0
-
-
 def cmd_sync_logos(args) -> int:
     from livescore.graphics import logos
     sys.argv = ["sync-logos"] + (["--output-dir", args.output_dir] if args.output_dir else [])
@@ -365,7 +357,6 @@ def cmd_simulate(args) -> int:
         dry_run=args.dry_run,
         interval=args.interval,
         delete_after=args.delete_after,
-        allow_canva=not args.no_canva,
         output=args.output,
         mode=args.mode,
     )
@@ -462,7 +453,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("run", help="avvia il live").set_defaults(func=cmd_run)
-    sub.add_parser("keepalive", help="rinnova il token Canva").set_defaults(func=cmd_keepalive)
     p = sub.add_parser("sync-logos", help="scarica i loghi FCLogo")
     p.add_argument("--output-dir")
     p.set_defaults(func=cmd_sync_logos)
@@ -475,7 +465,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--interval", type=float, default=None,
                    help="secondi tra un messaggio e l'altro (default: 20 replay, 3 live)")
     p.add_argument("--delete-after", type=float, default=300.0, help="secondi prima di cancellare tutto")
-    p.add_argument("--no-canva", action="store_true", help="niente export Canva (HT/FT senza sfondo)")
     p.add_argument("--output", default="sim_output", help="cartella del report e delle immagini")
     p.set_defaults(func=cmd_simulate)
     p = sub.add_parser("simulate-cleanup", help="cancella i messaggi rimasti di una simulazione")
