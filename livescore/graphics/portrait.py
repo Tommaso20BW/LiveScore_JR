@@ -480,14 +480,20 @@ def phase(
         away_mark = logo(away_name, away_id, key, assets, KICK_LOGO_HEIGHT)
         if dark:
             home_mark, away_mark = flat_color(home_mark, dark), flat_color(away_mark, dark)
-        # Risultato fisso al centro della card (come FULL TIME): stemmi larghi
-        # diversi non devono spostarlo.
-        score_x = round((W - score.width) / 2)
+        # Tutta la riga "stemma 1-0 stemma" centrata sotto la scritta (anch'essa centrata):
+        # con stemmi di larghezza diversa, il solo risultato al centro farebbe
+        # sembrare la riga spostata. Contano i bordi visibili degli stemmi.
+        home_box = visible_logo_bbox(home_mark) if home_mark is not None else None
+        away_box = visible_logo_bbox(away_mark) if away_mark is not None else None
+        home_w = home_box[2] - home_box[0] + SECOND_ROW_GAP if home_box else 0
+        away_w = away_box[2] - away_box[0] + SECOND_ROW_GAP if away_box else 0
+        start = (W - (home_w + score.width + away_w)) / 2
+        score_x = round(start + home_w)
         card.alpha_composite(score, (score_x, top + (KICK_LOGO_HEIGHT - score.height) // 2))
-        if home_mark is not None:
-            card.alpha_composite(home_mark, (score_x - SECOND_ROW_GAP - home_mark.width, top))
-        if away_mark is not None:
-            card.alpha_composite(away_mark, (score_x + score.width + SECOND_ROW_GAP, top))
+        if home_box:
+            card.alpha_composite(home_mark, (round(start) - home_box[0], top))
+        if away_box:
+            card.alpha_composite(away_mark, (score_x + score.width + SECOND_ROW_GAP - away_box[0], top))
     else:
         if layers is None:
             raise ValueError('Foto della fase non disponibile')
