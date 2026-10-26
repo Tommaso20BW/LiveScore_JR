@@ -65,6 +65,10 @@ def cutout(image):
     global _session
     from rembg import new_session, remove
     if _session is None:
+        # Solo errori nel log: su GitHub onnxruntime avvisa che non trova schede
+        # video (GetPciBusId), cosa normale e innocua: lo scontorno usa la CPU.
+        import onnxruntime
+        onnxruntime.set_default_logger_severity(3)
         _session = new_session(CUTOUT_MODEL)
     return remove(image.convert('RGB'), session=_session).convert('RGBA')
 

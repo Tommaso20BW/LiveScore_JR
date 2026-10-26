@@ -335,7 +335,7 @@ class DynamicKitRuntimeTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             self.runtime._render_record(record, "third")
 
-    def test_finish_match_removes_buttons_and_cleans_cache(self):
+    def test_finish_match_deletes_recap_and_cleans_cache(self):
         self.runtime.recap_message_id = 99
         self.runtime.recap_chat_id = "-100-botjr"
         self.runtime.snapshot_store = Mock()
@@ -352,6 +352,22 @@ class DynamicKitRuntimeTests(unittest.TestCase):
             finally:
                 os.chdir(old)
 
+        methods = [item[0] for item in self.bot.posts]
+        self.assertIn("deleteMessage", methods)
+        self.assertNotIn("editMessageReplyMarkup", methods)
+
+    def test_recap_keeps_only_buttons_removed_if_delete_fails(self):
+        self.runtime.recap_message_id = 99
+        self.runtime.recap_chat_id = "-100-botjr"
+        original = self.bot._tg_post
+
+        def post(method, **kwargs):
+            if method == "deleteMessage":
+                raise RuntimeError("message can't be deleted")
+            return original(method, **kwargs)
+
+        self.bot._tg_post = post
+        self.runtime.delete_recap()
         methods = [item[0] for item in self.bot.posts]
         self.assertIn("editMessageReplyMarkup", methods)
 

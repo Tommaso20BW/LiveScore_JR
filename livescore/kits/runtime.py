@@ -842,6 +842,30 @@ class DynamicKitRuntime:
             # an already-visible state.
             self._log("DEBUG", "KIT", f"Aggiornamento recap Bot JR saltato: {exc}")
 
+    def delete_recap(self) -> None:
+        """Fine partita: il messaggio "Partita trovata" su Bot JR si cancella.
+
+        Se Telegram non lo permette, restano almeno tolti i pulsanti kit.
+        """
+        if not self.recap_message_id or not self.recap_chat_id:
+            return
+        try:
+            response = self.bot._tg_post(
+                "deleteMessage",
+                data={
+                    "chat_id": self.recap_chat_id,
+                    "message_id": self.recap_message_id,
+                },
+                timeout=15,
+            )
+            if response is not None:
+                response.raise_for_status()
+            self._log("OK", "KIT", "Messaggio Partita trovata cancellato da Bot JR")
+            self.recap_message_id = None
+        except Exception as exc:
+            self._log("WARN", "KIT", f"Partita trovata non cancellato: {exc}; tolgo solo i pulsanti")
+            self.remove_recap_buttons()
+
     def remove_recap_buttons(self) -> None:
         if not self.recap_message_id or not self.recap_chat_id:
             return
@@ -1487,7 +1511,7 @@ class DynamicKitRuntime:
     # ------------------------------------------------------------------
     def finish_match(self) -> None:
         self.stop_background()
-        self.remove_recap_buttons()
+        self.delete_recap()
         self._cleanup_remote_photo_snapshots()
         self._cleanup_photo_snapshots()
 

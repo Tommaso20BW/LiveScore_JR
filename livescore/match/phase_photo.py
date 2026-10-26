@@ -127,7 +127,8 @@ class Desk:
         self.session = secrets.token_urlsafe(18)
         self.lock = threading.RLock()
         self.render_lock = threading.Lock()
-        self.slots = {slot: {"prompt_id": None, "confirmed": None, "used": False,
+        self.slots = {slot: {"prompt_id": None, "prompted": False, "messages": [],
+                             "confirmed": None, "used": False,
                              "wait_started": None, "expired": False, "reminded": False}
                       for slot in PROMPT_AT}
         self.match: dict = {}
@@ -202,7 +203,7 @@ class Desk:
     # ------------------------------------------------------------------
     def prompt_async(self, slot: str) -> None:
         with self.lock:
-            if self.slots[slot]["prompt_id"] or slot in self.prompting:
+            if self.slots[slot]["prompted"] or slot in self.prompting:
                 return
             self.prompting.add(slot)
         threading.Thread(target=self._prompt, args=(slot,), name=f"photo-{slot}", daemon=True).start()
@@ -210,9 +211,10 @@ class Desk:
     def _prompt(self, slot: str) -> None:
         try:
             self.start()
-            message_id = self._send(self._prompt_text(slot), self._keyboard(slot))
+            message_id = self._send(self._prompt_text(slot), self._keyboard(slot), slot=slot)
             with self.lock:
                 self.slots[slot]["prompt_id"] = message_id
+                self.slots[slot]["prompted"] = True
             log_line("INFO", "PHOTO", f"{SLOT_TITLE[slot]}: avviso inviato, aspetto la foto")
         except Exception as exc:
             log_line("WARN", "PHOTO", f"Avviso {slot} non inviato: {type(exc).__name__}: {exc}")
@@ -233,7 +235,7 @@ class Desk:
             if first:
                 state["wait_started"] = _clock()
             started = state["wait_started"]
-            prompted = bool(state["prompt_id"])
+            prompted = state["prompted"]
         if first:
             limit = "senza limite" if WAIT_SECONDS is None else f"max {int(WAIT_SECONDS // 60)} min"
             log_line("WAIT", "PHOTO", f"{kind.upper()}: aspetto la foto confermata ({limit})")
@@ -267,13 +269,7 @@ class Desk:
                 confirmed = self.slots["end"]["confirmed"]
             if not confirmed:
                 return None
-            first_use = not self.slots[slot]["used"]
             self.slots[slot]["used"] = True
-            prompt_id = self.slots[slot]["prompt_id"]
-        if first_use and prompt_id:
-            threading.Thread(target=self._edit, args=(
-                prompt_id, f"{self._prefix()}📤 <b>{SLOT_TITLE[slot]}</b>: grafica pubblicata con la tua foto.", None,
-            ), daemon=True).start()
         return Path(confirmed["layers"])
 
     # ------------------------------------------------------------------
@@ -384,7 +380,7 @@ class Desk:
                  else f" Se non arriva entro {int(WAIT_SECONDS // 60)} minuti esce solo il testo.")
         try:
             self._send(f"{self._prefix()}⏰ <b>{SLOT_TITLE[slot]}</b>: è il momento, "
-                       f"la grafica aspetta la tua foto.{limit}", self._keyboard(slot))
+                       f"la grafica aspetta la tua foto.{limit}", self._keyboard(slot), slot=slot)
         except Exception as exc:
             log_line("WARN", "PHOTO", f"Promemoria non inviato: {exc}")
 
@@ -396,7 +392,7 @@ class Desk:
             raise RuntimeError(body.get("description") or f"HTTP {response.status_code}")
         return body.get("result")
 
-    def _send(self, text: str, keyboard: dict | None = None) -> int:
+    def _send(self, text: str, keyboard: dict | None = None, slot: str | None = None) -> int:
         payload = {"chat_id": self.chat_id, "text": text, "parse_mode": "HTML",
                    "disable_web_page_preview": True}
         if keyboard:
@@ -405,18 +401,19 @@ class Desk:
         message_id = int(result["message_id"])
         with self.lock:
             self.messages.append(message_id)
+            if slot:
+                self.slots[slot]["messages"].append(message_id)
         return message_id
 
-    def _edit(self, message_id: int, text: str, keyboard: dict | None) -> None:
-        payload = {"chat_id": self.chat_id, "message_id": message_id, "text": text,
-                   "parse_mode": "HTML", "disable_web_page_preview": True}
-        if keyboard:
-            payload["reply_markup"] = keyboard
-        try:
-            self._call("editMessageText", payload)
-        except Exception as exc:
-            if "not modified" not in str(exc):
-                log_line("DEBUG", "PHOTO", f"Avviso non aggiornato: {exc}")
+    def _delete(self, message_ids) -> None:
+        for message_id in message_ids:
+            try:
+                self._call("deleteMessage", {"chat_id": self.chat_id, "message_id": message_id})
+            except Exception as exc:
+                log_line("DEBUG", "PHOTO", f"Avviso non cancellato: {exc}")
+            with self.lock:
+                if message_id in self.messages:
+                    self.messages.remove(message_id)
 
     # ------------------------------------------------------------------
     # Foto e grafica (chiamati dal server)
@@ -530,13 +527,11 @@ class Desk:
         with self.lock:
             state = self.slots[slot]
             state["confirmed"] = {"layers": str(layers), "request": request, "ids": ids}
-            prompt_id = state["prompt_id"]
-            used = state["used"]
+            # Foto confermata: avviso e promemoria di questa fase spariscono dalla chat.
+            messages, state["messages"] = list(state["messages"]), []
+            state["prompt_id"] = None
         log_line("OK", "PHOTO", f"{SLOT_TITLE[slot]}: foto confermata")
-        if prompt_id and not used:
-            self._edit(prompt_id, f"{self._prefix()}✅ <b>{SLOT_TITLE[slot]}</b>: foto confermata.\n"
-                       f"{self._score_line()}\n\nPuoi ancora cambiarla fino al fischio.",
-                       self._keyboard(slot, "✏️ Cambia foto"))
+        self._delete(messages)
 
     def restore_state(self, slot: str) -> dict | None:
         """Ultima foto confermata, per riaprire l'editor da dove eri rimasto."""

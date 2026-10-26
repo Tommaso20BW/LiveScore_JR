@@ -160,7 +160,12 @@ class ServerTests(unittest.TestCase):
                     'slot': 'half', 'kind': 'half', 'photo_id': photo_id, 'frame': {'x': 0, 'y': 0, 'zoom': 1},
                     'person_id': person_id, 'person_frame': {'x': 0.1, 'y': 0, 'zoom': 0.8}}}
                 self.assertTrue(post('/preview', json.dumps(envelope).encode()).startswith(b'\x89PNG'))
+                desk.slots['half']['messages'] = [7, 8]   # avviso e promemoria
+                desk.messages = [7, 8]
                 self.assertEqual(json.loads(post('/submit', json.dumps(envelope).encode())), {'ok': True})
+                deleted = [body['message_id'] for method, body in desk.http.calls if method == 'deleteMessage']
+                self.assertEqual(deleted, [7, 8])          # confermata: avvisi cancellati
+                self.assertEqual(desk.messages, [])
                 cut.assert_not_called()   # persona gia' scontornata (PNG trasparente): resta com'e'
 
                 with urllib.request.urlopen(f'{base}/phase?session={desk.session}&slot=half') as response:
