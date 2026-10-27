@@ -60,15 +60,37 @@ def place(image, frame, *, cover=True):
     return canvas
 
 
+def _quiet_onnxruntime():
+    """Solo errori nel log di onnxruntime.
+
+    Su GitHub, quando onnxruntime si prepara cerca le schede video e avvisa che
+    non le trova (GetPciBusId): normale e innocuo, lo scontorno usa la CPU.
+    L'avviso esce proprio mentre si prepara, prima che si possa abbassare il
+    log: per quell'istante lo stderr del processo va a /dev/null, poi torna.
+    Gli errori Python (eccezioni) restano visibili.
+    """
+    import os
+    import sys
+
+    sys.stderr.flush()
+    saved = os.dup(2)
+    try:
+        with open(os.devnull, 'w') as null:
+            os.dup2(null.fileno(), 2)
+            import onnxruntime
+            onnxruntime.set_default_logger_severity(3)
+    finally:
+        os.dup2(saved, 2)
+        os.close(saved)
+
+
 def cutout(image):
     """Persona scontornata (stesse dimensioni della foto, sfondo trasparente)."""
     global _session
+    if _session is None:
+        _quiet_onnxruntime()            # prima di rembg, che carica onnxruntime
     from rembg import new_session, remove
     if _session is None:
-        # Solo errori nel log: su GitHub onnxruntime avvisa che non trova schede
-        # video (GetPciBusId), cosa normale e innocua: lo scontorno usa la CPU.
-        import onnxruntime
-        onnxruntime.set_default_logger_severity(3)
         _session = new_session(CUTOUT_MODEL)
     return remove(image.convert('RGB'), session=_session).convert('RGBA')
 
