@@ -80,6 +80,25 @@ class PhaseLayersTest(unittest.TestCase):
             self.assertEqual(player.getpixel((543 + 271, 724 + 145))[:3], (255, 0, 0))
             self.assertTrue(json.loads((out / 'manifest.json').read_text())['person_removed_from_background'])
 
+    def test_people_behind_are_erased_too(self):
+        # Una seconda persona (blu) che lo scontorno non ha preso: sparisce dallo sfondo se la persona si sposta.
+        bg = Image.new('RGB', (600, 800), (0, 128, 0))
+        bg.paste((255, 0, 0), (250, 300, 350, 500))
+        bg.paste((0, 0, 255), (20, 20, 120, 220))
+        person = Image.new('RGBA', (600, 800))
+        person.paste((255, 0, 0, 255), (250, 300, 350, 500))
+        everyone = Image.new('L', (600, 800))
+        everyone.paste(255, (20, 20, 120, 220))
+        fill = lambda rgb, mask: __import__('numpy').full_like(rgb, (0, 128, 0))
+        with tempfile.TemporaryDirectory() as tmp, patch.object(pl, '_clean_cache', {}), \
+                patch.object(pl, 'people_mask', return_value=everyone), \
+                patch('livescore.graphics.inpaint._lama', return_value=None), \
+                patch('livescore.graphics.inpaint._fallback', side_effect=fill):
+            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person), remove_person=True,
+                                  person_frame={'x': 0.2, 'y': 0, 'zoom': 1})
+            with Image.open(out / 'background.png') as im:
+                self.assertEqual(im.getpixel((100, 100))[:3], (0, 128, 0))
+
     def test_background_untouched_when_person_not_moved_or_other_photo(self):
         bg = Image.new('RGB', (600, 800), (0, 128, 0))
         bg.paste((255, 0, 0), (250, 300, 350, 500))
@@ -108,6 +127,23 @@ class PhaseLayersTest(unittest.TestCase):
             self.assertEqual(player.getpixel((543 + 271, 724))[:3], (255, 0, 0))
             self.assertEqual(player.getpixel((543, 724))[3], 0)
             self.assertFalse(json.loads((out / 'manifest.json').read_text())['person_follows_background'])
+
+    def test_person_raised_above_page_bleeds_into_top_frame_only(self):
+        bg = Image.new('RGB', (600, 800), (0, 128, 0))
+        person = Image.new('RGBA', (600, 800))
+        person.paste((255, 0, 0, 255), (200, 0, 400, 300))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person),
+                                  person_frame={'x': 0, 'y': -0.03, 'zoom': 1})
+            with Image.open(out / 'player_top.png') as im:
+                strip = im.copy()
+            self.assertEqual(strip.size, (pl.SIZE[0], pl.TOP_BLEED))
+            self.assertEqual(strip.getpixel((543, pl.TOP_BLEED - 2))[:3], (255, 0, 0))
+            self.assertEqual(strip.getpixel((20, pl.TOP_BLEED - 2))[3], 0)      # solo in altezza
+            # Persona che resta dentro la pagina: nessuna striscia.
+            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person),
+                                  person_frame={'x': 0, 'y': 0.2, 'zoom': 1})
+            self.assertFalse((out / 'player_top.png').exists())
 
     def test_invalid_photo(self):
         with tempfile.TemporaryDirectory() as tmp, self.assertRaises(ValueError):

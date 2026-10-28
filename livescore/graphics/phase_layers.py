@@ -18,17 +18,24 @@ import json
 import os
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops, ImageOps
 
 SIZE = (1086, 1448)
 MAX_ZOOM = 6
 FIXED_FRAME = {'x': 0.0, 'y': 0.0, 'zoom': 1.0}   # sfondo: sempre "riempi pagina"
 MOVED_EPS = 0.0005
 _clean_cache = {}
+# La grafica e' 1086x1448 con 76 px di cornice: la pagina dei livelli (1086x1448) e' ridotta
+# a 0,895 dentro il riquadro, quindi la cornice in alto vale 85 px di pagina. La persona
+# puo' uscire dal riquadro solo verso l'alto, dentro quella cornice (player_top.png).
+TOP_BLEED = 85
 # Provato sulla pagina 1 Canva: 99,3% uguale alla sagoma Canva, ~1,5 s a foto.
 CUTOUT_MODEL = os.getenv('PHASE_CUTOUT_MODEL', 'isnet-general-use')
 
 _session = None
+_people_session = None
+# Tutte le figure umane (anche dietro, tagliate dal bordo): servono per ripulire lo sfondo.
+PEOPLE_MODEL = os.getenv('PHASE_PEOPLE_MODEL', 'u2net_human_seg')
 
 
 def open_photo(raw):
@@ -60,13 +67,18 @@ def box(size, frame, *, cover=True):
     return left, top, width, height
 
 
-def place(image, frame, *, cover=True):
+def place(image, frame, *, cover=True, bleed=0):
+    """Immagine sulla pagina. bleed > 0: restituisce anche la striscia sopra la pagina
+    (altezza `bleed`), cioe' (pagina, striscia): la parte che esce dal bordo in alto."""
     left, top, width, height = box(image.size, frame, cover=cover)
-    canvas = Image.new('RGBA', SIZE)
+    canvas = Image.new('RGBA', (SIZE[0], SIZE[1] + bleed))
     layer = image.resize((max(1, round(width)), max(1, round(height))), Image.Resampling.LANCZOS)
     # Tela vuota: copia diretta (le parti fuori pagina vengono tagliate).
-    canvas.paste(layer, (round(left), round(top)))
-    return canvas
+    canvas.paste(layer, (round(left), round(top) + bleed))
+    page = canvas.crop((0, bleed, SIZE[0], SIZE[1] + bleed))
+    if not bleed:
+        return page
+    return page, canvas.crop((0, 0, SIZE[0], bleed))
 
 
 def _quiet_onnxruntime():
@@ -102,6 +114,20 @@ def cutout(image):
     if _session is None:
         _session = new_session(CUTOUT_MODEL)
     return remove(image.convert('RGB'), session=_session).convert('RGBA')
+
+
+def people_mask(image):
+    """Maschera "L" di tutte le persone nella foto (255 = persona), o None se non disponibile."""
+    global _people_session
+    try:
+        if _people_session is None and _session is None:
+            _quiet_onnxruntime()
+        from rembg import new_session, remove
+        if _people_session is None:
+            _people_session = new_session(PEOPLE_MODEL)
+        return remove(image.convert('RGB'), session=_people_session, only_mask=True).convert('L')
+    except Exception:
+        return None
 
 
 def has_transparency(image):
@@ -160,8 +186,14 @@ def clean_background(background, person):
 
     key = (hashlib.sha256(background).hexdigest(), hashlib.sha256(person).hexdigest())
     if key not in _clean_cache:
-        page = place(open_photo(background), FIXED_FRAME, cover=True)
+        photo = open_photo(background)
+        page = place(photo, FIXED_FRAME, cover=True)
         mask = place(open_photo(person), FIXED_FRAME, cover=True).getchannel('A')
+        # Anche le persone dietro (o tagliate dal bordo) che lo scontorno non ha preso.
+        others = people_mask(photo)
+        if others is not None:
+            others = place(others.convert('RGBA'), FIXED_FRAME, cover=True).getchannel('R')
+            mask = ImageChops.lighter(mask, others)
         clean = inpaint.remove(page.convert('RGB'), mask)
         while len(_clean_cache) >= 4:
             _clean_cache.pop(next(iter(_clean_cache)))
@@ -210,10 +242,13 @@ def build_layers(destination, *, background, person=None, background_frame=None,
         background_layer = clean_background(background, person_bytes)
     else:
         background_layer = place(bg_image, FIXED_FRAME, cover=True)
-    layers = {
-        'background': background_layer,
-        'player': place(person_image, FIXED_FRAME if follow else person_frame, cover=follow),
-    }
+    player, strip = place(person_image, FIXED_FRAME if follow else person_frame, cover=follow, bleed=TOP_BLEED)
+    layers = {'background': background_layer, 'player': player}
+    top_file = destination / 'player_top.png'
+    if strip.getchannel('A').getextrema()[1] > 0:
+        layers['player_top'] = strip
+    else:
+        top_file.unlink(missing_ok=True)
     for role, image in layers.items():
         temp = destination / f'{role}.tmp.png'
         image.save(temp)

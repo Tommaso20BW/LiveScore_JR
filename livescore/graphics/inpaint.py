@@ -22,7 +22,7 @@ LAMA_URL = os.getenv(
 LAMA_PATH = Path(os.getenv('PHASE_LAMA_PATH', Path.home() / '.cache' / 'jr_lama' / 'lama_fp32.onnx'))
 LAMA_SIZE = 512            # ingresso fisso del modello
 CROP_MARGIN = 0.18         # aria attorno al buco, in frazione del lato del ritaglio
-GROW = 0.012               # quanto allargare la sagoma (alone, ombre), frazione del lato lungo
+GROW = 0.02                # quanto allargare la sagoma (alone, ombre), frazione del lato lungo
 FEATHER = 0.006            # sfumatura del bordo della zona ricostruita
 
 _session = None

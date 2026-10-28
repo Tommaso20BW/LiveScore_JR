@@ -31,6 +31,8 @@ REQUIRED_FILES = (
     "player.png",
     "manifest.json",
 )
+# Parte della persona che esce dal bordo in alto: c'e' solo se la persona e' stata alzata.
+OPTIONAL_FILES = ("player_top.png",)
 DEFAULT_BRANCH_NAME = "runtime-snapshots"
 REMOTE_ROOT = "runtime_snapshots"
 
@@ -59,7 +61,7 @@ def _deterministic_zip(snapshot_dir: Path) -> bytes:
         compression=zipfile.ZIP_DEFLATED,
         compresslevel=9,
     ) as archive:
-        for name in REQUIRED_FILES:
+        for name in REQUIRED_FILES + tuple(n for n in OPTIONAL_FILES if (snapshot_dir / n).is_file()):
             info = zipfile.ZipInfo(
                 filename=name,
                 date_time=(1980, 1, 1, 0, 0, 0),
@@ -79,12 +81,12 @@ def _extract_snapshot_zip(
 
     with zipfile.ZipFile(io.BytesIO(archive_bytes), "r") as archive:
         names = set(archive.namelist())
-        if names != set(REQUIRED_FILES):
+        if not set(REQUIRED_FILES) <= names <= set(REQUIRED_FILES) | set(OPTIONAL_FILES):
             raise ValueError(
                 "Archivio snapshot non valido: "
                 f"attesi {sorted(REQUIRED_FILES)}, trovati {sorted(names)}"
             )
-        for name in REQUIRED_FILES:
+        for name in sorted(names):
             target = destination / name
             target.write_bytes(archive.read(name))
     return destination

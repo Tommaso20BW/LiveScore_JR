@@ -519,6 +519,15 @@ def phase(
             draw.line((0, y, IW, y), fill=(0, 0, 0, round(240 * max(0, (y - IH * .48) / (IH * .52)) ** 1.1)))
         bg.alpha_composite(fade)
         card.alpha_composite(bg, (M, M))
+        # La persona alzata esce dal riquadro in alto, sopra la cornice (solo in altezza).
+        top_file = Path(layers) / 'player_top.png'
+        if top_file.is_file():
+            scale = max(IW / 1086, IH / 1448)
+            strip = Image.open(top_file).convert('RGBA')
+            strip = strip.resize((round(strip.width * scale), round(strip.height * scale)), Image.Resampling.LANCZOS)
+            cut = (strip.width - IW) // 2
+            strip = strip.crop((cut, 0, cut + IW, strip.height))
+            card.alpha_composite(strip, (M, M - strip.height))
 
         # Final production settings derived from the local preview script.
         score = number(f'{home_goals}-{away_goals}', PHASE_SCORE_FONT_SIZE, key, assets)
