@@ -458,7 +458,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_sync_logos)
     sub.add_parser("schedule-check", help="controllo scheduler").set_defaults(func=cmd_schedule_check)
     p = sub.add_parser("simulate", help="simula una partita ESPN (finita: replay; in corso: live vero)")
-    p.add_argument("event_id", help="ID ESPN della partita")
+    p.add_argument("event_id", help="ID ESPN della partita oppure URL della partita su ESPN")
     p.add_argument("--dry-run", action="store_true", help="nessun invio: solo log e report")
     p.add_argument("--mode", choices=("auto", "replay", "live"), default="auto",
                    help="auto: replay se la partita e' finita, live se in corso o da giocare")
