@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       event_id:
-        description: 'ID ESPN della partita (es. 401915547)'
+        description: 'URL ESPN della partita (o solo l ID, es. 401915547)'
         required: true
         type: string
       dry_run:
@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       mode: ${{ steps.check.outputs.mode }}
+      id: ${{ steps.check.outputs.id }}
     steps:
       - name: Replay o live?
         id: check
@@ -35,7 +36,11 @@ jobs:
         env:
           EVENT_ID: ${{ inputs.event_id }}
         run: |
-          ID="$(echo "$EVENT_ID" | tr -d '[:space:]')"
+          RAW="$(echo "$EVENT_ID" | tr -d '[:space:]')"
+          # Accetta l'URL ESPN (.../gameId/401874772, ?gameId=..., ?event=...) o l'ID nudo
+          ID="$(echo "$RAW" | grep -oiE '(gameId|event|matchId)[/=][0-9]+' | head -1 | grep -oE '[0-9]+$' || true)"
+          [ -z "$ID" ] && ID="$RAW"
+          if ! [[ "$ID" =~ ^[0-9]+$ ]]; then echo "::error::Non trovo l'ID partita in: $RAW"; exit 1; fi
           STATE="$(curl -fsS --retry 3 "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/summary?event=$ID" \
             | jq -r '.header.competitions[0].status.type.state // empty')" || true
           case "$STATE" in
@@ -45,6 +50,7 @@ jobs:
           esac
           echo "Stato ESPN: $STATE -> modalita' $MODE"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
 
   simulate:
     name: Simulazione (${{ needs.mode.outputs.mode }})
@@ -117,7 +123,7 @@ jobs:
           # Avvisi per le foto delle fasi nella chat privata (la simulazione aspetta la conferma).
           PHOTO_CHAT_ID:        ${{ secrets.PHOTO_CHAT_ID }}
           GITHUB_REPOSITORY:    ${{ github.repository }}
-          EVENT_ID:             ${{ inputs.event_id }}
+          EVENT_ID:             ${{ needs.mode.outputs.id }}
           SIM_DRY_RUN:          ${{ inputs.dry_run }}
           SIM_MODE:             ${{ needs.mode.outputs.mode }}
         shell: bash
@@ -137,7 +143,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: simulazione-${{ inputs.event_id }}
+          name: simulazione-${{ needs.mode.outputs.id }}
           path: sim_output/
           if-no-files-found: ignore
           retention-days: 7
