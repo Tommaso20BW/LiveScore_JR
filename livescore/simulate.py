@@ -23,7 +23,7 @@ In entrambe:
   privata (etichetta SIMULAZIONE) e la fase aspetta SENZA LIMITE la foto
   confermata. Nel replay intanto l'orologio della partita resta fermo.
 
-Uso:  python -m livescore simulate <event_id> [--dry-run] [--mode auto|replay|live]
+Uso:  python -m livescore simulate <event_id | url ESPN> [--dry-run] [--mode auto|replay|live]
 """
 
 from __future__ import annotations
@@ -660,6 +660,17 @@ class LocalSnapshots:
 # ==============================================================================
 # AVVIO
 # ==============================================================================
+def parse_event_id(value: str) -> str:
+    """Accetta l'ID ESPN oppure l'URL della partita (es. .../gameId/401874772, ?gameId=..., ?event=...)."""
+    text = str(value).strip()
+    if text.isdigit():
+        return text
+    match = re.search(r"(?:gameId|event|matchId)(?:/|=)(\d+)", text, re.IGNORECASE)
+    if not match:
+        raise ValueError(f"Non trovo l'ID della partita in: {text!r} (serve l'ID ESPN o l'URL della partita)")
+    return match.group(1)
+
+
 def load_summary(event_id: str, league: str = "eng.1") -> dict:
     """ESPN restituisce il summary con qualsiasi slug valido: la lega vera e' nell'header."""
     response = requests.get(ESPN_SUMMARY.format(slug=league), params={"event": event_id}, timeout=30)
@@ -673,6 +684,7 @@ def load_summary(event_id: str, league: str = "eng.1") -> dict:
 def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: bool = False,
         interval: float | None = None, delete_after: float = 300.0,
         output: Path | str = "sim_output", mode: str = "auto") -> int:
+    event_id = parse_event_id(event_id)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     final = load_summary(event_id, league)
