@@ -712,6 +712,7 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
         "FCLOGO_SYNC_DONE": "true",
         "LIVE_SCORE_CHANNEL_NAME": "Bot JR",
         "SNAPSHOT_GH_TOKEN": "",
+        "STEP_SUMMARY_DISABLED": "1",   # il riepilogo lo scrive write_report
     })
     os.environ.setdefault("TELEGRAM_TOKEN", "simulazione")
 

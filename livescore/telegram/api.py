@@ -6,6 +6,7 @@ import time
 from livescore import settings
 from livescore.constants import MOMENTI_CONFIG
 from livescore.core import http as net
+from livescore.core import step_summary
 from livescore.core.log import log_line
 from livescore.graphics import goal as goal_graphics
 
@@ -23,6 +24,8 @@ def _tg_post(method: str, payload: dict | None = None, data: dict | None = None,
     for _ in range(3):
         r = net.SESSION.post(url, json=payload, data=data, files=files, timeout=timeout)
         if r.status_code != 429:
+            step_summary.record(method, payload or data, has_image=bool(files),
+                                ok=r.status_code == 200)
             return r
         try:
             retry_after = int(r.json().get("parameters", {}).get("retry_after", 3))
