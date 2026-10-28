@@ -730,10 +730,9 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     from livescore.espn import client as espn_client
     espn_client.trova_partita_oggi = lambda _team_id: sim.partita()
 
-    # Foto delle fasi: e' un test, quindi si aspetta la foto senza limite.
+    # Foto delle fasi: stesso limite di attesa del live (phase_photo.WAIT_SECONDS).
     # Senza invii (dry run) l'avviso non parte e le fasi restano solo testo.
     from livescore.match import phase_photo
-    phase_photo.WAIT_SECONDS = None
     phase_photo.LABEL = "SIMULAZIONE"
     if dry_run:
         settings.PHOTO_CHAT_ID = None

@@ -98,7 +98,10 @@ class WaitTests(unittest.TestCase):
         self.assertFalse(desk.holding())
         self.assertIsNone(desk.layers_for('half'))
 
-    def test_simulation_waits_without_limit(self):
+    def test_wait_limit_is_two_minutes_also_in_simulation(self):
+        self.assertEqual(pp.WAIT_SECONDS, 120)
+
+    def test_no_limit_when_wait_seconds_is_none(self):
         desk = make_desk()
         desk.slots['half']['prompt_id'] = 7
         with patch.object(pp, 'WAIT_SECONDS', None):
@@ -107,6 +110,20 @@ class WaitTests(unittest.TestCase):
             self.assertFalse(desk.ready('half'))
             desk.slots['half']['confirmed'] = {'layers': 'x', 'request': {}, 'ids': []}
             self.assertTrue(desk.ready('half'))
+
+    def test_cutout_state_runs_in_background(self):
+        import time
+        desk = make_desk()
+        self.assertEqual(desk.cutout_state('abc')['state'], 'error')        # mai avviato
+        self.assertEqual(desk.cutout_state('abc', start=True)['state'], 'error')   # foto sconosciuta
+        desk.photos['abc'] = b'x'
+        with patch.object(desk, 'cutout', side_effect=lambda pid: desk.cutouts.setdefault(pid, b'png')):
+            self.assertIn(desk.cutout_state('abc', start=True)['state'], ('running', 'ready'))
+            for _ in range(50):
+                if desk.cutout_state('abc')['state'] == 'ready':
+                    break
+                time.sleep(0.02)
+        self.assertEqual(desk.cutout_state('abc')['state'], 'ready')
 
     def test_extra_time_falls_back_to_last_confirmed_photo(self):
         desk = make_desk()

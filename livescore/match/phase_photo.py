@@ -4,7 +4,7 @@ Circa 10 minuti prima della fase il bot manda in chat privata un pulsante che ap
 l'editor (la Mini App di ImageGEN in modalita' live). Li' carichi la foto, sistemi
 sfondo e persona, la cambi quante volte vuoi e la confermi. Al fischio la grafica
 usa la foto confermata; se non c'e' ancora, il bot aspetta (al massimo
-WAIT_SECONDS, poi solo testo; in simulazione senza limite).
+WAIT_SECONDS, poi solo testo; vale anche in simulazione).
 
 Tre "slot", uno per ogni avviso:
 - half  -> HALF TIME (avviso al 35')
@@ -41,8 +41,8 @@ from livescore.core import leagues
 from livescore.core.log import log_line
 
 CACHE_DIR = Path("phase_layers_cache")
-# Attesa massima della foto quando arriva la fase (None = senza limite, simulazione).
-WAIT_SECONDS: float | None = 300
+# Attesa massima della foto quando arriva la fase, anche in simulazione (None = senza limite).
+WAIT_SECONDS: float | None = 120
 # Minuto dell'avviso per ogni slot: (stato ESPN, minuto).
 PROMPT_AT = {"half": ("1H", 35), "end": ("2H", 80), "extra": ("ET", 110)}
 SLOT_KIND = {"half": "half", "end": "full", "extra": "full"}
@@ -138,6 +138,8 @@ class Desk:
         self.photos: dict[str, bytes] = {}
         self.cutouts: dict[str, bytes] = {}
         self.previews: dict[str, bytes] = {}
+        # Scontorni in corso/finiti (id foto -> stato), per chiedere lo stato con richieste brevi.
+        self.cutout_jobs: dict[str, dict] = {}
         self.stage = "idle"
         self.server = None
         self.tunnel = None
@@ -347,6 +349,7 @@ class Desk:
         self.photos.clear()
         self.cutouts.clear()
         self.previews.clear()
+        self.cutout_jobs.clear()
         shutil.rmtree(CACHE_DIR, ignore_errors=True)
 
     # ------------------------------------------------------------------
@@ -430,6 +433,7 @@ class Desk:
             for old in [k for k in self.photos if k not in keep][:max(0, len(self.photos) - MAX_PHOTOS)]:
                 self.photos.pop(old)
                 self.cutouts.pop(old, None)
+                self.cutout_jobs.pop(old, None)
         log_line("DEBUG", "PHOTO", f"Foto caricata | id={photo_id} | {image.width}x{image.height}")
         return {"photo_id": photo_id, "width": image.width, "height": image.height}
 
@@ -452,6 +456,39 @@ class Desk:
                     phase_layers.cutout(image).save(out, "PNG")
                     self.cutouts[photo_id] = out.getvalue()
             return self.cutouts[photo_id]
+
+    def cutout_state(self, photo_id: str, start: bool = False) -> dict:
+        """Stato dello scontorno: 'running', 'ready' o 'error'.
+
+        Come in ImageGEN lo scontorno e' un lavoro in background: la Mini App chiede lo stato
+        con richieste brevi e scarica il PNG solo a lavoro finito (una richiesta lunga
+        attraverso il tunnel cade spesso mentre il processore e' occupato dal modello).
+        """
+        with self.lock:
+            if photo_id in self.cutouts:
+                return {"state": "ready", "error": ""}
+            job = self.cutout_jobs.get(photo_id)
+            if (job is None or job["state"] == "error") and start:
+                if photo_id not in self.photos:
+                    return {"state": "error", "error": "Foto non trovata: ricaricala."}
+                job = {"state": "running", "error": ""}
+                self.cutout_jobs[photo_id] = job
+                while len(self.cutout_jobs) > MAX_PHOTOS:
+                    self.cutout_jobs.pop(next(iter(self.cutout_jobs)))
+                threading.Thread(target=self._cutout_job, args=(photo_id, job),
+                                 name="photo-cutout-job", daemon=True).start()
+            if job is None:
+                return {"state": "error", "error": "Scontorno non avviato."}
+            return {"state": job["state"], "error": job["error"]}
+
+    def _cutout_job(self, photo_id: str, job: dict) -> None:
+        try:
+            self.cutout(photo_id)
+            job["state"] = "ready"
+        except Exception as exc:  # noqa: BLE001 - l'errore va alla Mini App, non al bot
+            job["error"] = str(exc) if isinstance(exc, ValueError) else "Scontorno non riuscito."
+            job["state"] = "error"
+            log_line("WARN", "PHOTO", f"Scontorno non riuscito: {type(exc).__name__}: {exc}")
 
     def clean_image(self, photo_id: str) -> bytes:
         """Sfondo senza la persona (ricostruito), per l'editor quando la persona si sposta."""
@@ -650,6 +687,9 @@ class _Handler(BaseHTTPRequestHandler):
                                  "label": desk.label, "state": desk.restore_state(slot)})
             elif path == "/progress":
                 self._json(200, {"ok": True, "stage": self.desk.stage})
+            elif path == "/cutout_state":
+                self._json(200, {"ok": True, **self.desk.cutout_state(
+                    query.get("id", ""), start=query.get("start", "") == "1")})
             elif path == "/cutout":
                 self._bytes(self.desk.preview_image(query.get("id", ""), person=True))
             elif path == "/clean":
