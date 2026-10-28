@@ -6,7 +6,13 @@ persona scontornata sopra.
 
 frame = {'x', 'y', 'zoom'} come nella Mini App: x/y spostamento del centro in
 frazione della pagina, zoom >= 1 rispetto a "riempi la pagina".
+
+Lo SFONDO e' sempre fermo e riempie la pagina (FIXED_FRAME): nessuno lo sposta.
+La PERSONA e' libera (x, y, zoom, anche fuori dalla pagina). Se la persona e'
+scontornata dalla stessa foto dello sfondo e viene spostata, viene cancellata dallo
+sfondo e la zona e' ricostruita (inpaint.py), cosi' non compare due volte.
 """
+import hashlib
 import io
 import json
 import os
@@ -16,6 +22,9 @@ from PIL import Image, ImageOps
 
 SIZE = (1086, 1448)
 MAX_ZOOM = 6
+FIXED_FRAME = {'x': 0.0, 'y': 0.0, 'zoom': 1.0}   # sfondo: sempre "riempi pagina"
+MOVED_EPS = 0.0005
+_clean_cache = {}
 # Provato sulla pagina 1 Canva: 99,3% uguale alla sagoma Canva, ~1,5 s a foto.
 CUTOUT_MODEL = os.getenv('PHASE_CUTOUT_MODEL', 'isnet-general-use')
 
@@ -132,28 +141,78 @@ def ghost(render, width=543):
     return out.getvalue()
 
 
-def build_layers(destination, *, background, person=None, background_frame=None, person_frame=None):
+def moved(frame):
+    """True se la persona non e' piu' dov'e' stata scontornata (sopra se' stessa nello sfondo)."""
+    if not frame:
+        return False
+    return (abs(float(frame.get('x', 0))) > MOVED_EPS or abs(float(frame.get('y', 0))) > MOVED_EPS
+            or abs(float(frame.get('zoom', 1)) - 1) > MOVED_EPS)
+
+
+def clean_background(background, person):
+    """Sfondo a pagina intera (RGBA) senza la persona scontornata, che ricostruisce il dietro.
+
+    background / person: byte come in build_layers. La persona e' cancellata nella
+    posizione originale (FIXED_FRAME), dove combacia con lo sfondo. Il risultato e'
+    tenuto in memoria: anteprima, editor e invio non ricalcolano.
+    """
+    from livescore.graphics import inpaint
+
+    key = (hashlib.sha256(background).hexdigest(), hashlib.sha256(person).hexdigest())
+    if key not in _clean_cache:
+        page = place(open_photo(background), FIXED_FRAME, cover=True)
+        mask = place(open_photo(person), FIXED_FRAME, cover=True).getchannel('A')
+        clean = inpaint.remove(page.convert('RGB'), mask)
+        while len(_clean_cache) >= 4:
+            _clean_cache.pop(next(iter(_clean_cache)))
+        _clean_cache[key] = clean.convert('RGBA')
+    return _clean_cache[key].copy()
+
+
+def clean_background_jpeg(background, person):
+    out = io.BytesIO()
+    clean_background(background, person).convert('RGB').save(out, 'JPEG', quality=90)
+    return out.getvalue()
+
+
+def build_layers(destination, *, background, person=None, background_frame=None, person_frame=None,
+                 remove_person=False):
     """Scrive background.png, player.png e manifest.json in `destination`.
 
     background / person: byte dell'immagine caricata. Senza `person` la persona
     viene scontornata dallo sfondo stesso. Un PNG già trasparente caricato come
     persona viene usato così com'è.
-    person_frame=None: la persona segue la posizione dello sfondo (stessa foto,
-    combacia esattamente); altrimenti si muove per conto suo.
+    background_frame: ignorato. Lo sfondo e' sempre FIXED_FRAME (riempi pagina, fermo).
+    person_frame=None: la persona sta ferma sopra se' stessa nello sfondo; altrimenti
+    si muove per conto suo.
+    remove_person=True: la persona e' ricavata dalla stessa foto dello sfondo; se
+    viene spostata, nello sfondo la sua sagoma e' cancellata e ricostruita.
     """
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
-    bg = open_photo(background)
+    bg_image = open_photo(background)
     if person is None:
-        person_image = cutout(bg)
+        person_bytes = None
+        person_image = cutout(bg_image)
     else:
+        person_bytes = person
         person_image = open_photo(person)
         if not has_transparency(person_image):
             person_image = cutout(person_image)
+            person_bytes = None
     follow = person_frame is None
+    erase = bool(remove_person) and not follow and moved(person_frame)
+    if erase:
+        if person_bytes is None:
+            buffer = io.BytesIO()
+            person_image.save(buffer, 'PNG')
+            person_bytes = buffer.getvalue()
+        background_layer = clean_background(background, person_bytes)
+    else:
+        background_layer = place(bg_image, FIXED_FRAME, cover=True)
     layers = {
-        'background': place(bg, background_frame, cover=True),
-        'player': place(person_image, background_frame if follow else person_frame, cover=follow),
+        'background': background_layer,
+        'player': place(person_image, FIXED_FRAME if follow else person_frame, cover=follow),
     }
     for role, image in layers.items():
         temp = destination / f'{role}.tmp.png'
@@ -162,9 +221,10 @@ def build_layers(destination, *, background, person=None, background_frame=None,
     (destination / 'manifest.json').write_text(json.dumps({
         'source': 'upload',
         'size': list(SIZE),
-        'background_frame': background_frame or {},
-        'person_frame': (background_frame if follow else person_frame) or {},
+        'background_frame': FIXED_FRAME,
+        'person_frame': (FIXED_FRAME if follow else person_frame) or {},
         'person_follows_background': follow,
         'person_uploaded': person is not None,
+        'person_removed_from_background': erase,
     }))
     return destination

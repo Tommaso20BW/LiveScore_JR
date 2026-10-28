@@ -46,15 +46,54 @@ class PhaseLayersTest(unittest.TestCase):
             self.assertEqual(player.getpixel((10, 10))[3], 0)
             self.assertEqual(json.loads((out / 'manifest.json').read_text())['source'], 'upload')
 
-    def test_single_photo_is_cut_out_and_follows_background(self):
+    def test_single_photo_is_cut_out_and_stays_on_fixed_background(self):
         bg = Image.new('RGB', (900, 1200), (0, 0, 255))
+        # Un frame dello sfondo in ingresso viene ignorato: lo sfondo e' sempre fermo.
         frame = {'x': 0.1, 'zoom': 1.5}
         with tempfile.TemporaryDirectory() as tmp, patch.object(pl, 'cutout', side_effect=lambda im: im) as cutout:
             out = pl.build_layers(Path(tmp), background=png(bg), background_frame=frame)
             cutout.assert_called_once()
             manifest = json.loads((out / 'manifest.json').read_text())
-            self.assertEqual(manifest['person_frame'], frame)
+            self.assertEqual(manifest['background_frame'], pl.FIXED_FRAME)
+            self.assertEqual(manifest['person_frame'], pl.FIXED_FRAME)
             self.assertFalse(manifest['person_uploaded'])
+            self.assertFalse(manifest['person_removed_from_background'])
+
+    def test_moved_person_is_erased_from_background(self):
+        # Sfondo verde con un rettangolo rosso (la "persona"): spostata, il rosso sparisce dallo sfondo.
+        bg = Image.new('RGB', (600, 800), (0, 128, 0))
+        bg.paste((255, 0, 0), (250, 300, 350, 500))
+        person = Image.new('RGBA', (600, 800))
+        person.paste((255, 0, 0, 255), (250, 300, 350, 500))
+        fill = lambda rgb, mask: __import__('numpy').full_like(rgb, (0, 128, 0))
+        with tempfile.TemporaryDirectory() as tmp, patch.object(pl, '_clean_cache', {}), \
+                patch('livescore.graphics.inpaint._lama', return_value=None), \
+                patch('livescore.graphics.inpaint._fallback', side_effect=fill):
+            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person), remove_person=True,
+                                  person_frame={'x': 0.25, 'y': 0.1, 'zoom': 1})
+            with Image.open(out / 'background.png') as im:
+                background = im.copy()
+            with Image.open(out / 'player.png') as im:
+                player = im.copy()
+            self.assertEqual(background.getpixel((543, 724))[:3], (0, 128, 0))   # vecchia posizione ripulita
+            self.assertEqual(background.getpixel((20, 20))[:3], (0, 128, 0))
+            self.assertEqual(player.getpixel((543 + 271, 724 + 145))[:3], (255, 0, 0))
+            self.assertTrue(json.loads((out / 'manifest.json').read_text())['person_removed_from_background'])
+
+    def test_background_untouched_when_person_not_moved_or_other_photo(self):
+        bg = Image.new('RGB', (600, 800), (0, 128, 0))
+        bg.paste((255, 0, 0), (250, 300, 350, 500))
+        person = Image.new('RGBA', (600, 800))
+        person.paste((255, 0, 0, 255), (250, 300, 350, 500))
+        with tempfile.TemporaryDirectory() as tmp, patch.object(pl, '_clean_cache', {}), \
+                patch.object(pl, 'clean_background') as clean:
+            for kwargs in ({'person_frame': None, 'remove_person': True},
+                           {'person_frame': {'x': 0, 'y': 0, 'zoom': 1}, 'remove_person': True},
+                           {'person_frame': {'x': 0.3, 'y': 0, 'zoom': 1}, 'remove_person': False}):
+                out = pl.build_layers(Path(tmp), background=png(bg), person=png(person), **kwargs)
+                with Image.open(out / 'background.png') as im:
+                    self.assertEqual(im.getpixel((543, 724))[:3], (255, 0, 0))
+            clean.assert_not_called()
 
     def test_person_with_own_frame_moves_alone(self):
         bg = Image.new('RGB', (600, 800), (0, 128, 0))

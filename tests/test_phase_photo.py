@@ -120,7 +120,8 @@ class RequestTests(unittest.TestCase):
         envelope = {'session': 's', 'data': {'photo_id': 'a' * 16, 'frame': {'x': 9, 'zoom': 0.1},
                                              'person_frame': {'zoom': 0.1}}}
         out = pp.parse_photo_request(envelope, 's')
-        self.assertEqual(out['frame'], {'x': 3.0, 'y': 0.0, 'zoom': 1.0})
+        # Lo sfondo e' sempre fermo: la posizione che arriva dal client viene ignorata.
+        self.assertEqual(out['frame'], {'x': 0.0, 'y': 0.0, 'zoom': 1.0})
         self.assertEqual(out['person_frame']['zoom'], 0.2)
         self.assertIsNone(out['person_id'])
         with self.assertRaises(ValueError):

@@ -103,7 +103,8 @@ def parse_photo_request(envelope, session: str, *, ghost=False) -> dict:
     photo_id = str(data.get("photo_id") or "")
     if not PHOTO_ID.fullmatch(photo_id):
         raise ValueError("Carica una foto.")
-    out = {"photo_id": photo_id, "frame": _frame(data.get("frame") or {})}
+    # Sfondo sempre fermo e a pagina piena: la posizione che arriva dal client non conta.
+    out = {"photo_id": photo_id, "frame": {"x": 0.0, "y": 0.0, "zoom": 1.0}}
     if ghost:
         return out
     person_id = data.get("person_id")
@@ -452,6 +453,16 @@ class Desk:
                     self.cutouts[photo_id] = out.getvalue()
             return self.cutouts[photo_id]
 
+    def clean_image(self, photo_id: str) -> bytes:
+        """Sfondo senza la persona (ricostruito), per l'editor quando la persona si sposta."""
+        from livescore.graphics import phase_layers
+        raw = self.photos.get(photo_id)
+        if not raw:
+            raise ValueError("Foto non trovata.")
+        person = self.cutout(photo_id)
+        with self.render_lock:
+            return phase_layers.clean_background_jpeg(raw, person)
+
     def preview_image(self, photo_id: str, *, person: bool) -> bytes:
         from PIL import Image
         key = f"{'p' if person else 'b'}{photo_id}"
@@ -497,6 +508,7 @@ class Desk:
     def _build(self, request: dict) -> Path:
         from livescore.graphics import phase_layers
         self.stage = "cutout"
+        same_photo = not request["person_id"] or request["person_id"] == request["photo_id"]
         person = self.cutout(request["person_id"] or request["photo_id"])
         background = self.photos.get(request["photo_id"])
         if not background:
@@ -505,9 +517,11 @@ class Desk:
         key = hashlib.sha256(json.dumps(request, sort_keys=True).encode()).hexdigest()[:20]
         folder = CACHE_DIR / key
         if not (folder / "player.png").is_file():
+            self.stage = "erase" if same_photo and phase_layers.moved(request["person_frame"]) else "compose"
             phase_layers.build_layers(folder, background=background, person=person,
                                       background_frame=request["frame"],
-                                      person_frame=request["person_frame"])
+                                      person_frame=request["person_frame"],
+                                      remove_person=same_photo)
         return folder
 
     def preview(self, slot: str, request: dict) -> bytes:
@@ -638,6 +652,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(200, {"ok": True, "stage": self.desk.stage})
             elif path == "/cutout":
                 self._bytes(self.desk.preview_image(query.get("id", ""), person=True))
+            elif path == "/clean":
+                self._bytes(self.desk.clean_image(query.get("id", "")), "image/jpeg")
             elif path == "/photo":
                 self._bytes(self.desk.preview_image(query.get("id", ""), person=False), "image/jpeg")
             else:
