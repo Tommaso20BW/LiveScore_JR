@@ -116,15 +116,21 @@ def remove(image: Image.Image, mask: Image.Image, *, engine=None) -> Image.Image
         return image.convert('RGB')
     hole = _grow(hole, _odd(max(w, h) * GROW))
 
-    # Ritaglio quadrato attorno al buco: il modello lavora a 512 px, cosi' il
-    # dettaglio resta il piu' alto possibile.
+    # Ritaglio attorno al buco (tutto il buco, sempre): il modello lavora a 512 px, cosi' il
+    # dettaglio resta il piu' alto possibile. Quasi quadrato quando l'immagine lo permette.
     ys, xs = np.where(hole > 0)
-    side = max(xs.max() - xs.min(), ys.max() - ys.min()) * (1 + 2 * CROP_MARGIN)
-    side = int(min(max(side, 64), min(w, h)))
-    cx, cy = (xs.min() + xs.max()) // 2, (ys.min() + ys.max()) // 2
-    x0 = int(min(max(0, cx - side // 2), max(0, w - side)))
-    y0 = int(min(max(0, cy - side // 2), max(0, h - side)))
-    x1, y1 = min(w, x0 + side), min(h, y0 + side)
+    bw, bh = xs.max() - xs.min() + 1, ys.max() - ys.min() + 1
+    margin = max(24, round(max(bw, bh) * CROP_MARGIN))
+    x0, x1 = max(0, xs.min() - margin), min(w, xs.max() + 1 + margin)
+    y0, y1 = max(0, ys.min() - margin), min(h, ys.max() + 1 + margin)
+    cw, ch = x1 - x0, y1 - y0
+    if cw < ch:                         # allarga il lato corto, dove c'e' spazio
+        extra = min(ch - cw, w - cw)
+        x0 = int(min(max(0, x0 - extra // 2), w - cw - extra)); x1 = x0 + cw + extra
+    elif ch < cw:
+        extra = min(cw - ch, h - ch)
+        y0 = int(min(max(0, y0 - extra // 2), h - ch - extra)); y1 = y0 + ch + extra
+    x0, y0, x1, y1 = int(x0), int(y0), int(x1), int(y1)
 
     crop = rgb[y0:y1, x0:x1]
     crop_mask = hole[y0:y1, x0:x1]
