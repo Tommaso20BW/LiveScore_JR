@@ -254,6 +254,14 @@ class BotJrCopyTests(unittest.TestCase):
         draw.assert_not_called()
         self.assertEqual(desk.http.calls, [])
 
+    def test_simulation_sends_no_copy(self):
+        desk = self.make()
+        with patch.object(pp, 'BOT_COPY', False), patch.object(desk, '_draw', return_value=b'png') as draw:
+            desk._sync_copy('half', True)
+            desk._refresh_copies()
+        draw.assert_not_called()
+        self.assertEqual(self.calls(desk, 'sendPhoto'), [])
+
     def test_published_phase_freezes_editor(self):
         desk = self.make()
         with patch.object(desk, '_draw', return_value=b'png'):
