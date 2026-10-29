@@ -6,6 +6,12 @@ sfondo e persona, la cambi quante volte vuoi e la confermi. Al fischio la grafic
 usa la foto confermata; se non c'e' ancora, il bot aspetta (al massimo
 WAIT_SECONDS, poi solo testo; vale anche in simulazione).
 
+Appena confermi la foto la grafica parte subito anche su Bot JR (TELEGRAM_TO_BOT), cosi'
+la puoi pubblicare altrove senza aspettare il fischio. Fino a quando il bot non pubblica
+davvero lo stato sul canale puoi cambiare la foto (il pulsante resta in chat) e, se cambia
+il risultato, la grafica su Bot JR viene rigenerata e modificata sullo stesso messaggio.
+A fine partita le copie su Bot JR vengono cancellate.
+
 Tre "slot", uno per ogni avviso:
 - half  -> HALF TIME (avviso al 35')
 - end   -> END OF 90' e FULL TIME senza supplementari (avviso all'80')
@@ -118,19 +124,22 @@ def parse_photo_request(envelope, session: str, *, ghost=False) -> dict:
 
 class Desk:
     def __init__(self, *, token: str, chat_id: str, webapp_url: str, label: str = "",
-                 direct_url: str = "", http=None) -> None:
+                 direct_url: str = "", http=None, bot_chat_id: str | None = None) -> None:
         self.token = str(token or "").strip()
         self.chat_id = str(chat_id or "").strip()
         self.webapp_url = str(webapp_url or "").strip()
         self.label = label
         self.direct_url = str(direct_url or "").strip().rstrip("/")
+        self._bot_chat_id = bot_chat_id
+        self.sync_lock = threading.Lock()
         self.http = http or requests.Session()
         self.session = secrets.token_urlsafe(18)
         self.lock = threading.RLock()
         self.render_lock = threading.Lock()
         self.slots = {slot: {"prompt_id": None, "prompted": False, "messages": [],
                              "confirmed": None, "used": False,
-                             "wait_started": None, "expired": False, "reminded": False}
+                             "wait_started": None, "expired": False, "reminded": False,
+                             "copy_id": None, "copy_score": None}
                       for slot in PROMPT_AT}
         self.match: dict = {}
         self.data = None
@@ -153,6 +162,12 @@ class Desk:
     @property
     def configured(self) -> bool:
         return bool(self.token and self.chat_id and self.webapp_url)
+
+    @property
+    def bot_chat_id(self) -> str:
+        """Chat di Bot JR dove arrivano le copie delle grafiche (vuota = nessuna copia)."""
+        value = self._bot_chat_id if self._bot_chat_id is not None else settings.BOT_JR_CHAT_ID
+        return str(value or "").strip()
 
     @property
     def active(self) -> bool:
@@ -200,6 +215,7 @@ class Desk:
             return
         for slot in self.wanted_slots(ctx):
             self.prompt_async(slot)
+        self._refresh_copies()
 
     # ------------------------------------------------------------------
     # Avviso, attesa e livelli
@@ -273,6 +289,8 @@ class Desk:
             if not confirmed:
                 return None
             self.slots[slot]["used"] = True
+        # Stato pubblicato: l'editor non serve piu' e la copia su Bot JR e' quella definitiva.
+        threading.Thread(target=self._phase_published, args=(slot,), daemon=True).start()
         return Path(confirmed["layers"])
 
     # ------------------------------------------------------------------
@@ -332,11 +350,22 @@ class Desk:
         """Fine partita: via pulsanti, avvisi, tunnel e foto."""
         with self.lock:
             messages, self.messages = list(self.messages), []
+            copies = []
+            for state in self.slots.values():
+                if state["copy_id"]:
+                    copies.append(state["copy_id"])
+                state["copy_id"] = None
+                state["copy_score"] = None
         for message_id in messages:
             try:
                 self._call("deleteMessage", {"chat_id": self.chat_id, "message_id": message_id})
             except Exception:
                 pass
+        for message_id in copies:
+            try:
+                self._call("deleteMessage", {"chat_id": self.bot_chat_id, "message_id": message_id})
+            except Exception as exc:
+                log_line("DEBUG", "PHOTO", f"Copia Bot JR non cancellata: {exc}")
         if self.tunnel is not None:
             try:
                 self.tunnel.terminate()
@@ -391,6 +420,14 @@ class Desk:
     def _call(self, method: str, payload: dict):
         response = self.http.post(f"https://api.telegram.org/bot{self.token}/{method}",
                                   json=payload, timeout=20)
+        body = response.json()
+        if not body.get("ok"):
+            raise RuntimeError(body.get("description") or f"HTTP {response.status_code}")
+        return body.get("result")
+
+    def _call_files(self, method: str, data: dict, files: dict):
+        response = self.http.post(f"https://api.telegram.org/bot{self.token}/{method}",
+                                  data=data, files=files, timeout=30)
         body = response.json()
         if not body.get("ok"):
             raise RuntimeError(body.get("description") or f"HTTP {response.status_code}")
@@ -577,12 +614,99 @@ class Desk:
         ids = [request["photo_id"]] + ([request["person_id"]] if request["person_id"] else [])
         with self.lock:
             state = self.slots[slot]
+            if state["used"]:
+                raise ValueError("Fase gia' pubblicata: la grafica non si cambia piu'.")
             state["confirmed"] = {"layers": str(layers), "request": request, "ids": ids}
-            # Foto confermata: avviso e promemoria di questa fase spariscono dalla chat.
-            messages, state["messages"] = list(state["messages"]), []
-            state["prompt_id"] = None
+            messages = list(state["messages"])
         log_line("OK", "PHOTO", f"{SLOT_TITLE[slot]}: foto confermata")
+        # L'avviso resta in chat col pulsante: si puo' cambiare finche' lo stato non esce.
+        self._mark_confirmed(slot, messages)
+        threading.Thread(target=self._sync_copy, args=(slot, True), name=f"photo-copy-{slot}",
+                         daemon=True).start()
+
+    def _mark_confirmed(self, slot: str, messages) -> None:
+        text = (f"{self._prefix()}✅ <b>{SLOT_TITLE[slot]}</b>: foto confermata\n{self._score_line()}\n\n"
+                "Puoi ancora cambiarla finche' lo stato non esce.")
+        for message_id in messages:
+            try:
+                self._call("editMessageText", {
+                    "chat_id": self.chat_id, "message_id": message_id, "text": text,
+                    "parse_mode": "HTML", "disable_web_page_preview": True,
+                    "reply_markup": self._keyboard(slot, "✏️ Cambia la grafica")})
+            except Exception as exc:
+                log_line("DEBUG", "PHOTO", f"Avviso non aggiornato: {exc}")
+
+    # ------------------------------------------------------------------
+    # Copia su Bot JR: subito alla conferma, aggiornata fino al fischio
+    # ------------------------------------------------------------------
+    def _score_now(self) -> tuple[int, int]:
+        with self.lock:
+            return int(self.match.get("home_goals", 0)), int(self.match.get("away_goals", 0))
+
+    def _refresh_copies(self) -> None:
+        """Se il risultato e' cambiato, rigenera le copie non ancora pubblicate."""
+        if not self.bot_chat_id:
+            return
+        score = self._score_now()
+        with self.lock:
+            stale = [slot for slot, s in self.slots.items()
+                     if s["confirmed"] and s["copy_id"] and not s["used"] and s["copy_score"] != score]
+        for slot in stale:
+            threading.Thread(target=self._sync_copy, args=(slot, False),
+                             name=f"photo-copy-{slot}", daemon=True).start()
+
+    def _phase_published(self, slot: str) -> None:
+        """Stato uscito sul canale: avvisi via, copia riallineata al risultato finale."""
+        with self.lock:
+            messages, self.slots[slot]["messages"] = list(self.slots[slot]["messages"]), []
+            self.slots[slot]["prompt_id"] = None
         self._delete(messages)
+        self._sync_copy(slot, False)
+
+    def _sync_copy(self, slot: str, force: bool) -> None:
+        chat = self.bot_chat_id
+        if not chat:
+            return
+        try:
+            with self.sync_lock:
+                score = self._score_now()
+                with self.lock:
+                    state = self.slots[slot]
+                    confirmed = state["confirmed"]
+                    copy_id, copy_score = state["copy_id"], state["copy_score"]
+                if not confirmed or (not force and copy_score == score):
+                    return
+                with self.render_lock:
+                    image = self._draw(slot, Path(confirmed["layers"]))
+                caption = f"{SLOT_TITLE[slot]}\n{self._score_line()}"
+                new_id = self._publish_copy(chat, copy_id, caption, image)
+                with self.lock:
+                    state["copy_id"], state["copy_score"] = new_id, score
+                log_line("INFO", "PHOTO", f"{SLOT_TITLE[slot]}: copia su Bot JR "
+                         f"{'aggiornata' if copy_id and new_id == copy_id else 'inviata'}")
+        except Exception as exc:
+            log_line("WARN", "PHOTO", f"Copia Bot JR {slot} non aggiornata: {type(exc).__name__}: {exc}")
+
+    def _publish_copy(self, chat: str, copy_id, caption: str, image: bytes) -> int | None:
+        if copy_id:
+            media = json.dumps({"type": "photo", "media": "attach://photo",
+                                "caption": caption, "parse_mode": "HTML"})
+            try:
+                self._call_files("editMessageMedia",
+                                 {"chat_id": chat, "message_id": copy_id, "media": media},
+                                 {"photo": ("phase.png", image, "image/png")})
+                return copy_id
+            except RuntimeError as exc:
+                text = str(exc).lower()
+                if "not modified" in text:
+                    return copy_id
+                if "not found" not in text and "can't be edited" not in text:
+                    raise
+                # Messaggio cancellato a mano su Bot JR: se ne manda uno nuovo.
+        result = self._call_files("sendPhoto",
+                                  {"chat_id": chat, "caption": caption, "parse_mode": "HTML"},
+                                  {"photo": ("phase.png", image, "image/png")})
+        return int(result["message_id"])
 
     def restore_state(self, slot: str) -> dict | None:
         """Ultima foto confermata, per riaprire l'editor da dove eri rimasto."""
