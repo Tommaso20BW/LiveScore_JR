@@ -747,6 +747,7 @@ def run(event_id: str, *, team_id: str = "", league: str = "eng.1", dry_run: boo
     # Senza invii (dry run) l'avviso non parte e le fasi restano solo testo.
     from livescore.match import phase_photo
     phase_photo.LABEL = "SIMULAZIONE"
+    phase_photo.BOT_COPY = False   # niente copie delle grafiche di fase su Bot JR in simulazione
     if dry_run:
         settings.PHOTO_CHAT_ID = None
     sim.clock.hold = phase_photo.holding
