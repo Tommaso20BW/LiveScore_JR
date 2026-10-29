@@ -62,6 +62,8 @@ SLOT_NOTE = {
     "end": "Vale per END OF 90' e FULL TIME.",
     "extra": "",
 }
+# Copia della grafica su Bot JR alla conferma. La simulazione la spegne: li' non serve.
+BOT_COPY = True
 MAX_PHOTOS = 10
 MAX_PHOTO_BYTES = 12 * 1024 * 1024
 PHOTO_ID = re.compile(r"[0-9a-f]{16}")
@@ -166,6 +168,8 @@ class Desk:
     @property
     def bot_chat_id(self) -> str:
         """Chat di Bot JR dove arrivano le copie delle grafiche (vuota = nessuna copia)."""
+        if not BOT_COPY:
+            return ""
         value = self._bot_chat_id if self._bot_chat_id is not None else settings.BOT_JR_CHAT_ID
         return str(value or "").strip()
 
