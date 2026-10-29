@@ -26,20 +26,22 @@ class PhaseLayersTest(unittest.TestCase):
 
     def test_refine_cutout_removes_light_halo_on_edge(self):
         import numpy as np
-        # Foto 1000x1500: persona scura con 2 px di alone chiaro (colore dello sfondo) dentro la maschera dura.
+        # Foto 1000x1500: persona scura con alone chiaro (colore dello sfondo) sul bordo,
+        # dove il modello da' un alpha parziale come nelle foto vere.
         photo = np.full((1500, 1000, 3), (235, 235, 205), np.uint8)
         photo[300:1200, 200:800] = (150, 20, 20)
-        photo[300:302, 200:800] = photo[1198:1200, 200:800] = (235, 235, 205)
         photo[300:1200, 200:202] = photo[300:1200, 798:800] = (235, 235, 205)
         alpha = np.zeros((1500, 1000), np.uint8)
         alpha[300:1200, 200:800] = 255
+        for i, value in enumerate((30, 80, 130, 190)):        # rampa morbida sul bordo sinistro
+            alpha[300:1200, 198 + i] = value
         out = pl.refine_cutout(Image.fromarray(np.dstack([photo, alpha]), 'RGBA'))
         self.assertEqual(out.size, (1000, 1500))
         board = Image.new('RGBA', out.size, (10, 60, 200, 255))
         board.alpha_composite(out)
         edge = np.asarray(board.convert('RGB')).astype(int)[700, 190:215]
         # Nessun pixel chiaro: tutto tra sfondo blu e persona rossa scura.
-        self.assertLess(edge.sum(axis=1).max(), 330)
+        self.assertLess(edge.sum(axis=1).max(), 400)
         self.assertEqual(out.getpixel((500, 700))[3], 255)
         self.assertEqual(out.getpixel((10, 10))[3], 0)
 

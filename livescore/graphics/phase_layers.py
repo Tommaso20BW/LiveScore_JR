@@ -108,20 +108,22 @@ def _quiet_onnxruntime():
 
 # Rifinitura del bordo dello scontorno (vedi refine_cutout). Valori in frazione del lato lungo
 # della foto, cosi' l'effetto e' lo stesso a 1000 px come a 4000 px.
-EDGE_CHOKE = 0.0016       # quanto il bordo rientra verso la persona (toglie l'alone dello sfondo)
-EDGE_FEATHER = 0.0012     # sfumatura del bordo (sigma)
-EDGE_SOLID = (0.30, 0.92)  # alpha del modello: sotto = trasparente, sopra = pieno
+EDGE_CHOKE = 0.0007       # quanto il bordo rientra verso la persona (toglie l'alone dello sfondo)
+EDGE_FEATHER = 0.0004     # sfumatura finale del bordo (sigma, minimo 0,7 px)
+EDGE_SOLID = (0.20, 0.85)  # alpha del modello: sotto = trasparente, sopra = pieno
 
 
 def refine_cutout(image):
     """Bordo della persona pulito: niente "contorno" visibile quando sta sopra la scritta.
 
-    Il modello restituisce una maschera con bordo duro/seghettato e, sul bordo, pixel che
-    hanno ancora il colore dello sfondo originale (alone chiaro o scuro). Tre passi:
-    1) la maschera si leviga e si restringe di un soffio (la sagoma entra nella persona);
-    2) il bordo si sfuma in modo morbido, a pixel interi e senza gradini;
-    3) il colore dei pixel di bordo si rimpiazza con quello della persona subito dentro
-       (decontaminazione), cosi' sulla scritta non resta nessuna linea di sfondo.
+    Il modello restituisce una maschera con un bordo largo e morbido e, sul bordo, pixel che
+    hanno ancora il colore dello sfondo originale (di solito scuro): sopra la scritta
+    colorata diventano una linea attorno al soggetto. Tre passi, leggeri per non rovinare
+    dita, capelli e righe della maglia:
+    1) l'alpha si "stringe" (curva piu' netta) e rientra di un paio di pixel;
+    2) il colore dei pixel di bordo si rimpiazza con quello della persona subito dentro,
+       steso verso fuori pochi pixel alla volta (decontaminazione);
+    3) un'ultima sfumatura di ~1 px toglie la seghettatura.
     Sagoma e dimensioni restano quelle della foto: cambia solo il bordo.
     """
     import cv2
@@ -131,37 +133,35 @@ def refine_cutout(image):
     alpha = rgba[..., 3].astype(np.float32) / 255.0
     side = max(alpha.shape)
     choke = max(1, round(side * EDGE_CHOKE))
-    sigma = max(0.8, side * EDGE_FEATHER)
+    sigma = max(0.7, side * EDGE_FEATHER)
 
-    # 1) sagoma levigata e ristretta: soglia morbida sull'alpha del modello, poi erosione.
-    smooth = cv2.GaussianBlur(alpha, (0, 0), sigma)
+    # 1) alpha piu' netta e ristretta.
     lo, hi = EDGE_SOLID
-    core = np.clip((smooth - lo) / (hi - lo), 0, 1)
+    core = np.clip((alpha - lo) / (hi - lo), 0, 1)
     core = core * core * (3 - 2 * core)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * choke + 1, 2 * choke + 1))
     core = cv2.erode(core, kernel)
-
-    # 2) bordo sfumato.
     out_alpha = np.clip(cv2.GaussianBlur(core, (0, 0), sigma), 0, 1)
-    out_alpha = np.minimum(out_alpha, np.maximum(alpha, cv2.dilate(alpha, kernel)))  # mai oltre il modello
+    out_alpha = np.minimum(out_alpha, alpha)                 # mai piu' piena del modello
 
-    # 3) colore dell'interno, steso verso il bordo (media pesata, solo pixel sicuri).
-    inner = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * choke + 3, 2 * choke + 3))
-    sure = (cv2.erode((alpha > 0.97).astype(np.uint8), inner) > 0).astype(np.float32)
-    colour = np.zeros_like(rgb)
-    weight = np.zeros_like(sure)
-    for scale in (1, 3, 9):
-        k = (0, 0)
-        s = max(1.0, choke * 2.0) * scale
-        num = cv2.GaussianBlur(rgb * sure[..., None], k, s)
-        den = cv2.GaussianBlur(sure, k, s)
-        fresh = (weight < 0.05) & (den > 0.05)
+    # 2) colore: parte dai pixel sicuri (piena opacita', lontani dal bordo) e si allarga
+    # verso fuori a piccoli passi, sostituendo il colore sporco del bordo.
+    solid = (alpha > 0.95).astype(np.uint8)
+    known = (cv2.erode(solid, np.ones((3, 3), np.uint8)) > 0).astype(np.float32)
+    colour = rgb * known[..., None]
+    reach = max(3, 2 * choke + 3)
+    for _ in range(reach):
+        num = cv2.GaussianBlur(colour, (0, 0), 1.0)
+        den = cv2.GaussianBlur(known, (0, 0), 1.0)
+        fresh = (known == 0) & (den > 0.04)
+        if not fresh.any():
+            break
         colour[fresh] = num[fresh] / den[fresh, None]
-        weight[fresh] = den[fresh]
-    band = np.clip((0.999 - out_alpha) * 8, 0, 1) + (1 - sure) * (out_alpha > 0)
-    band = np.clip(band, 0, 1)[..., None]
-    have = (weight > 0.05)[..., None]
-    rgb = np.where(have, rgb * (1 - band) + colour * band, rgb)
+        known[fresh] = 1.0
+    # Solo i pixel di bordo (alpha del modello non piena): l'interno resta com'e'.
+    # Piu' l'alpha e' bassa, piu' il colore e' sostituito; vicino al pieno resta quasi il proprio.
+    mix = np.clip((0.95 - alpha) / 0.4, 0, 1)[..., None]
+    rgb = rgb * (1 - mix) + colour * mix
 
     result = np.dstack([np.clip(rgb, 0, 255), out_alpha * 255]).round().astype(np.uint8)
     return Image.fromarray(result, 'RGBA')
