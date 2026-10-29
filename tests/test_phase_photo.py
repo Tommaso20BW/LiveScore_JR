@@ -34,13 +34,14 @@ class FakeTelegram:
     def __init__(self):
         self.calls = []
 
-    def post(self, url, json=None, timeout=None):
+    def post(self, url, json=None, data=None, files=None, timeout=None):
         method = url.rsplit('/', 1)[-1]
-        self.calls.append((method, json))
+        self.calls.append((method, json if json is not None else data))
         return Mock(status_code=200, json=lambda: {'ok': True, 'result': {'message_id': len(self.calls)}})
 
 
 def make_desk(**kwargs):
+    kwargs.setdefault('bot_chat_id', '')
     desk = pp.Desk(token='t', chat_id='42', webapp_url='https://example.org/app/',
                    direct_url='http://127.0.0.1:1', http=FakeTelegram(), **kwargs)
     with patch.object(bot, 'GOAL_GRAPHICS_ENABLED', True):
@@ -182,8 +183,10 @@ class ServerTests(unittest.TestCase):
                 desk.messages = [7, 8]
                 self.assertEqual(json.loads(post('/submit', json.dumps(envelope).encode())), {'ok': True})
                 deleted = [body['message_id'] for method, body in desk.http.calls if method == 'deleteMessage']
-                self.assertEqual(deleted, [7, 8])          # confermata: avvisi cancellati
-                self.assertEqual(desk.messages, [])
+                self.assertEqual(deleted, [])              # confermata: avvisi e pulsante restano
+                edited = [body['message_id'] for method, body in desk.http.calls if method == 'editMessageText']
+                self.assertEqual(edited, [7, 8])
+                self.assertEqual(desk.messages, [7, 8])
                 cut.assert_not_called()   # persona gia' scontornata (PNG trasparente): resta com'e'
 
                 with urllib.request.urlopen(f'{base}/phase?session={desk.session}&slot=half') as response:
@@ -201,6 +204,66 @@ class ServerTests(unittest.TestCase):
             finally:
                 desk.server.shutdown()
                 desk.server = None
+
+
+class BotJrCopyTests(unittest.TestCase):
+    """Copia su Bot JR: subito alla conferma, aggiornata fino al fischio, cancellata a fine partita."""
+
+    def make(self):
+        desk = make_desk(bot_chat_id='99')
+        desk.slots['half']['confirmed'] = {'layers': 'L', 'request': {}, 'ids': []}
+        desk.slots['half']['messages'] = [7]
+        desk.messages = [7]
+        return desk
+
+    def calls(self, desk, method):
+        return [body for m, body in desk.http.calls if m == method]
+
+    def test_copy_sent_then_edited_on_score_change_then_deleted(self):
+        desk = self.make()
+        with patch.object(desk, '_draw', return_value=b'png'):
+            desk._sync_copy('half', True)
+            sent = self.calls(desk, 'sendPhoto')
+            self.assertEqual(len(sent), 1)
+            self.assertEqual(sent[0]['chat_id'], '99')
+            copy_id = desk.slots['half']['copy_id']
+            self.assertIsNotNone(copy_id)
+
+            desk._sync_copy('half', False)                 # stesso risultato: niente
+            self.assertEqual(len(self.calls(desk, 'editMessageMedia')), 0)
+
+            desk.match['home_goals'] = 2                   # cambia il risultato
+            desk._refresh_copies()
+            for thread in __import__('threading').enumerate():
+                if thread.name == 'photo-copy-half':
+                    thread.join(5)
+            edits = self.calls(desk, 'editMessageMedia')
+            self.assertEqual(len(edits), 1)
+            self.assertEqual(edits[0]['message_id'], copy_id)
+            self.assertEqual(len(self.calls(desk, 'sendPhoto')), 1)   # nessun nuovo messaggio
+
+        desk.finish()
+        deleted = [b for b in self.calls(desk, 'deleteMessage') if b['chat_id'] == '99']
+        self.assertEqual([b['message_id'] for b in deleted], [copy_id])
+
+    def test_no_copy_without_bot_chat(self):
+        desk = make_desk(bot_chat_id='')
+        desk.slots['half']['confirmed'] = {'layers': 'L', 'request': {}, 'ids': []}
+        with patch.object(desk, '_draw', return_value=b'png') as draw:
+            desk._sync_copy('half', True)
+        draw.assert_not_called()
+        self.assertEqual(desk.http.calls, [])
+
+    def test_published_phase_freezes_editor(self):
+        desk = self.make()
+        with patch.object(desk, '_draw', return_value=b'png'):
+            desk._sync_copy('half', True)
+            desk.slots['half']['used'] = True
+            desk._phase_published('half')
+        self.assertEqual([b['message_id'] for b in self.calls(desk, 'deleteMessage')], [7])
+        desk.match['home_goals'] = 5
+        desk._refresh_copies()                             # pubblicata: non si tocca piu'
+        self.assertEqual(len(self.calls(desk, 'editMessageMedia')), 0)
 
 
 @contextlib.contextmanager
