@@ -441,6 +441,7 @@ def phase(
     layers=None,
     shootout=None,
     extra_time=False,
+    text_shadow=None,
     assets=g.DEFAULT_ASSET_DIR,
 ):
     if kind not in PHASE_KINDS:
@@ -510,7 +511,23 @@ def phase(
             method=Image.Resampling.LANCZOS,
         )
         word = word.resize((IW - 36, round(word.height * (IW - 36) / word.width)), Image.Resampling.LANCZOS)
-        bg.alpha_composite(phase_word(word, key, assets), (18, 28))   # no shadow on the phase word
+        word_layer = phase_word(word, key, assets)
+        # Ombra dietro la scritta di fase solo se ImageGEN l'ha chiesta (sfondo poco contrastato).
+        if text_shadow and text_shadow.get('strength', 0) > 0.02:
+            mask = Image.new('L', bg.size)
+            mask.paste(word_layer.getchannel('A'), (18, 28))
+            blur = max(4, float(text_shadow.get('blur', 12)))
+            alpha = float(text_shadow.get('alpha', .6))
+            shifted = Image.new('L', bg.size)
+            shifted.paste(mask, (0, 6))
+            shifted = shifted.filter(ImageFilter.GaussianBlur(blur))
+            # Due passate: l'alone sfocato da solo e' troppo leggero sulle lettere sottili.
+            shifted = shifted.point(lambda a: min(255, round(a * 1.8)))
+            color = tuple(text_shadow.get('color', (0, 0, 0)))
+            shade = Image.new('RGBA', bg.size, color + (255,))
+            shade.putalpha(shifted.point(lambda a: round(a * alpha)))
+            bg.alpha_composite(shade)
+        bg.alpha_composite(word_layer, (18, 28))
         bg.alpha_composite(player)
 
         fade = Image.new('RGBA', bg.size)
