@@ -46,6 +46,8 @@ jobs:
         run: |
           mkdir -p assets/goal_graphics
           cp -a _private_assets/players _private_assets/fonts _private_assets/team_logos _private_assets/overlays _private_assets/portrait _private_assets/word_textures assets/goal_graphics
+          # Correzioni squadre dalla mini app ImageGen (fuori da team_logos/: la sync FCLogo non le tocca).
+          if [ -d _private_assets/team_overrides ]; then cp -a _private_assets/team_overrides assets/goal_graphics/; fi
 
       - name: Restore seasonal FCLogo team logos
         uses: actions/cache@v6
@@ -111,7 +113,9 @@ jobs:
             echo "Nessun logo nuovo da pubblicare"
           else
             git commit -m "Update seasonal FCLogo team logos"
-            if ! git push; then
+            # Anche ImageGen scrive nel repo asset (correzioni squadre): se il push trova
+            # commit nuovi, li riprende e riprova una volta.
+            if ! git push && ! { git pull --rebase -q && git push; }; then
               echo "::warning::Loghi non pubblicati su GitHub; il live prosegue con i file già disponibili nel runner."
               exit 1
             fi

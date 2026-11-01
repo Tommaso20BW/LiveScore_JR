@@ -29,7 +29,19 @@ def _load_teams() -> dict:
 TEAM_MAP: dict = _load_teams()
 
 
+def _override_name(name: str) -> str | None:
+    """Nome mostrato scelto nella mini app ImageGen (ha la precedenza su teams.json)."""
+    try:
+        from livescore.core import team_overrides
+        return team_overrides.display_name(name)
+    except Exception:  # noqa: BLE001 - una correzione rotta non deve fermare il live
+        return None
+
+
 def translate_team(name: str) -> str:
+    custom = _override_name(name)
+    if custom:
+        return custom
     entry = TEAM_MAP.get(name)
     if entry:
         return entry[0]
@@ -49,5 +61,5 @@ def build_hashtag(home_name, away_name):
         for k, v in TEAM_MAP.items():
             if k.lower() == name_lower:
                 return v[1]
-        return name.replace(" ", "")
+        return (_override_name(name) or name).replace(" ", "")
     return txt.esc(f"#{abbr(home_name)}{abbr(away_name)}")

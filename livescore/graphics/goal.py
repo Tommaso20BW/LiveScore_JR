@@ -253,6 +253,14 @@ def _local_team_logo_path(
     team_id: str = "",
 ) -> Path | None:
     """Risolve gli alias ESPN verso i loghi locali provenienti da FCLogo."""
+    from livescore.core import team_overrides
+
+    # Correzioni dalla mini app ImageGen: logo caricato a mano, poi nome ESPN
+    # collegato a mano a una squadra del catalogo.
+    custom = team_overrides.logo_path(team_name, asset_dir)
+    if custom is not None:
+        return custom
+    team_name = team_overrides.base_name(team_name, asset_dir) or team_name
     # Manifest in team_logos/, PNG nelle sottocartelle per competizione (campo "file").
     dynamic_dir = asset_dir / "team_logos"
     return _logo_path_from_manifest(

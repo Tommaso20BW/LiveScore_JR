@@ -82,6 +82,8 @@ jobs:
         run: |
           mkdir -p assets/goal_graphics
           cp -a _private_assets/players _private_assets/fonts _private_assets/team_logos _private_assets/overlays _private_assets/portrait _private_assets/word_textures assets/goal_graphics
+          # Correzioni squadre dalla mini app ImageGen (fuori da team_logos/: la sync FCLogo non le tocca).
+          if [ -d _private_assets/team_overrides ]; then cp -a _private_assets/team_overrides assets/goal_graphics/; fi
 
       - name: Set up Python
         uses: actions/setup-python@v6
