@@ -293,6 +293,36 @@ class FCLogoSyncTests(unittest.TestCase):
         self.assertEqual((self.output_dir / "serie-a" / filename).read_bytes(), new_bytes)
         self.assertFalse((self.output_dir / filename).exists())
 
+    def _new_season_juve(self, old_bytes, new_bytes):
+        pack_slug = "2026-27-serie-a"
+        club_slug = "Juventus-FC-v2020"
+        filename = f"{club_slug}-mono.png"
+        (self.output_dir / filename).write_bytes(old_bytes)
+        (self.output_dir / fclogo_sync.MANIFEST_FILENAME).write_text(json.dumps({
+            "season": "2025-26",
+            "teams": [{"name": "Juventus", "slug": club_slug, "file": filename, "variant": "mono",
+                       "preview_url": f"https://cdn.example/{club_slug}-one.png", "packs": ["2025-26-serie-a"]}],
+        }), encoding="utf-8")
+        mono_url = f"{fclogo_sync.ASSET_BASE_URL}/{club_slug}-mono.png"
+        session = FakeSession({
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=1": FakeResponse(text=pack_listing(pack_slug)),
+            f"{fclogo_sync.BASE_URL}/packs?season=2026&page=2": FakeResponse(text=""),
+            f"{fclogo_sync.BASE_URL}/pack/{pack_slug}": FakeResponse(text=pack_page((club_slug, "Juventus", "one"))),
+            f"{fclogo_sync.BASE_URL}/figc/club/{club_slug}-mono": FakeResponse(text=detail_page(mono_url)),
+            mono_url: FakeResponse(content=new_bytes),
+        })
+        return fclogo_sync.sync_current_season(output_dir=self.output_dir, session=session, today=date(2026, 9, 1))
+
+    def test_new_mono_logo_is_reported_as_fresh(self):
+        report = self._new_season_juve(png_bytes((10, 10, 10, 255)), png_bytes((240, 240, 240, 255)))
+        self.assertEqual([t["name"] for t in report.fresh_mono], ["Juventus"])
+
+    def test_same_mono_logo_republished_is_not_fresh(self):
+        same = png_bytes((10, 10, 10, 255))
+        report = self._new_season_juve(same, same)
+        self.assertEqual(report.downloaded, 1)
+        self.assertEqual(report.fresh_mono, [])
+
     def test_logos_are_split_by_competition_with_a_copy_in_each(self):
         slugs = ["2026-27-serie-a", "2026-27-uefa-champions-league", "2026-27-uefa-conference-league"]
         inter = ("FC-Inter-Milan-v2021", "Inter", "one")
@@ -667,6 +697,7 @@ class FCLogoSyncTests(unittest.TestCase):
         self.assertFalse(any("/pack" in url for url in session.calls))
         lecce = {t["slug"]: t for t in self._read_manifest()["teams"]}["Lecce-v2001"]
         self.assertEqual(lecce["variant"], "mono")
+        self.assertEqual([t["name"] for t in report.fresh_mono], ["Lecce"])
 
     def test_incomplete_season_checks_the_catalog(self):
         self._write_manifest({"season": "2026-27", "complete": False, "packs": {}, "teams": []})

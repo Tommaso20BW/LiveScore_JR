@@ -113,3 +113,50 @@ class TeamOverridesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DropSupersededLogosTests(unittest.TestCase):
+    def _write(self, teams):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        (root / "team_overrides" / "logos").mkdir(parents=True)
+        for entry in teams.values():
+            if entry.get("logo"):
+                (root / "team_overrides" / entry["logo"]).write_bytes(b"png")
+        (root / "team_overrides" / "overrides.json").write_text(
+            json.dumps({"version": 1, "teams": teams}), encoding="utf-8")
+        return root
+
+    def _teams(self, root):
+        return json.loads((root / "team_overrides" / "overrides.json").read_text(encoding="utf-8"))["teams"]
+
+    def test_fresh_mono_removes_only_the_manual_logo(self):
+        root = self._write({
+            "lecce": {"base": "Lecce", "name": "US Lecce", "aliases": ["Lecce US"], "logo": "logos/lecce.png"},
+            "juve": {"base": "Juventus", "logo": "logos/juve.png"},
+        })
+        cleared = team_overrides.drop_superseded_logos([{"name": "Lecce", "aliases": []}], root)
+        self.assertEqual(cleared, ["US Lecce"])
+        teams = self._teams(root)
+        self.assertEqual(teams["lecce"], {"base": "Lecce", "name": "US Lecce", "aliases": ["Lecce US"]})
+        self.assertFalse((root / "team_overrides" / "logos" / "lecce.png").exists())
+        self.assertEqual(teams["juve"]["logo"], "logos/juve.png")
+        self.assertTrue((root / "team_overrides" / "logos" / "juve.png").exists())
+
+    def test_logo_only_correction_disappears(self):
+        root = self._write({"juve": {"base": "Juventus", "logo": "logos/juve.png"}})
+        self.assertEqual(team_overrides.drop_superseded_logos([{"name": "Juventus"}], root), ["Juventus"])
+        self.assertEqual(self._teams(root), {})
+
+    def test_manual_new_team_is_linked_to_the_new_fclogo_team(self):
+        root = self._write({"pisa": {"base": None, "name": "Pisa", "aliases": ["Pisa SC"], "logo": "logos/pisa.png"}})
+        cleared = team_overrides.drop_superseded_logos([{"name": "AC Pisa 1909", "aliases": ["Pisa"]}], root)
+        self.assertEqual(cleared, ["Pisa"])
+        self.assertEqual(self._teams(root)["pisa"], {"base": "AC Pisa 1909", "name": "Pisa", "aliases": ["Pisa SC"]})
+
+    def test_nothing_fresh_leaves_file_untouched(self):
+        root = self._write({"juve": {"base": "Juventus", "logo": "logos/juve.png"}})
+        before = (root / "team_overrides" / "overrides.json").read_bytes()
+        self.assertEqual(team_overrides.drop_superseded_logos([{"name": "Lecce"}], root), [])
+        self.assertEqual((root / "team_overrides" / "overrides.json").read_bytes(), before)

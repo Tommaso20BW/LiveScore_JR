@@ -105,10 +105,15 @@ jobs:
           # I loghi vivono nel repo privato degli asset: allinea la copia e fai push li'.
           rm -rf _private_assets/team_logos
           cp -a assets/goal_graphics/team_logos _private_assets/team_logos
+          # La sync toglie i loghi caricati a mano quando FCLogo pubblica un mono nuovo.
+          if [ -d assets/goal_graphics/team_overrides ]; then
+            rm -rf _private_assets/team_overrides
+            cp -a assets/goal_graphics/team_overrides _private_assets/team_overrides
+          fi
           cd _private_assets
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add team_logos
+          git add -A team_logos team_overrides 2>/dev/null || git add -A team_logos
           if git diff --cached --quiet; then
             echo "Nessun logo nuovo da pubblicare"
           else

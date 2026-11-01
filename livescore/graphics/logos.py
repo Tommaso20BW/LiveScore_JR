@@ -78,6 +78,11 @@ class SyncReport:
     removed: int = 0
     failed: int = 0
     errors: list[str] = field(default_factory=list)
+    # Squadre con un logo MONO davvero nuovo (file diverso da quello di prima o
+    # squadra prima assente): servono a togliere i loghi caricati a mano superati.
+    fresh_mono: list[dict[str, Any]] = field(default_factory=list)
+    # Correzioni a cui e' stato tolto il logo a mano (nomi squadra).
+    overrides_cleared: list[str] = field(default_factory=list)
 
     def summary(self) -> str:
         packs = ", ".join(self.selected_packs) if self.selected_packs else "nessuno"
@@ -86,7 +91,8 @@ class SyncReport:
             f"{self.downloaded} aggiornati, {self.reused} riutilizzati, "
             f"{self.removed} rimossi, "
             f"{self.failed} errori"
-        )
+        ) + (f"; loghi a mano tolti (ora c'e' il mono FCLogo): {', '.join(self.overrides_cleared)}"
+             if self.overrides_cleared else "")
 
 
 class _PackLinkParser(HTMLParser):
@@ -589,6 +595,7 @@ def sync_current_season(
             continue
         updated_teams[slug] = {**item, "packs": sorted(kept)}
     pending_downloads: list[tuple[str, ClubRecord, dict[str, Any], Path]] = []
+    fresh: list[dict[str, Any]] = []
     for club_slug, club in sorted(clubs_by_slug.items()):
         old = previous_teams.get(club_slug, {})
         old_path = output_dir / str(old.get("file", ""))
@@ -626,10 +633,13 @@ def sync_current_season(
     ) -> tuple[str, ClubRecord, str, str, str, bool, str]:
         club_slug, club, old, old_path = item
         download_http = http if session is not None else _new_session()
+        before = _png_bytes(old_path)
         try:
             filename, variant, source_url = _download_logo(
                 download_http, club, output_dir, _club_folders(club_packs[club_slug])[0]
             )
+            if variant == "mono" and _png_bytes(output_dir / filename) != before:
+                fresh.append({"name": club.name, "aliases": _club_aliases(club)})
             return club_slug, club, filename, variant, source_url, True, ""
         except FCLogoSyncError as exc:
             if previous.get("season") == label and _valid_png(old_path):
@@ -764,7 +774,15 @@ def sync_current_season(
                 folder.rmdir()
 
     report.teams = len(clubs_by_slug)
+    report.fresh_mono = sorted(fresh, key=lambda team: team["name"])
     return report
+
+
+def _png_bytes(path: Path) -> bytes | None:
+    try:
+        return path.read_bytes() if path.is_file() else None
+    except OSError:
+        return None
 
 
 def recheck_single_logos(
@@ -802,6 +820,7 @@ def recheck_single_logos(
         if variant != "mono":
             report.reused += 1
             continue
+        report.fresh_mono.append({"name": club.name, "aliases": list(item.get("aliases") or [])})
         source = output_dir / filename
         for relative in files:
             target = output_dir / str(relative)
@@ -956,6 +975,11 @@ def main() -> int:
     except FCLogoSyncError as exc:
         print(f"FCLogo: sincronizzazione non riuscita ({exc})")
         return 1
+    if report.fresh_mono:
+        # Le correzioni della mini app stanno accanto a team_logos/ (asset/team_overrides).
+        from livescore.core import team_overrides
+        report.overrides_cleared = team_overrides.drop_superseded_logos(
+            report.fresh_mono, Path(args.output_dir).parent)
     print(report.summary())
     for error in report.errors:
         print(f"FCLogo warning: {error}")

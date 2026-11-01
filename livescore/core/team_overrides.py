@@ -191,3 +191,57 @@ def apply(teams: list[dict], asset_dir: Path | str = ASSETS_DIR) -> list[dict]:
         if logo:
             team["custom_logo"] = logo
     return out
+
+
+def drop_superseded_logos(fresh: list[dict], asset_dir: Path | str = ASSETS_DIR) -> list[str]:
+    """Sync FCLogo: per le squadre che hanno appena ricevuto un logo MONO nuovo toglie
+    il logo caricato a mano (nome e nomi ESPN restano). Una squadra creata a mano
+    (base null) si collega alla squadra FCLogo appena comparsa con lo stesso nome.
+    Ritorna i nomi delle squadre ripulite."""
+    path = overrides_path(asset_dir)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        raw = data.get("teams") or {}
+    except (OSError, ValueError, AttributeError):
+        return []
+    owners: dict[str, str | None] = {}      # nome normalizzato -> squadra FCLogo (None se ambiguo)
+    for team in fresh:
+        name = str(team.get("name") or "").strip()
+        if not name:
+            continue
+        for n in [name, *(team.get("aliases") or [])]:
+            k = normalize_team_name(str(n))
+            if k:
+                owners[k] = name if owners.get(k, name) == name else None
+    cleared, dropped_files = [], []
+    for key in list(raw):
+        entry = clean_entry(raw[key])
+        if not entry or not entry.get("logo"):
+            continue
+        if entry.get("base"):
+            owner = owners.get(normalize_team_name(entry["base"]))
+        else:
+            hits = {owners.get(normalize_team_name(n)) for n in _names(entry)} - {None}
+            owner = hits.pop() if len(hits) == 1 else None
+            if owner:
+                entry["base"] = owner
+        if not owner:
+            continue
+        dropped_files.append(entry.pop("logo"))
+        cleared.append(entry.get("name") or owner)
+        entry = clean_entry(entry)
+        if entry:
+            raw[key] = entry
+        else:
+            del raw[key]
+    if not cleared:
+        return []
+    data["teams"] = dict(sorted(raw.items()))
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
+    still_used = {str(e.get("logo")) for e in raw.values() if isinstance(e, dict) and e.get("logo")}
+    for rel in dropped_files:
+        if rel not in still_used:
+            (path.parent / rel).unlink(missing_ok=True)
+    return sorted(cleared)
