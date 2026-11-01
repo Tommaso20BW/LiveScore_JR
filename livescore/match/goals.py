@@ -9,6 +9,7 @@ from livescore.constants import E_CANCEL, E_MIC, JUVE_ID
 from livescore.core import leagues, team_names
 from livescore.core import text as txt
 from livescore.core.log import log_line
+from livescore.match import teams
 from livescore.espn import client as espn_client
 from livescore.espn import parser as espn_parser
 from livescore.match import formatting as fmt
@@ -75,7 +76,7 @@ def catch_up_goals(ctx: MatchContext) -> None:
                 league_slug=ctx.league_slug,
                 league_name=ctx.league_name,
                 event_key=f"{ctx.event_id}|{goal_key}",
-            )) if (settings.GOAL_GRAPHICS_ENABLED and not leagues.is_friendly_competition(ctx.league_slug, ctx.league_name) and str(actual_tid) == JUVE_ID and bool(p_name) and ge["type"] in ('goal', 'own goal', 'penalty goal')) else None
+            )) if (settings.GOAL_GRAPHICS_ENABLED and str(actual_tid) == (teams.graphics_team(ctx.home_id, ctx.away_id, ctx.league_slug, ctx.league_name) or '-') and bool(p_name) and ge["type"] in ('goal', 'own goal', 'penalty goal')) else None
             rendered_goal = rendered_goal_retry() if rendered_goal_retry else None
             msg_id, sent_as_photo = tg.send_telegram_goal_get_id(
                 goal_text,
@@ -242,7 +243,7 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
                     league_slug=ctx.league_slug,
                     league_name=ctx.league_name,
                     event_key=f"{ctx.event_id}|{goal_key}",
-                )) if (settings.GOAL_GRAPHICS_ENABLED and not leagues.is_friendly_competition(ctx.league_slug, ctx.league_name) and str(actual_scoring_tid) == JUVE_ID and bool(player_name) and goal_type in ('goal', 'own goal', 'penalty goal')) else None
+                )) if (settings.GOAL_GRAPHICS_ENABLED and str(actual_scoring_tid) == (teams.graphics_team(ctx.home_id, ctx.away_id, ctx.league_slug, ctx.league_name) or '-') and bool(player_name) and goal_type in ('goal', 'own goal', 'penalty goal')) else None
                 rendered_goal = rendered_goal_retry() if rendered_goal_retry else None
                 msg_id, sent_as_photo = tg.send_telegram_goal_get_id(
                     goal_text,

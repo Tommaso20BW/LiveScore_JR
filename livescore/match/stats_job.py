@@ -11,8 +11,8 @@ from livescore.kits import detect as kit_detect
 
 
 def stats_eligible(home_id, away_id, league_slug, league_name=""):
-    return (JUVE_ID in (str(home_id), str(away_id))
-            and not leagues.is_friendly_competition(league_slug, league_name))
+    from livescore.match import teams
+    return bool(teams.graphics_team(home_id, away_id, league_slug, league_name))
 
 
 def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
@@ -26,8 +26,9 @@ def recupera_e_genera_stats_html(data_espn: dict, home_id: str, away_id: str,
     if not stats_eligible(home_id, away_id, league_slug, league_name):
         return None
     from livescore.graphics import stats as stats_graphics
-    kit = kit_detect.rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
-                         league_slug, league_name)
+    from livescore.match import teams
+    kit = teams.graphics_kit(data_espn, home_id, away_id, home_name, away_name,
+                             league_slug, league_name)
     raw         = espn_stats._estrai_stats_espn(data_espn)
 
     def g(side, *keys, fallback="0"):

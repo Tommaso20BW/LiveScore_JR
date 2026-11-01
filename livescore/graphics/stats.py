@@ -110,8 +110,10 @@ def rows_html(rows):
 
 def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id,
                home_name, away_name, assets=g.DEFAULT_ASSET_DIR):
-    if '111' not in (str(home_id), str(away_id)):
-        raise ValueError('STATS solo Juventus')
+    # Squadra evidenziata: la Juventus, o l'Italia nelle partite della Nazionale.
+    team_id = '162' if kit in p.ITALY_THEMES else '111'
+    if team_id not in (str(home_id), str(away_id)):
+        raise ValueError('STATS solo Juventus o Italia')
 
     assets = Path(assets)
     key = p.theme(kit, competition)
@@ -147,6 +149,9 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     logos = []
     for name, tid in ((home_name, home_id), (away_name, away_id)):
         # Exactly the same resolver, alpha and zoomed texture as event/phase cards.
+        if key in p.ITALY_THEMES:          # Italia: niente stemmi, i nomi sono sopra STATS
+            logos.append(uri(Image.new('RGBA', (1, 1))))
+            continue
         mark = p.logo(name, tid, key, assets, 128)
         if key == 'away':                     # pink panel: dark crests
             mark = p.flat_color(mark, p.AWAY_DARK)
@@ -176,7 +181,11 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
         other = ('color:#A52F68', 'background:#A52F68')
     if key == 'friendly':   # argento per la Juventus: l'avversaria in grigio, per distinguerle
         other = ('color:#8E949C', 'background:#8E949C')
-    (home_text, home_bar), (away_text, away_bar) = (juve, other) if str(home_id) == '111' else (other, juve)
+    if key == 'ita_home':   # bianco per l'Italia: l'avversaria in azzurro chiaro
+        other = ('color:#9CC3F0', 'background:#9CC3F0')
+    if key == 'ita_away':   # azzurro per l'Italia sul bianco: l'avversaria in grigio scuro
+        other = ('color:#4A5566', 'background:#4A5566')
+    (home_text, home_bar), (away_text, away_bar) = (juve, other) if str(home_id) == team_id else (other, juve)
 
     template = (TEMPLATES_DIR / 'stats.html').read_text(encoding='utf-8')
 
@@ -199,6 +208,25 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
 
     for name, value in values.items():
         template = template.replace('{{' + name + '}}', value)
+    if key in p.ITALY_THEMES:
+        # Italia: sopra STATS i nomi delle squadre in italiano ("ITALIA - SPAGNA").
+        from livescore.core import team_names
+        teams_line = escape(f'{team_names.translate_team(home_name)} - {team_names.translate_team(away_name)}'.upper())
+        color = p.COLORS[key]
+        template = template.replace(
+            '<main><header>',
+            f'<main><div style="position:absolute;left:0;right:0;top:34px;text-align:center;'
+            f'font:46px/1 Dharma;letter-spacing:1px;color:{color}">{teams_line}</div><header>')
+        # STATS più piccola e più in basso: i nomi restano staccati dal bordo del pannello.
+        template = (template.replace('top:55px;height:166px', 'top:92px;height:140px')
+                    .replace('.title{width:560px;height:auto}', '.title{width:430px;height:auto}'))
+    if key == 'ita_away':   # pannello bianco: scritte e linee scure invece che bianche
+        template = (template.replace('color:white', 'color:#1B2A40').replace('#ffffff26', '#1f5fb433')
+                    .replace('color:#a5adb3', 'color:#5C6B80').replace('.track.empty{height:10px;background:#39434d}',
+                    '.track.empty{height:10px;background:#c9d6e6}'))
+    if key == 'ita_home':   # pannello azzurro: linee e traccia vuota nei toni del blu
+        template = (template.replace('color:#a5adb3', 'color:#cfe0f5').replace(
+                    '.track.empty{height:10px;background:#39434d}', '.track.empty{height:10px;background:#0f3f7d}'))
     if key == 'away':   # pink panel: dark labels and lines instead of white
         template = (template.replace('color:white', 'color:#2B2B2B').replace('#ffffff26', '#2b2b2b33')
                     .replace('color:#a5adb3', 'color:#5a3a46').replace('.track.empty{height:10px;background:#39434d}',

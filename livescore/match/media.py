@@ -10,6 +10,7 @@ from livescore.core import leagues
 from livescore.core.log import log_line
 from livescore.graphics import goal as goal_graphics
 from livescore.kits import detect as kit_detect
+from livescore.match import teams
 from livescore.match import phase_photo
 from livescore.telegram import api as tg
 
@@ -30,16 +31,16 @@ def prepara_grafica_goal(*, data_espn: dict, scorer_name: str,
     """
     if not settings.GOAL_GRAPHICS_ENABLED:
         return None
-    if leagues.is_friendly_competition(league_slug, league_name):
-        return None
+    team = teams.graphics_team(home_id, away_id, league_slug, league_name)
     if (
-        str(scoring_team_id) != JUVE_ID
+        not team
+        or str(scoring_team_id) != team
         or goal_type not in ("goal", "penalty goal", "own goal")
         or not scorer_name
     ):
         return None
     try:
-        juve_kit = kit_detect.rileva_kit_juve(
+        juve_kit = teams.graphics_kit(
             data_espn,
             home_id,
             away_id,
@@ -48,7 +49,7 @@ def prepara_grafica_goal(*, data_espn: dict, scorer_name: str,
             league_slug,
             league_name,
         )
-        if juve_kit not in ("home", "away", "third"):
+        if juve_kit not in ("home", "away", "third", "ita_home", "ita_away"):
             juve_kit = "home" if str(home_id) == JUVE_ID else "away"
         rendered = goal_graphics.render_goal_card(
             scorer_name=scorer_name,
@@ -87,7 +88,7 @@ def _nome_portiere_registrato(name: str) -> str:
     return player.name if player and player.role == "goalkeeper" else ""
 
 
-def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
+def trova_portiere_juve(data_espn: dict, event_candidate: str = "", team_id: str = JUVE_ID) -> str:
     """Trova il portiere Juventus nei partecipanti evento o nelle formazioni ESPN.
 
     Prima i portieri in archivio (hanno la foto). Se non ce n'è uno, il nome indicato
@@ -139,7 +140,7 @@ def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
     # Summary ESPN: rosters[].roster[]
     for team_block in data_espn.get("rosters") or []:
         team = team_block.get("team") or {}
-        if str(team.get("id", team_block.get("id", ""))) != JUVE_ID:
+        if str(team.get("id", team_block.get("id", ""))) != str(team_id or JUVE_ID):
             continue
         for entry in team_block.get("roster") or team_block.get("athletes") or []:
             if isinstance(entry, dict):
@@ -148,7 +149,7 @@ def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
     # Summary ESPN: boxscore.players[].statistics[].athletes[]
     for team_block in ((data_espn.get("boxscore") or {}).get("players") or []):
         team = team_block.get("team") or {}
-        if str(team.get("id", "")) != JUVE_ID:
+        if str(team.get("id", "")) != str(team_id or JUVE_ID):
             continue
         for category in team_block.get("statistics") or []:
             for entry in category.get("athletes") or []:
@@ -187,16 +188,13 @@ def prepara_grafica_parata_rigore(
     league_slug: str = "",
     league_name: str = "",
 ) -> goal_graphics.RenderedGoal | None:
-    """Crea SAVED solo per un rigore avversario realmente parato dalla Juve."""
-    if not settings.GOAL_GRAPHICS_ENABLED or leagues.is_friendly_competition(
-        league_slug, league_name
-    ) or penalty_event.get("type") not in (
+    """Crea SAVED solo per un rigore avversario realmente parato dalla Juve (o dall'Italia)."""
+    team = teams.graphics_team(home_id, away_id, league_slug, league_name)
+    if not settings.GOAL_GRAPHICS_ENABLED or not team or penalty_event.get("type") not in (
         "penalty saved", "shootout saved"
     ):
         return None
-    opponent_id = away_id if str(home_id) == JUVE_ID else (
-        home_id if str(away_id) == JUVE_ID else ""
-    )
+    opponent_id = teams.opponent_of(team, home_id, away_id)
     if not opponent_id or str(penalty_event.get("team_id", "")) != str(opponent_id):
         return None
     if not html.unescape(goalkeeper_name or "").strip():
@@ -204,8 +202,8 @@ def prepara_grafica_parata_rigore(
     try:
         rendered = goal_graphics.render_saved_card(
             goalkeeper_name=goalkeeper_name,
-            kit=kit_detect.rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
-                               league_slug, league_name),
+            kit=teams.graphics_kit(data_espn, home_id, away_id, home_name, away_name,
+                                   league_slug, league_name),
             competition=league_slug,
             minute=minute,
             home_name=home_name,
@@ -238,20 +236,21 @@ def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_na
                         league_slug, league_name, home_goals=0, away_goals=0, shootout=None,
                         extra_time=False):
     """Compose each supported phase; HALF/END/FULL TIME use the photo confirmed in the Mini App."""
-    if (not settings.GOAL_GRAPHICS_ENABLED or JUVE_ID not in (str(home_id), str(away_id))
-            or leagues.is_friendly_competition(league_slug, league_name)
+    if (not settings.GOAL_GRAPHICS_ENABLED
+            or not teams.graphics_team(home_id, away_id, league_slug, league_name)
             or kind not in PHASE_GRAPHIC_KINDS):
         return None
     try:
         from livescore.graphics import portrait as portrait_graphics
         layers = None
-        if kind not in NO_PHOTO_KINDS:
+        # Italia: sempre senza foto (HALF/END/FULL TIME su due righe, come 2ND HALF).
+        if kind not in NO_PHOTO_KINDS and not teams.is_italy(home_id, away_id):
             layers = phase_photo.layers_for(kind, extra_time=extra_time, shootout=shootout)
             if layers is None:
                 log_line("INFO", "GRAPHICS", f"{kind.upper()}: nessuna foto confermata; invio testo")
                 return None
-        kit = kit_detect.rileva_kit_juve(data_espn, home_id, away_id, home_name, away_name,
-                             league_slug, league_name)
+        kit = teams.graphics_kit(data_espn, home_id, away_id, home_name, away_name,
+                                 league_slug, league_name)
         return portrait_graphics.phase(kind=kind, home_name=home_name, away_name=away_name,
             home_id=home_id, away_id=away_id, home_goals=home_goals, away_goals=away_goals,
             kit=kit, competition=league_slug, layers=layers, shootout=shootout,
@@ -264,8 +263,7 @@ def build_phase_graphic(*, kind, data_espn, home_id, away_id, home_name, away_na
 def send_phase_message(text, **kwargs):
     photo = build_phase_graphic(**kwargs)
     eligible = (settings.GOAL_GRAPHICS_ENABLED
-        and JUVE_ID in (str(kwargs['home_id']), str(kwargs['away_id']))
-        and not leagues.is_friendly_competition(kwargs['league_slug'], kwargs['league_name'])
+        and teams.graphics_team(kwargs['home_id'], kwargs['away_id'], kwargs['league_slug'], kwargs['league_name'])
         and kwargs['kind'] in PHASE_GRAPHIC_KINDS)
     return tg._send_telegram_event_photo_get_id(text, photo, filename='phase.png',
         label=kwargs['kind'], retry_factory=(lambda: build_phase_graphic(**kwargs)) if eligible else None)[0]

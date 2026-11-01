@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from livescore import settings
-from livescore.constants import E_EXIT, E_KICK, E_PEN_KO, E_RED, JUVE_ID
-from livescore.core import leagues
+from livescore.constants import E_EXIT, E_KICK, E_PEN_KO, E_RED
 from livescore.core import text as txt
 from livescore.core.log import log_line
-from livescore.match import media
+from livescore.match import media, teams
 from livescore.match.context import MatchContext
 from livescore.telegram import api as tg
 
@@ -67,16 +66,16 @@ def announce_failed_penalties(ctx: MatchContext) -> None:
             if _failpen_gia_inviato(ctx.state, e):
                 continue
             team_name = ctx.home_name if e["team_id"] == ctx.home_id else ctx.away_name
-            opponent_id = ctx.away_id if str(ctx.home_id) == JUVE_ID else (
-                ctx.home_id if str(ctx.away_id) == JUVE_ID else ""
-            )
+            # Squadra seguita (Juventus o Italia): un suo rigore parato è dell'avversaria.
+            followed = teams.followed_team(ctx.home_id, ctx.away_id)
+            opponent_id = teams.opponent_of(followed, ctx.home_id, ctx.away_id)
             is_juve_save = (
                 e["type"] in ("penalty saved", "shootout saved")
                 and bool(opponent_id)
                 and str(e["team_id"]) == str(opponent_id)
             )
             goalkeeper_name = (
-                media.trova_portiere_juve(ctx.data, e.get("assist_name", ""))
+                media.trova_portiere_juve(ctx.data, e.get("assist_name", ""), followed)
                 if is_juve_save else ""
             )
             rendered_saved = None
@@ -95,7 +94,7 @@ def announce_failed_penalties(ctx: MatchContext) -> None:
                     event_key=f"{ctx.event_id}|saved|{e.get('uid', '')}",
                     league_slug=ctx.league_slug,
                     league_name=ctx.league_name,
-                )) if (settings.GOAL_GRAPHICS_ENABLED and not leagues.is_friendly_competition(ctx.league_slug, ctx.league_name)) else None
+                )) if (settings.GOAL_GRAPHICS_ENABLED and teams.graphics_team(ctx.home_id, ctx.away_id, ctx.league_slug, ctx.league_name)) else None
                 rendered_saved = rendered_saved_retry() if rendered_saved_retry else None
                 penalty_text = (
                     f"<b>RIGORE PARATO · {e['minute']}' {E_KICK}</b>\n\n"

@@ -363,7 +363,11 @@ def render_goal_card(
         "penalty goal": " (RIGORE)",
     }.get(goal_type, "")
 
-    kit = kit if kit in THEMES else "home"
+    # Nazionale: sempre senza foto (le foto in archivio hanno la maglia della Juventus).
+    if kit in ("ita_home", "ita_away"):
+        card_player = None
+    else:
+        kit = kit if kit in THEMES else "home"
     try:
         from livescore.graphics.portrait import event
         return event(player=card_player, scorer_name=scorer_name, minute=minute,
@@ -400,6 +404,8 @@ def render_saved_card(
     name = player.name if player else html.unescape(goalkeeper_name or "").strip()
     if not name:
         raise GoalGraphicUnavailable("Nome portiere assente")
+    if kit in ("ita_home", "ita_away"):
+        player = None        # Nazionale: senza foto (in archivio c'è la maglia della Juventus)
     # Portiere non in archivio (o senza immagine): Parata senza foto, con l'effetto eco.
     try:
         from livescore.graphics.portrait import event

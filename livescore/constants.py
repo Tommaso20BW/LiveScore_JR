@@ -20,6 +20,7 @@ ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 #   third   → coppe (Coppa Italia, Supercoppa, Champions, Europa, ecc.)
 #   default → partita senza la Juve  /  amichevole
 # ==============================================================================
+ITALY_ID = '162'   # ID ESPN della Nazionale: grafiche senza foto con i temi ita_home/ita_away
 JUVE_ID = '111'  # ID ESPN reale della Juventus — usato SOLO per il branding
                  # (logo + tema kit). NON legato a TEAM_ID (la squadra monitorata,
                  # che in test potrebbe essere un'altra): così una partita senza la

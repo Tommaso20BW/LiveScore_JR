@@ -30,6 +30,8 @@ COLORS = dict(
     uel='#FA7A22',
     conference='#30C033',
     friendly='#D9DDE3',     # amichevoli (ImageGen): argento sul pannello antracite
+    ita_home='#FFFFFF',     # Italia in casa: bianco sul pannello azzurro
+    ita_away='#1F5FB4',     # Italia in trasferta: azzurro sul pannello bianco
 )
 # Shadow tint behind words and crests: each panel's deep tone instead of plain black.
 SHADOW = dict(
@@ -40,7 +42,17 @@ SHADOW = dict(
     uel='#140800',
     conference='#011207',
     friendly='#050608',
+    ita_home='#04122B',
+    ita_away='#6E8FBF',     # pannello bianco: ombra azzurrina leggera, non nera
 )
+# Temi senza foto: HALF TIME / END OF 90' / FULL TIME su due righe come 2ND HALF.
+# Italia: solo per le partite della Nazionale (kit 'ita_home' / 'ita_away' dal bot).
+NO_PHOTO_THEMES = ('friendly', 'ita_home', 'ita_away')
+# Italia: al posto degli stemmi i nomi delle squadre in italiano, con questo font.
+TEAM_NAME_FONT = 'fonts/DharmaGothicEBold.otf'
+# Italia: riga "ITALIA 2-1 SPAGNA" delle fasi più bassa della riga degli stemmi (64).
+ITALY_ROW_HEIGHT = 46
+ITALY_THEMES = ('ita_home', 'ita_away')
 # UCL lettering: electric blue (shade) -> light azure (light), following the texture light.
 UCL_GRADIENT = ('#3A5BFF', '#3D8BFF', '#55B8FF')
 # JR mark: same family, softer magenta end.
@@ -65,6 +77,8 @@ PHASE_PENALTY_CAPTION_Y = 1285
 
 
 def theme(kit='home', competition='', saved=False):
+    if kit in ITALY_THEMES:          # Nazionale: i colori dell'Italia valgono in ogni competizione
+        return kit
     value = competition.lower()
     # Amichevoli: tema grigio e argento (solo ImageGen: il bot live non fa grafiche per le amichevoli).
     if 'friendly' in value or 'amichev' in value:
@@ -165,7 +179,8 @@ def brand(card, key, assets):
     height = round(H * 58 / 1280)
     mark = mark.resize((round(mark.width * height / mark.height), height), Image.Resampling.LANCZOS)
     # Near-black (not pure black) so the texture still shows; UCL matches its lettering.
-    color = '#63D8FF' if key == 'ucl' else ('#EE9AB8' if key == 'away' else '#2B2B2B')
+    color = ('#63D8FF' if key == 'ucl' else '#EE9AB8' if key == 'away'
+             else '#1F5FB4' if key == 'ita_home' else '#FFFFFF' if key == 'ita_away' else '#2B2B2B')
     # Flat colour, no texture light: the mark stays clean on every frame.
     # UCL: same random gradient as the lettering, but without texture.
     if key == 'ucl':
@@ -196,7 +211,28 @@ def flat_color(layer, color):
     return out
 
 
+def match_name_mark(home_name, away_name, key, assets, height):
+    """"ITALIA - SPAGNA" in una sola scritta (KICK OFF e GOL dell'Italia, al posto dei due stemmi)."""
+    return team_name_mark(f'{team_names.translate_team(home_name)} - {team_names.translate_team(away_name)}',
+                          key, assets, height, translate=False)
+
+
+def team_name_mark(name, key, assets, height, translate=True):
+    """Nome della squadra in italiano (es. ITALIA), alto `height` px, nel colore del tema:
+    nelle grafiche dell'Italia sostituisce lo stemma."""
+    text = (team_names.translate_team(name) if translate else name).upper()
+    font = ImageFont.truetype(str(Path(assets) / TEAM_NAME_FONT), 100)
+    box = font.getbbox(text)
+    font = ImageFont.truetype(str(Path(assets) / TEAM_NAME_FONT), max(1, round(100 * height / (box[3] - box[1]))))
+    box = font.getbbox(text)
+    layer = Image.new('RGBA', (box[2] - box[0], box[3] - box[1]))
+    ImageDraw.Draw(layer).text((-box[0], -box[1]), text, font=font, fill='white')
+    return textured(layer, key, assets, True)
+
+
 def logo(name, tid, key, assets, height):
+    if key in ITALY_THEMES:
+        return team_name_mark(name, key, assets, height)
     source, origin = g.resolve_team_logo_source(name, str(tid), assets)
     if source is None:
         return None
@@ -217,6 +253,8 @@ def centered_logo_positions(marks, center, gap=20):
 
 def phase_logo(name, tid, key, assets, height):
     """Load a phase-card crest without cropping its transparent PNG padding."""
+    if key in ITALY_THEMES:
+        return team_name_mark(name, key, assets, height)
     source, origin = g.resolve_team_logo_source(name, str(tid), assets)
     if source is None:
         return None
@@ -509,6 +547,8 @@ def event(
         put(score_parts, 'left' if SCORE_LEFT else 'right')
 
     marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
+    if key in ITALY_THEMES:
+        marks = [match_name_mark(home_name, away_name, key, assets, round(64 * .8))]
     for mark, x in centered_logo_positions(marks, W / 2):
         soft_place(card, mark, (x, round(crest_cy - mark.height / 2)), blur=6, opacity=.50, key=key)
 
@@ -565,11 +605,15 @@ def phase(
         # Flat panel: no shadow under KICK OFF or its crests.
         card.alpha_composite(kw, ((W - word.width) // 2, top + 102))
         marks = [logo(name, tid, key, assets, KICK_LOGO_HEIGHT) for name, tid in [(home_name, home_id), (away_name, away_id)]]
+        row_y = top
+        if key in ITALY_THEMES:
+            marks = [match_name_mark(home_name, away_name, key, assets, ITALY_ROW_HEIGHT)]
+            row_y = top + KICK_LOGO_HEIGHT - ITALY_ROW_HEIGHT     # stessa distanza dalla scritta
         if key == 'away':
             marks = [flat_color(m, AWAY_DARK) for m in marks]
         for mark, x in centered_logo_positions(marks, W / 2):
-            card.alpha_composite(mark, (x, top))
-    elif kind == 'second' or (layers is None and key == 'friendly'):
+            card.alpha_composite(mark, (x, row_y))
+    elif kind == 'second' or (layers is None and key in NO_PHOTO_THEMES):
         # Inizio secondo tempo: identica a KICK OFF (stessa scritta, stessa posizione,
         # niente ombre) ma la riga degli stemmi diventa "stemma 1-0 stemma",
         # con il risultato alto quanto gli stemmi.
@@ -585,9 +629,12 @@ def phase(
         top = (H - KICK_LOGO_HEIGHT - 38 - kick_word.height) // 2
         sw = textured(word, key, assets, color=dark) if dark else phase_word(word, key, assets)
         card.alpha_composite(sw, ((W - word.width) // 2, top + 102))
-        score = score_of_height(f'{home_goals}-{away_goals}', KICK_LOGO_HEIGHT, key, assets, dark)
-        home_mark = logo(home_name, home_id, key, assets, KICK_LOGO_HEIGHT)
-        away_mark = logo(away_name, away_id, key, assets, KICK_LOGO_HEIGHT)
+        # Italia: riga più bassa, appoggiata alla stessa distanza dalla scritta.
+        row_h = ITALY_ROW_HEIGHT if key in ITALY_THEMES else KICK_LOGO_HEIGHT
+        row_top = top + KICK_LOGO_HEIGHT - row_h
+        score = score_of_height(f'{home_goals}-{away_goals}', row_h, key, assets, dark)
+        home_mark = logo(home_name, home_id, key, assets, row_h)
+        away_mark = logo(away_name, away_id, key, assets, row_h)
         if dark:
             home_mark, away_mark = flat_color(home_mark, dark), flat_color(away_mark, dark)
         # Tutta la riga "stemma 1-0 stemma" centrata sotto la scritta (anch'essa centrata):
@@ -599,11 +646,11 @@ def phase(
         away_w = away_box[2] - away_box[0] + SECOND_ROW_GAP if away_box else 0
         start = (W - (home_w + score.width + away_w)) / 2
         score_x = round(start + home_w)
-        card.alpha_composite(score, (score_x, top + (KICK_LOGO_HEIGHT - score.height) // 2))
+        card.alpha_composite(score, (score_x, row_top + (row_h - score.height) // 2))
         if home_box:
-            card.alpha_composite(home_mark, (round(start) - home_box[0], top))
+            card.alpha_composite(home_mark, (round(start) - home_box[0], row_top))
         if away_box:
-            card.alpha_composite(away_mark, (score_x + score.width + SECOND_ROW_GAP - away_box[0], top))
+            card.alpha_composite(away_mark, (score_x + score.width + SECOND_ROW_GAP - away_box[0], row_top))
         caption_text = _phase_caption(kind, home_name, away_name, shootout, extra_time) if kind != 'second' else None
         if caption_text:
             # Rigori / supplementari: sotto la scritta, centrati.
