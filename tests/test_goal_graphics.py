@@ -312,6 +312,21 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertEqual(rendered.kit, "saved")
         self.assertEqual(rendered.background_path.name, "home_clean_1086x1448.png")
 
+    def test_saved_renderer_without_registered_goalkeeper_has_no_photo(self):
+        rendered = goal_graphics.render_saved_card(
+            goalkeeper_name="Portiere Nuovo",
+            minute=72,
+            home_name="Juventus",
+            away_name="Inter",
+            home_goals=1,
+            away_goals=0,
+            asset_dir=self.root,
+            registry_path=self.registry,
+        )
+        self.assertIsNone(rendered.player)
+        self.assertIsNone(rendered.player_path)
+        self.assertEqual(rendered.scorer_name, "Portiere Nuovo")
+
     def test_saved_renderer_rejects_outfield_player(self):
         with self.assertRaises(goal_graphics.GoalGraphicUnavailable):
             goal_graphics.render_saved_card(
@@ -644,6 +659,27 @@ class GoalGraphicsTests(unittest.TestCase):
             }],
         }]}
         self.assertEqual(bot.trova_portiere_juve(data), "Guglielmo Vicario")
+
+    def test_finds_unregistered_juve_goalkeeper_from_espn_roster(self):
+        data = {"rosters": [{
+            "team": {"id": "111"},
+            "roster": [
+                {"athlete": {"displayName": "Portiere Nuovo"}, "position": {"abbreviation": "G"},
+                 "starter": True},
+                {"athlete": {"displayName": "Esterno Nuovo"}, "position": {"abbreviation": "F"},
+                 "starter": True},
+            ],
+        }]}
+        self.assertEqual(bot.trova_portiere_juve(data), "Portiere Nuovo")
+
+    def test_event_name_is_used_only_if_in_juve_roster(self):
+        data = {"rosters": [{
+            "team": {"id": "111"},
+            "roster": [{"athlete": {"displayName": "Portiere Nuovo"}, "position": {"abbreviation": "GK"}}],
+        }]}
+        # Il nome nell'evento è il tiratore avversario: non è nella rosa Juve.
+        self.assertEqual(bot.trova_portiere_juve(data, "Tiratore Avversario"), "Portiere Nuovo")
+        self.assertEqual(bot.trova_portiere_juve({}, "Tiratore Avversario"), "")
 
     def test_saved_card_is_only_prepared_for_opponent_penalty_saved(self):
         saved_event = {

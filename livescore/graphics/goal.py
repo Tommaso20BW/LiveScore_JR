@@ -393,13 +393,17 @@ def render_saved_card(
     competition: str = "",
 ) -> RenderedGoal:
     player = find_player(goalkeeper_name, registry_path)
-    if not player or player.role != "goalkeeper":
+    if player and player.role != "goalkeeper":
         raise GoalGraphicUnavailable(
-            f"Portiere non presente nel registro: {goalkeeper_name!r}"
+            f"Nel registro {goalkeeper_name!r} non è un portiere"
         )
+    name = player.name if player else html.unescape(goalkeeper_name or "").strip()
+    if not name:
+        raise GoalGraphicUnavailable("Nome portiere assente")
+    # Portiere non in archivio (o senza immagine): Parata senza foto, con l'effetto eco.
     try:
         from livescore.graphics.portrait import event
-        return event(player=player, scorer_name=player.name, minute=minute,
+        return event(player=player, scorer_name=name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit=kit, saved=True,
                      competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir,

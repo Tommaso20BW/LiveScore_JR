@@ -88,12 +88,18 @@ def _nome_portiere_registrato(name: str) -> str:
 
 
 def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
-    """Trova il portiere Juventus nei partecipanti evento o nelle formazioni ESPN."""
+    """Trova il portiere Juventus nei partecipanti evento o nelle formazioni ESPN.
+
+    Prima i portieri in archivio (hanno la foto). Se non ce n'è uno, il nome indicato
+    dall'evento del rigore, poi il portiere Juventus delle formazioni ESPN anche se non
+    è in archivio: la Parata esce lo stesso, senza foto."""
     direct = _nome_portiere_registrato(event_candidate)
     if direct:
         return direct
 
     candidates: list[tuple[int, str]] = []
+    unknown: list[tuple[int, str]] = []      # portieri fuori archivio (solo se ESPN dice portiere)
+    juve_names: set[str] = set()             # tutta la rosa Juve della partita (nomi normalizzati)
 
     def add_candidate(entry: dict, base_priority: int) -> None:
         athlete = entry.get("athlete") or entry.get("player") or entry
@@ -103,9 +109,10 @@ def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
             athlete.get("displayName") or athlete.get("fullName")
             or athlete.get("shortName") or ""
         )
+        for key in ("displayName", "fullName", "shortName"):
+            if athlete.get(key):
+                juve_names.add(goal_graphics.normalize_name(html.unescape(athlete[key])))
         canonical = _nome_portiere_registrato(name)
-        if not canonical:
-            return
         position = entry.get("position") or athlete.get("position") or {}
         if isinstance(position, dict):
             position_text = " ".join(str(position.get(key, "")) for key in (
@@ -113,7 +120,8 @@ def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
             )).lower()
         else:
             position_text = str(position).lower()
-        is_goalkeeper = any(token in position_text for token in (
+        abbreviation = str(position.get("abbreviation", "")).strip().lower() if isinstance(position, dict) else ""
+        is_goalkeeper = abbreviation == "g" or any(token in position_text for token in (
             "gk", "goalkeeper", "portiere", "keeper"
         ))
         priority = base_priority
@@ -123,7 +131,10 @@ def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
             priority += 20
         if entry.get("active") is True or entry.get("didPlay") is True:
             priority += 10
-        candidates.append((priority, canonical))
+        if canonical:
+            candidates.append((priority, canonical))
+        elif is_goalkeeper and name and not goal_graphics.find_player(html.unescape(name)):
+            unknown.append((priority, html.unescape(name).strip()))
 
     # Summary ESPN: rosters[].roster[]
     for team_block in data_espn.get("rosters") or []:
@@ -144,10 +155,20 @@ def trova_portiere_juve(data_espn: dict, event_candidate: str = "") -> str:
                 if isinstance(entry, dict):
                     add_candidate(entry, 100)
 
-    if not candidates:
-        return ""
-    candidates.sort(key=lambda item: item[0], reverse=True)
-    return candidates[0][1]
+    if candidates:
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        return candidates[0][1]
+    # Nessun portiere in archivio: chi ha parato secondo l'evento, ma solo se è nella rosa
+    # Juve della partita (l'evento può nominare anche il tiratore) e non è un giocatore di
+    # movimento in archivio; altrimenti il portiere Juve delle formazioni ESPN.
+    fallback = html.unescape(event_candidate or "").strip()
+    if (fallback and goal_graphics.normalize_name(fallback) in juve_names
+            and not goal_graphics.find_player(fallback)):
+        return fallback
+    if unknown:
+        unknown.sort(key=lambda item: item[0], reverse=True)
+        return unknown[0][1]
+    return ""
 
 
 def prepara_grafica_parata_rigore(
@@ -178,7 +199,7 @@ def prepara_grafica_parata_rigore(
     )
     if not opponent_id or str(penalty_event.get("team_id", "")) != str(opponent_id):
         return None
-    if not _nome_portiere_registrato(goalkeeper_name):
+    if not html.unescape(goalkeeper_name or "").strip():
         return None
     try:
         rendered = goal_graphics.render_saved_card(
@@ -196,7 +217,8 @@ def prepara_grafica_parata_rigore(
             event_key=event_key,
         )
         log_line(
-            "DEBUG", "GRAPHICS", f"SAVED pronta | {rendered.player.name} | posa={rendered.pose}"
+            "DEBUG", "GRAPHICS", f"SAVED pronta | {rendered.scorer_name} | "
+            f"{'posa=' + str(rendered.pose) if rendered.player else 'senza foto'}"
         )
         return rendered
     except goal_graphics.GoalGraphicUnavailable as e:
