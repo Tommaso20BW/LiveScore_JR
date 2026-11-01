@@ -44,14 +44,13 @@ def phase_scorers_line(events, home_id, away_id, kind):
 
 
 def goal_scoring_team_id(event: dict, home_id: str, away_id: str) -> str:
-    """Restituisce la squadra a cui va assegnato il gol, invertendo l'autogol."""
-    event_team_id = str(event.get("team_id", ""))
-    if event.get("type") == "own goal":
-        if event_team_id == str(home_id):
-            return str(away_id)
-        if event_team_id == str(away_id):
-            return str(home_id)
-    return event_team_id
+    """Restituisce la squadra a cui va assegnato il gol.
+
+    Autogol: ESPN lo attribuisce già alla squadra che ne BENEFICIA (commentary,
+    keyEvents e details: "Own Goal by Andrea Cambiaso, Juventus" ha team Inter),
+    quindi non va invertito. Il testo rapido del commento (fonte 0 del parser),
+    l'unico con la squadra del giocatore, non legge mai gli autogol."""
+    return str(event.get("team_id", ""))
 
 
 def goal_player_lines(

@@ -197,9 +197,9 @@ class Timeline:
         for key, event in self.key_events:
             if not keep(key) or not event.get("scoringPlay") or event.get("shootout"):
                 continue
+            # Anche l'autogol: ESPN lo mette già sulla squadra che ne beneficia.
             team = str((event.get("team") or {}).get("id", ""))
-            own = "own" in str((event.get("type") or {}).get("text", "")).lower()
-            if (team == str(self.home["team"]["id"])) != own:
+            if team == str(self.home["team"]["id"]):
                 home += 1
             else:
                 away += 1

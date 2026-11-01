@@ -402,18 +402,19 @@ class GoalGraphicsTests(unittest.TestCase):
         self.assertIsNone(result)
         render.assert_not_called()
 
-    def test_own_goal_team_is_inverted_before_juventus_graphic_logic(self):
+    def test_own_goal_keeps_espn_team_which_is_the_beneficiary(self):
+        # ESPN: "Own Goal by Andrea Cambiaso, Juventus" ha team Inter (chi ne beneficia).
         self.assertEqual(
             bot.goal_scoring_team_id(
                 {"type": "own goal", "team_id": "999"}, "111", "999"
             ),
-            "111",
+            "999",
         )
         self.assertEqual(
             bot.goal_scoring_team_id(
                 {"type": "own goal", "team_id": "111"}, "111", "999"
             ),
-            "999",
+            "111",
         )
 
     def test_juventus_own_goal_never_renders_a_player_card(self):
