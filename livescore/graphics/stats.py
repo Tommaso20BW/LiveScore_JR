@@ -174,6 +174,8 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
     other = ('color:#fff', 'background:#fff')
     if key == 'away':   # pink panel: white is unreadable, use deep rose for the opponent
         other = ('color:#A52F68', 'background:#A52F68')
+    if key == 'friendly':   # argento per la Juventus: l'avversaria in grigio, per distinguerle
+        other = ('color:#8E949C', 'background:#8E949C')
     (home_text, home_bar), (away_text, away_bar) = (juve, other) if str(home_id) == '111' else (other, juve)
 
     template = (TEMPLATES_DIR / 'stats.html').read_text(encoding='utf-8')

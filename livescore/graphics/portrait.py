@@ -3,7 +3,7 @@ import io
 import math
 import random
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
+from PIL import Image, ImageChops, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
 from livescore.graphics import goal as g
 from livescore.core import team_names
 
@@ -29,6 +29,7 @@ COLORS = dict(
     ucl='#63D8FF',
     uel='#FA7A22',
     conference='#30C033',
+    friendly='#D9DDE3',     # amichevoli (ImageGen): argento sul pannello antracite
 )
 # Shadow tint behind words and crests: each panel's deep tone instead of plain black.
 SHADOW = dict(
@@ -38,6 +39,7 @@ SHADOW = dict(
     ucl='#08061E',
     uel='#140800',
     conference='#011207',
+    friendly='#050608',
 )
 # UCL lettering: electric blue (shade) -> light azure (light), following the texture light.
 UCL_GRADIENT = ('#3A5BFF', '#3D8BFF', '#55B8FF')
@@ -64,6 +66,9 @@ PHASE_PENALTY_CAPTION_Y = 1285
 
 def theme(kit='home', competition='', saved=False):
     value = competition.lower()
+    # Amichevoli: tema grigio e argento (solo ImageGen: il bot live non fa grafiche per le amichevoli).
+    if 'friendly' in value or 'amichev' in value:
+        return 'friendly'
     if 'conference' in value or 'europa.conf' in value or 'europa_conf' in value:
         return 'conference'
     if 'champions' in value:
@@ -291,6 +296,78 @@ def saved_heading(assets):
 
 
 
+# Amichevoli (GOAL/SAVED senza foto): una scritta piena al centro e sopra/sotto copie solo col
+# contorno, a scaletta. Di ogni copia si vede solo una striscia: sopra la parte alta, fino
+# all'inizio della copia successiva; sotto la parte bassa. Verso il fondo le copie sfumano.
+FRIENDLY_ECHO_STEP = 0.37    # passo fra le copie (altezza della striscia), in altezze della scritta
+FRIENDLY_ECHO_SOFT = 0.55    # parte della striscia che sfuma verso il taglio
+FRIENDLY_STROKE = 4          # spessore del contorno (px della card)
+
+
+def _front_word(assets, saved):
+    """Scritta grande GOAL/SAVED in fondo, alla misura con cui la mette place_word."""
+    word = tight(Image.open(Path(assets) / 'overlays' / ('front_saved.png' if saved else 'front_goal.png')), True)
+    return ImageOps.contain(word, (IW + 44, 340), Image.Resampling.LANCZOS)
+
+
+def _echo_word(panel, assets, saved, letters, front):
+    """Effetto eco nel pannello. Ritorna il fondo della vecchia scritta grande (coordinate
+    del pannello): sotto vanno risultato, stemmi e nome."""
+    name, width, (x, _) = HEADINGS[saved]
+    word = tight(Image.open(Path(assets) / 'overlays' / name), True)
+    word = letters(word.resize((width, round(word.height * width / word.width)), Image.Resampling.LANCZOS))
+    h = word.height
+    # Margine intorno alla scritta: le lettere che toccano il bordo dell'immagine (S, O in
+    # alto) altrimenti restano col contorno aperto proprio lì.
+    pad = FRIENDLY_STROKE + 2
+    fill = Image.new('L', (word.width + 2 * pad, word.height + 2 * pad))
+    fill.paste(word.getchannel('A').point(lambda a: 255 if a > 110 else 0), (pad, pad))
+    inner = fill.filter(ImageFilter.MinFilter(FRIENDLY_STROKE * 2 + 1))
+    ring = ImageChops.subtract(fill, inner).filter(ImageFilter.GaussianBlur(0.6))
+    outline = Image.new('RGBA', fill.size, ImageColor.getrgb(COLORS['friendly']) + (0,))
+    outline.putalpha(ring)
+
+    ink = front.getchannel('A').point(lambda v: 255 if v > 100 else 0).getbbox()
+    end = 1115 + BOTTOM_SHIFT - front.height + ink[3] - M          # fondo della vecchia scritta grande
+    center = round((end - h) / 2)                                   # scritta piena al centro dell'area
+    step = max(8, round(h * FRIENDLY_ECHO_STEP))
+    layer = Image.new('RGBA', panel.size)
+
+    soft = max(2, round(step * FRIENDLY_ECHO_SOFT))
+
+    def strip(y, y0, y1, fade_down):
+        """Copia a contorno in y, visibile solo fra y0 e y1; verso il taglio sfuma
+        (fade_down: il taglio è in basso, altrimenti in alto)."""
+        piece = Image.new('RGBA', panel.size)
+        piece.paste(outline, (x - pad, y - pad))
+        cut = Image.new('L', panel.size)
+        draw = ImageDraw.Draw(cut)
+        for yy in range(max(0, y0), min(panel.height, y1)):
+            d = (y1 - 1 - yy) if fade_down else (yy - y0)              # distanza dal taglio
+            draw.line((0, yy, panel.width, yy), fill=round(255 * min(1, d / soft)))
+        piece.putalpha(ImageChops.multiply(piece.getchannel('A'), cut))
+        layer.alpha_composite(piece)
+
+    y = center - step                                              # sopra: parte alta di ogni copia
+    while y + step > 0:
+        strip(y, y, y + step, True)
+        y -= step
+    y = center + step                                              # sotto: parte bassa di ogni copia
+    while y + h - step < panel.height:
+        strip(y, y + h - step, y + h, False)
+        y += step
+    # Verso il fondo le copie sfumano: risultato, stemmi e nome restano leggibili.
+    fade = Image.new('L', panel.size, 255)
+    draw = ImageDraw.Draw(fade)
+    f0, f1 = center + h, end + 40
+    for yy in range(f0, panel.height):
+        draw.line((0, yy, panel.width, yy), fill=round(255 * max(0, 1 - (yy - f0) / max(1, f1 - f0)) ** 1.4))
+    layer.putalpha(ImageChops.multiply(layer.getchannel('A'), fade))
+    layer.alpha_composite(word, (x, center))
+    panel.alpha_composite(layer)
+    return end
+
+
 def event(
     *,
     player,
@@ -324,7 +401,12 @@ def event(
             return ucl_gradient(source, assets, random.Random(seed))
         return textured(source, key, assets)
 
-    panel.alpha_composite(textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading))
+    friendly_fill = key == 'friendly' and not player
+    if friendly_fill:
+        # Amichevoli, senza foto: scritta piena al centro con le copie a contorno sopra e sotto.
+        fill_end = _echo_word(panel, assets, saved, letters, _front_word(assets, saved))
+    else:
+        panel.alpha_composite(textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading))
 
     path = None
     pose = pose or 'arms_crossed'
@@ -353,17 +435,22 @@ def event(
         else:
             path = None
 
-    fade = Image.new('RGBA', panel.size)
-    draw = ImageDraw.Draw(fade)
-    for y in range(520, IH):
-        draw.line((0, y, IW, y), fill=(0, 0, 0, round(238 * min(1, (y - 520) / (IH - 520)) ** 1.35)))
-    panel.alpha_composite(fade)
-    card.alpha_composite(panel, (M, M))
+    if friendly_fill:
+        # Niente foto: niente sfumatura scura in fondo e niente scritta grande fuori dal pannello.
+        card.alpha_composite(panel, (M, M))
+        word_bottom = M + fill_end
+    else:
+        fade = Image.new('RGBA', panel.size)
+        draw = ImageDraw.Draw(fade)
+        for y in range(520, IH):
+            draw.line((0, y, IW, y), fill=(0, 0, 0, round(238 * min(1, (y - 520) / (IH - 520)) ** 1.35)))
+        panel.alpha_composite(fade)
+        card.alpha_composite(panel, (M, M))
 
-    word = tight(Image.open(assets / 'overlays' / ('front_saved.png' if saved else 'front_goal.png')), True)
-    word = ImageOps.contain(word, (IW + 44, 340), Image.Resampling.LANCZOS)
-    word = letters(word)
-    word_bottom = place_word(card, word, saved, key)
+        word = tight(Image.open(assets / 'overlays' / ('front_saved.png' if saved else 'front_goal.png')), True)
+        word = ImageOps.contain(word, (IW + 44, 340), Image.Resampling.LANCZOS)
+        word = letters(word)
+        word_bottom = place_word(card, word, saved, key)
 
     # Minute left and score right, just under the big heading at the top (same on GOAL and SAVED).
     # Everything sits on one baseline; edges are aligned on the drawn ink, not the font advance.
@@ -397,12 +484,16 @@ def event(
     minute_parts = [str(minute).rstrip("'’") + "'"]
     score_parts = ([str(home_goals), '-', str(away_goals)]       # "1-0" with no space
                    if home_goals is not None and away_goals is not None else None)
+    # Stemmi a meta' tra la scritta GOAL/SAVED e il nome: stessa distanza sopra e sotto.
+    crest_cy = (word_bottom + NAME_TOP) / 2 - 1   # -1: compensa il bordo sfumato della scritta
+    if friendly_fill:
+        # Amichevoli: in alto c'è la scritta ripetuta, quindi risultato e minuto scendono
+        # sotto la scritta grande, ai lati degli stemmi (centrati sulla loro riga).
+        baseline = round(crest_cy + cap / 2)
     put(minute_parts, 'right' if SCORE_LEFT else 'left')
     if score_parts:
         put(score_parts, 'left' if SCORE_LEFT else 'right')
 
-    # Stemmi a meta' tra la scritta GOAL/SAVED e il nome: stessa distanza sopra e sotto.
-    crest_cy = (word_bottom + NAME_TOP) / 2 - 1   # -1: compensa il bordo sfumato della scritta
     marks = [logo(name, tid, key, assets, 64) for name, tid in [(home_name, home_id), (away_name, away_id)]]
     for mark, x in centered_logo_positions(marks, W / 2):
         soft_place(card, mark, (x, round(crest_cy - mark.height / 2)), blur=6, opacity=.50, key=key)
@@ -464,10 +555,14 @@ def phase(
             marks = [flat_color(m, AWAY_DARK) for m in marks]
         for mark, x in centered_logo_positions(marks, W / 2):
             card.alpha_composite(mark, (x, top))
-    elif kind == 'second':
+    elif kind == 'second' or (layers is None and key == 'friendly'):
         # Inizio secondo tempo: identica a KICK OFF (stessa scritta, stessa posizione,
         # niente ombre) ma la riga degli stemmi diventa "stemma 1-0 stemma",
         # con il risultato alto quanto gli stemmi.
+        # Amichevoli (ImageGen, senza foto): HALF TIME / END OF 90' / FULL TIME uguali a
+        # 2ND HALF, con la scritta divisa su due righe.
+        if kind != 'second':
+            word = _two_lines(word)
         dark = AWAY_DARK if key == 'away' else None
         # Stessa posizione e stessa altezza lettere di KICK OFF (entrambe su 2 righe).
         kick_word = ImageOps.contain(tight(Image.open(assets / 'overlays' / 'kick.png'), True),
@@ -495,6 +590,13 @@ def phase(
             card.alpha_composite(home_mark, (round(start) - home_box[0], top))
         if away_box:
             card.alpha_composite(away_mark, (score_x + score.width + SECOND_ROW_GAP - away_box[0], top))
+        caption_text = _phase_caption(kind, home_name, away_name, shootout, extra_time) if kind != 'second' else None
+        if caption_text:
+            # Rigori / supplementari: sotto la scritta, centrati.
+            caption = number(caption_text, 36, key, assets, dark)
+            if caption.width > IW - 40:
+                caption = ImageOps.contain(caption, (IW - 40, caption.height))
+            card.alpha_composite(caption, ((W - caption.width) // 2, top + 102 + word.height + 48))
     else:
         if layers is None:
             raise ValueError('Foto della fase non disponibile')
@@ -546,59 +648,99 @@ def phase(
             strip = strip.crop((cut, 0, cut + IW, strip.height))
             card.alpha_composite(strip, (M, M - strip.height))
 
-        # Final production settings derived from the local preview script.
-        score = number(f'{home_goals}-{away_goals}', PHASE_SCORE_FONT_SIZE, key, assets)
-        y = (1210 if (shootout or (extra_time and kind == 'full')) else 1220) - PHASE_GROUP_LIFT
-
-        # Keep the score fixed at card center, independent of crest widths.
-        # Measure gaps from visible alpha bounds, preserving PNG padding.
-        logo_height = max(1, round(score.height * PHASE_LOGO_HEIGHT_FACTOR))
-        home_mark = phase_logo(home_name, home_id, key, assets, logo_height)
-        away_mark = phase_logo(away_name, away_id, key, assets, logo_height)
-        # Risultato centrato sulla card in base ai pixel visibili; stemmi ai lati.
-        ink = score.getchannel('A').getbbox()
-        score_cx = (ink[0] + ink[2]) / 2
-        score_x = round(W / 2 - score_cx)
-        home_x = away_x = None
-        if home_mark is not None:
-            home_x = score_x + ink[0] - 28 - visible_logo_bbox(home_mark)[2]
-        if away_mark is not None:
-            away_x = score_x + ink[2] + 28 - visible_logo_bbox(away_mark)[0]
-
-        soft_place(card, score, (score_x, y - score.height // 2), blur=9, opacity=.60, key=key)
-        if home_mark is not None:
-            soft_place(card, home_mark, (home_x, y - home_mark.height // 2), blur=9, opacity=.60, key=key)
-        if away_mark is not None:
-            soft_place(card, away_mark, (away_x, y - away_mark.height // 2), blur=9, opacity=.60, key=key)
-
-        caption_text = None
-        if shootout:
-            hp, ap = shootout
-            if hp == ap:
-                raise ValueError('Rigori non conclusi')
-            # home_name/away_name sono nomi ESPN (servono ai loghi): il testo resta in italiano.
-            winner = team_names.translate_team(home_name if hp > ap else away_name)
-            caption_text = f'{winner} VINCE {max(hp, ap)}-{min(hp, ap)} AI RIGORI'.upper()
-        elif extra_time and kind == 'full':
-            caption_text = 'DOPO I TEMPI SUPPLEMENTARI'
-        if caption_text:
-            text = caption_text
-            caption = number(text, 36, key, assets)
-            if caption.width > IW - 40:
-                caption = ImageOps.contain(caption, (IW - 40, caption.height))
-            # Centro della scritta = centro visibile del SOLO risultato (mai dei loghi).
-            cap_ink = caption.getchannel('A').getbbox()
-            cap_x = round(score_x + score_cx - (cap_ink[0] + cap_ink[2]) / 2)
-            soft_place(
-                card,
-                caption,
-                (cap_x, PHASE_PENALTY_CAPTION_Y),
-                blur=5,
-                opacity=.50,
-                key=key,
-            )
+        _phase_score_group(card, kind, key, assets, home_name, home_id, away_name, away_id,
+                           home_goals, away_goals, shootout, extra_time)
 
     return png(brand(card, key, assets))
+
+
+def _phase_caption(kind, home_name, away_name, shootout, extra_time):
+    """Scritta sotto il risultato: rigori o supplementari (None se non serve)."""
+    if shootout:
+        hp, ap = shootout
+        if hp == ap:
+            raise ValueError('Rigori non conclusi')
+        # home_name/away_name sono nomi ESPN (servono ai loghi): il testo resta in italiano.
+        winner = team_names.translate_team(home_name if hp > ap else away_name)
+        return f'{winner} VINCE {max(hp, ap)}-{min(hp, ap)} AI RIGORI'.upper()
+    if extra_time and kind == 'full':
+        return 'DOPO I TEMPI SUPPLEMENTARI'
+    return None
+
+
+def _two_lines(word):
+    """Scritta su una riga ("HALF TIME") -> due righe centrate ("HALF" / "TIME"), con lo
+    stesso spazio fra le righe di KICK OFF. Si taglia nello spazio fra le parole che rende
+    le righe più corte (a parità, riga sopra più lunga: "END OF" / "90'")."""
+    alpha = word.getchannel('A').point(lambda a: 255 if a > 40 else 0)
+    import numpy as np
+    filled = np.asarray(alpha).any(0)
+    runs, x = [], 0
+    while x < len(filled):
+        if not filled[x]:
+            s = x
+            while x < len(filled) and not filled[x]:
+                x += 1
+            runs.append((s, x))
+        x += 1
+    if not runs:
+        return word
+    widest = max(b - a for a, b in runs)
+    spaces = [(a, b) for a, b in runs if b - a >= widest * 0.5]
+    a, b = min(spaces, key=lambda r: (max(r[0], word.width - r[1]), word.width - r[1] - r[0]))
+    top, bottom = tight(word.crop((0, 0, a, word.height))), tight(word.crop((b, 0, word.width, word.height)))
+    gap = round(max(top.height, bottom.height) * 0.075)
+    out = Image.new('RGBA', (max(top.width, bottom.width), top.height + gap + bottom.height))
+    out.alpha_composite(top, ((out.width - top.width) // 2, 0))
+    out.alpha_composite(bottom, ((out.width - bottom.width) // 2, top.height + gap))
+    return out
+
+
+def _phase_score_group(card, kind, key, assets, home_name, home_id, away_name, away_id,
+                       home_goals, away_goals, shootout, extra_time):
+    """Risultato al centro con gli stemmi ai lati e, se serve, la scritta rigori/supplementari."""
+    # Final production settings derived from the local preview script.
+    score = number(f'{home_goals}-{away_goals}', PHASE_SCORE_FONT_SIZE, key, assets)
+    y = (1210 if (shootout or (extra_time and kind == 'full')) else 1220) - PHASE_GROUP_LIFT
+
+    # Keep the score fixed at card center, independent of crest widths.
+    # Measure gaps from visible alpha bounds, preserving PNG padding.
+    logo_height = max(1, round(score.height * PHASE_LOGO_HEIGHT_FACTOR))
+    home_mark = phase_logo(home_name, home_id, key, assets, logo_height)
+    away_mark = phase_logo(away_name, away_id, key, assets, logo_height)
+    # Risultato centrato sulla card in base ai pixel visibili; stemmi ai lati.
+    ink = score.getchannel('A').getbbox()
+    score_cx = (ink[0] + ink[2]) / 2
+    score_x = round(W / 2 - score_cx)
+    home_x = away_x = None
+    if home_mark is not None:
+        home_x = score_x + ink[0] - 28 - visible_logo_bbox(home_mark)[2]
+    if away_mark is not None:
+        away_x = score_x + ink[2] + 28 - visible_logo_bbox(away_mark)[0]
+
+    soft_place(card, score, (score_x, y - score.height // 2), blur=9, opacity=.60, key=key)
+    if home_mark is not None:
+        soft_place(card, home_mark, (home_x, y - home_mark.height // 2), blur=9, opacity=.60, key=key)
+    if away_mark is not None:
+        soft_place(card, away_mark, (away_x, y - away_mark.height // 2), blur=9, opacity=.60, key=key)
+
+    caption_text = _phase_caption(kind, home_name, away_name, shootout, extra_time)
+    if caption_text:
+        text = caption_text
+        caption = number(text, 36, key, assets)
+        if caption.width > IW - 40:
+            caption = ImageOps.contain(caption, (IW - 40, caption.height))
+        # Centro della scritta = centro visibile del SOLO risultato (mai dei loghi).
+        cap_ink = caption.getchannel('A').getbbox()
+        cap_x = round(score_x + score_cx - (cap_ink[0] + cap_ink[2]) / 2)
+        soft_place(
+            card,
+            caption,
+            (cap_x, PHASE_PENALTY_CAPTION_Y),
+            blur=5,
+            opacity=.50,
+            key=key,
+        )
 
 
 def tinted_shadow(canvas, mask, key, blur, opacity, offset):
