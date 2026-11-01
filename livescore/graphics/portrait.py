@@ -296,12 +296,21 @@ def saved_heading(assets):
 
 
 
-# Amichevoli (GOAL/SAVED senza foto): una scritta piena al centro e sopra/sotto copie solo col
+# GOAL/SAVED senza foto (autogol, marcatore senza immagine, amichevoli): una scritta piena al centro e sopra/sotto copie solo col
 # contorno, a scaletta. Di ogni copia si vede solo una striscia: sopra la parte alta, fino
 # all'inizio della copia successiva; sotto la parte bassa. Verso il fondo le copie sfumano.
 FRIENDLY_ECHO_STEP = 0.37    # passo fra le copie (altezza della striscia), in altezze della scritta
 FRIENDLY_ECHO_SOFT = 0.55    # parte della striscia che sfuma verso il taglio
 FRIENDLY_STROKE = 4          # spessore del contorno (px della card)
+
+
+def _bottom_fade(size):
+    """Sfumatura nera dalla metà del pannello in giù (sotto la foto, o sull'Away senza foto)."""
+    fade = Image.new('RGBA', size)
+    draw = ImageDraw.Draw(fade)
+    for y in range(520, IH):
+        draw.line((0, y, IW, y), fill=(0, 0, 0, round(238 * min(1, (y - 520) / (IH - 520)) ** 1.35)))
+    return fade
 
 
 def _front_word(assets, saved):
@@ -310,7 +319,7 @@ def _front_word(assets, saved):
     return ImageOps.contain(word, (IW + 44, 340), Image.Resampling.LANCZOS)
 
 
-def _echo_word(panel, assets, saved, letters, front):
+def _echo_word(panel, assets, saved, letters, front, color):
     """Effetto eco nel pannello. Ritorna il fondo della vecchia scritta grande (coordinate
     del pannello): sotto vanno risultato, stemmi e nome."""
     name, width, (x, _) = HEADINGS[saved]
@@ -324,7 +333,7 @@ def _echo_word(panel, assets, saved, letters, front):
     fill.paste(word.getchannel('A').point(lambda a: 255 if a > 110 else 0), (pad, pad))
     inner = fill.filter(ImageFilter.MinFilter(FRIENDLY_STROKE * 2 + 1))
     ring = ImageChops.subtract(fill, inner).filter(ImageFilter.GaussianBlur(0.6))
-    outline = Image.new('RGBA', fill.size, ImageColor.getrgb(COLORS['friendly']) + (0,))
+    outline = Image.new('RGBA', fill.size, ImageColor.getrgb(color) + (0,))
     outline.putalpha(ring)
 
     ink = front.getchannel('A').point(lambda v: 255 if v > 100 else 0).getbbox()
@@ -401,50 +410,54 @@ def event(
             return ucl_gradient(source, assets, random.Random(seed))
         return textured(source, key, assets)
 
-    friendly_fill = key == 'friendly' and not player
-    if friendly_fill:
-        # Amichevoli, senza foto: scritta piena al centro con le copie a contorno sopra e sotto.
-        fill_end = _echo_word(panel, assets, saved, letters, _front_word(assets, saved))
-    else:
-        panel.alpha_composite(textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading))
-
     path = None
     pose = pose or 'arms_crossed'
     if player:
         path = g.resolve_player_path(player, kit, pose, assets)
-        if path and Path(path).is_file():
-            with Image.open(path) as raw:
-                if not g._has_real_transparency(raw):
-                    raise g.GoalGraphicUnavailable('PNG giocatore non scontornato')
-
-                # FIX CENTRATURA:
-                # non centrare il bounding box della sagoma, ma il centro X
-                # originale del PNG. In questo modo le pose con braccio/dito
-                # esteso non trascinano tutto il corpo a destra o sinistra.
-                portrait, anchor_x = anchored_player(raw, 1450)
-
-            panel_x = round(IW / 2 - anchor_x)
-            panel.alpha_composite(portrait, (panel_x, -25))
-
-            # I primi 25 px salgono sopra il pannello interno: manteniamo la
-            # stessa identica ancora X anche nella porzione compositata sul card.
-            card.alpha_composite(
-                portrait.crop((0, 0, portrait.width, 25)),
-                (M + panel_x, M - 25),
-            )
-        else:
+        if not (path and Path(path).is_file()):
             path = None
 
-    if friendly_fill:
-        # Niente foto: niente sfumatura scura in fondo e niente scritta grande fuori dal pannello.
+    # Senza foto (autogol, marcatore senza immagine, amichevoli): scritta piena al centro con le
+    # copie a contorno sopra e sotto, invece del riquadro vuoto.
+    no_photo = path is None
+    if no_photo:
+        dark = key == 'away'
+        fill_end = _echo_word(panel, assets, saved,
+                              (lambda s: textured(s, key, assets, color=AWAY_DARK)) if dark else letters,
+                              _front_word(assets, saved), AWAY_DARK if dark else COLORS[key])
+    else:
+        panel.alpha_composite(textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading))
+
+    if path:
+        with Image.open(path) as raw:
+            if not g._has_real_transparency(raw):
+                raise g.GoalGraphicUnavailable('PNG giocatore non scontornato')
+
+            # FIX CENTRATURA:
+            # non centrare il bounding box della sagoma, ma il centro X
+            # originale del PNG. In questo modo le pose con braccio/dito
+            # esteso non trascinano tutto il corpo a destra o sinistra.
+            portrait, anchor_x = anchored_player(raw, 1450)
+
+        panel_x = round(IW / 2 - anchor_x)
+        panel.alpha_composite(portrait, (panel_x, -25))
+
+        # I primi 25 px salgono sopra il pannello interno: manteniamo la
+        # stessa identica ancora X anche nella porzione compositata sul card.
+        card.alpha_composite(
+            portrait.crop((0, 0, portrait.width, 25)),
+            (M + panel_x, M - 25),
+        )
+
+    if no_photo:
+        # Niente foto: niente scritta grande fuori dal pannello. La sfumatura scura in fondo
+        # resta solo sull'Away: il rosa sfuma nel nero e sotto si leggono stemmi e nome.
+        if key == 'away':
+            panel.alpha_composite(_bottom_fade(panel.size))
         card.alpha_composite(panel, (M, M))
         word_bottom = M + fill_end
     else:
-        fade = Image.new('RGBA', panel.size)
-        draw = ImageDraw.Draw(fade)
-        for y in range(520, IH):
-            draw.line((0, y, IW, y), fill=(0, 0, 0, round(238 * min(1, (y - 520) / (IH - 520)) ** 1.35)))
-        panel.alpha_composite(fade)
+        panel.alpha_composite(_bottom_fade(panel.size))
         card.alpha_composite(panel, (M, M))
 
         word = tight(Image.open(assets / 'overlays' / ('front_saved.png' if saved else 'front_goal.png')), True)
@@ -478,7 +491,8 @@ def event(
                 card.alpha_composite(piece, area[:2])
             return
         for s, b in zip(parts, boxes):
-            draw.text((x - b[0], baseline), s, font=font, fill=AWAY_DARK if key == 'away' else COLORS[key], anchor='ls')
+            dark = key == 'away' and not no_photo       # Away senza foto: sono in fondo, sul nero
+            draw.text((x - b[0], baseline), s, font=font, fill=AWAY_DARK if dark else COLORS[key], anchor='ls')
             x += b[2] - b[0]
 
     minute_parts = [str(minute).rstrip("'’") + "'"]
@@ -486,8 +500,8 @@ def event(
                    if home_goals is not None and away_goals is not None else None)
     # Stemmi a meta' tra la scritta GOAL/SAVED e il nome: stessa distanza sopra e sotto.
     crest_cy = (word_bottom + NAME_TOP) / 2 - 1   # -1: compensa il bordo sfumato della scritta
-    if friendly_fill:
-        # Amichevoli: in alto c'è la scritta ripetuta, quindi risultato e minuto scendono
+    if no_photo:
+        # Senza foto: in alto c'è la scritta ripetuta, quindi risultato e minuto scendono
         # sotto la scritta grande, ai lati degli stemmi (centrati sulla loro riga).
         baseline = round(crest_cy + cap / 2)
     put(minute_parts, 'right' if SCORE_LEFT else 'left')
