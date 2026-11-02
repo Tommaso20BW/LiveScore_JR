@@ -30,10 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
-      # Scontorno fine delle foto di fase (grafica finale). Prova: BiRefNet Portrait completo,
-      # più lento: si aspetta fino a 60 s, poi ISNet. Per tornare alla lite: birefnet-general-lite / 20.
-      PHASE_FINE_MODEL: birefnet-portrait
-      PHASE_FINE_WAIT: '60'
+      # Scontorno fine delle foto di fase (grafica finale): BiRefNet lite, attesa massima 20 s poi ISNet.
+      # Provato birefnet-portrait: 30-45 s a foto ma il server finisce la memoria (servizio "Killed").
+      PHASE_FINE_MODEL: birefnet-general-lite
+      PHASE_FINE_WAIT: '20'
 
     steps:
       - name: Checkout repository
@@ -95,7 +95,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.rembg
-          key: rembg-isnet-birefnet-portrait-v1
+          key: rembg-isnet-birefnet-lite-v1
 
       - name: Sync seasonal FCLogo team logos
         id: fclogo_sync
