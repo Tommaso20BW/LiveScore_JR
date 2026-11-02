@@ -30,6 +30,10 @@ COLORS = dict(
     uel='#FA7A22',
     conference='#30C033',
     friendly='#D9DDE3',     # amichevoli (ImageGen): argento sul pannello antracite
+    coppa='#FF0A0A',        # Coppa Italia: rosso vivo (puro: la texture non lo spegne)
+    supercoppa='#1288D6',   # Supercoppa Italiana: blu dello sfondo
+    usc='#0A8AF0',          # Supercoppa UEFA: blu dei fasci di luce dello sfondo
+    cwc='#E2BC62',          # Mondiale per Club: oro del marchio FIFA
     ita_home='#FFFFFF',     # Italia in casa: bianco sul pannello azzurro
     ita_away='#1F5FB4',     # Italia in trasferta: azzurro sul pannello bianco
 )
@@ -42,6 +46,10 @@ SHADOW = dict(
     uel='#140800',
     conference='#011207',
     friendly='#050608',
+    coppa='#1A0306',
+    supercoppa='#010E26',
+    usc='#010219',
+    cwc='#0A0805',
     ita_home='#04122B',
     ita_away='#6E8FBF',     # pannello bianco: ombra azzurrina leggera, non nera
 )
@@ -83,6 +91,16 @@ def theme(kit='home', competition='', saved=False):
     # Amichevoli: tema grigio e argento (solo ImageGen: il bot live non fa grafiche per le amichevoli).
     if 'friendly' in value or 'amichev' in value:
         return 'friendly'
+    # Supercoppa UEFA, Mondiale per Club, Supercoppa Italiana, Coppa Italia: colori delle competizioni
+    # (la Supercoppa prima: "supercoppa italiana" contiene "coppa italia").
+    if 'uefa.super_cup' in value or 'uefa super cup' in value or 'supercoppa uefa' in value:
+        return 'usc'
+    if 'fifa.cwc' in value or 'club world cup' in value or 'mondiale per club' in value:
+        return 'cwc'
+    if 'super_cup' in value or 'supercoppa' in value or 'supercup' in value or 'super cup' in value:
+        return 'supercoppa'
+    if 'coppa_italia' in value or 'coppa italia' in value or 'italian cup' in value:
+        return 'coppa'
     if 'conference' in value or 'europa.conf' in value or 'europa_conf' in value:
         return 'conference'
     if 'champions' in value:
@@ -180,7 +198,9 @@ def brand(card, key, assets):
     mark = mark.resize((round(mark.width * height / mark.height), height), Image.Resampling.LANCZOS)
     # Near-black (not pure black) so the texture still shows; UCL matches its lettering.
     color = ('#63D8FF' if key == 'ucl' else '#EE9AB8' if key == 'away'
-             else '#1F5FB4' if key == 'ita_home' else '#FFFFFF' if key == 'ita_away' else '#2B2B2B')
+             else '#1F5FB4' if key == 'ita_home' else '#FFFFFF' if key in ('ita_away', 'supercoppa', 'coppa')
+             else '#0A8AF0' if key == 'usc'
+             else '#E2BC62' if key == 'cwc' else '#2B2B2B')
     # Flat colour, no texture light: the mark stays clean on every frame.
     # UCL: same random gradient as the lettering, but without texture.
     if key == 'ucl':
