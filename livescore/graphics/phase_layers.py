@@ -22,6 +22,9 @@ import numpy as np
 from PIL import Image, ImageChops, ImageOps
 
 SIZE = (1086, 1448)
+# Pagina dei livelli per la grafica vera: alta risoluzione (la card esce 1920x2560 come
+# le altre grafiche). SIZE resta per sagome e sfondo ripulito (stesse proporzioni).
+PAGE = (1920, 2560)
 MAX_ZOOM = 6
 FIXED_FRAME = {'x': 0.0, 'y': 0.0, 'zoom': 1.0}   # sfondo: sempre "riempi pagina"
 MOVED_EPS = 0.0005
@@ -48,7 +51,7 @@ def open_photo(raw):
         raise ValueError('Foto non valida: usa JPG o PNG.') from None
 
 
-def box(size, frame, *, cover=True):
+def box(size, frame, *, cover=True, page=SIZE):
     """Posizione e dimensione dell'immagine nella pagina 1086x1448.
 
     cover=True (sfondo): mai bordi vuoti, la foto copre sempre la pagina.
@@ -56,7 +59,7 @@ def box(size, frame, *, cover=True):
     """
     frame = frame or {}
     w, h = size
-    W, H = SIZE
+    W, H = page
     fit = max(W / w, H / h)
     zoom = min(max(float(frame.get('zoom', 1)), 1 if cover else .2), MAX_ZOOM)
     width, height = w * fit * zoom, h * fit * zoom
@@ -68,18 +71,18 @@ def box(size, frame, *, cover=True):
     return left, top, width, height
 
 
-def place(image, frame, *, cover=True, bleed=0):
+def place(image, frame, *, cover=True, bleed=0, page=SIZE):
     """Immagine sulla pagina. bleed > 0: restituisce anche la striscia sopra la pagina
     (altezza `bleed`), cioe' (pagina, striscia): la parte che esce dal bordo in alto."""
-    left, top, width, height = box(image.size, frame, cover=cover)
-    canvas = Image.new('RGBA', (SIZE[0], SIZE[1] + bleed))
+    left, top, width, height = box(image.size, frame, cover=cover, page=page)
+    canvas = Image.new('RGBA', (page[0], page[1] + bleed))
     layer = image.resize((max(1, round(width)), max(1, round(height))), Image.Resampling.LANCZOS)
     # Tela vuota: copia diretta (le parti fuori pagina vengono tagliate).
     canvas.paste(layer, (round(left), round(top) + bleed))
-    page = canvas.crop((0, bleed, SIZE[0], SIZE[1] + bleed))
+    out = canvas.crop((0, bleed, page[0], page[1] + bleed))
     if not bleed:
-        return page
-    return page, canvas.crop((0, 0, SIZE[0], bleed))
+        return out
+    return out, canvas.crop((0, 0, page[0], bleed))
 
 
 def _quiet_onnxruntime():
@@ -272,8 +275,79 @@ def clean_background_jpeg(background, person):
     return out.getvalue()
 
 
+def _clean_page(background, person, bg_image, page, bg_look=None):
+    """Sfondo ripulito alla misura `page`. La ricostruzione si fa a SIZE (più veloce, in
+    memoria per anteprima e invio); fuori dalla zona ricostruita resta la foto a piena
+    risoluzione, così lo sfondo non perde nitidezza."""
+    from PIL import ImageFilter
+
+    low = clean_background(background, person)
+    original = place(bg_image, FIXED_FRAME, cover=True)
+    diff = ImageChops.difference(low.convert('RGB'), original.convert('RGB')).convert('L')
+    mask = diff.point(lambda v: 255 if v > 6 else 0).filter(ImageFilter.MaxFilter(5))
+    mask = mask.filter(ImageFilter.GaussianBlur(1.5)).resize(page, Image.Resampling.LANCZOS)
+    hi = place(bg_look if bg_look is not None else bg_image, FIXED_FRAME, cover=True, page=page)
+    hi.paste(look(low.resize(page, Image.Resampling.LANCZOS)), (0, 0), mask)
+    return hi
+
+
+# Ritocco automatico delle foto (come i cursori "Texture" di Canva, 0-100):
+# sfondo e persona in primo piano, sempre uguali, così combaciano.
+LOOK = {'sharpness': 15, 'clarity': 20, 'vignette': 15}
+
+
+def look(image, *, clarity=True):
+    """Nitidezza + chiarezza (contrasto locale) su una foto RGB/RGBA, alpha intatto.
+    Misure in proporzione al lato lungo: stesso effetto a ogni risoluzione."""
+    from PIL import ImageFilter
+
+    side = max(image.size)
+    rgb = image.convert('RGB')
+    if clarity and LOOK['clarity']:
+        rgb = rgb.filter(ImageFilter.UnsharpMask(radius=max(2, side * 0.012),
+                                                 percent=round(LOOK['clarity'] * 1.6), threshold=2))
+    if LOOK['sharpness']:
+        rgb = rgb.filter(ImageFilter.UnsharpMask(radius=max(0.8, side * 0.0008),
+                                                 percent=round(LOOK['sharpness'] * 6), threshold=2))
+    if image.mode != 'RGBA':
+        return rgb.convert('RGBA')
+    out = rgb.convert('RGBA')
+    out.putalpha(image.getchannel('A'))
+    return out
+
+
+def look_like(target, original, enhanced):
+    """Persona scontornata da `original`: le stesse correzioni dello sfondo (differenza
+    enhanced - original), senza toccare i bordi già ripuliti dello scontorno."""
+    if target.size != original.size:
+        return look(target, clarity=False)
+    delta = (np.asarray(enhanced.convert('RGB'), dtype=np.int16)
+             - np.asarray(original.convert('RGB'), dtype=np.int16))
+    rgb = np.clip(np.asarray(target.convert('RGB'), dtype=np.int16) + delta, 0, 255).astype(np.uint8)
+    out = Image.fromarray(rgb, 'RGB').convert('RGBA')
+    out.putalpha(target.getchannel('A'))
+    return out
+
+
+def vignette(layer, page, top=0):
+    """Bordi più scuri della pagina (`page`). `top`: righe sopra la pagina (striscia della
+    persona alzata), così la vignettatura continua senza stacchi."""
+    strength = LOOK['vignette'] / 100
+    if not strength:
+        return layer
+    w, h = page
+    ys = (np.arange(layer.height, dtype=np.float32) - top + .5) / h * 2 - 1
+    xs = (np.arange(layer.width, dtype=np.float32) + .5) / w * 2 - 1
+    r = np.sqrt(xs[None, :] ** 2 + ys[:, None] ** 2) / np.sqrt(2)      # 0 centro, 1 angoli
+    t = np.clip((r - .45) / .55, 0, None)
+    factor = 1 - strength * 1.6 * t * t * (3 - 2 * np.minimum(t, 1))
+    a = np.asarray(layer.convert('RGBA'), dtype=np.float32)
+    a[..., :3] *= np.clip(factor, 0, 1)[..., None]
+    return Image.fromarray(a.round().astype(np.uint8), 'RGBA')
+
+
 def build_layers(destination, *, background, person=None, background_frame=None, person_frame=None,
-                 remove_person=False):
+                 remove_person=False, page=PAGE):
     """Scrive background.png, player.png e manifest.json in `destination`.
 
     background / person: byte dell'immagine caricata. Senza `person` la persona
@@ -282,21 +356,28 @@ def build_layers(destination, *, background, person=None, background_frame=None,
     background_frame: ignorato. Lo sfondo e' sempre FIXED_FRAME (riempi pagina, fermo).
     person_frame=None: la persona sta ferma sopra se' stessa nello sfondo; altrimenti
     si muove per conto suo.
+    page: misura della pagina dei livelli (PAGE: alta risoluzione).
     remove_person=True: la persona e' ricavata dalla stessa foto dello sfondo; se
     viene spostata, nello sfondo la sua sagoma e' cancellata e ricostruita.
     """
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     bg_image = open_photo(background)
+    bg_look = look(bg_image)
     if person is None:
         person_bytes = None
         person_image = cutout(bg_image)
+        person_look = look_like(person_image, bg_image, bg_look)
     else:
         person_bytes = person
         person_image = open_photo(person)
         if not has_transparency(person_image):
-            person_image = cutout(person_image)
+            source = person_image
+            person_image = cutout(source)
+            person_look = look_like(person_image, source, look(source))
             person_bytes = None
+        else:
+            person_look = look(person_image, clarity=False)    # PNG già scontornato: solo nitidezza
     follow = person_frame is None
     erase = bool(remove_person) and not follow and moved(person_frame)
     if erase:
@@ -304,10 +385,15 @@ def build_layers(destination, *, background, person=None, background_frame=None,
             buffer = io.BytesIO()
             person_image.save(buffer, 'PNG')
             person_bytes = buffer.getvalue()
-        background_layer = clean_background(background, person_bytes)
+        background_layer = _clean_page(background, person_bytes, bg_image, page, bg_look)
     else:
-        background_layer = place(bg_image, FIXED_FRAME, cover=True)
-    player, strip = place(person_image, FIXED_FRAME if follow else person_frame, cover=follow, bleed=TOP_BLEED)
+        background_layer = place(bg_look, FIXED_FRAME, cover=True, page=page)
+    bleed = round(TOP_BLEED * page[0] / SIZE[0])
+    player, strip = place(person_look, FIXED_FRAME if follow else person_frame, cover=follow,
+                          bleed=bleed, page=page)
+    background_layer = vignette(background_layer, page)
+    player = vignette(player, page)
+    strip = vignette(strip, page, top=bleed)
     layers = {'background': background_layer, 'player': player}
     top_file = destination / 'player_top.png'
     if strip.getchannel('A').getextrema()[1] > 0:
@@ -320,7 +406,7 @@ def build_layers(destination, *, background, person=None, background_frame=None,
         os.replace(temp, destination / f'{role}.png')
     (destination / 'manifest.json').write_text(json.dumps({
         'source': 'upload',
-        'size': list(SIZE),
+        'size': list(page),
         'background_frame': FIXED_FRAME,
         'person_frame': (FIXED_FRAME if follow else person_frame) or {},
         'person_follows_background': follow,

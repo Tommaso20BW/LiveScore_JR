@@ -82,6 +82,9 @@ PHASE_KINDS = ('kick', 'second', 'half', 'end_of_90', 'full')
 PHASE_LOGO_HEIGHT_FACTOR = 0.43
 PHASE_GROUP_LIFT = 65
 PHASE_PENALTY_CAPTION_Y = 1285
+# HALF TIME / END OF 90' / FULL TIME con foto: card disegnata a 1920x2560 (come le altre
+# grafiche), stessa impaginazione della 1086x1448 ingrandita di questo fattore.
+PHASE_PHOTO_SCALE = 1920 / 1086
 
 
 def theme(kit='home', competition='', saved=False):
@@ -194,7 +197,8 @@ def textured(source, key, assets, zoom=False, color=None, bright=False):
 
 def brand(card, key, assets):
     mark = tight(Image.open(assets / 'overlays/jr.png'))
-    height = round(H * 58 / 1280)
+    cw, ch = card.size
+    height = round(ch * 58 / 1280)
     mark = mark.resize((round(mark.width * height / mark.height), height), Image.Resampling.LANCZOS)
     # Near-black (not pure black) so the texture still shows; UCL matches its lettering.
     color = ('#63D8FF' if key == 'ucl' else '#EE9AB8' if key == 'away'
@@ -209,9 +213,9 @@ def brand(card, key, assets):
         flat = Image.new('RGBA', mark.size, ImageColor.getrgb(color) + (255,))
         flat.putalpha(mark.convert('RGBA').getchannel('A'))
         mark = flat
-    x = W - round(W * 16 / 960) - mark.width
-    assert x > W - M
-    card.alpha_composite(mark, (x, round(H * 13 / 1280)))
+    x = cw - round(cw * 16 / 960) - mark.width
+    assert x > cw - round(M * cw / W)
+    card.alpha_composite(mark, (x, round(ch * 13 / 1280)))
     return card
 
 
@@ -682,27 +686,36 @@ def phase(
         if layers is None:
             raise ValueError('Foto della fase non disponibile')
 
+        # Alta risoluzione: stessa impaginazione, tutte le misure per S.
+        S = PHASE_PHOTO_SCALE
+        sw, sh, sm = round(W * S), round(H * S), round(M * S)
+        iw, ih = sw - 2 * sm, sh - 2 * sm
+        card = card.resize((sw, sh), Image.Resampling.LANCZOS)
+        word_pos = (round(18 * S), round(28 * S))
+
         # Both extracted layers share the PDF page coordinates and transform.
         bg = ImageOps.fit(
             Image.open(Path(layers) / 'background.png').convert('RGBA'),
-            (IW, IH),
+            (iw, ih),
             method=Image.Resampling.LANCZOS,
         )
+        page_size = Image.open(Path(layers) / 'background.png').size
         player = ImageOps.fit(
             Image.open(Path(layers) / 'player.png').convert('RGBA'),
-            (IW, IH),
+            (iw, ih),
             method=Image.Resampling.LANCZOS,
         )
-        word = word.resize((IW - 36, round(word.height * (IW - 36) / word.width)), Image.Resampling.LANCZOS)
+        word_w = iw - round(36 * S)
+        word = word.resize((word_w, round(word.height * word_w / word.width)), Image.Resampling.LANCZOS)
         word_layer = phase_word(word, key, assets)
         # Ombra dietro la scritta di fase solo se ImageGEN l'ha chiesta (sfondo poco contrastato).
         if text_shadow and text_shadow.get('strength', 0) > 0.02:
             mask = Image.new('L', bg.size)
-            mask.paste(word_layer.getchannel('A'), (18, 28))
-            blur = max(4, float(text_shadow.get('blur', 12)))
+            mask.paste(word_layer.getchannel('A'), word_pos)
+            blur = max(4, float(text_shadow.get('blur', 12))) * S
             alpha = float(text_shadow.get('alpha', .6))
             shifted = Image.new('L', bg.size)
-            shifted.paste(mask, (0, 6))
+            shifted.paste(mask, (0, round(6 * S)))
             shifted = shifted.filter(ImageFilter.GaussianBlur(blur))
             # Due passate: l'alone sfocato da solo e' troppo leggero sulle lettere sottili.
             shifted = shifted.point(lambda a: min(255, round(a * 1.8)))
@@ -710,27 +723,28 @@ def phase(
             shade = Image.new('RGBA', bg.size, color + (255,))
             shade.putalpha(shifted.point(lambda a: round(a * alpha)))
             bg.alpha_composite(shade)
-        bg.alpha_composite(word_layer, (18, 28))
+        bg.alpha_composite(word_layer, word_pos)
         bg.alpha_composite(player)
 
         fade = Image.new('RGBA', bg.size)
         draw = ImageDraw.Draw(fade)
-        for y in range(IH):
-            draw.line((0, y, IW, y), fill=(0, 0, 0, round(240 * max(0, (y - IH * .48) / (IH * .52)) ** 1.1)))
+        for y in range(ih):
+            draw.line((0, y, iw, y), fill=(0, 0, 0, round(240 * max(0, (y - ih * .48) / (ih * .52)) ** 1.1)))
         bg.alpha_composite(fade)
-        card.alpha_composite(bg, (M, M))
+        card.alpha_composite(bg, (sm, sm))
         # La persona alzata esce dal riquadro in alto, sopra la cornice (solo in altezza).
         top_file = Path(layers) / 'player_top.png'
         if top_file.is_file():
-            scale = max(IW / 1086, IH / 1448)
+            scale = max(iw / page_size[0], ih / page_size[1])
             strip = Image.open(top_file).convert('RGBA')
             strip = strip.resize((round(strip.width * scale), round(strip.height * scale)), Image.Resampling.LANCZOS)
-            cut = (strip.width - IW) // 2
-            strip = strip.crop((cut, 0, cut + IW, strip.height))
-            card.alpha_composite(strip, (M, M - strip.height))
+            cut = (strip.width - iw) // 2
+            strip = strip.crop((cut, 0, cut + iw, strip.height))
+            strip = strip.crop((0, max(0, strip.height - sm), iw, strip.height))
+            card.alpha_composite(strip, (sm, sm - strip.height))
 
         _phase_score_group(card, kind, key, assets, home_name, home_id, away_name, away_id,
-                           home_goals, away_goals, shootout, extra_time)
+                           home_goals, away_goals, shootout, extra_time, s=S)
 
     return png(brand(card, key, assets))
 
@@ -778,11 +792,14 @@ def _two_lines(word):
 
 
 def _phase_score_group(card, kind, key, assets, home_name, home_id, away_name, away_id,
-                       home_goals, away_goals, shootout, extra_time):
-    """Risultato al centro con gli stemmi ai lati e, se serve, la scritta rigori/supplementari."""
+                       home_goals, away_goals, shootout, extra_time, s=1):
+    """Risultato al centro con gli stemmi ai lati e, se serve, la scritta rigori/supplementari.
+    s = scala della card (1: 1086x1448; PHASE_PHOTO_SCALE: 1920x2560)."""
     # Final production settings derived from the local preview script.
-    score = number(f'{home_goals}-{away_goals}', PHASE_SCORE_FONT_SIZE, key, assets)
-    y = (1210 if (shootout or (extra_time and kind == 'full')) else 1220) - PHASE_GROUP_LIFT
+    score = number(f'{home_goals}-{away_goals}', round(PHASE_SCORE_FONT_SIZE * s), key, assets)
+    y = round(((1210 if (shootout or (extra_time and kind == 'full')) else 1220) - PHASE_GROUP_LIFT) * s)
+    gap = round(28 * s)
+    blur, offset = 9 * s, round(5 * s)
 
     # Keep the score fixed at card center, independent of crest widths.
     # Measure gaps from visible alpha bounds, preserving PNG padding.
@@ -792,35 +809,40 @@ def _phase_score_group(card, kind, key, assets, home_name, home_id, away_name, a
     # Risultato centrato sulla card in base ai pixel visibili; stemmi ai lati.
     ink = score.getchannel('A').getbbox()
     score_cx = (ink[0] + ink[2]) / 2
-    score_x = round(W / 2 - score_cx)
+    score_x = round(card.width / 2 - score_cx)
     home_x = away_x = None
     if home_mark is not None:
-        home_x = score_x + ink[0] - 28 - visible_logo_bbox(home_mark)[2]
+        home_x = score_x + ink[0] - gap - visible_logo_bbox(home_mark)[2]
     if away_mark is not None:
-        away_x = score_x + ink[2] + 28 - visible_logo_bbox(away_mark)[0]
+        away_x = score_x + ink[2] + gap - visible_logo_bbox(away_mark)[0]
 
-    soft_place(card, score, (score_x, y - score.height // 2), blur=9, opacity=.60, key=key)
+    soft_place(card, score, (score_x, y - score.height // 2), blur=blur, opacity=.60, offset=offset, key=key, s=s)
     if home_mark is not None:
-        soft_place(card, home_mark, (home_x, y - home_mark.height // 2), blur=9, opacity=.60, key=key)
+        soft_place(card, home_mark, (home_x, y - home_mark.height // 2), blur=blur, opacity=.60, offset=offset,
+                   key=key, s=s)
     if away_mark is not None:
-        soft_place(card, away_mark, (away_x, y - away_mark.height // 2), blur=9, opacity=.60, key=key)
+        soft_place(card, away_mark, (away_x, y - away_mark.height // 2), blur=blur, opacity=.60, offset=offset,
+                   key=key, s=s)
 
     caption_text = _phase_caption(kind, home_name, away_name, shootout, extra_time)
     if caption_text:
         text = caption_text
-        caption = number(text, 36, key, assets)
-        if caption.width > IW - 40:
-            caption = ImageOps.contain(caption, (IW - 40, caption.height))
+        caption = number(text, round(36 * s), key, assets)
+        max_w = round((IW - 40) * s)
+        if caption.width > max_w:
+            caption = ImageOps.contain(caption, (max_w, caption.height))
         # Centro della scritta = centro visibile del SOLO risultato (mai dei loghi).
         cap_ink = caption.getchannel('A').getbbox()
         cap_x = round(score_x + score_cx - (cap_ink[0] + cap_ink[2]) / 2)
         soft_place(
             card,
             caption,
-            (cap_x, PHASE_PENALTY_CAPTION_Y),
-            blur=5,
+            (cap_x, round(PHASE_PENALTY_CAPTION_Y * s)),
+            blur=5 * s,
             opacity=.50,
+            offset=round(5 * s),
             key=key,
+            s=s,
         )
 
 
@@ -842,10 +864,12 @@ def place_word(card, word, saved, key='home'):
     return y + word.getchannel('A').point(lambda v: 255 if v > 100 else 0).getbbox()[3]
 
 
-def soft_place(canvas, layer, position, blur=8, opacity=.55, offset=5, key='home'):
+def soft_place(canvas, layer, position, blur=8, opacity=.55, offset=5, key='home', s=1):
+    """s = scala della card: ombra con le stesse proporzioni anche a 1920x2560."""
     mask = Image.new('L', canvas.size)
     mask.paste(layer.getchannel('A'), position)
-    tinted_shadow(canvas, mask, key, blur=max(4, blur * .8), opacity=opacity * .8, offset=min(offset, 4))
+    tinted_shadow(canvas, mask, key, blur=max(4 * s, blur * .8), opacity=opacity * .8,
+                  offset=min(offset, round(4 * s)))
     canvas.alpha_composite(layer, position)
 
 

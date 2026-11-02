@@ -17,6 +17,27 @@ def png(image):
 
 
 class PhaseLayersTest(unittest.TestCase):
+    def setUp(self):
+        # Posizioni e colori esatti: senza ritocco automatico (provato a parte, sotto).
+        look = patch.dict(pl.LOOK, {'sharpness': 0, 'clarity': 0, 'vignette': 0})
+        look.start()
+        self.addCleanup(look.stop)
+
+    def test_look_sharpens_and_darkens_edges(self):
+        photo = Image.new('RGB', (400, 400), (128, 128, 128))
+        photo.paste((200, 200, 200), (0, 0, 200, 400))
+        with patch.dict(pl.LOOK, {'sharpness': 15, 'clarity': 20, 'vignette': 0}):
+            out = pl.look(photo)
+        self.assertGreater(out.getpixel((201, 200))[0], 0)
+        self.assertLess(out.getpixel((201, 200))[0], 128)       # bordo più deciso
+        self.assertEqual(out.getpixel((300, 200))[:3], (128, 128, 128))   # zona piatta intatta
+        flat = Image.new('RGBA', (200, 200), (200, 200, 200, 255))
+        with patch.dict(pl.LOOK, {'vignette': 15}):
+            v = pl.vignette(flat, (200, 200))
+        self.assertEqual(v.getpixel((100, 100))[:3], (200, 200, 200))   # centro intatto
+        self.assertLess(v.getpixel((0, 0))[0], 200)                     # angoli più scuri
+        self.assertEqual(v.getpixel((0, 0))[3], 255)
+
     def test_background_always_covers_page(self):
         left, top, width, height = pl.box((1000, 1000), {'x': 0.9, 'y': -0.9, 'zoom': 1})
         self.assertLessEqual(left, 0)
@@ -55,7 +76,7 @@ class PhaseLayersTest(unittest.TestCase):
         person = Image.new('RGBA', (600, 800))
         person.paste((255, 0, 0, 255), (200, 200, 400, 600))
         with tempfile.TemporaryDirectory() as tmp, patch.object(pl, 'cutout') as cutout:
-            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person))
+            out = pl.build_layers(Path(tmp), page=pl.SIZE, background=png(bg), person=png(person))
             cutout.assert_not_called()
             with Image.open(out / 'player.png') as im:
                 player = im.copy()
@@ -67,12 +88,25 @@ class PhaseLayersTest(unittest.TestCase):
             self.assertEqual(player.getpixel((10, 10))[3], 0)
             self.assertEqual(json.loads((out / 'manifest.json').read_text())['source'], 'upload')
 
+    def test_default_page_is_high_resolution(self):
+        """Grafica vera: livelli a 1920x2560 (stessa posizione relativa), striscia in proporzione."""
+        bg = Image.new('RGB', (600, 800), (0, 128, 0))
+        person = Image.new('RGBA', (600, 800))
+        person.paste((255, 0, 0, 255), (200, 200, 400, 600))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person),
+                                  person_frame={'x': 0, 'y': -0.3, 'zoom': 1})
+            with Image.open(out / 'player.png') as im:
+                self.assertEqual(im.size, pl.PAGE)
+            with Image.open(out / 'player_top.png') as im:
+                self.assertEqual(im.size, (pl.PAGE[0], round(pl.TOP_BLEED * pl.PAGE[0] / pl.SIZE[0])))
+
     def test_single_photo_is_cut_out_and_stays_on_fixed_background(self):
         bg = Image.new('RGB', (900, 1200), (0, 0, 255))
         # Un frame dello sfondo in ingresso viene ignorato: lo sfondo e' sempre fermo.
         frame = {'x': 0.1, 'zoom': 1.5}
         with tempfile.TemporaryDirectory() as tmp, patch.object(pl, 'cutout', side_effect=lambda im: im) as cutout:
-            out = pl.build_layers(Path(tmp), background=png(bg), background_frame=frame)
+            out = pl.build_layers(Path(tmp), page=pl.SIZE, background=png(bg), background_frame=frame)
             cutout.assert_called_once()
             manifest = json.loads((out / 'manifest.json').read_text())
             self.assertEqual(manifest['background_frame'], pl.FIXED_FRAME)
@@ -90,7 +124,7 @@ class PhaseLayersTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch.object(pl, '_clean_cache', {}), \
                 patch('livescore.graphics.inpaint._lama', return_value=None), \
                 patch('livescore.graphics.inpaint._fallback', side_effect=fill):
-            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person), remove_person=True,
+            out = pl.build_layers(Path(tmp), page=pl.SIZE, background=png(bg), person=png(person), remove_person=True,
                                   person_frame={'x': 0.25, 'y': 0.1, 'zoom': 1})
             with Image.open(out / 'background.png') as im:
                 background = im.copy()
@@ -115,7 +149,7 @@ class PhaseLayersTest(unittest.TestCase):
                 patch.object(pl, 'people_mask', return_value=everyone), \
                 patch('livescore.graphics.inpaint._lama', return_value=None), \
                 patch('livescore.graphics.inpaint._fallback', side_effect=fill):
-            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person), remove_person=True,
+            out = pl.build_layers(Path(tmp), page=pl.SIZE, background=png(bg), person=png(person), remove_person=True,
                                   person_frame={'x': 0.2, 'y': 0, 'zoom': 1})
             with Image.open(out / 'background.png') as im:
                 self.assertEqual(im.getpixel((100, 100))[:3], (0, 128, 0))
@@ -130,7 +164,7 @@ class PhaseLayersTest(unittest.TestCase):
             for kwargs in ({'person_frame': None, 'remove_person': True},
                            {'person_frame': {'x': 0, 'y': 0, 'zoom': 1}, 'remove_person': True},
                            {'person_frame': {'x': 0.3, 'y': 0, 'zoom': 1}, 'remove_person': False}):
-                out = pl.build_layers(Path(tmp), background=png(bg), person=png(person), **kwargs)
+                out = pl.build_layers(Path(tmp), page=pl.SIZE, background=png(bg), person=png(person), **kwargs)
                 with Image.open(out / 'background.png') as im:
                     self.assertEqual(im.getpixel((543, 724))[:3], (255, 0, 0))
             clean.assert_not_called()
@@ -140,7 +174,7 @@ class PhaseLayersTest(unittest.TestCase):
         person = Image.new('RGBA', (600, 800))
         person.paste((255, 0, 0, 255), (250, 350, 350, 450))
         with tempfile.TemporaryDirectory() as tmp:
-            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person),
+            out = pl.build_layers(Path(tmp), page=pl.SIZE, background=png(bg), person=png(person),
                                   person_frame={'x': 0.25, 'y': 0, 'zoom': 1})
             with Image.open(out / 'player.png') as im:
                 player = im.copy()
@@ -154,7 +188,7 @@ class PhaseLayersTest(unittest.TestCase):
         person = Image.new('RGBA', (600, 800))
         person.paste((255, 0, 0, 255), (200, 0, 400, 300))
         with tempfile.TemporaryDirectory() as tmp:
-            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person),
+            out = pl.build_layers(Path(tmp), page=pl.SIZE, background=png(bg), person=png(person),
                                   person_frame={'x': 0, 'y': -0.03, 'zoom': 1})
             with Image.open(out / 'player_top.png') as im:
                 strip = im.copy()
@@ -162,13 +196,13 @@ class PhaseLayersTest(unittest.TestCase):
             self.assertEqual(strip.getpixel((543, pl.TOP_BLEED - 2))[:3], (255, 0, 0))
             self.assertEqual(strip.getpixel((20, pl.TOP_BLEED - 2))[3], 0)      # solo in altezza
             # Persona che resta dentro la pagina: nessuna striscia.
-            out = pl.build_layers(Path(tmp), background=png(bg), person=png(person),
+            out = pl.build_layers(Path(tmp), page=pl.SIZE, background=png(bg), person=png(person),
                                   person_frame={'x': 0, 'y': 0.2, 'zoom': 1})
             self.assertFalse((out / 'player_top.png').exists())
 
     def test_invalid_photo(self):
         with tempfile.TemporaryDirectory() as tmp, self.assertRaises(ValueError):
-            pl.build_layers(Path(tmp), background=b'not an image')
+            pl.build_layers(Path(tmp), page=pl.SIZE, background=b'not an image')
 
 
 if __name__ == '__main__':
