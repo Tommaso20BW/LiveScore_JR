@@ -181,6 +181,80 @@ def cutout(image):
     return refine_cutout(remove(image.convert('RGB'), session=_session).convert('RGBA'))
 
 
+# Scontorno fine per la grafica finale (anteprima e invio): BiRefNet lite, più preciso di
+# ISNet su capelli e buchi (es. tra mano e maglia) ma ~10 volte più lento. ISNet resta per
+# l'editor (subito); il fine parte in background appena c'è la foto e resta in memoria.
+# PHASE_FINE_MODEL='' = solo ISNet.
+FINE_MODEL = os.getenv('PHASE_FINE_MODEL', 'birefnet-general-lite')
+FINE_WAIT_SECONDS = float(os.getenv('PHASE_FINE_WAIT', '20'))   # attesa massima, poi ISNet
+FINE_KEEP = 8
+_fine_session = None
+_fine_jobs = {}
+_fine_lock = __import__('threading').Lock()
+_fine_pool = None
+
+
+def _fine_model():
+    global _fine_session
+    if _fine_session is None:
+        if _session is None:
+            _quiet_onnxruntime()
+        from rembg import new_session
+        _fine_session = new_session(FINE_MODEL)
+    return _fine_session
+
+
+def warm_up_fine():
+    """Carica il modello fine in anticipo (all'avvio del servizio)."""
+    if FINE_MODEL:
+        _fine_model()
+
+
+def _run_fine(job, image):
+    import time
+
+    from livescore.core.log import log_line
+    started = time.time()
+    try:
+        from rembg import remove
+        out = refine_cutout(remove(image.convert('RGB'), session=_fine_model()).convert('RGBA'))
+        buffer = io.BytesIO()
+        out.save(buffer, 'PNG')
+        job['png'] = buffer.getvalue()
+        log_line('INFO', 'PHOTO', f'Scontorno fine pronto in {time.time() - started:.1f} s')
+    except Exception as exc:  # noqa: BLE001 - si ripiega sullo scontorno veloce
+        log_line('WARN', 'PHOTO', f'Scontorno fine non riuscito: {type(exc).__name__}: {exc}')
+    finally:
+        job['event'].set()
+
+
+def start_fine_cutout(key, image):
+    """Scontorno fine in background (una foto alla volta), ricordato per `key`."""
+    global _fine_pool
+    if not FINE_MODEL or has_transparency(image.convert('RGBA')):
+        return
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    with _fine_lock:
+        if key in _fine_jobs:
+            return
+        job = _fine_jobs[key] = {'event': threading.Event(), 'png': None}
+        while len(_fine_jobs) > FINE_KEEP:
+            _fine_jobs.pop(next(iter(_fine_jobs)))
+        if _fine_pool is None:
+            _fine_pool = ThreadPoolExecutor(1, thread_name_prefix='fine-cutout')
+    _fine_pool.submit(_run_fine, job, image.copy())
+
+
+def fine_cutout(key, wait=FINE_WAIT_SECONDS):
+    """PNG dello scontorno fine se pronto entro `wait` secondi, altrimenti None."""
+    job = _fine_jobs.get(key)
+    if job is None:
+        return None
+    job['event'].wait(max(0, wait))
+    return job['png']
+
+
 def people_mask(image):
     """Maschera "L" di tutte le persone nella foto (255 = persona), o None se non disponibile."""
     global _people_session

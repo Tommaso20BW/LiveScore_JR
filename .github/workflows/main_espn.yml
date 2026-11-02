@@ -90,7 +90,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.rembg
-          key: rembg-isnet-general-use-v1
+          key: rembg-isnet-birefnet-lite-v1
 
       - name: Sync seasonal FCLogo team logos
         id: fclogo_sync

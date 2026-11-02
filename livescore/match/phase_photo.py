@@ -526,10 +526,33 @@ class Desk:
         try:
             self.cutout(photo_id)
             job["state"] = "ready"
+            self.start_fine(photo_id)     # editor pronto: ora lo scontorno fine per la grafica"
         except Exception as exc:  # noqa: BLE001 - l'errore va alla Mini App, non al bot
             job["error"] = str(exc) if isinstance(exc, ValueError) else "Scontorno non riuscito."
             job["state"] = "error"
             log_line("WARN", "PHOTO", f"Scontorno non riuscito: {type(exc).__name__}: {exc}")
+
+    def start_fine(self, photo_id: str) -> None:
+        """Scontorno fine (BiRefNet lite) in background, per anteprima e invio."""
+        from livescore.graphics import phase_layers
+        raw = self.photos.get(photo_id)
+        if not raw:
+            return
+        try:              # mai bloccare: senza scontorno fine si usa quello veloce
+            phase_layers.start_fine_cutout(photo_id, phase_layers.open_photo(raw))
+        except Exception as exc:  # noqa: BLE001
+            log_line("WARN", "PHOTO", f"Scontorno fine non avviato: {type(exc).__name__}: {exc}")
+
+    def final_cutout(self, photo_id: str) -> tuple[bytes, str]:
+        """Persona per la grafica: fine se pronto (attesa massima 20 s), altrimenti veloce."""
+        from livescore.graphics import phase_layers
+        self.start_fine(photo_id)
+        fine = phase_layers.fine_cutout(photo_id)
+        if fine:
+            return fine, "fine"
+        if photo_id in phase_layers._fine_jobs:
+            log_line("WARN", "PHOTO", "Scontorno fine non ancora pronto: uso quello veloce")
+        return self.cutout(photo_id), "fast"
 
     def clean_image(self, photo_id: str) -> bytes:
         """Sfondo senza la persona (ricostruito), per l'editor quando la persona si sposta."""
@@ -587,12 +610,13 @@ class Desk:
         from livescore.graphics import phase_layers
         self.stage = "cutout"
         same_photo = not request["person_id"] or request["person_id"] == request["photo_id"]
-        person = self.cutout(request["person_id"] or request["photo_id"])
+        person, quality = self.final_cutout(request["person_id"] or request["photo_id"])
         background = self.photos.get(request["photo_id"])
         if not background:
             raise ValueError("Foto non trovata: ricaricala.")
         self.stage = "compose"
-        key = hashlib.sha256(json.dumps(request, sort_keys=True).encode()).hexdigest()[:20]
+        # Livelli diversi per scontorno veloce e fine: l'invio non riusa quelli dell'anteprima veloce.
+        key = hashlib.sha256((json.dumps(request, sort_keys=True) + quality).encode()).hexdigest()[:20]
         folder = CACHE_DIR / key
         if not (folder / "player.png").is_file():
             self.stage = "erase" if same_photo and phase_layers.moved(request["person_frame"]) else "compose"
@@ -740,6 +764,8 @@ def _warm_up_cutout() -> None:
         from livescore.graphics import phase_layers
         phase_layers.cutout(Image.new("RGB", (64, 64)))
         log_line("DEBUG", "PHOTO", "Scontorno pronto")
+        phase_layers.warm_up_fine()
+        log_line("DEBUG", "PHOTO", "Scontorno fine pronto")
     except Exception as exc:
         log_line("WARN", "PHOTO", f"Scontorno non disponibile: {type(exc).__name__}: {exc}")
 
