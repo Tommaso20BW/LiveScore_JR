@@ -685,6 +685,13 @@ def phase(
     else:
         if layers is None:
             raise ValueError('Foto della fase non disponibile')
+        if text_shadow is None:
+            # Ombra decisa da build_layers() in base allo sfondo (manifest dei livelli).
+            try:
+                import json
+                text_shadow = json.loads((Path(layers) / 'manifest.json').read_text(encoding='utf-8')).get('text_shadow')
+            except (OSError, ValueError):
+                text_shadow = None
 
         # Alta risoluzione: stessa impaginazione, tutte le misure per S.
         S = PHASE_PHOTO_SCALE

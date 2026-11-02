@@ -478,7 +478,18 @@ def build_layers(destination, *, background, person=None, background_frame=None,
         temp = destination / f'{role}.tmp.png'
         image.save(temp)
         os.replace(temp, destination / f'{role}.png')
+    # Ombra dietro HALF TIME / END OF 90' / FULL TIME se lo sfondo è troppo chiaro:
+    # decisa qui dalla foto originale, applicata da portrait.phase() (ImageGen e live).
+    try:
+        from livescore.graphics import backdrop
+        from livescore.core.log import log_line
+        text_shadow = backdrop.phase_shadow(bg_image)
+        log_line('INFO', 'PHOTO', f"Sfondo della scritta: contrasto {text_shadow['contrast']} · "
+                                  f"ombra {round(text_shadow['strength'] * 100)}%")
+    except Exception:  # noqa: BLE001 - senza analisi la grafica esce comunque, senza ombra
+        text_shadow = None
     (destination / 'manifest.json').write_text(json.dumps({
+        'text_shadow': text_shadow,
         'source': 'upload',
         'size': list(page),
         'background_frame': FIXED_FRAME,
