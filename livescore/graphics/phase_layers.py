@@ -209,16 +209,19 @@ def ghost(render, width=543):
 
     import numpy as np
 
-    shots = []
-    with tempfile.TemporaryDirectory(prefix='jr_ghost_') as tmp:
-        for value in (0, 255):
-            folder = Path(tmp) / str(value)
-            folder.mkdir()
-            Image.new('RGBA', SIZE, (value, value, value, 255)).save(folder / 'background.png')
-            Image.new('RGBA', SIZE).save(folder / 'player.png')
-            with Image.open(io.BytesIO(render(folder))) as shot:
-                shots.append(np.asarray(shot.convert('RGB'), dtype=np.float32))
-    black, white = shots
+    from concurrent.futures import ThreadPoolExecutor
+
+    def shot(tmp, value):
+        folder = Path(tmp) / str(value)
+        folder.mkdir()
+        Image.new('RGBA', SIZE, (value, value, value, 255)).save(folder / 'background.png')
+        Image.new('RGBA', SIZE).save(folder / 'player.png')
+        with Image.open(io.BytesIO(render(folder))) as image:
+            return np.asarray(image.convert('RGB'), dtype=np.float32)
+
+    # I due disegni (fondo nero e fondo bianco) insieme: la sagoma arriva prima.
+    with tempfile.TemporaryDirectory(prefix='jr_ghost_') as tmp, ThreadPoolExecutor(2) as pool:
+        black, white = pool.map(lambda v: shot(tmp, v), (0, 255))
     alpha = np.clip(1 - (white - black).mean(axis=2) / 255, 0, 1)
     color = np.clip(black / np.maximum(alpha, 1 / 255)[..., None], 0, 255)
     rgba = np.dstack([color, alpha * 255]).round().astype(np.uint8)
