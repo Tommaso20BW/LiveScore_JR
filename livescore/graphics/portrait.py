@@ -434,9 +434,10 @@ def _echo_word(panel, assets, saved, letters, front, color):
     for yy in range(f0, panel.height):
         draw.line((0, yy, panel.width, yy), fill=round(255 * max(0, 1 - (yy - f0) / max(1, f1 - f0)) ** 1.4))
     layer.putalpha(ImageChops.multiply(layer.getchannel('A'), fade))
-    layer.alpha_composite(word, (x, center))
     panel.alpha_composite(layer)
-    return end
+    # La scritta piena non va nel pannello: event() la mette sulla card nello stesso punto,
+    # così esce dai bordi (le copie dell'eco restano dentro).
+    return end, word, (x, center)
 
 
 def event(
@@ -484,7 +485,7 @@ def event(
     no_photo = path is None
     if no_photo:
         dark = key == 'away'
-        fill_end = _echo_word(panel, assets, saved,
+        fill_end, echo_word, (echo_x, echo_y) = _echo_word(panel, assets, saved,
                               (lambda s: textured(s, key, assets, color=AWAY_DARK)) if dark else letters,
                               _front_word(assets, saved), AWAY_DARK if dark else COLORS[key])
     else:
@@ -512,11 +513,16 @@ def event(
         )
 
     if no_photo:
-        # Niente foto: niente scritta grande fuori dal pannello. La sfumatura scura in fondo
+        # Niente foto: niente scritta grande in fondo. La sfumatura scura in fondo
         # resta solo sull'Away: il rosa sfuma nel nero e sotto si leggono stemmi e nome.
         if key == 'away':
             panel.alpha_composite(_bottom_fade(panel.size))
         card.alpha_composite(panel, (M, M))
+        # Scritta piena sopra i bordi, con la stessa ombra della scritta grande con foto.
+        mask = Image.new('L', card.size)
+        mask.paste(echo_word.getchannel('A'), (M + echo_x, M + echo_y))
+        tinted_shadow(card, mask, key, blur=14, opacity=.55, offset=6)
+        card.alpha_composite(echo_word, (M + echo_x, M + echo_y))
         word_bottom = M + fill_end
     else:
         panel.alpha_composite(_bottom_fade(panel.size))
