@@ -261,8 +261,17 @@ def logo(name, tid, key, assets, height):
     if source is None:
         return None
     source = tight(source)
-    source = source.resize((round(source.width * height / source.height), height), Image.Resampling.LANCZOS)
-    return crest_texture(source, key, assets) if origin == 'FCLogo' else source
+    # Ogni stemma sta in un riquadro quadrato `height` x `height`, come in Matchday e Starting XI:
+    # un logo largo (es. AZ Alkmaar, ovale orizzontale) occupa tutta la larghezza e resta più basso,
+    # al centro di uno spazio alto `height` (allineamenti e posizioni restano quelli di sempre).
+    target = height if source.width <= source.height else max(1, round(height * source.height / source.width))
+    source = source.resize((max(1, round(source.width * target / source.height)), target), Image.Resampling.LANCZOS)
+    mark = crest_texture(source, key, assets) if origin == 'FCLogo' else source
+    if target == height:
+        return mark
+    padded = Image.new('RGBA', (mark.width, height))
+    padded.alpha_composite(mark.convert('RGBA'), (0, (height - target) // 2))
+    return padded
 
 
 def centered_logo_positions(marks, center, gap=20):
