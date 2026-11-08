@@ -13,6 +13,7 @@ Formato di overrides.json:
             "base": "FC Inter Milan",          # squadra del catalogo FCLogo; null = squadra nuova
             "name": "Inter",                   # nome mostrato (facoltativo)
             "aliases": ["Internazionale"],     # nomi ESPN collegati in più (facoltativo)
+            "tag": "Inter",                    # hashtag senza # (facoltativo)
             "logo": "logos/fc-inter-milan.png" # logo caricato a mano (facoltativo)
         }
     }}
@@ -46,6 +47,7 @@ def clean_entry(entry: dict) -> dict | None:
     base = str(entry.get("base") or "").strip() or None
     name = " ".join(str(entry.get("name") or "").split()) or None
     logo = str(entry.get("logo") or "").strip() or None
+    tag = "".join(str(entry.get("tag") or "").split()).lstrip("#") or None
     aliases = unique_aliases(" ".join(str(a).split()) for a in (entry.get("aliases") or []) if str(a).strip())
     if base is None and not (name and logo):
         return None      # squadra nuova: servono nome e logo
@@ -56,6 +58,8 @@ def clean_entry(entry: dict) -> dict | None:
         out["aliases"] = aliases
     if logo:
         out["logo"] = logo
+    if tag:
+        out["tag"] = tag
     return out if len(out) > 1 or base is None else None
 
 
@@ -153,9 +157,65 @@ def base_name(name: str, asset_dir: Path | str = ASSETS_DIR) -> str | None:
     return entry.get("base") if entry else None
 
 
+# ---------- Impostazioni › Nomi: nome italiano e hashtag per nome ESPN ----------
+# team_overrides/names.json = {"version": 1, "teams": {"<nome ESPN>": {"name": "...", "tag": "..."}}}
+# Ha la precedenza su data/teams.json; ogni campo si può togliere da solo.
+NAMES_FILE = "names.json"
+_names_cache: dict[str, tuple[tuple, dict]] = {}
+
+
+def names_path(asset_dir: Path | str = ASSETS_DIR) -> Path:
+    return Path(asset_dir) / DIRNAME / NAMES_FILE
+
+
+def load_names(asset_dir: Path | str = ASSETS_DIR) -> dict[str, dict]:
+    """{nome ESPN: {"name"?, "tag"?}} dal file (ricaricato se cambia). Assente o rotto: vuoto."""
+    path = names_path(asset_dir)
+    try:
+        st = path.stat()
+        stamp = (st.st_mtime_ns, st.st_size)
+    except OSError:
+        return {}
+    hit = _names_cache.get(str(path))
+    if hit and hit[0] == stamp:
+        return hit[1]
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8")).get("teams") or {}
+    except (OSError, ValueError, AttributeError):
+        return {}
+    out = {}
+    for espn, entry in raw.items():
+        if not isinstance(entry, dict):
+            continue
+        clean = {k: " ".join(str(entry.get(k) or "").split()) for k in ("name", "tag")}
+        clean = {k: v for k, v in clean.items() if v}
+        if str(espn).strip() and clean:
+            out[str(espn).strip()] = clean
+    _names_cache[str(path)] = (stamp, out)
+    return out
+
+
+def name_entry(espn_name: str, asset_dir: Path | str = ASSETS_DIR) -> dict | None:
+    """Nome italiano e hashtag scelti nella mini app per un nome ESPN (maiuscole indifferenti)."""
+    names = load_names(asset_dir)
+    if not names or not espn_name:
+        return None
+    hit = names.get(espn_name)
+    if hit is None:
+        low = espn_name.casefold()
+        hit = next((v for k, v in names.items() if k.casefold() == low), None)
+    return hit
+
+
 def display_name(name: str, asset_dir: Path | str = ASSETS_DIR) -> str | None:
     entry = find(name, asset_dir)
     return entry.get("name") if entry else None
+
+
+def hashtag(name: str, asset_dir: Path | str = ASSETS_DIR) -> str | None:
+    """Hashtag scelto nella mini app per la squadra (senza #)."""
+    entry = find(name, asset_dir)
+    return entry.get("tag") if entry else None
 
 
 def apply(teams: list[dict], asset_dir: Path | str = ASSETS_DIR) -> list[dict]:

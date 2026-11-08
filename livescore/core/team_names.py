@@ -30,11 +30,22 @@ TEAM_MAP: dict = _load_teams()
 
 
 def _override_name(name: str) -> str | None:
-    """Nome mostrato scelto nella mini app ImageGen (ha la precedenza su teams.json)."""
+    """Nome mostrato scelto nella mini app ImageGen (ha la precedenza su teams.json):
+    prima Impostazioni › Nomi, poi il nome scelto in Impostazioni › Loghi."""
     try:
         from livescore.core import team_overrides
-        return team_overrides.display_name(name)
+        entry = team_overrides.name_entry(name)
+        return (entry or {}).get("name") or team_overrides.display_name(name)
     except Exception:  # noqa: BLE001 - una correzione rotta non deve fermare il live
+        return None
+
+
+def _override_tag(name: str) -> str | None:
+    """Hashtag scelto nella mini app ImageGen (Impostazioni › Nomi)."""
+    try:
+        from livescore.core import team_overrides
+        return (team_overrides.name_entry(name) or {}).get("tag") or team_overrides.hashtag(name)
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -54,6 +65,9 @@ def translate_team(name: str) -> str:
 
 def build_hashtag(home_name, away_name):
     def abbr(name):
+        custom = _override_tag(name)
+        if custom:
+            return custom
         entry = TEAM_MAP.get(name)
         if entry:
             return entry[1]
