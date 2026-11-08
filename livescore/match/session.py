@@ -14,7 +14,7 @@ from livescore.core import http as net
 from livescore.core.log import MatchProgressLog, log_line
 from livescore.espn import client as espn_client
 from livescore.graphics import logos as fclogo_sync
-from livescore.match import cycle, deferred, finish, goals, incidents, phase_photo, phases, substitutions
+from livescore.match import cycle, deferred, finish, goals, incidents, lineup, phase_photo, phases, substitutions
 from livescore.match.context import Flow, MatchContext
 from livescore.state import gist
 
@@ -94,6 +94,10 @@ def avvia_ciclo_partita():
             if flow is Flow.STOP:
                 return
             phase_photo.tick(ctx)            # avvisi foto per HALF/END/FULL TIME
+            try:
+                lineup.announce_lineup(ctx)  # Italia: STARTING XI (anche prima del via)
+            except Exception as e:
+                log_line("WARN", "GRAPHICS", f"STARTING XI saltata: {e}")
             deferred.send_due_stats(ctx)
             flow = phases.wait_for_kickoff(ctx)
             if flow is Flow.CONTINUE:
