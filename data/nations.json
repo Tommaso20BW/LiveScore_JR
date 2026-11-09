@@ -1,5 +1,5 @@
 {
- "_": "Nome della nazione in italiano (e varianti) -> codice della bandiera: asset flags_round/<codice>.png (tonde, grafiche dell'Italia; livescore/graphics/flags.py). Copia dell'elenco dei Convocati di ImageGEN.",
+ "_": "Nome della nazione (italiano, inglese di ESPN e varianti) -> codice della bandiera: asset flags_round/<codice>.png (tonde, grafiche dell'Italia; livescore/graphics/flags.py). Base: l'elenco dei Convocati di ImageGEN, più i nomi ESPN e tutte le nazionali FIFA con bandiera.",
  "it": [
   "Italia"
  ],
@@ -38,12 +38,16 @@
  ],
  "gb-nir": [
   "Irlanda del Nord",
-  "Northern Ireland"
+  "Northern Ireland",
+  "N Ireland"
  ],
  "ie": [
   "Irlanda",
   "Repubblica d'Irlanda",
-  "Eire"
+  "Eire",
+  "Ireland",
+  "Rep. of Ireland",
+  "Rep Ireland"
  ],
  "ch": [
   "Svizzera"
@@ -117,14 +121,17 @@
   "Bosnia ed Erzegovina",
   "Bosnia-Erzegovina",
   "Bosnia Erzegovina",
-  "Bosnia"
+  "Bosnia",
+  "Bosnia and Herzegovina",
+  "Bosnia-Herz"
  ],
  "me": [
   "Montenegro"
  ],
  "mk": [
   "Macedonia del Nord",
-  "Macedonia"
+  "Macedonia",
+  "FYR Macedonia"
  ],
  "al": [
   "Albania"
@@ -174,7 +181,8 @@
  "fo": [
   "Isole Fær Øer",
   "Isole Faroe",
-  "Far Oer"
+  "Far Oer",
+  "Faroe Islands"
  ],
  "ad": [
   "Andorra"
@@ -222,7 +230,8 @@
  "us": [
   "Stati Uniti",
   "USA",
-  "Stati Uniti d'America"
+  "Stati Uniti d'America",
+  "United States of America"
  ],
  "ca": [
   "Canada"
@@ -252,7 +261,9 @@
   "Haiti"
  ],
  "tt": [
-  "Trinidad e Tobago"
+  "Trinidad e Tobago",
+  "Trin & Tob",
+  "Trinidad and Tobago"
  ],
  "cw": [
   "Curaçao",
@@ -265,7 +276,8 @@
   "Guadalupa"
  ],
  "mq": [
-  "Martinica"
+  "Martinica",
+  "Martinique"
  ],
  "ma": [
   "Marocco"
@@ -314,7 +326,9 @@
   "Guinea Bissau"
  ],
  "gq": [
-  "Guinea Equatoriale"
+  "Guinea Equatoriale",
+  "Eq. Guinea",
+  "Equatorial Guinea"
  ],
  "ga": [
   "Gabon"
@@ -325,7 +339,8 @@
  "cd": [
   "RD Congo",
   "Repubblica Democratica del Congo",
-  "Congo DR"
+  "Congo DR",
+  "DR Congo"
  ],
  "ao": [
   "Angola"
@@ -379,7 +394,8 @@
   "Liberia"
  ],
  "cv": [
-  "Capo Verde"
+  "Capo Verde",
+  "Cape Verde Islands"
  ],
  "mg": [
   "Madagascar"
@@ -409,10 +425,13 @@
   "Corea del Sud",
   "Corea",
   "Korea Republic",
-  "South Korea"
+  "South Korea",
+  "Korea"
  ],
  "kp": [
-  "Corea del Nord"
+  "Corea del Nord",
+  "Korea DPR",
+  "North Korea"
  ],
  "cn": [
   "Cina"
@@ -427,7 +446,8 @@
   "Arabia Saudita"
  ],
  "ir": [
-  "Iran"
+  "Iran",
+  "IR Iran"
  ],
  "iq": [
   "Iraq"
@@ -437,7 +457,9 @@
  ],
  "ae": [
   "Emirati Arabi Uniti",
-  "Emirati Arabi"
+  "Emirati Arabi",
+  "UAE",
+  "United Arab Emirates"
  ],
  "jo": [
   "Giordania"
@@ -477,9 +499,269 @@
   "Vietnam"
  ],
  "my": [
-  "Malesia"
+  "Malesia",
+  "Malaysia"
  ],
  "ph": [
   "Filippine"
+ ],
+ "af": [
+  "Afghanistan"
+ ],
+ "ag": [
+  "Antigua e Barbuda",
+  "Antigua and Barbuda",
+  "Antigua Barbuda"
+ ],
+ "ai": [
+  "Anguilla"
+ ],
+ "as": [
+  "Samoa Americane",
+  "American Samoa"
+ ],
+ "aw": [
+  "Aruba"
+ ],
+ "bb": [
+  "Barbados"
+ ],
+ "bd": [
+  "Bangladesh"
+ ],
+ "bm": [
+  "Bermuda"
+ ],
+ "bn": [
+  "Brunei",
+  "Brunei Darussalam"
+ ],
+ "bs": [
+  "Bahamas"
+ ],
+ "bt": [
+  "Bhutan"
+ ],
+ "bz": [
+  "Belize"
+ ],
+ "cf": [
+  "Repubblica Centrafricana",
+  "Central African Republic",
+  "Cent Afr Rep"
+ ],
+ "ck": [
+  "Isole Cook",
+  "Cook Islands",
+  "Cook Isl"
+ ],
+ "cu": [
+  "Cuba"
+ ],
+ "dj": [
+  "Gibuti",
+  "Djibouti"
+ ],
+ "dm": [
+  "Dominica"
+ ],
+ "do": [
+  "Repubblica Dominicana",
+  "Dominican Republic",
+  "Dominican Rep"
+ ],
+ "er": [
+  "Eritrea"
+ ],
+ "fj": [
+  "Figi",
+  "Fiji"
+ ],
+ "gd": [
+  "Grenada"
+ ],
+ "gu": [
+  "Guam"
+ ],
+ "gy": [
+  "Guyana"
+ ],
+ "hk": [
+  "Hong Kong",
+  "Hong Kong, China"
+ ],
+ "kg": [
+  "Kirghizistan",
+  "Kyrgyzstan",
+  "Kyrgyz Republic",
+  "Kyrgyz Rep."
+ ],
+ "kh": [
+  "Cambogia",
+  "Cambodia"
+ ],
+ "kn": [
+  "Saint Kitts e Nevis",
+  "St. Kitts and Nevis",
+  "Saint Kitts and Nevis",
+  "St Kitts & Nevis"
+ ],
+ "ky": [
+  "Isole Cayman",
+  "Cayman Islands",
+  "Cayman Isl"
+ ],
+ "la": [
+  "Laos"
+ ],
+ "lc": [
+  "Saint Lucia",
+  "St. Lucia"
+ ],
+ "lk": [
+  "Sri Lanka"
+ ],
+ "ls": [
+  "Lesotho"
+ ],
+ "mm": [
+  "Myanmar",
+  "Birmania"
+ ],
+ "mn": [
+  "Mongolia"
+ ],
+ "mo": [
+  "Macao",
+  "Macau"
+ ],
+ "ms": [
+  "Montserrat"
+ ],
+ "mu": [
+  "Mauritius"
+ ],
+ "mv": [
+  "Maldive",
+  "Maldives"
+ ],
+ "nc": [
+  "Nuova Caledonia",
+  "New Caledonia"
+ ],
+ "ni": [
+  "Nicaragua"
+ ],
+ "np": [
+  "Nepal"
+ ],
+ "pg": [
+  "Papua Nuova Guinea",
+  "Papua New Guinea"
+ ],
+ "pk": [
+  "Pakistan"
+ ],
+ "pr": [
+  "Porto Rico",
+  "Puerto Rico"
+ ],
+ "sb": [
+  "Isole Salomone",
+  "Solomon Islands"
+ ],
+ "sc": [
+  "Seychelles"
+ ],
+ "sg": [
+  "Singapore"
+ ],
+ "so": [
+  "Somalia"
+ ],
+ "ss": [
+  "Sud Sudan",
+  "South Sudan"
+ ],
+ "st": [
+  "São Tomé e Príncipe",
+  "Sao Tome and Principe",
+  "Sao Tome & P"
+ ],
+ "sz": [
+  "Eswatini",
+  "Swaziland"
+ ],
+ "tc": [
+  "Turks e Caicos",
+  "Turks and Caicos Islands",
+  "Turks and Caicos"
+ ],
+ "td": [
+  "Ciad",
+  "Chad"
+ ],
+ "tj": [
+  "Tagikistan",
+  "Tajikistan"
+ ],
+ "tl": [
+  "Timor Est",
+  "Timor-Leste",
+  "East Timor"
+ ],
+ "tm": [
+  "Turkmenistan"
+ ],
+ "to": [
+  "Tonga"
+ ],
+ "tw": [
+  "Taipei Cinese",
+  "Chinese Taipei",
+  "Taiwan",
+  "Taipei"
+ ],
+ "vc": [
+  "Saint Vincent e Grenadine",
+  "St. Vincent and the Grenadines",
+  "Saint Vincent and the Grenadines",
+  "St. Vincent"
+ ],
+ "vg": [
+  "Isole Vergini Britanniche",
+  "British Virgin Islands",
+  "Br Virgin Isl"
+ ],
+ "vi": [
+  "Isole Vergini Americane",
+  "US Virgin Islands",
+  "U.S. Virgin Islands",
+  "US Virgin Isl"
+ ],
+ "vu": [
+  "Vanuatu"
+ ],
+ "ws": [
+  "Samoa"
+ ],
+ "ye": [
+  "Yemen"
+ ],
+ "bq": [
+  "Bonaire"
+ ],
+ "sx": [
+  "Sint Maarten"
+ ],
+ "mf": [
+  "Saint-Martin",
+  "St. Martin",
+  "Saint Martin"
+ ],
+ "pf": [
+  "Tahiti",
+  "Polinesia Francese",
+  "French Polynesia"
  ]
 }
