@@ -612,6 +612,42 @@ def event(
     )
 
 
+# Scritte delle fasi scritte con il font "JR Fasi" (asset fonts/JRFasi-Regular.ttf): tutte le
+# lettere con la stessa altezza, larghezza e spaziatura. Senza il font restano le immagini
+# overlays/<fase>.png di prima.
+PHASE_FONT = 'JRFasi-Regular.ttf'
+PHASE_TEXT = {'kick': ('KICK', 'OFF'), 'second': ('2ND', 'HALF'), 'half': ('HALF TIME',),
+              'end_of_90': ("END OF 90'",), 'full': ('FULL TIME',)}
+PHASE_FONT_SIZE = 860           # px: maiuscole alte circa 600 px, poi la grafica le riduce
+# Fasi con foto: la scritta in alto è un po' più alta (stessa larghezza).
+PHASE_PHOTO_WORD_STRETCH = 1.12
+
+
+def _font_line(text, font):
+    box = font.getbbox(text)
+    layer = Image.new('RGBA', (box[2] - box[0] + 20, box[3] - box[1] + 20), (255, 255, 255, 0))
+    ImageDraw.Draw(layer).text((10 - box[0], 10 - box[1]), text, font=font, fill='white')
+    return tight(layer)
+
+
+def phase_text(kind, assets):
+    """Scritta della fase (bianca su trasparente, ritagliata), come le immagini overlays/<fase>.png:
+    KICK OFF e 2ND HALF su due righe, le altre su una (il motore le divide se serve)."""
+    path = Path(assets) / 'fonts' / PHASE_FONT
+    if not path.is_file():
+        return tight(Image.open(Path(assets) / 'overlays' / f'{kind}.png'), True)
+    font = ImageFont.truetype(str(path), PHASE_FONT_SIZE)
+    lines = [_font_line(text, font) for text in PHASE_TEXT[kind]]
+    if len(lines) == 1:
+        return lines[0]
+    top, bottom = lines
+    gap = round(max(top.height, bottom.height) * 0.075)        # come in _two_lines
+    out = Image.new('RGBA', (max(top.width, bottom.width), top.height + gap + bottom.height))
+    out.alpha_composite(top, ((out.width - top.width) // 2, 0))
+    out.alpha_composite(bottom, ((out.width - bottom.width) // 2, top.height + gap))
+    return out
+
+
 def phase_word(word, key, assets):
     """KICK OFF / HALF TIME / ... word: random gradient on UCL, kit texture elsewhere."""
     if key == 'ucl':
@@ -650,7 +686,7 @@ def phase(
     key = theme(kit, competition)
     card = Image.open(assets / 'portrait' / f'{key}_clean_1086x1448.png').convert('RGBA')
 
-    word = tight(Image.open(assets / 'overlays' / f'{kind}.png'), True)
+    word = phase_text(kind, assets)
 
     if kind == 'kick':
         word = ImageOps.contain(word, (600, 600), Image.Resampling.LANCZOS)
@@ -677,7 +713,7 @@ def phase(
             word = _two_lines(word)
         dark = AWAY_DARK if key == 'away' else None
         # Stessa posizione e stessa altezza lettere di KICK OFF (entrambe su 2 righe).
-        kick_word = ImageOps.contain(tight(Image.open(assets / 'overlays' / 'kick.png'), True),
+        kick_word = ImageOps.contain(phase_text('kick', assets),
                                      (600, 600), Image.Resampling.LANCZOS)
         word = ImageOps.contain(word, (IW - 80, kick_word.height), Image.Resampling.LANCZOS)
         top = (H - KICK_LOGO_HEIGHT - 38 - kick_word.height) // 2
@@ -743,7 +779,8 @@ def phase(
             method=Image.Resampling.LANCZOS,
         )
         word_w = iw - round(36 * S)
-        word = word.resize((word_w, round(word.height * word_w / word.width)), Image.Resampling.LANCZOS)
+        word = word.resize((word_w, round(word.height * word_w / word.width * PHASE_PHOTO_WORD_STRETCH)),
+                           Image.Resampling.LANCZOS)
         word_layer = phase_word(word, key, assets)
         # Ombra dietro la scritta di fase solo se ImageGEN l'ha chiesta (sfondo poco contrastato).
         if text_shadow and text_shadow.get('strength', 0) > 0.02:
