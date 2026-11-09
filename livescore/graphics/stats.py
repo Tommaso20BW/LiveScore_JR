@@ -117,6 +117,11 @@ def build_html(*, rows, kit, competition, league_name, momento, home_id, away_id
 
     assets = Path(assets)
     key = p.theme(kit, competition)
+    if key in p.ITALY_THEMES:
+        # Italia: grafica a parte (livescore/graphics/italy.py).
+        from livescore.graphics import italy
+        return italy.stats_html(kit=key, rows=rows, momento=momento, home_name=home_name,
+                                away_name=away_name, competition=competition, assets=assets)
 
     bg = Image.open(
         assets / 'portrait' / f'{key}_clean_1086x1448.png'

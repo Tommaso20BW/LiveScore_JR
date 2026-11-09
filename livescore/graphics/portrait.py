@@ -471,6 +471,14 @@ def event(
     assets = Path(assets)
     key = theme(kit, competition, saved)
     background = assets / 'portrait' / f'{key}_clean_1086x1448.png'
+    if key in ITALY_THEMES:
+        # Italia: grafica a parte (livescore/graphics/italy.py), senza foto.
+        from livescore.graphics import italy
+        image = italy.render(italy.event_html(
+            kit=key, saved=saved, player_name=scorer_name + suffix, minute=minute, home_name=home_name,
+            away_name=away_name, home_goals=home_goals, away_goals=away_goals, competition=competition,
+            assets=assets))
+        return g.RenderedGoal(image, None, scorer_name, 'saved' if saved else kit, pose, None, background)
     card = Image.open(background).convert('RGBA')
 
     panel = card.crop((M, M, W - M, H - M))
@@ -630,6 +638,13 @@ def phase(
 ):
     if kind not in PHASE_KINDS:
         raise ValueError('Fase senza grafica')
+    if kit in ITALY_THEMES:
+        # Italia: grafica a parte (livescore/graphics/italy.py), senza foto.
+        from livescore.graphics import italy
+        return italy.render(italy.phase_html(
+            kind=kind, kit=kit, home_name=home_name, away_name=away_name, home_goals=home_goals,
+            away_goals=away_goals, competition=competition, assets=assets,
+            caption=_phase_caption(kind, home_name, away_name, shootout, extra_time)))
 
     assets = Path(assets)
     key = theme(kit, competition)

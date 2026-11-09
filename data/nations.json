@@ -1,0 +1,485 @@
+{
+ "_": "Nome della nazione in italiano (e varianti) -> codice della bandiera: asset flags_round/<codice>.png (tonde, grafiche dell'Italia; livescore/graphics/flags.py). Copia dell'elenco dei Convocati di ImageGEN.",
+ "it": [
+  "Italia"
+ ],
+ "fr": [
+  "Francia"
+ ],
+ "de": [
+  "Germania"
+ ],
+ "es": [
+  "Spagna"
+ ],
+ "pt": [
+  "Portogallo"
+ ],
+ "nl": [
+  "Olanda",
+  "Paesi Bassi",
+  "Netherlands",
+  "Holland"
+ ],
+ "be": [
+  "Belgio"
+ ],
+ "gb-eng": [
+  "Inghilterra",
+  "England"
+ ],
+ "gb-sct": [
+  "Scozia",
+  "Scotland"
+ ],
+ "gb-wls": [
+  "Galles",
+  "Wales"
+ ],
+ "gb-nir": [
+  "Irlanda del Nord",
+  "Northern Ireland"
+ ],
+ "ie": [
+  "Irlanda",
+  "Repubblica d'Irlanda",
+  "Eire"
+ ],
+ "ch": [
+  "Svizzera"
+ ],
+ "at": [
+  "Austria"
+ ],
+ "hr": [
+  "Croazia"
+ ],
+ "rs": [
+  "Serbia"
+ ],
+ "si": [
+  "Slovenia"
+ ],
+ "sk": [
+  "Slovacchia"
+ ],
+ "cz": [
+  "Repubblica Ceca",
+  "Cechia",
+  "Rep. Ceca",
+  "Czech Republic",
+  "Czechia"
+ ],
+ "pl": [
+  "Polonia"
+ ],
+ "hu": [
+  "Ungheria"
+ ],
+ "ro": [
+  "Romania"
+ ],
+ "bg": [
+  "Bulgaria"
+ ],
+ "gr": [
+  "Grecia"
+ ],
+ "tr": [
+  "Turchia",
+  "Türkiye",
+  "Turkiye",
+  "Turkey"
+ ],
+ "ua": [
+  "Ucraina"
+ ],
+ "by": [
+  "Bielorussia"
+ ],
+ "ru": [
+  "Russia"
+ ],
+ "ge": [
+  "Georgia"
+ ],
+ "am": [
+  "Armenia"
+ ],
+ "az": [
+  "Azerbaigian",
+  "Azerbaijan"
+ ],
+ "kz": [
+  "Kazakistan"
+ ],
+ "ba": [
+  "Bosnia ed Erzegovina",
+  "Bosnia-Erzegovina",
+  "Bosnia Erzegovina",
+  "Bosnia"
+ ],
+ "me": [
+  "Montenegro"
+ ],
+ "mk": [
+  "Macedonia del Nord",
+  "Macedonia"
+ ],
+ "al": [
+  "Albania"
+ ],
+ "xk": [
+  "Kosovo"
+ ],
+ "dk": [
+  "Danimarca"
+ ],
+ "se": [
+  "Svezia"
+ ],
+ "no": [
+  "Norvegia"
+ ],
+ "fi": [
+  "Finlandia"
+ ],
+ "is": [
+  "Islanda"
+ ],
+ "ee": [
+  "Estonia"
+ ],
+ "lv": [
+  "Lettonia"
+ ],
+ "lt": [
+  "Lituania"
+ ],
+ "lu": [
+  "Lussemburgo"
+ ],
+ "mt": [
+  "Malta"
+ ],
+ "cy": [
+  "Cipro"
+ ],
+ "il": [
+  "Israele"
+ ],
+ "md": [
+  "Moldavia"
+ ],
+ "fo": [
+  "Isole Fær Øer",
+  "Isole Faroe",
+  "Far Oer"
+ ],
+ "ad": [
+  "Andorra"
+ ],
+ "sm": [
+  "San Marino"
+ ],
+ "li": [
+  "Liechtenstein"
+ ],
+ "gi": [
+  "Gibilterra"
+ ],
+ "ar": [
+  "Argentina"
+ ],
+ "br": [
+  "Brasile"
+ ],
+ "uy": [
+  "Uruguay"
+ ],
+ "co": [
+  "Colombia"
+ ],
+ "cl": [
+  "Cile"
+ ],
+ "pe": [
+  "Perù",
+  "Peru"
+ ],
+ "ec": [
+  "Ecuador"
+ ],
+ "py": [
+  "Paraguay"
+ ],
+ "bo": [
+  "Bolivia"
+ ],
+ "ve": [
+  "Venezuela"
+ ],
+ "us": [
+  "Stati Uniti",
+  "USA",
+  "Stati Uniti d'America"
+ ],
+ "ca": [
+  "Canada"
+ ],
+ "mx": [
+  "Messico"
+ ],
+ "cr": [
+  "Costa Rica"
+ ],
+ "pa": [
+  "Panama"
+ ],
+ "hn": [
+  "Honduras"
+ ],
+ "jm": [
+  "Giamaica"
+ ],
+ "sv": [
+  "El Salvador"
+ ],
+ "gt": [
+  "Guatemala"
+ ],
+ "ht": [
+  "Haiti"
+ ],
+ "tt": [
+  "Trinidad e Tobago"
+ ],
+ "cw": [
+  "Curaçao",
+  "Curacao"
+ ],
+ "sr": [
+  "Suriname"
+ ],
+ "gp": [
+  "Guadalupa"
+ ],
+ "mq": [
+  "Martinica"
+ ],
+ "ma": [
+  "Marocco"
+ ],
+ "dz": [
+  "Algeria"
+ ],
+ "tn": [
+  "Tunisia"
+ ],
+ "eg": [
+  "Egitto"
+ ],
+ "ly": [
+  "Libia"
+ ],
+ "sn": [
+  "Senegal"
+ ],
+ "ci": [
+  "Costa d'Avorio",
+  "Costa d’Avorio",
+  "Côte d'Ivoire",
+  "Ivory Coast"
+ ],
+ "gh": [
+  "Ghana"
+ ],
+ "ng": [
+  "Nigeria"
+ ],
+ "cm": [
+  "Camerun"
+ ],
+ "ml": [
+  "Mali"
+ ],
+ "bf": [
+  "Burkina Faso"
+ ],
+ "gn": [
+  "Guinea"
+ ],
+ "gw": [
+  "Guinea-Bissau",
+  "Guinea Bissau"
+ ],
+ "gq": [
+  "Guinea Equatoriale"
+ ],
+ "ga": [
+  "Gabon"
+ ],
+ "cg": [
+  "Congo"
+ ],
+ "cd": [
+  "RD Congo",
+  "Repubblica Democratica del Congo",
+  "Congo DR"
+ ],
+ "ao": [
+  "Angola"
+ ],
+ "zm": [
+  "Zambia"
+ ],
+ "zw": [
+  "Zimbabwe"
+ ],
+ "za": [
+  "Sudafrica"
+ ],
+ "mz": [
+  "Mozambico"
+ ],
+ "ke": [
+  "Kenya"
+ ],
+ "tz": [
+  "Tanzania"
+ ],
+ "ug": [
+  "Uganda"
+ ],
+ "et": [
+  "Etiopia"
+ ],
+ "sd": [
+  "Sudan"
+ ],
+ "bj": [
+  "Benin"
+ ],
+ "tg": [
+  "Togo"
+ ],
+ "ne": [
+  "Niger"
+ ],
+ "mr": [
+  "Mauritania"
+ ],
+ "gm": [
+  "Gambia"
+ ],
+ "sl": [
+  "Sierra Leone"
+ ],
+ "lr": [
+  "Liberia"
+ ],
+ "cv": [
+  "Capo Verde"
+ ],
+ "mg": [
+  "Madagascar"
+ ],
+ "km": [
+  "Comore"
+ ],
+ "bi": [
+  "Burundi"
+ ],
+ "rw": [
+  "Ruanda"
+ ],
+ "na": [
+  "Namibia"
+ ],
+ "bw": [
+  "Botswana"
+ ],
+ "mw": [
+  "Malawi"
+ ],
+ "jp": [
+  "Giappone"
+ ],
+ "kr": [
+  "Corea del Sud",
+  "Corea",
+  "Korea Republic",
+  "South Korea"
+ ],
+ "kp": [
+  "Corea del Nord"
+ ],
+ "cn": [
+  "Cina"
+ ],
+ "au": [
+  "Australia"
+ ],
+ "nz": [
+  "Nuova Zelanda"
+ ],
+ "sa": [
+  "Arabia Saudita"
+ ],
+ "ir": [
+  "Iran"
+ ],
+ "iq": [
+  "Iraq"
+ ],
+ "qa": [
+  "Qatar"
+ ],
+ "ae": [
+  "Emirati Arabi Uniti",
+  "Emirati Arabi"
+ ],
+ "jo": [
+  "Giordania"
+ ],
+ "sy": [
+  "Siria"
+ ],
+ "lb": [
+  "Libano"
+ ],
+ "ps": [
+  "Palestina"
+ ],
+ "om": [
+  "Oman"
+ ],
+ "bh": [
+  "Bahrein",
+  "Bahrain"
+ ],
+ "kw": [
+  "Kuwait"
+ ],
+ "uz": [
+  "Uzbekistan"
+ ],
+ "in": [
+  "India"
+ ],
+ "id": [
+  "Indonesia"
+ ],
+ "th": [
+  "Thailandia"
+ ],
+ "vn": [
+  "Vietnam"
+ ],
+ "my": [
+  "Malesia"
+ ],
+ "ph": [
+  "Filippine"
+ ]
+}
