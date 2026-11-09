@@ -3,8 +3,8 @@ GOAL, SAVED, STATS e STARTING XI.
 
 Tutte disegnate in HTML e fotografate con Playwright (pagina 1086x1448 resa a 1920x2560):
 - home: sfondo azzurro sfumato, scritte bianche; away: sfondo bianco, scritte azzurre;
-- fasce diagonali tono su tono, luce morbida al centro, cornice sottile, riga tricolore
-  in alto e in basso, logo JR in alto a destra;
+- fasce diagonali tono su tono, luce morbida al centro, riga tricolore in alto e in basso,
+  4 stelle (i Mondiali) in alto a sinistra e logo JR in alto a destra, vicini ai bordi;
 - bandiere tonde delle due nazionali (asset `flags_round/`) al posto dei nomi; se una
   bandiera manca resta il nome della squadra;
 - scritte in Dharma (parole grandi) e Bebas (nomi, etichette).
@@ -34,17 +34,13 @@ THEMES = {
     'ita_home': dict(bg='linear-gradient(160deg,#2b71d2,#1550a8 55%,#0c3577)', ink='#ffffff',
                      sub='rgba(255,255,255,.72)', bar2='rgba(255,255,255,.35)', pitch='rgba(255,255,255,.08)',
                      line='rgba(255,255,255,.85)', lbg='#ffffff', ltx='#1550a8', ring='#ffffff',
-                     glow='rgba(255,255,255,.16)', ray='rgba(255,255,255,.035)', frame='rgba(255,255,255,.35)'),
+                     glow='rgba(255,255,255,.16)', ray='rgba(255,255,255,.035)'),
     'ita_away': dict(bg='linear-gradient(160deg,#ffffff,#e9f0fa)', ink='#1550a8',
                      sub='#6a87b8', bar2='rgba(21,80,168,.25)', pitch='rgba(21,80,168,.06)',
                      line='#1550a8', lbg='#1550a8', ltx='#ffffff', ring='#1550a8',
-                     glow='rgba(43,113,210,.10)', ray='rgba(21,80,168,.035)', frame='rgba(21,80,168,.3)'),
+                     glow='rgba(43,113,210,.10)', ray='rgba(21,80,168,.035)'),
 }
 TRI = 'linear-gradient(90deg,#009246 0 33.3%,#ffffff 33.3% 66.6%,#ce2b37 66.6%)'
-COMPETITIONS = {
-    'uefa.nations': 'Nations League', 'fifa.worldq.uefa': 'Qualificazioni Mondiali', 'fifa.world': 'Mondiali',
-    'uefa.euroq': 'Qualificazioni Europei', 'uefa.euro': 'Europei', 'fifa.friendly': 'Amichevole',
-}
 WORDS = {'kick': ('KICK', 'OFF'), 'second': ('2ND', 'HALF'), 'half': ('HALF', 'TIME'),
          'end_of_90': ('END', "OF 90'"), 'full': ('FULL', 'TIME')}
 MOMENTS = {'HT': 'HALF TIME', '2H_END': "END OF 90'", 'FT': 'FULL TIME'}
@@ -71,10 +67,6 @@ def _team(name: str) -> str:
     return team_names.translate_team(name).upper()
 
 
-def competition_name(competition: str) -> str:
-    return COMPETITIONS.get(str(competition or '').strip(), '').upper()
-
-
 def _flag(name: str, size: int, t: dict, assets: Path) -> str:
     path = flags.path_for(name, assets)
     if path is None:                                   # bandiera mancante: il nome della squadra
@@ -91,14 +83,15 @@ def _score_row(home, away, score, t, assets, size=86, font=96, gap=28):
             f'{_flag(home, size, t, assets)}{mid}{_flag(away, size, t, assets)}</div>')
 
 
-def _page(kit, body, assets, *, kicker='', footer='', frame_text=True) -> str:
+def _page(kit, body, assets, *, stars=True) -> str:
     t = THEMES[kit]
     fonts = assets / 'fonts'
     jr = _file_uri(str(assets / 'overlays' / 'jr.png'))
-    top = (f'<div class="ab lab" style="left:76px;top:66px;font-size:30px;color:{t["sub"]}">{_esc(kicker)}</div>'
-           if kicker and frame_text else '')
-    bottom = (f'<div class="ab lab" style="left:0;right:0;bottom:78px;text-align:center;font-size:36px;color:{t["sub"]}">'
-              f'{_esc(footer)}</div>' if footer else '')
+    # In alto a sinistra: le 4 stelle dei Mondiali vinti dall'Italia.
+    star = (f'<svg width="30" height="30" viewBox="0 0 24 24"><path fill="{t["ink"]}" '
+            f'd="M12 1.8l3.1 6.6 7.2.9-5.3 5 1.4 7.1L12 17.9l-6.4 3.5 1.4-7.1-5.3-5 7.2-.9z"/></svg>')
+    top = (f'<div class="ab" style="left:28px;top:44px;display:flex;gap:10px">{star * 4}</div>'
+           if stars else '')
     return f'''<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face{{font-family:Dharma;src:url({_file_uri(str(fonts / 'DharmaGothicEBold.otf'))})}}
 @font-face{{font-family:Bebas;src:url({_file_uri(str(fonts / 'BebasNeue2014-Regular.ttf'))})}}
@@ -112,10 +105,9 @@ html,body{{width:{W}px;height:{H}px;overflow:hidden;background:{t['bg']};positio
 <div class="ab" style="inset:0;background:radial-gradient(ellipse 70% 45% at 50% 42%,{t['glow']},transparent 70%)"></div>
 <div class="ab" style="left:0;right:0;top:0;height:14px;background:{TRI}"></div>
 <div class="ab" style="left:0;right:0;bottom:0;height:14px;background:{TRI}"></div>
-<div class="ab" style="inset:44px;border:2px solid {t['frame']}"></div>
-<div class="ab" style="right:72px;top:64px;width:63px;height:84px;background:{t['ink']};
+<div class="ab" style="right:22px;top:34px;width:63px;height:84px;background:{t['ink']};
   -webkit-mask:url({jr}) center/contain no-repeat;mask:url({jr}) center/contain no-repeat"></div>
-{top}{bottom}{body}
+{top}{body}
 <script>
 // parole troppo larghe: si rimpiccioliscono finché stanno nello spazio indicato
 window.__fit = document.fonts.ready.then(() => document.querySelectorAll('[data-fit]').forEach(el => {{
@@ -139,8 +131,7 @@ def phase_html(*, kind, kit, home_name, away_name, home_goals=0, away_goals=0, c
 <div class="ab" style="left:0;right:0;top:560px;text-align:center">
   <div class="word" style="font-size:300px" data-fit="900"><div>{_q(l1)}</div><div>{_q(l2)}</div></div></div>
 {cap}'''
-    return _page(kit, body, assets, kicker=f'{_team(home_name)} – {_team(away_name)}',
-                 footer=competition_name(competition))
+    return _page(kit, body, assets)
 
 
 def event_html(*, kit, saved, player_name, minute, home_name, away_name, home_goals=None, away_goals=None,
@@ -156,8 +147,7 @@ def event_html(*, kit, saved, player_name, minute, home_name, away_name, home_go
   <div class="lab" style="display:inline-block;font-size:100px;line-height:1;letter-spacing:.03em;color:{t['ink']}" data-fit="920">{_esc(player_name.upper())}</div></div>
 <div class="ab lab" style="left:0;right:0;top:965px;text-align:center;font-size:46px;color:{t['sub']}">{_q(minute + "'") if minute else ''}</div>
 <div class="ab" style="left:0;right:0;top:1110px">{_score_row(home_name, away_name, score, t, assets, 80, 90)}</div>'''
-    return _page(kit, body, assets, kicker=f'{_team(home_name)} – {_team(away_name)}',
-                 footer=competition_name(competition))
+    return _page(kit, body, assets)
 
 
 def _number(value) -> float | None:
@@ -193,8 +183,7 @@ def stats_html(*, kit, rows, momento, home_name, away_name, competition='', asse
 <div class="ab" style="left:110px;top:470px">{_flag(home_name, 90, t, assets)}</div>
 <div class="ab" style="right:110px;top:470px">{_flag(away_name, 90, t, assets)}</div>
 {out}'''
-    return _page(kit, body, assets, kicker=f'{_team(home_name)} – {_team(away_name)}',
-                 footer=competition_name(competition))
+    return _page(kit, body, assets)
 
 
 def xi_html(*, kit, lines, home_name, away_name, assets=g.DEFAULT_ASSET_DIR) -> str:
