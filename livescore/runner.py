@@ -106,6 +106,13 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
         logos_icon = "🛡" if sources == ["FCLogo", "FCLogo"] else "⚠️"
         lines += [f"👕 Kit: {kit_text}", f"🎨 Grafiche: {graphics_text}",
                   f"{logos_icon} Loghi: {logos_text}"]
+    elif bot.ITALY_ID in (str(home_id), str(away_id)):
+        try:
+            ita_kit = bot.italy_kit(kit_data, home_id)
+        except Exception:
+            ita_kit = ""
+        ita_label = {"ita_home": "Home (azzurra)", "ita_away": "Away (bianca)"}.get(ita_kit, "Non disponibile")
+        lines.append(f"👕 Kit: {ita_label}" + (f" · {bot.esc(mode_label)}" if mode_label else ""))
     lines += [
         f"{bot.get_league_emoji(league_slug)} {bot.build_hashtag(home_raw, away_raw)}",
         "",

@@ -162,26 +162,28 @@ def stats_html(*, kit, rows, momento, home_name, away_name, competition='', asse
     assets = Path(assets)
     t = THEMES[kit]
     rows = [(lab, h, a) for lab, h, a in rows if _number(h) is not None and _number(a) is not None]
-    step = min(150, 660 / max(1, len(rows)))
-    big = min(86, step * .57)
+    # Righe distribuite su tutta la parte sotto il titolo (440-1330 px), centrate in verticale.
+    step = min(260, 890 / max(1, len(rows)))
+    big = min(130, step * .5)
+    top0 = 440 + (890 - step * len(rows)) / 2 + step * .12
     out = ''
     for i, (lab, h, a) in enumerate(rows):
         hv, av = _number(h), _number(a)
         share = .5 if hv + av == 0 else hv / (hv + av)
         out += f'''
-<div class="ab" style="left:110px;right:110px;top:{620 + i * step:.0f}px">
+<div class="ab" style="left:110px;right:110px;top:{top0 + i * step:.0f}px">
   <div style="display:flex;justify-content:space-between;align-items:flex-end">
     <span style="font-family:Dharma;font-size:{big:.0f}px;line-height:.9;color:{t['ink']}">{_esc(h)}</span>
-    <span class="lab" style="font-size:{min(34, big * .4):.0f}px;padding-bottom:8px;color:{t['sub']}">{_esc(lab)}</span>
+    <span class="lab" style="font-size:{min(46, big * .38):.0f}px;padding-bottom:{big * .1:.0f}px;color:{t['sub']}">{_esc(lab)}</span>
     <span style="font-family:Dharma;font-size:{big:.0f}px;line-height:.9;color:{t['ink']}">{_esc(a)}</span></div>
-  <div style="display:flex;height:12px;margin-top:{min(14, step * .09):.0f}px;gap:8px">
+  <div style="display:flex;height:16px;margin-top:{min(22, step * .09):.0f}px;gap:10px">
     <div style="flex:{share:.6f};background:{t['ink']}"></div><div style="flex:{1 - share:.6f};background:{t['bar2']}"></div></div>
 </div>'''
     body = f'''
-<div class="ab" style="left:0;right:0;top:150px;text-align:center"><div class="word" style="font-size:230px">STATS</div></div>
-<div class="ab lab" style="left:0;right:0;top:362px;text-align:center;font-size:40px;color:{t['sub']}">{_q(MOMENTS.get(momento, ''))}</div>
-<div class="ab" style="left:110px;top:470px">{_flag(home_name, 90, t, assets)}</div>
-<div class="ab" style="right:110px;top:470px">{_flag(away_name, 90, t, assets)}</div>
+<div class="ab" style="left:0;right:0;top:130px;text-align:center"><div class="word" style="font-size:230px">STATS</div></div>
+<div class="ab lab" style="left:0;right:0;top:340px;text-align:center;font-size:40px;color:{t['sub']}">{_q(MOMENTS.get(momento, ''))}</div>
+<div class="ab" style="left:110px;top:170px">{_flag(home_name, 120, t, assets)}</div>
+<div class="ab" style="right:110px;top:170px">{_flag(away_name, 120, t, assets)}</div>
 {out}'''
     return _page(kit, body, assets)
 

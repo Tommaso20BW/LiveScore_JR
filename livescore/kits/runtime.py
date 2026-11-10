@@ -36,12 +36,14 @@ from livescore.match import phase_photo
 
 
 VALID_KITS = ("home", "away", "third")
+ITALY_KITS = ("home", "away")           # Italia: azzurra (ita_home) o bianca (ita_away), niente third
+ITALY_ID = "162"
 VALID_MODES = ("auto", "manual")
 MAX_PROCESSED_CALLBACKS = 100
 
 
 def _normalise_kit(value: Any) -> str | None:
-    value = str(value or "").strip().lower()
+    value = str(value or "").strip().lower().removeprefix("ita_")
     return value if value in VALID_KITS else None
 
 
@@ -121,7 +123,7 @@ def parse_callback_data(value: str) -> tuple[str | None, str | None]:
     return parts[1], parts[2]
 
 
-def keyboard_for(event_id: str, kit_mode: str, active_kit: str) -> dict:
+def keyboard_for(event_id: str, kit_mode: str, active_kit: str, kits=VALID_KITS) -> dict:
     selected = active_kit if kit_mode == "manual" else "auto"
 
     def button(choice: str) -> dict:
@@ -134,12 +136,7 @@ def keyboard_for(event_id: str, kit_mode: str, active_kit: str) -> dict:
         }
 
     return {
-        "inline_keyboard": [[
-            button("home"),
-            button("away"),
-            button("third"),
-            button("auto"),
-        ]]
+        "inline_keyboard": [[*(button(kit) for kit in kits), button("auto")]]
     }
 
 
@@ -160,6 +157,7 @@ class DynamicKitRuntime:
         self.home_name = ""
         self.away_name = ""
         self.enabled = False
+        self.italy = False               # partita dell'Italia: kit 'home'/'away' -> temi ita_home/ita_away
 
         self.fallback_kit = "home"
         self.espn_kit: str | None = None
@@ -306,6 +304,7 @@ class DynamicKitRuntime:
 
         self._originals = {
             "rileva_kit_juve": self.bot.rileva_kit_juve,
+            "italy_kit": self.bot.italy_kit,
             "fetch_evento": self.bot.fetch_evento,
             "leggi_stato_da_gist": self.bot.leggi_stato_da_gist,
             "salva_stato_su_gist": self.bot.salva_stato_su_gist,
@@ -322,6 +321,7 @@ class DynamicKitRuntime:
         }
 
         self.bot.rileva_kit_juve = self._rileva_kit_proxy
+        self.bot.italy_kit = self._italy_kit_proxy
         self.bot.fetch_evento = self._fetch_evento_proxy
         self.bot.leggi_stato_da_gist = self._read_state_proxy
         self.bot.salva_stato_su_gist = self._save_state_proxy
@@ -379,18 +379,22 @@ class DynamicKitRuntime:
             self.league_slug,
             self.league_name,
         )
-        self.enabled = bool(juventus_match and not friendly)
+        # Italia (amichevoli comprese, come le sue grafiche): HOME/AWAY/AUTO.
+        self.italy = not juventus_match and ITALY_ID in (str(self.home_id), str(self.away_id))
+        self.enabled = bool((juventus_match and not friendly) or self.italy)
 
-        fallback = self.bot.determina_kit(
-            self.home_id,
-            self.away_id,
-            self.league_slug,
-            self.league_name,
-        )
+        if self.italy:
+            fallback = "home" if str(self.home_id) == ITALY_ID else "away"
+        else:
+            fallback = self.bot.determina_kit(
+                self.home_id,
+                self.away_id,
+                self.league_slug,
+                self.league_name,
+            )
         self.fallback_kit = _normalise_kit(fallback) or "home"
 
-        raw_espn = extract_juventus_uniform(data, self.bot.JUVE_ID)
-        self.espn_kit = raw_espn
+        self.espn_kit = self._espn_uniform(data)
         self.kit_mode = "auto"
         self.manual_kit = None
         self.active_kit = self.espn_kit or self.fallback_kit
@@ -433,7 +437,22 @@ class DynamicKitRuntime:
     def keyboard_for_current(self) -> dict | None:
         if not self.enabled or not self.current_event_id:
             return None
-        return keyboard_for(self.current_event_id, self.kit_mode, self.active_kit)
+        return keyboard_for(self.current_event_id, self.kit_mode, self.active_kit, self._kits)
+
+    @property
+    def _kits(self) -> tuple:
+        return ITALY_KITS if self.italy else VALID_KITS
+
+    def _theme(self, kit: str) -> str:
+        """Kit come lo vogliono le grafiche: per l'Italia 'ita_home' / 'ita_away'."""
+        return f"ita_{kit}" if self.italy else kit
+
+    def _espn_uniform(self, data: dict | None) -> str | None:
+        """Maglia indicata da ESPN per la squadra seguita (None se ESPN non la indica)."""
+        if self.italy:
+            from livescore.match import teams
+            return _normalise_kit(teams.italy_uniform(data))
+        return extract_juventus_uniform(data, self.bot.JUVE_ID)
 
     def _state_matches_current(self, state: dict | None) -> bool:
         if not isinstance(state, dict) or not self.current_event_id:
@@ -477,10 +496,7 @@ class DynamicKitRuntime:
     def _hydrate_from_state(self, state: dict) -> None:
         self._ensure_state_defaults(state)
 
-        current_summary_kit = extract_juventus_uniform(
-            self.latest_summary,
-            self.bot.JUVE_ID,
-        )
+        current_summary_kit = self._espn_uniform(self.latest_summary)
         persisted_espn = _normalise_kit(state.get("espn_kit"))
         self.espn_kit = current_summary_kit or persisted_espn or self.espn_kit
 
@@ -620,6 +636,13 @@ class DynamicKitRuntime:
             league_name,
         )
 
+    def _italy_kit_proxy(self, data_espn, home_id) -> str:
+        if self.enabled and self.italy:
+            kit = self.active_kit
+            self._thread_local.kit_used = kit     # come per la Juve: il kit davvero disegnato
+            return self._theme(kit)
+        return self._originals["italy_kit"](data_espn, home_id)
+
     def _fetch_evento_proxy(self, event_id, league_slug):
         data = self._originals["fetch_evento"](event_id, league_slug)
         if (
@@ -635,7 +658,7 @@ class DynamicKitRuntime:
 
     def observe_summary(self, data: dict) -> None:
         """Called for every normal ESPN summary response of the active match."""
-        detected = extract_juventus_uniform(data, self.bot.JUVE_ID)
+        detected = self._espn_uniform(data)
         if not detected:
             # Keep the last valid ESPN value. AUTO therefore uses:
             # last valid ESPN uniform -> fallback if ESPN has never provided one.
@@ -755,7 +778,7 @@ class DynamicKitRuntime:
                 self._answer_callback(callback_id, "Già applicato")
                 continue
 
-            if choice not in (*VALID_KITS, "auto"):
+            if choice not in (*self._kits, "auto"):
                 self._answer_callback(callback_id, "Scelta non valida")
                 continue
 
@@ -971,13 +994,11 @@ class DynamicKitRuntime:
                 for key, value in kwargs.items()
                 if key in allowed
             }
-            local_snapshot = (
-                self._last_photo_snapshot
-                if kind not in ("kick", "second")
-                else None
-            )
+            # Italia: grafiche di fase sempre senza foto, niente snapshot.
+            with_photo = kind not in ("kick", "second") and not self.italy
+            local_snapshot = self._last_photo_snapshot if with_photo else None
             remote_snapshot = None
-            if kind not in ("kick", "second"):
+            if with_photo:
                 if not local_snapshot:
                     self._log(
                         "ERROR",
@@ -1385,17 +1406,17 @@ class DynamicKitRuntime:
         render = copy.deepcopy(record.get("render") or {})
 
         if kind == "goal":
-            render["kit"] = kit
+            render["kit"] = self._theme(kit)
             return self._originals["render_goal"](**render).png
 
         if kind == "saved":
-            render["kit"] = kit
+            render["kit"] = self._theme(kit)
             return self._originals["render_saved"](**render).png
 
         if kind in ("kick", "second", "half", "full", "end_of_90"):
             snapshot = record.get("photo_snapshot")
             layers = None
-            if kind not in ("kick", "second"):
+            if kind not in ("kick", "second") and not self.italy:
                 layers = Path(snapshot) if snapshot else None
                 required_names = (
                     "background.png",
@@ -1444,7 +1465,7 @@ class DynamicKitRuntime:
                 away_id=render.get("away_id", self.away_id),
                 home_goals=int(render.get("home_goals", 0) or 0),
                 away_goals=int(render.get("away_goals", 0) or 0),
-                kit=kit,
+                kit=self._theme(kit),
                 competition=render.get(
                     "league_slug",
                     self.league_slug,
@@ -1455,7 +1476,7 @@ class DynamicKitRuntime:
             )
 
         if kind == "stats":
-            render["kit"] = kit
+            render["kit"] = self._theme(kit)
             html = self._originals["stats_build_html"](**render)
             path = self.stats_graphics.render(html, hd_output=True)
             return Path(path).read_bytes()

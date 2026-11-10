@@ -42,7 +42,13 @@ def is_italy(home_id, away_id):
 def italy_kit(data_espn, home_id):
     """'ita_home' (azzurro) o 'ita_away' (bianco) dalla maglia che ESPN indica per l'Italia
     (boxscore.teams[].team.uniform.color): conta il colore, non chi gioca in casa
-    (es. Moldova-Italia giocata in azzurro). Senza dati ESPN: casa -> home, fuori -> away."""
+    (es. Moldova-Italia giocata in azzurro). Senza dati ESPN: casa -> home, fuori -> away.
+    Durante la partita il runtime dei kit la sostituisce (pulsanti HOME/AWAY/AUTO del Bot JR)."""
+    return italy_uniform(data_espn) or ("ita_home" if str(home_id) == ITALY_ID else "ita_away")
+
+
+def italy_uniform(data_espn):
+    """'ita_home' / 'ita_away' dalla maglia indicata da ESPN, None se ESPN non la indica."""
     for block in ((data_espn or {}).get("boxscore") or {}).get("teams") or []:
         team = block.get("team") or {}
         if str(team.get("id", "")) != ITALY_ID:
@@ -60,7 +66,7 @@ def italy_kit(data_espn, home_id):
             return "ita_home"
         if kind in ("away", "third"):
             return "ita_away"
-    return "ita_home" if str(home_id) == ITALY_ID else "ita_away"
+    return None
 
 
 def graphics_kit(data_espn, home_id, away_id, home_name, away_name, league_slug="", league_name=""):
