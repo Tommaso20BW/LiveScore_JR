@@ -162,6 +162,8 @@ def stats_html(*, kit, rows, momento, home_name, away_name, competition='', asse
     assets = Path(assets)
     t = THEMES[kit]
     rows = [(lab, h, a) for lab, h, a in rows if _number(h) is not None and _number(a) is not None]
+    # Etichetta sempre al centro della pagina (colonne 1fr auto 1fr), qualunque sia la
+    # larghezza dei due numeri.
     # Righe distribuite su tutta la parte sotto il titolo (440-1330 px), centrate in verticale.
     step = min(260, 890 / max(1, len(rows)))
     big = min(130, step * .5)
@@ -172,10 +174,10 @@ def stats_html(*, kit, rows, momento, home_name, away_name, competition='', asse
         share = .5 if hv + av == 0 else hv / (hv + av)
         out += f'''
 <div class="ab" style="left:110px;right:110px;top:{top0 + i * step:.0f}px">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end">
-    <span style="font-family:Dharma;font-size:{big:.0f}px;line-height:.9;color:{t['ink']}">{_esc(h)}</span>
+  <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:end">
+    <span style="justify-self:start;font-family:Dharma;font-size:{big:.0f}px;line-height:.9;color:{t['ink']}">{_esc(h)}</span>
     <span class="lab" style="font-size:{min(46, big * .38):.0f}px;padding-bottom:{big * .1:.0f}px;color:{t['sub']}">{_esc(lab)}</span>
-    <span style="font-family:Dharma;font-size:{big:.0f}px;line-height:.9;color:{t['ink']}">{_esc(a)}</span></div>
+    <span style="justify-self:end;font-family:Dharma;font-size:{big:.0f}px;line-height:.9;color:{t['ink']}">{_esc(a)}</span></div>
   <div style="display:flex;height:16px;margin-top:{min(22, step * .09):.0f}px;gap:10px">
     <div style="flex:{share:.6f};background:{t['ink']}"></div><div style="flex:{1 - share:.6f};background:{t['bar2']}"></div></div>
 </div>'''
