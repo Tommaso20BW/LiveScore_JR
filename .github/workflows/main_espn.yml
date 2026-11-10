@@ -89,7 +89,11 @@ jobs:
       - name: Prepara tunnel e scontorno per le foto delle fasi
         shell: bash
         run: |
-          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64             -o "${RUNNER_TEMP}/cloudflared"
+          # Versione fissata e controllata: per aggiornarla cambia versione e SHA-256 (pagina release di cloudflared).
+          CLOUDFLARED_VERSION="2026.10.7"
+          CLOUDFLARED_SHA256="1f99fb518b83dec2ba8d870a7cc991d82a77e6196295a3d2754ba17ab9f91872"
+          curl -fsSL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" -o "${RUNNER_TEMP}/cloudflared"
+          echo "${CLOUDFLARED_SHA256}  ${RUNNER_TEMP}/cloudflared" | sha256sum -c -
           chmod +x "${RUNNER_TEMP}/cloudflared"
           echo "CLOUDFLARED=${RUNNER_TEMP}/cloudflared" >> "$GITHUB_ENV"
 
@@ -98,6 +102,12 @@ jobs:
         with:
           path: ~/.rembg
           key: rembg-isnet-birefnet-lite-v1
+
+      - name: Cache modello cancellazione sfondo (LaMa)
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/jr_lama
+          key: lama-fp32-v1
 
       - name: Sync seasonal FCLogo team logos
         id: fclogo_sync

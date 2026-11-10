@@ -6,11 +6,8 @@ import os
 import sys
 import threading
 import time
-from datetime import datetime
 
 from livescore import settings
-from livescore.constants import ESPN_BASE, ESPN_TZ
-from livescore.core import http as net
 from livescore.core.log import MatchProgressLog, log_line
 from livescore.espn import client as espn_client
 from livescore.graphics import logos as fclogo_sync
@@ -26,12 +23,6 @@ def avvia_ciclo_partita():
         heartbeat_minutes=settings.LIVE_LOG_HEARTBEAT_MINUTES,
         heartbeat_seconds=settings.LIVE_LOG_HEARTBEAT_MINUTES * 60,
     )
-
-    try:
-        test_r = net.SESSION.get(f"{ESPN_BASE}/ita.1/scoreboard",
-                              params={"dates": datetime.now(ESPN_TZ).strftime("%Y%m%d")}, timeout=10)
-    except Exception as e:
-        log_line("WARN", "ESPN", f"Test connettività fallito: {e}")
 
     ctx.partita = espn_client.trova_partita_oggi(team_id)
     if not ctx.partita:

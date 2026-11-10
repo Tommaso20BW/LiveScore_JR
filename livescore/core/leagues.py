@@ -29,7 +29,8 @@ def _load_leagues() -> dict:
 LEAGUE_MAP: dict = _load_leagues()
 
 
-LEAGUE_SLUGS: list = list(LEAGUE_MAP.keys())
+# Le chiavi "-- Titolo --" di leagues.json sono solo separatori di sezione, non leghe ESPN.
+LEAGUE_SLUGS: list = [slug for slug in LEAGUE_MAP if not slug.startswith("--")]
 
 
 def get_league_emoji(slug): return LEAGUE_MAP.get(slug, {}).get("emoji", "⚽️")

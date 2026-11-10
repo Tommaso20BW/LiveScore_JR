@@ -33,6 +33,13 @@ def prepare_cycle(ctx: MatchContext) -> Flow | None:
         time.sleep(10)
         return Flow.CONTINUE
 
+    # Partita rinviata / annullata / sospesa: ESPN la chiude come "post" e sembrerebbe un
+    # FULL TIME. Ci si ferma senza pubblicare altro; lo stato sul Gist resta com'è.
+    called_off = espn_parser.match_called_off(ctx.data)
+    if called_off:
+        log_line("STOP", "MATCH", f"Partita {called_off} secondo ESPN | event_id={ctx.event_id}; nessun FULL TIME")
+        sys.exit(0)
+
     ctx.status, ctx.elapsed = espn_parser.parse_status(ctx.data)
 
     try:

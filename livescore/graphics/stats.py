@@ -2,6 +2,7 @@
 import base64
 import io
 import math
+import os
 import random
 from html import escape
 from pathlib import Path
@@ -248,7 +249,8 @@ def render(html, hd_output=True):
     target = output / 'stats.png'
 
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
+        # ImageGen su GitHub usa il Chrome di sistema (IMAGEGEN_CHROME); altrove il Chromium di Playwright.
+        browser = playwright.chromium.launch(executable_path=os.environ.get('IMAGEGEN_CHROME') or None)
         try:
             page = browser.new_page(
                 viewport={'width': p.W, 'height': p.H},

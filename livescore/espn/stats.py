@@ -119,8 +119,14 @@ def recupera_xg_espn(event_id: str, home_id: str, away_id: str):
                 # mantiene aperto il caricamento fino al timeout.
                 log_line("DEBUG", "STATS", "Timeout pagina Team Stats; uso il DOM disponibile")
 
-            page.wait_for_timeout(3_000)
             marker = "window['__espnfitt__']="
+            # Si aspetta il blocco dati della pagina invece di 3 s fissi: di solito c'è subito.
+            try:
+                page.wait_for_function(
+                    "marker => [...document.scripts].some(s => s.textContent.includes(marker))",
+                    arg=marker, timeout=3_000)
+            except PlaywrightTimeoutError:
+                pass
             payload = None
             for script_text in page.locator("script").all_text_contents():
                 marker_index = script_text.find(marker)

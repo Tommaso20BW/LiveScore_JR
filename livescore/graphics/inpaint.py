@@ -9,6 +9,7 @@ OpenCV: meno bello su buchi grandi, ma la grafica esce comunque e non si blocca.
 
 image: PIL RGB/RGBA  |  mask: PIL "L", 255 = da cancellare. Stessa dimensione.
 """
+import hashlib
 import os
 from pathlib import Path
 
@@ -18,6 +19,12 @@ from PIL import Image
 LAMA_URL = os.getenv(
     'PHASE_LAMA_URL',
     'https://huggingface.co/Carve/LaMa-ONNX/resolve/main/lama_fp32.onnx',
+)
+# Impronta del modello ufficiale: un file diverso (scaricamento rotto o alterato) non si usa.
+# Con un PHASE_LAMA_URL personalizzato il controllo vale solo se si indica PHASE_LAMA_SHA256.
+LAMA_SHA256 = os.getenv(
+    'PHASE_LAMA_SHA256',
+    '' if os.getenv('PHASE_LAMA_URL') else '1faef5301d78db7dda502fe59966957ec4b79dd64e16f03ed96913c7a4eb68d6',
 )
 LAMA_PATH = Path(os.getenv('PHASE_LAMA_PATH', Path.home() / '.cache' / 'jr_lama' / 'lama_fp32.onnx'))
 LAMA_SIZE = 512            # ingresso fisso del modello
@@ -34,14 +41,19 @@ def _download(url: str, dest: Path) -> None:
     import requests
     dest.parent.mkdir(parents=True, exist_ok=True)
     temp = dest.with_suffix('.part')
+    digest = hashlib.sha256()
     with requests.get(url, stream=True, timeout=120) as response:
         response.raise_for_status()
         with open(temp, 'wb') as out:
             for chunk in response.iter_content(1 << 20):
                 out.write(chunk)
+                digest.update(chunk)
     if temp.stat().st_size < 10_000_000:
         temp.unlink(missing_ok=True)
         raise RuntimeError('Modello LaMa incompleto.')
+    if LAMA_SHA256 and digest.hexdigest() != LAMA_SHA256:
+        temp.unlink(missing_ok=True)
+        raise RuntimeError('Modello LaMa diverso da quello atteso.')
     os.replace(temp, dest)
 
 

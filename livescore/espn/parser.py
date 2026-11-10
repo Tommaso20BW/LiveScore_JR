@@ -386,6 +386,35 @@ def parse_score(competitors):
     )
 
 
+# Stati ESPN di una partita che NON si gioca o non si conclude regolarmente.
+_CALLED_OFF = (
+    ("POSTPONED", "rinviata"),
+    ("CANCEL", "annullata"),        # STATUS_CANCELED / STATUS_CANCELLED
+    ("ABANDONED", "sospesa definitivamente"),
+    ("FORFEIT", "decisa a tavolino"),
+    ("SUSPENDED", "sospesa"),
+)
+
+
+def match_called_off(data: dict):
+    """Etichetta ("rinviata", "annullata"...) se ESPN segnala che la partita non si gioca o è
+    stata interrotta senza un fischio finale; None se è una partita normale.
+
+    Rinvio e annullamento valgono in ogni momento. Sospensione e abbandono contano solo quando
+    ESPN chiude l'evento (state "post"): finché è "in" la gara può riprendere e si continua a seguirla.
+    Senza questo controllo uno state "post" verrebbe letto come FULL TIME."""
+    try:
+        stype = data["header"]["competitions"][0].get("status", {}).get("type", {})
+        name  = str(stype.get("name", "")).upper()
+        state = stype.get("state", "")
+    except Exception:
+        return None
+    for key, label in _CALLED_OFF:
+        if key in name and (state == "post" or key in ("POSTPONED", "CANCEL")):
+            return label
+    return None
+
+
 def parse_status(data: dict):
     try:
         comp   = data["header"]["competitions"][0]

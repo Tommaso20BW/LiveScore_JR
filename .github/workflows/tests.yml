@@ -22,17 +22,8 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      # Evita test inutili mentre stai facendo più modifiche ravvicinate.
       # Se arriva un altro push su main, questo run viene cancellato
       # automaticamente da concurrency.
-      - name: Attendi modifiche ravvicinate
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          echo "⏳ Attendo 60 secondi per eventuali altri aggiornamenti..."
-          sleep 60
-          echo "✅ Repository stabile, avvio i controlli"
-
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -329,7 +320,7 @@ jobs:
             steps.syntax.outcome != 'success' ||
             steps.unittest.outcome != 'success'
           )
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-error-${{ github.run_id }}
           path: |
