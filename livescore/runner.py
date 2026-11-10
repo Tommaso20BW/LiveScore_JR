@@ -113,6 +113,8 @@ def messaggio_partita_trovata(partita: dict, data: dict | None = None) -> str:
             ita_kit = ""
         ita_label = {"ita_home": "Home (azzurra)", "ita_away": "Away (bianca)"}.get(ita_kit, "Non disponibile")
         lines.append(f"👕 Kit: {ita_label}" + (f" · {bot.esc(mode_label)}" if mode_label else ""))
+        # Italia: grafiche in tutte le partite, amichevoli comprese (sempre senza foto).
+        lines.append(f"🎨 Grafiche: {'pronte' if enabled else 'disattivate'}")
     lines += [
         f"{bot.get_league_emoji(league_slug)} {bot.build_hashtag(home_raw, away_raw)}",
         "",

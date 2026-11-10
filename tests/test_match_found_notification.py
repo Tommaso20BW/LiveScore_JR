@@ -78,6 +78,19 @@ class MatchFoundNotificationTests(unittest.TestCase):
         self.assertIn("Orario non disponibile", text)
         self.assertIn("Stadio non disponibile", text)
 
+    def test_italy_shows_kit_and_graphics_but_not_logos(self):
+        self.competitors[0]["team"] = {"id": "162", "displayName": "Italy"}
+        self.competitors[1]["team"] = {"id": "478", "displayName": "France"}
+        self.match["league_slug"] = "fifa.friendly"          # Italia: grafiche anche in amichevole
+        with patch.object(runner.bot, "italy_kit", return_value="ita_away"):
+            text = runner.messaggio_partita_trovata(self.match)
+        self.assertIn("Kit: Away (bianca)", text)
+        self.assertIn("Grafiche: pronte", text)
+        self.assertNotIn("Loghi:", text)
+        with patch.object(runner.bot, "GOAL_GRAPHICS_ENABLED", False), \
+                patch.object(runner.bot, "italy_kit", return_value="ita_home"):
+            self.assertIn("Grafiche: disattivate", runner.messaggio_partita_trovata(self.match))
+
     def test_non_juventus_match_omits_kit_and_asset_check(self):
         self.competitors[0]["team"] = {"id": "109", "displayName": "Fiorentina"}
         self.competitors[1]["team"] = {"id": "239", "displayName": "Torino"}
