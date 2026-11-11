@@ -5,7 +5,6 @@ import random
 from pathlib import Path
 from PIL import Image, ImageChops, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
 from livescore.graphics import goal as g
-from livescore.graphics.uefa_grade import grade as uefa_grade
 from livescore.core import team_names
 
 W, H, M = 1086, 1448, 76
@@ -519,8 +518,6 @@ def event(
             # originale del PNG. In questo modo le pose con braccio/dito
             # esteso non trascinano tutto il corpo a destra o sinistra.
             portrait, anchor_x = anchored_player(raw, 1450)
-        # Filtro colore UEFA (UCL, Supercoppa UEFA, UEL, UECL) solo sul giocatore.
-        portrait = uefa_grade(portrait, key)
 
         panel_x = round(IW / 2 - anchor_x)
         panel.alpha_composite(portrait, (panel_x, -25))
@@ -776,11 +773,11 @@ def phase(
             method=Image.Resampling.LANCZOS,
         )
         page_size = Image.open(Path(layers) / 'background.png').size
-        player = uefa_grade(ImageOps.fit(
+        player = ImageOps.fit(
             Image.open(Path(layers) / 'player.png').convert('RGBA'),
             (iw, ih),
             method=Image.Resampling.LANCZOS,
-        ), key)
+        )
         word_w = iw - round(36 * S)
         word = word.resize((word_w, round(word.height * word_w / word.width * PHASE_PHOTO_WORD_STRETCH)),
                            Image.Resampling.LANCZOS)
@@ -813,7 +810,7 @@ def phase(
         top_file = Path(layers) / 'player_top.png'
         if top_file.is_file():
             scale = max(iw / page_size[0], ih / page_size[1])
-            strip = uefa_grade(Image.open(top_file).convert('RGBA'), key, relight=False)
+            strip = Image.open(top_file).convert('RGBA')
             strip = strip.resize((round(strip.width * scale), round(strip.height * scale)), Image.Resampling.LANCZOS)
             cut = (strip.width - iw) // 2
             strip = strip.crop((cut, 0, cut + iw, strip.height))
