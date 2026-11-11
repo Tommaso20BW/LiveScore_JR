@@ -39,8 +39,9 @@ COLORS = dict(
     ita_home='#FFFFFF',     # Italia in casa: bianco sul pannello azzurro
     ita_away='#1F5FB4',     # Italia in trasferta: azzurro sul pannello bianco
 )
-# Fumo nel riquadro di GOAL/SAVED (livescore/graphics/smoke.py): non sui pannelli chiari.
-SMOKE_OFF = ('away', 'ita_home', 'ita_away')
+# Fumo nel riquadro di GOAL/SAVED (livescore/graphics/smoke.py): non sull'Italia.
+# Sull'Away (rosa chiaro) il fumo è nero.
+SMOKE_OFF = ('ita_home', 'ita_away')
 # Shadow tint behind words and crests: each panel's deep tone instead of plain black.
 SHADOW = dict(
     home='#000000',
@@ -530,7 +531,8 @@ def event(
         panel_x = round(IW / 2 - anchor_x)
         # Fumo al centro, dietro al giocatore e alla scritta grande.
         if smoky:
-            panel = smoke.apply(panel, COLORS[key], random.Random(seed + 1))
+            panel = smoke.apply(panel, AWAY_DARK if key == 'away' else COLORS[key],
+                                random.Random(seed + 1), dark=key == 'away')
         panel.alpha_composite(heading_layer)
         panel.alpha_composite(portrait, (panel_x, -25))
 
