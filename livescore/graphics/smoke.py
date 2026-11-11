@@ -9,7 +9,6 @@ import numpy as np
 from PIL import Image, ImageChops, ImageColor, ImageFilter, ImageStat
 
 STRENGTH = .70      # luce massima del fumo (0 = niente)
-DARK_STRENGTH = 1.0 # fumo nero (Away): quanto scurisce al massimo
 # Nuvola: centro e raggi in frazioni del riquadro.
 CENTER = (.5, .40)
 RADIUS = (.46, .36)
@@ -43,18 +42,9 @@ def _fog(size, rng):
     return np.clip(near ** 1.25 * (.38 + .80 * wisps), 0, 1)
 
 
-def apply(panel, color, rng, dark=False):
-    """Somma il fumo al riquadro. `color`: colore del tema, `rng`: random.Random.
-    dark: fumo nero che scurisce (pannelli chiari, come il rosa dell'Away)."""
+def apply(panel, color, rng):
+    """Somma il fumo al riquadro. `color`: colore del tema, `rng`: random.Random."""
     size = panel.size
-    if dark:
-        fog = Image.fromarray((np.clip(_fog(size, rng) * 1.35, 0, 1) ** .8 * 255 * DARK_STRENGTH).astype(np.uint8), 'L')
-        fog = fog.filter(ImageFilter.GaussianBlur(5))
-        shade = Image.merge('RGB', [fog.point(lambda v, c=c: 255 - round(v * (255 - c) / 255))
-                                    for c in ImageColor.getrgb(color)])
-        lit = ImageChops.multiply(panel.convert('RGB'), shade)
-        lit.putalpha(panel.getchannel('A'))
-        return lit
     # Tinta: il colore del riquadro stesso, schiarito (blu sul blu, grigio sul nero), con un
     # po' del colore del tema.
     mean = ImageStat.Stat(panel.convert('RGB')).mean
