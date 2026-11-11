@@ -44,7 +44,7 @@ def _lut(key):
         ws = (1 - x) ** 2
         y = y * (1 - p['deep'] * ws) + p['lift'] * (1 - ws)
         # tinta solo nei mezzitoni scuri: il nero resta nero e il bianco resta bianco
-        wt = 6.75 * x * (1 - x) ** 2
+        wt = 6.75 * x * (1 - x) ** 2 * np.clip(x / .2, 0, 1) ** 2
         _LUTS[key] = np.concatenate([
             np.clip(np.round((y + p['shadow'][c] * wt) * 255), 0, 255).astype(np.uint8) for c in range(3)]).tolist()
     return _LUTS[key]
