@@ -5,30 +5,30 @@ cambiano. Le competizioni senza preset (campionato, coppe nazionali, Italia, ...
 stessa immagine, intatta.
 
 Passaggi:
-1. tinta: curva per canale (3 tabelle da 256 valori, Image.point), pelle riportata in parte al tono naturale;
+1. tinta leggera solo nei mezzitoni scuri (bianco e nero della maglia restano neutri): curva per canale
+   (3 tabelle da 256 valori, Image.point), pelle riportata in parte al tono naturale;
 2. chiarezza (contrasto locale ampio) e nitidezza fine;
 3. vivacità sui colori poco saturi, pelle esclusa, e pelle leggermente meno calda;
 4. luce da set: volto un po' più chiaro, corpo che scende verso il buio (relight=False per i ritagli);
-5. bordo luminoso sottile lungo il contorno, nel colore della competizione.
 """
 import numpy as np
 from PIL import Image, ImageFilter
 
 # Chiavi di portrait.theme().
 # contrast: curva a S (0 = niente). deep: ombre più profonde. lift: luce generale.
-# shadow/high: spinta per canale (R, G, B) nelle ombre e nelle luci (0.10 = +10%).
+# shadow: tinta per canale (R, G, B) nei mezzitoni scuri (0.05 = +5%).
 # skin_keep: quanto la pelle resta com'era nella tinta. clarity/sharp: forza (%) di contrasto locale e nitidezza.
-# vib: vivacità. face/body: luce sul volto e sul fondo della sagoma. rim/rim_a: colore e forza del bordo.
+# vib: vivacità. face/body: luce sul volto e sul fondo della sagoma.
 PRESETS = {
-    'ucl': dict(contrast=.45, deep=.16, lift=.02, shadow=(-.07, .0, .15), high=(-.05, .02, .11), skin_keep=.45,
-                clarity=20, sharp=18, vib=1.10, face=1.05, body=.74, rim=(150, 205, 255), rim_a=.30),
+    'ucl': dict(contrast=.24, deep=.07, lift=.01, shadow=(-.035, .0, .07), skin_keep=.6,
+                clarity=12, sharp=10, vib=1.04, face=1.03, body=.88),
     # Supercoppa UEFA: stessa resa blu della Champions, più leggera.
-    'usc': dict(contrast=.32, deep=.10, lift=.015, shadow=(-.035, .0, .07), high=(-.02, .012, .05), skin_keep=.65,
-                clarity=15, sharp=15, vib=1.06, face=1.03, body=.82, rim=(150, 205, 255), rim_a=.20),
-    'uel': dict(contrast=.42, deep=.12, lift=.015, shadow=(.09, .025, -.09), high=(.10, .04, -.09), skin_keep=.42,
-                clarity=20, sharp=18, vib=1.08, face=1.05, body=.74, rim=(255, 196, 130), rim_a=.28),
-    'conference': dict(contrast=.42, deep=.17, lift=.0, shadow=(-.10, .07, .05), high=(-.04, .07, .0), skin_keep=.42,
-                       clarity=20, sharp=18, vib=1.06, face=1.05, body=.74, rim=(130, 255, 215), rim_a=.28),
+    'usc': dict(contrast=.18, deep=.04, lift=.01, shadow=(-.02, .0, .04), skin_keep=.7,
+                clarity=9, sharp=8, vib=1.02, face=1.02, body=.92),
+    'uel': dict(contrast=.24, deep=.06, lift=.01, shadow=(.06, .02, -.05), skin_keep=.6,
+                clarity=12, sharp=10, vib=1.03, face=1.03, body=.88),
+    'conference': dict(contrast=.24, deep=.08, lift=.0, shadow=(-.05, .045, .025), skin_keep=.6,
+                       clarity=12, sharp=10, vib=1.03, face=1.03, body=.88),
 }
 SKIN_COOL = (.965, 1.0, 1.02)      # pelle: un filo meno rossa/arancio, per non scaldarla sotto la tinta
 
@@ -41,11 +41,12 @@ def _lut(key):
         p = PRESETS[key]
         x = np.linspace(0, 1, 256)
         y = x + p['contrast'] * (x * x * (3 - 2 * x) - x)
-        ws, wh = (1 - x) ** 2, x ** 2                 # pesi di ombre e luci
+        ws = (1 - x) ** 2
         y = y * (1 - p['deep'] * ws) + p['lift'] * (1 - ws)
+        # tinta solo nei mezzitoni scuri: il nero resta nero e il bianco resta bianco
+        wt = 6.75 * x * (1 - x) ** 2
         _LUTS[key] = np.concatenate([
-            np.clip(np.round((y + p['shadow'][c] * ws * 1.6 + p['high'][c] * wh) * 255), 0, 255).astype(np.uint8)
-            for c in range(3)]).tolist()
+            np.clip(np.round((y + p['shadow'][c] * wt) * 255), 0, 255).astype(np.uint8) for c in range(3)]).tolist()
     return _LUTS[key]
 
 
@@ -85,12 +86,6 @@ def grade(image, key, relight=True):
     if relight:
         light = p['face'] + (p['body'] - p['face']) * np.clip((y - .3) / .7, 0, 1) ** 1.3
         a *= light[:, None, None]
-    # 5) bordo luminoso: solo dentro la sagoma, più forte in alto ("schiarisci" verso il colore)
-    al = np.asarray(alpha, np.float32) / 255
-    inner = np.asarray(alpha.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.GaussianBlur(2.5)), np.float32) / 255
-    edge = np.clip(al - inner, 0, 1) * np.clip(1.2 - y, .2, 1)[:, None]
-    k = (edge * p['rim_a'])[..., None]
-    a = 255 - (255 - a) * (1 - k * np.array(p['rim'], np.float32) / 255)
     graded = Image.fromarray(np.clip(a + .5, 0, 255).astype(np.uint8), 'RGB').convert('RGBA')
     graded.putalpha(alpha)
     return graded

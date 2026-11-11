@@ -65,7 +65,14 @@ class UefaGradeTest(unittest.TestCase):
         flat = Image.new('RGBA', (60, 200), (128, 128, 128, 255))
         for key in PRESETS:
             a = np.asarray(grade(flat, key).convert('L'), np.float32)
-            self.assertGreater(a[10:50].mean(), a[160:195].mean() + 15, key)
+            self.assertGreater(a[10:50].mean(), a[160:195].mean() + 8, key)
+
+    def test_kit_white_and_black_stay_neutral(self):
+        for value in (245, 15):
+            flat = Image.new('RGBA', (40, 40), (value, value, value, 255))
+            for key in PRESETS:
+                px = np.asarray(grade(flat, key, relight=False).convert('RGB'), np.int16)[20, 20]
+                self.assertLessEqual(px.max() - px.min(), 4, (key, value, px))
 
     def test_relight_off_keeps_even_light(self):
         # ritaglio della testa sopra la cornice: niente luce da set, altrimenti stacca dal resto
