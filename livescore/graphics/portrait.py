@@ -5,6 +5,7 @@ import random
 from pathlib import Path
 from PIL import Image, ImageChops, ImageDraw, ImageOps, ImageFont, ImageColor, ImageStat, ImageFilter, ImageEnhance
 from livescore.graphics import goal as g
+from livescore.graphics import smoke
 from livescore.graphics.uefa_grade import grade as uefa_grade
 from livescore.core import team_names
 
@@ -38,6 +39,8 @@ COLORS = dict(
     ita_home='#FFFFFF',     # Italia in casa: bianco sul pannello azzurro
     ita_away='#1F5FB4',     # Italia in trasferta: azzurro sul pannello bianco
 )
+# Fumo nel riquadro di GOAL/SAVED (livescore/graphics/smoke.py): non sui pannelli chiari.
+SMOKE_OFF = ('away', 'ita_home', 'ita_away')
 # Shadow tint behind words and crests: each panel's deep tone instead of plain black.
 SHADOW = dict(
     home='#000000',
@@ -485,6 +488,8 @@ def event(
     panel = card.crop((M, M, W - M, H - M))
     heading = event_heading(assets, saved)
     seed = random.random()          # one random gradient per card, shared by both words
+    # Fumo nel riquadro, dietro a scritta e giocatore (non sui pannelli chiari).
+    smoky = key not in SMOKE_OFF
 
     def letters(source):
         if key == 'ucl':
@@ -507,7 +512,7 @@ def event(
                               (lambda s: textured(s, key, assets, color=AWAY_DARK)) if dark else letters,
                               _front_word(assets, saved), AWAY_DARK if dark else COLORS[key])
     else:
-        panel.alpha_composite(textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading))
+        heading_layer = textured(heading, key, assets, color=AWAY_DARK) if key == 'away' else letters(heading)
 
     if path:
         with Image.open(path) as raw:
@@ -523,6 +528,10 @@ def event(
         portrait = uefa_grade(portrait, key)
 
         panel_x = round(IW / 2 - anchor_x)
+        # Fumo al centro, dietro al giocatore e alla scritta grande.
+        if smoky:
+            panel = smoke.apply(panel, COLORS[key], random.Random(seed + 1))
+        panel.alpha_composite(heading_layer)
         panel.alpha_composite(portrait, (panel_x, -25))
 
         # I primi 25 px salgono sopra il pannello interno: manteniamo la
