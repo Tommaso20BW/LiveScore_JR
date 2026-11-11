@@ -61,5 +61,18 @@ class UefaGradeTest(unittest.TestCase):
             self.assertLess(np.abs(out - skin).mean(), 25, key)
 
 
+    def test_set_light_face_brighter_than_body(self):
+        flat = Image.new('RGBA', (60, 200), (128, 128, 128, 255))
+        for key in PRESETS:
+            a = np.asarray(grade(flat, key).convert('L'), np.float32)
+            self.assertGreater(a[10:50].mean(), a[160:195].mean() + 15, key)
+
+    def test_relight_off_keeps_even_light(self):
+        # ritaglio della testa sopra la cornice: niente luce da set, altrimenti stacca dal resto
+        flat = Image.new('RGBA', (60, 200), (128, 128, 128, 255))
+        a = np.asarray(grade(flat, 'ucl', relight=False).convert('L'), np.float32)
+        self.assertLess(abs(a[20:60].mean() - a[140:180].mean()), 3)
+
+
 if __name__ == '__main__':
     unittest.main()

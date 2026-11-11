@@ -813,7 +813,7 @@ def phase(
         top_file = Path(layers) / 'player_top.png'
         if top_file.is_file():
             scale = max(iw / page_size[0], ih / page_size[1])
-            strip = uefa_grade(Image.open(top_file).convert('RGBA'), key)
+            strip = uefa_grade(Image.open(top_file).convert('RGBA'), key, relight=False)
             strip = strip.resize((round(strip.width * scale), round(strip.height * scale)), Image.Resampling.LANCZOS)
             cut = (strip.width - iw) // 2
             strip = strip.crop((cut, 0, cut + iw, strip.height))
