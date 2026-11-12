@@ -1,0 +1,75 @@
+name: Test card esultanze
+
+# Solo test: card GOL di tutte le esultanze (home/away/third) in zip su Bot JR.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write     # per cancellare i run vecchi
+
+jobs:
+  card:
+    name: Card esultanze su Bot JR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Checkout asset privati (foto, font, loghi)
+        uses: actions/checkout@v6
+        with:
+          repository: Tommaso20BW/LiveScore_Assets_JR
+          token: ${{ secrets.ASSETS_PAT }}
+          path: _private_assets
+
+      - name: Installa asset privati
+        shell: bash
+        run: |
+          mkdir -p assets/goal_graphics
+          cp -a _private_assets/players _private_assets/fonts _private_assets/team_logos _private_assets/overlays _private_assets/portrait _private_assets/word_textures assets/goal_graphics
+          if [ -d _private_assets/team_overrides ]; then cp -a _private_assets/team_overrides assets/goal_graphics/; fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Crea le card e invia lo zip
+        env:
+          TELEGRAM_TOKEN:  ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TO_BOT: ${{ secrets.TELEGRAM_TO_BOT }}
+        run: python -u -m livescore.esultanze_zip --output esultanze_out
+
+  cleanup:
+    name: Pulisci la cronologia dei run
+    needs: card
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pulisci la cronologia dei run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: "0"   # 0 = cancella TUTTI i run precedenti; resta visibile solo quello in corso
+        run: |
+          gh api "repos/${{ github.repository }}/actions/workflows/test_esultanze.yml/runs?status=completed&per_page=100" \
+            --jq '.workflow_runs | sort_by(.created_at) | reverse | .['"$KEEP"':] | .[].id' |
+          while read -r RUN_ID; do
+            echo "Elimino run $RUN_ID"
+            gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$RUN_ID" || true
+          done
+          echo "Pulizia completata."
