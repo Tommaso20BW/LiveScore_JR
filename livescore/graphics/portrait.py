@@ -609,11 +609,10 @@ def event(
         word = letters(word)
         word_bottom = place_word(card, word, saved, key)
 
-    # Minute left and score right, just under the big heading at the top (same on GOAL and SAVED).
+    # Score and minute on the crest row under the big GOAL/SAVED word (baseline set below).
     # Everything sits on one baseline; edges are aligned on the drawn ink, not the font advance.
     font = ImageFont.truetype(str(assets / 'fonts/DharmaGothicEBold.otf'), 52)
     cap = -font.getbbox('0', anchor='ls')[1]
-    baseline = M + heading.getchannel('A').getbbox()[3] + 30 + cap
     side = 16      # close to the panel edge, never touching it
     draw = ImageDraw.Draw(card)
 
@@ -635,8 +634,8 @@ def event(
                 card.alpha_composite(piece, area[:2])
             return
         for s, b in zip(parts, boxes):
-            dark = key == 'away' and not no_photo       # Away senza foto: sono in fondo, sul nero
-            draw.text((x - b[0], baseline), s, font=font, fill=AWAY_DARK if dark else COLORS[key], anchor='ls')
+            # In fondo, sulla sfumatura scura: colore del tema anche sull'Away.
+            draw.text((x - b[0], baseline), s, font=font, fill=COLORS[key], anchor='ls')
             x += b[2] - b[0]
 
     minute_parts = [str(minute).rstrip("'’") + "'"]
@@ -644,10 +643,9 @@ def event(
                    if home_goals is not None and away_goals is not None else None)
     # Stemmi a meta' tra la scritta GOAL/SAVED e il nome: stessa distanza sopra e sotto.
     crest_cy = (word_bottom + NAME_TOP) / 2 - 1   # -1: compensa il bordo sfumato della scritta
-    if no_photo:
-        # Senza foto: in alto c'è la scritta ripetuta, quindi risultato e minuto scendono
-        # sotto la scritta grande, ai lati degli stemmi (centrati sulla loro riga).
-        baseline = round(crest_cy + cap / 2)
+    # Risultato e minuto sotto la scritta grande GOAL/SAVED, ai lati degli stemmi
+    # (centrati sulla loro riga), con e senza foto.
+    baseline = round(crest_cy + cap / 2)
     put(minute_parts, 'right' if SCORE_LEFT else 'left')
     if score_parts:
         put(score_parts, 'left' if SCORE_LEFT else 'right')
