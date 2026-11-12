@@ -129,7 +129,14 @@ def tight(source, white_mask=False):
     return source.crop(box)
 
 
-def anchored_player(source, target_height=1450):
+# Pose con le mani sopra la testa: la scala non dipende da quanto sono alte le mani, ma è quella
+# che avrebbe la sagoma se la cima fosse a questa altezza (come nelle pose base, testa a ~25 px su 1254).
+# Così nella card il giocatore ha la misura decisa nel PNG; le punte oltre il pannello si tagliano.
+RAISED_HANDS_POSES = {'point_sky'}
+BASE_TOP = 25 / 1254
+
+
+def anchored_player(source, target_height=1450, ref_top=None):
     """Ritaglia il PNG del giocatore senza perdere il centro originale del canvas.
 
     Prima il compositor usava ``tight(raw)`` e poi centrava geometricamente il
@@ -151,14 +158,20 @@ def anchored_player(source, target_height=1450):
     if cropped.height <= 0:
         raise ValueError('Altezza giocatore non valida')
 
-    scale = target_height / cropped.height
+    # ref_top: cima di riferimento (px della sorgente) per la scala; quello che sta sopra
+    # finisce sopra il pannello. extra_y = di quanto alzare il ritratto (negativo: abbassarlo).
+    top = box[1] if ref_top is None else min(ref_top, box[3] - 1)
+    scale = target_height / (box[3] - top)
+    height = max(1, round(cropped.height * scale))
     width = max(1, round(cropped.width * scale))
-    portrait = cropped.resize((width, target_height), Image.Resampling.LANCZOS)
+    portrait = cropped.resize((width, height), Image.Resampling.LANCZOS)
 
     # Posizione, dentro il crop, del centro X del canvas sorgente.
     # Sarà questa coordinata ad essere allineata al centro della card.
     anchor_x = (source.width / 2 - box[0]) * scale
-    return portrait, anchor_x
+    if ref_top is None:
+        return portrait, anchor_x
+    return portrait, anchor_x, height - target_height
 
 
 def textured(source, key, assets, zoom=False, color=None, bright=False):
@@ -517,15 +530,20 @@ def event(
             # non centrare il bounding box della sagoma, ma il centro X
             # originale del PNG. In questo modo le pose con braccio/dito
             # esteso non trascinano tutto il corpo a destra o sinistra.
-            portrait, anchor_x = anchored_player(raw, 1450)
+            if pose in RAISED_HANDS_POSES:
+                portrait, anchor_x, extra_y = anchored_player(raw, 1450, round(BASE_TOP * raw.height))
+            else:
+                portrait, anchor_x = anchored_player(raw, 1450)
+                extra_y = 0
 
         panel_x = round(IW / 2 - anchor_x)
-        panel.alpha_composite(portrait, (panel_x, -25))
+        panel_y = -25 - extra_y
+        panel.alpha_composite(portrait, (panel_x, panel_y))
 
         # I primi 25 px salgono sopra il pannello interno: manteniamo la
         # stessa identica ancora X anche nella porzione compositata sul card.
         card.alpha_composite(
-            portrait.crop((0, 0, portrait.width, 25)),
+            portrait.crop((0, extra_y, portrait.width, extra_y + 25)),
             (M + panel_x, M - 25),
         )
 

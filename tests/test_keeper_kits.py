@@ -55,3 +55,27 @@ class CelebrationPosesTests(unittest.TestCase):
         self.assertIn('kiss_crest', g.available_poses(yildiz, 'home'))
         vicario = g.find_player('Guglielmo Vicario')
         self.assertNotIn('kiss_crest', g.available_poses(vicario, 'home'))
+
+
+class RaisedHandsScaleTests(unittest.TestCase):
+    def _figure(self, top):
+        from PIL import Image, ImageDraw
+        im = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
+        ImageDraw.Draw(im).rectangle((40, top, 59, 99), fill=(255, 0, 0, 255))
+        return im
+
+    def test_scale_does_not_depend_on_hand_height(self):
+        from livescore.graphics.portrait import anchored_player
+        high, _, up_high = anchored_player(self._figure(5), 200, 20)
+        low, _, up_low = anchored_player(self._figure(30), 200, 20)
+        self.assertEqual(high.width, low.width)          # stessa misura del giocatore
+        self.assertEqual(high.height - up_high, 200)     # fondo sempre allineato
+        self.assertEqual(low.height - up_low, 200)
+        self.assertGreater(up_high, 0)                   # mani più alte: sporgono sopra
+        self.assertLess(up_low, 0)                       # più basse: ritratto abbassato
+
+    def test_without_ref_top_keeps_old_behaviour(self):
+        from livescore.graphics.portrait import anchored_player
+        portrait, anchor = anchored_player(self._figure(20), 160)
+        self.assertEqual(portrait.height, 160)
+        self.assertAlmostEqual(anchor, 20)
