@@ -166,9 +166,9 @@ def stats_html(*, kit, rows, momento, home_name, away_name, competition='', asse
     # larghezza dei due numeri.
     # Righe distribuite su tutta la parte sotto il titolo (365-1375 px), centrate in verticale.
     # Numeri e scritte crescono con lo spazio della riga: di solito 11-12 statistiche,
-    # con 12 numeri ~72 px e scritte ~40 px.
+    # con 12 numeri ~62 px e scritte ~34 px.
     step = min(260, 1010 / max(1, len(rows)))
-    big = min(150, step * .86)
+    big = min(130, step * .74)
     top0 = 365 + (1010 - step * len(rows)) / 2
     out = ''
     for i, (lab, h, a) in enumerate(rows):
@@ -178,14 +178,14 @@ def stats_html(*, kit, rows, momento, home_name, away_name, competition='', asse
 <div class="ab" style="left:110px;right:110px;top:{top0 + i * step:.0f}px">
   <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:end">
     <span style="justify-self:start;font-family:Dharma;font-size:{big:.0f}px;line-height:.9;color:{t['ink']}">{_esc(h)}</span>
-    <span class="lab" style="font-size:{min(58, big * .56):.0f}px;padding-bottom:{big * .08:.0f}px;color:{t['sub']}">{_esc(lab)}</span>
+    <span class="lab" style="font-size:{min(48, big * .54):.0f}px;padding-bottom:{big * .08:.0f}px;color:{t['sub']}">{_esc(lab)}</span>
     <span style="justify-self:end;font-family:Dharma;font-size:{big:.0f}px;line-height:.9;color:{t['ink']}">{_esc(a)}</span></div>
   <div style="display:flex;height:{min(22, step * .12):.0f}px;margin-top:{min(16, step * .04):.0f}px;gap:10px">
     <div style="flex:{share:.6f};background:{t['ink']}"></div><div style="flex:{1 - share:.6f};background:{t['bar2']}"></div></div>
 </div>'''
     body = f'''
 <div class="ab" style="left:0;right:0;top:95px;text-align:center"><div class="word" style="font-size:200px">STATS</div></div>
-<div class="ab lab" style="left:0;right:0;top:282px;text-align:center;font-size:40px;color:{t['sub']}">{_q(MOMENTS.get(momento, ''))}</div>
+<div class="ab lab" style="left:0;right:0;top:262px;text-align:center;font-size:40px;color:{t['sub']}">{_q(MOMENTS.get(momento, ''))}</div>
 <div class="ab" style="left:110px;top:130px">{_flag(home_name, 110, t, assets)}</div>
 <div class="ab" style="right:110px;top:130px">{_flag(away_name, 110, t, assets)}</div>
 {out}'''
