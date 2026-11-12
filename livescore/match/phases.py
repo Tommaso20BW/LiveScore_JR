@@ -21,6 +21,13 @@ from livescore.telegram import api as tg
 KICKOFF_TOO_EARLY_MINUTES = 60
 
 
+def _flag_first(raw_name: str, name: str) -> str:
+    """Nazionali, elenco dei RIGORI: bandiera davanti al nome per tutte e due (🇫🇷 Francia)."""
+    from livescore.graphics import flags
+    flag = flags.emoji_for(raw_name)
+    return f"{flag} {name}" if flag else name
+
+
 def minutes_to_kickoff(start: str) -> float | None:
     """Minuti al calcio d'inizio da una data ESPN (es. 2026-09-05T19:00Z)."""
     try:
@@ -256,8 +263,8 @@ def announce_shootout(ctx: MatchContext) -> None:
         if total_kicks > ctx.state["penalties_count"]:
             _pen_msg_ok = tg.send_telegram_get_id(
                 f"<b>RIGORI {E_KICK}</b>\n\n"
-                f"{ctx.home_name}: " + ("".join(home_pen_icons) if home_pen_icons else "—") + "\n"
-                f"{ctx.away_name}: " + ("".join(away_pen_icons) if away_pen_icons else "—") + f"\n\n{ctx.e_comp} {ctx.hashtag}"
+                f"{_flag_first(ctx.home_name_raw, ctx.home_name)}: " + ("".join(home_pen_icons) if home_pen_icons else "—") + "\n"
+                f"{_flag_first(ctx.away_name_raw, ctx.away_name)}: " + ("".join(away_pen_icons) if away_pen_icons else "—") + f"\n\n{ctx.e_comp} {ctx.hashtag}"
             )
             if _pen_msg_ok:
                 ctx.state["penalties_count"] = total_kicks
