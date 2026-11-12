@@ -136,12 +136,35 @@ RAISED_HANDS_POSES = {'point_sky'}
 BASE_TOP = 25 / 1254
 # Esultanze: (ingrandimento, spostamento in su in px) rispetto alla resa normale, misurati sulle
 # card perché il volto abbia circa la misura e l'altezza (~330 px dall'alto) delle braccia conserte.
-# Il fondo della maglia resta sempre sotto il pannello; mani e dita possono uscire dal riquadro.
+# Il fondo della maglia resta sempre sotto il pannello.
+# Mani alzate: le dita si vedono sempre. Possono salire sulla cornice in alto (fino a TOP_MARGIN
+# dal bordo della card) ma ai lati restano dentro il pannello (SIDE_MARGIN). Se non ci stanno,
+# l'ingrandimento di quel giocatore si riduce quanto basta.
+TOP_MARGIN = 14
+SIDE_MARGIN = 14
+HANDS_BAND = 0.2  # parte alta della sagoma (frazione) in cui stanno mani e dita
+MAX_LIFT = 125  # di quanto si può alzare il giocatore senza scoprire il fondo della maglia (margine 129)
 POSE_FIT = {
     'point_sky': (1.4, 0),  # mani alzate: più grande, ma pugni e indici devono restare in vista
     'scream': (1.05, -70),
     'shush': (1.07, -88),
 }
+
+
+def _hands_fit(portrait, anchor_x, extra_y):
+    """Riduzione (<=1) perché mani e dita stiano nella card: sopra fino a TOP_MARGIN, ai lati
+    dentro il pannello. extra_y = di quanto il ritratto è alzato; il fondo resta fermo."""
+    top = M - 25 - extra_y                      # y della cima nella card
+    bottom = top + portrait.height              # fermo quando si riduce
+    band = portrait.getchannel('A').crop((0, 0, portrait.width, round(portrait.height * HANDS_BAND)))
+    box = band.point(lambda a: 255 if a > 100 else 0).getbbox()
+    fit = 1.0
+    if top < TOP_MARGIN:
+        fit = min(fit, (bottom - TOP_MARGIN) / (bottom - top))
+    if box:
+        half = max(anchor_x - box[0], box[2] - anchor_x)  # dal centro della card
+        fit = min(fit, (IW / 2 - SIDE_MARGIN) / half)
+    return fit
 
 
 def anchored_player(source, target_height=1450, ref_top=None, zoom=1.0):
@@ -542,6 +565,13 @@ def event(
                 zoom, lift = POSE_FIT[pose]
                 ref_top = round(BASE_TOP * raw.height) if pose in RAISED_HANDS_POSES else None
                 portrait, anchor_x, extra_y = anchored_player(raw, 1450, ref_top, zoom)
+                if pose in RAISED_HANDS_POSES:
+                    fit = _hands_fit(portrait, anchor_x, extra_y + lift)
+                    if fit < 1:
+                        portrait, anchor_x, extra_y = anchored_player(raw, 1450, ref_top, zoom * fit)
+                    # spazio rimasto sopra le dita: lo usiamo per alzare il giocatore
+                    room = (M - 25 - extra_y - lift) - TOP_MARGIN
+                    extra_y += max(0, min(MAX_LIFT, room))
                 extra_y += lift
             else:
                 portrait, anchor_x = anchored_player(raw, 1450)
@@ -551,12 +581,12 @@ def event(
         panel_y = -25 - extra_y
         panel.alpha_composite(portrait, (panel_x, panel_y))
 
-        # I primi 25 px salgono sopra il pannello interno: manteniamo la
-        # stessa identica ancora X anche nella porzione compositata sul card.
-        card.alpha_composite(
-            portrait.crop((0, extra_y, portrait.width, extra_y + 25)),
-            (M + panel_x, M - 25),
-        )
+        # Quello che esce dal pannello in alto (testa, mani, dita) va sulla cornice invece di
+        # essere tagliato, ma solo in verticale: ai lati la sagoma resta dentro il riquadro.
+        spill = Image.new('RGBA', card.size)
+        spill.paste(portrait, (M + panel_x, M + panel_y))  # livello vuoto: copia esatta, anche fuori bordo
+        top_strip = spill.crop((M, 0, M + IW, M))
+        card.alpha_composite(top_strip, (M, 0))
 
     if no_photo:
         # Niente foto: niente scritta grande in fondo. La sfumatura scura in fondo
