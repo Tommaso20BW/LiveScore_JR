@@ -54,9 +54,9 @@ def catch_up_goals(ctx: MatchContext) -> None:
             )
 
             if actual_tid == ctx.home_id:
-                goal_score = f"<b>{ctx.home_name} {ch}</b>-{ca} {ctx.away_name}"
+                goal_score = f"<b>{ctx.home_label} {ch}</b>-{ca} {ctx.away_label}"
             else:
-                goal_score = f"{ctx.home_name} {ch}-<b>{ca} {ctx.away_name}</b>"
+                goal_score = f"{ctx.home_label} {ch}-<b>{ca} {ctx.away_label}</b>"
 
             goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{ctx.e_comp} {ctx.hashtag}"
             goal_key  = f"{ch}_{ca}"
@@ -100,8 +100,8 @@ def catch_up_goals(ctx: MatchContext) -> None:
                 "assist":    a_name,
                 "minute":    ge["minute"],
                 "type":      ge["type"],
-                "home_n":    ctx.home_name,
-                "away_n":    ctx.away_name,
+                "home_n":    ctx.home_label,
+                "away_n":    ctx.away_label,
                 "g_home":    ch,
                 "g_away":    ca,
                 "home_id":   ctx.home_id,
@@ -147,7 +147,7 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
         ctx.g_home = g_home_c
         ctx.g_away = g_away_c
         ctx.events = espn_parser.parse_events(ctx.data, ctx.home_name_raw, ctx.away_name_raw, ctx.home_id, ctx.away_id)
-        ctx.score_str = fmt.build_score_str(ctx.home_name, ctx.away_name, ctx.g_home, ctx.g_away)
+        ctx.score_str = fmt.build_score_str(ctx.home_label, ctx.away_label, ctx.g_home, ctx.g_away)
 
         goal_events = [e for e in ctx.events
                        if e["type"] in ("goal", "own goal", "penalty goal")]
@@ -214,9 +214,9 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
             )
 
             if actual_scoring_tid == ctx.home_id:
-                goal_score = f"<b>{ctx.home_name} {ctx.g_home}</b>-{ctx.g_away} {ctx.away_name}"
+                goal_score = f"<b>{ctx.home_label} {ctx.g_home}</b>-{ctx.g_away} {ctx.away_label}"
             else:
-                goal_score = f"{ctx.home_name} {ctx.g_home}-<b>{ctx.g_away} {ctx.away_name}</b>"
+                goal_score = f"{ctx.home_label} {ctx.g_home}-<b>{ctx.g_away} {ctx.away_label}</b>"
 
             goal_text = f"<b>GOAL · {goal_minute}' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{ctx.e_comp} {ctx.hashtag}"
             goal_key = f"{ctx.g_home}_{ctx.g_away}"
@@ -257,8 +257,8 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
                         "assist":    assist_name,
                         "minute":    goal_minute,
                         "type":      goal_type,
-                        "home_n":    ctx.home_name,
-                        "away_n":    ctx.away_name,
+                        "home_n":    ctx.home_label,
+                        "away_n":    ctx.away_label,
                         "g_home":    ctx.g_home,
                         "g_away":    ctx.g_away,
                         "home_id":   ctx.home_id,
@@ -417,8 +417,8 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
                         ctx.away_id,
                     )
                     ctx.score_str = fmt.build_score_str(
-                        ctx.home_name,
-                        ctx.away_name,
+                        ctx.home_label,
+                        ctx.away_label,
                         ctx.g_home,
                         ctx.g_away,
                     )
@@ -483,8 +483,8 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
                     ctx.g_home = g_home_c
                     ctx.g_away = g_away_c
                     ctx.score_str = fmt.build_score_str(
-                        ctx.home_name,
-                        ctx.away_name,
+                        ctx.home_label,
+                        ctx.away_label,
                         ctx.g_home,
                         ctx.g_away,
                     )
@@ -535,8 +535,8 @@ def fix_scorers(ctx: MatchContext) -> None:
 
         s_home_id = saved.get("home_id", ctx.home_id)
         s_away_id = saved.get("away_id", ctx.away_id)
-        s_home_n  = saved.get("home_n", ctx.home_name)
-        s_away_n  = saved.get("away_n", ctx.away_name)
+        s_home_n  = saved.get("home_n", ctx.home_label)
+        s_away_n  = saved.get("away_n", ctx.away_label)
         s_tid     = saved.get("score_tid")
 
         goal_events_all = [e for e in ctx.events if e["type"] in ("goal", "own goal", "penalty goal")]

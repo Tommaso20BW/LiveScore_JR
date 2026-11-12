@@ -166,15 +166,15 @@ def handle_finish(ctx: MatchContext) -> Flow | None:
                 if home_pen_goals > 0 or away_pen_goals > 0:
                     if home_pen_goals > away_pen_goals:
                         pen_score_str = (
-                            f"<b>{ctx.home_name} {ctx.g_home} ({home_pen_goals})</b>-({away_pen_goals}) {ctx.g_away} {ctx.away_name}"
+                            f"<b>{ctx.home_label} {ctx.g_home} ({home_pen_goals})</b>-({away_pen_goals}) {ctx.g_away} {ctx.away_label}"
                         )
                     elif away_pen_goals > home_pen_goals:
                         pen_score_str = (
-                            f"{ctx.home_name} {ctx.g_home} ({home_pen_goals})-<b>({away_pen_goals}) {ctx.g_away} {ctx.away_name}</b>"
+                            f"{ctx.home_label} {ctx.g_home} ({home_pen_goals})-<b>({away_pen_goals}) {ctx.g_away} {ctx.away_label}</b>"
                         )
                     else:
                         pen_score_str = (
-                            f"{ctx.home_name} {ctx.g_home} ({home_pen_goals})-({away_pen_goals}) {ctx.g_away} {ctx.away_name}"
+                            f"{ctx.home_label} {ctx.g_home} ({home_pen_goals})-({away_pen_goals}) {ctx.g_away} {ctx.away_label}"
                         )
                     ctx.score_str = pen_score_str
 

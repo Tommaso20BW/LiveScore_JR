@@ -59,7 +59,7 @@ def announce_kickoff(ctx: MatchContext) -> None:
     """Messaggio INIZIO PARTITA."""
     # --- Inizio primo tempo ---
     if ctx.status == "1H" and "1H" not in ctx.state["sent_periods"]:
-        msg_id = media.send_phase_message(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{ctx.home_name} - {ctx.away_name}\n\n{ctx.e_comp} {ctx.hashtag}",
+        msg_id = media.send_phase_message(f"<b>INIZIO PARTITA {E_BOLT}</b>\n\n{ctx.home_label} - {ctx.away_label}\n\n{ctx.e_comp} {ctx.hashtag}",
             kind='kick', data_espn=ctx.data, home_id=ctx.home_id, away_id=ctx.away_id,
             home_name=ctx.home_name_raw, away_name=ctx.away_name_raw, league_slug=ctx.league_slug, league_name=ctx.league_name)
         if msg_id:

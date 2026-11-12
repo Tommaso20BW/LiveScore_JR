@@ -34,6 +34,7 @@ class MatchContext:
     _now_ts: Any = None
     away_id: Any = None
     away_name: Any = None
+    away_label: Any = None     # nome con bandiera (nazionali), solo per la riga del risultato
     away_name_raw: Any = None
     competitors: Any = None
     data: Any = None
@@ -45,6 +46,7 @@ class MatchContext:
     hashtag: Any = None
     home_id: Any = None
     home_name: Any = None
+    home_label: Any = None     # nome con bandiera (nazionali), solo per la riga del risultato
     home_name_raw: Any = None
     score_str: Any = None
     sleep_time: Any = None

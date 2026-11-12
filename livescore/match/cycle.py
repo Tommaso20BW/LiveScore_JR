@@ -51,13 +51,12 @@ def prepare_cycle(ctx: MatchContext) -> Flow | None:
     ctx.home_id, ctx.away_id, ctx.home_name_raw, ctx.away_name_raw, ctx.g_home, ctx.g_away = espn_parser.parse_score(ctx.competitors)
     ctx.home_name = txt.esc(team_names.translate_team(ctx.home_name_raw))
     ctx.away_name = txt.esc(team_names.translate_team(ctx.away_name_raw))
-    # Nazionali: bandiera vicino al nome (🇮🇹 Italia - Francia 🇫🇷)
+    # Nazionali: bandiera vicino al nome solo nella riga del risultato e in INIZIO PARTITA
+    # (🇮🇹 Italia 1-1 Francia 🇫🇷); nei titoli ("RIGORE SBAGLIATO ITALIA") resta il nome e basta.
     home_flag, away_flag = flags.emoji_for(ctx.home_name_raw), flags.emoji_for(ctx.away_name_raw)
-    if home_flag:
-        ctx.home_name = f"{home_flag} {ctx.home_name}"
-    if away_flag:
-        ctx.away_name = f"{ctx.away_name} {away_flag}"
-    ctx.score_str = fmt.build_score_str(ctx.home_name, ctx.away_name, ctx.g_home, ctx.g_away)
+    ctx.home_label = f"{home_flag} {ctx.home_name}" if home_flag else ctx.home_name
+    ctx.away_label = f"{ctx.away_name} {away_flag}" if away_flag else ctx.away_name
+    ctx.score_str = fmt.build_score_str(ctx.home_label, ctx.away_label, ctx.g_home, ctx.g_away)
     ctx.hashtag   = team_names.build_hashtag(ctx.home_name_raw, ctx.away_name_raw)
     ctx.e_comp    = leagues.get_league_emoji(ctx.league_slug)
 
