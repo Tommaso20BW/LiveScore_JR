@@ -29,8 +29,8 @@ REGISTRY_PATH = DATA_DIR / "goal_players.json"
 FCLOGO_MANIFEST_FILENAME = "manifest.json"
 
 POSES = ("arms_crossed", "pointing", "scream", "point_sky", "kiss_crest", "shush")
-# pose scelte in automatico: ce le hanno tutti i giocatori in ogni maglia.
-# Le esultanze (scream, point_sky, kiss_crest, shush) si usano con --pose, solo dove esiste il file.
+# pose base: ce le hanno tutti i giocatori in ogni maglia. Le esultanze (scream, point_sky,
+# kiss_crest, shush) entrano nella scelta automatica solo dove esiste il file.
 AUTO_POSES = ("arms_crossed", "pointing")
 KIT_FILE_PART = {
     "home": "",
@@ -118,13 +118,29 @@ def find_player(name: str, registry_path: Path | str = REGISTRY_PATH) -> Player 
     return None
 
 
-def choose_pose(key: str, requested: str | None = None) -> str:
-    if requested:
-        if requested not in POSES:
-            raise ValueError(f"Posa non valida: {requested}")
+def choose_pose(key: str, requested: str | None = None,
+                available: tuple[str, ...] | None = None) -> str:
+    """Posa richiesta, altrimenti una scelta fissa per evento tra quelle disponibili.
+
+    `available` sono le pose che hanno davvero il PNG per quel giocatore e maglia: se la posa
+    richiesta (es. salvata prima di un cambio maglia) lì non c'è, si sceglie tra quelle.
+    """
+    if requested and requested not in POSES:
+        raise ValueError(f"Posa non valida: {requested}")
+    pool = tuple(available) if available else AUTO_POSES
+    if requested and (available is None or requested in pool):
         return requested
     digest = hashlib.sha256(key.encode("utf-8")).digest()
-    return AUTO_POSES[digest[0] % len(AUTO_POSES)]
+    return pool[digest[0] % len(pool)]
+
+
+def available_poses(player: Player | None, kit: str,
+                    asset_dir: Path | str = DEFAULT_ASSET_DIR) -> tuple[str, ...] | None:
+    """Pose con il PNG presente per giocatore e maglia (None se non c'è il giocatore)."""
+    if player is None:
+        return None
+    found = tuple(p for p in POSES if resolve_player_path(player, kit, p, asset_dir).is_file())
+    return found or None
 
 
 def player_filename(player: Player, kit: str, pose: str) -> str:
@@ -380,7 +396,8 @@ def render_goal_card(
         return event(player=card_player, scorer_name=scorer_name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit=kit, suffix=scorer_suffix,
-                     competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir,
+                     competition=competition, assets=asset_dir,
+                     pose=choose_pose(event_key, pose, available_poses(card_player, kit, asset_dir)),
                      home_goals=home_goals, away_goals=away_goals)
     except (OSError, ValueError) as exc:
         raise GoalGraphicUnavailable(str(exc)) from exc
@@ -419,7 +436,8 @@ def render_saved_card(
         return event(player=player, scorer_name=name, minute=minute,
                      home_name=home_name, away_name=away_name, home_id=home_id,
                      away_id=away_id, kit=kit, saved=True,
-                     competition=competition, pose=choose_pose(event_key, pose), assets=asset_dir,
+                     competition=competition, assets=asset_dir,
+                     pose=choose_pose(event_key, pose, available_poses(player, kit, asset_dir)),
                      home_goals=home_goals, away_goals=away_goals)
     except (OSError, ValueError) as exc:
         raise GoalGraphicUnavailable(str(exc)) from exc
