@@ -14,3 +14,26 @@ class KeeperKitsTests(unittest.TestCase):
                         self.assertIn('keeper_' + color, path.name)
                         with Image.open(path) as source:
                             self.assertTrue(g._has_real_transparency(source))
+
+
+class CelebrationPosesTests(unittest.TestCase):
+    @unittest.skipUnless((g.DEFAULT_ASSET_DIR / 'players').is_dir(), 'asset privati non presenti')
+    def test_scream_and_point_sky_exist_for_every_player_and_kit(self):
+        for player in g.load_players():
+            for kit in ('home', 'away', 'third'):
+                for pose in ('scream', 'point_sky'):
+                    with self.subTest(player=player.slug, kit=kit, pose=pose):
+                        path = g.resolve_player_path(player, kit, pose)
+                        self.assertTrue(path.exists(), path.name)
+
+    def test_celebration_file_names(self):
+        player = g.find_player('Kenan Yildiz')
+        self.assertEqual(g.player_filename(player, 'third', 'kiss_crest'),
+                         'kenan_yildiz_third_black_pose_05_kiss_crest.png')
+        keeper = g.find_player('Guglielmo Vicario')
+        self.assertEqual(g.player_filename(keeper, 'away', 'shush'),
+                         'guglielmo_vicario_keeper_green_pose_06_shush.png')
+
+    def test_automatic_choice_uses_only_base_poses(self):
+        for i in range(50):
+            self.assertIn(g.choose_pose(f'evento-{i}'), g.AUTO_POSES)

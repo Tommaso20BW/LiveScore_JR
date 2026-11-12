@@ -28,7 +28,10 @@ DEFAULT_ASSET_DIR = ASSETS_DIR
 REGISTRY_PATH = DATA_DIR / "goal_players.json"
 FCLOGO_MANIFEST_FILENAME = "manifest.json"
 
-POSES = ("arms_crossed", "pointing")
+POSES = ("arms_crossed", "pointing", "scream", "point_sky", "kiss_crest", "shush")
+# pose scelte in automatico: ce le hanno tutti i giocatori in ogni maglia.
+# Le esultanze (scream, point_sky, kiss_crest, shush) si usano con --pose, solo dove esiste il file.
+AUTO_POSES = ("arms_crossed", "pointing")
 KIT_FILE_PART = {
     "home": "",
     "away": "away_pink_",
@@ -37,6 +40,10 @@ KIT_FILE_PART = {
 POSE_FILE_PART = {
     "arms_crossed": "pose_01_arms_crossed",
     "pointing": "pose_02_pointing",
+    "scream": "pose_03_scream",
+    "point_sky": "pose_04_point_sky",
+    "kiss_crest": "pose_05_kiss_crest",
+    "shush": "pose_06_shush",
 }
 
 THEMES = {
@@ -117,7 +124,7 @@ def choose_pose(key: str, requested: str | None = None) -> str:
             raise ValueError(f"Posa non valida: {requested}")
         return requested
     digest = hashlib.sha256(key.encode("utf-8")).digest()
-    return POSES[digest[0] % len(POSES)]
+    return AUTO_POSES[digest[0] % len(AUTO_POSES)]
 
 
 def player_filename(player: Player, kit: str, pose: str) -> str:
