@@ -131,13 +131,17 @@ def tight(source, white_mask=False):
 
 # Pose con le mani sopra la testa: la scala non dipende da quanto sono alte le mani, ma è quella
 # che avrebbe la sagoma se la cima fosse a questa altezza (come nelle pose base, testa a ~25 px su 1254).
-# Così nella card il giocatore ha la misura decisa nel PNG; le punte oltre il pannello si tagliano.
+# Così nella card il giocatore ha la misura decisa nel PNG (più POSE_FIT).
 RAISED_HANDS_POSES = {'point_sky'}
 BASE_TOP = 25 / 1254
-# Mani alzate: senza aiuto il giocatore resta piccolo e basso (volto a ~730 px contro ~325 della
-# posa base). Lo ingrandiamo e lo alziamo: le dita restano dentro il pannello per tutti.
-RAISED_HANDS_ZOOM = 1.2
-RAISED_HANDS_LIFT = 110
+# Esultanze: (ingrandimento, spostamento in su in px) rispetto alla resa normale, misurati sulle
+# card perché il volto abbia circa la misura e l'altezza (~330 px dall'alto) delle braccia conserte.
+# Il fondo della maglia resta sempre sotto il pannello; mani e dita possono uscire dal riquadro.
+POSE_FIT = {
+    'point_sky': (1.4, 0),  # mani alzate: più grande, ma pugni e indici devono restare in vista
+    'scream': (1.05, -70),
+    'shush': (1.07, -88),
+}
 
 
 def anchored_player(source, target_height=1450, ref_top=None, zoom=1.0):
@@ -173,7 +177,7 @@ def anchored_player(source, target_height=1450, ref_top=None, zoom=1.0):
     # Posizione, dentro il crop, del centro X del canvas sorgente.
     # Sarà questa coordinata ad essere allineata al centro della card.
     anchor_x = (source.width / 2 - box[0]) * scale
-    if ref_top is None:
+    if ref_top is None and zoom == 1.0:
         return portrait, anchor_x
     return portrait, anchor_x, height - target_height
 
@@ -534,10 +538,11 @@ def event(
             # non centrare il bounding box della sagoma, ma il centro X
             # originale del PNG. In questo modo le pose con braccio/dito
             # esteso non trascinano tutto il corpo a destra o sinistra.
-            if pose in RAISED_HANDS_POSES:
-                portrait, anchor_x, extra_y = anchored_player(
-                    raw, 1450, round(BASE_TOP * raw.height), RAISED_HANDS_ZOOM)
-                extra_y += RAISED_HANDS_LIFT  # il fondo sale ma resta sotto il pannello (margine 129 px)
+            if pose in POSE_FIT:
+                zoom, lift = POSE_FIT[pose]
+                ref_top = round(BASE_TOP * raw.height) if pose in RAISED_HANDS_POSES else None
+                portrait, anchor_x, extra_y = anchored_player(raw, 1450, ref_top, zoom)
+                extra_y += lift
             else:
                 portrait, anchor_x = anchored_player(raw, 1450)
                 extra_y = 0

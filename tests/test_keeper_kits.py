@@ -79,3 +79,11 @@ class RaisedHandsScaleTests(unittest.TestCase):
         portrait, anchor = anchored_player(self._figure(20), 160)
         self.assertEqual(portrait.height, 160)
         self.assertAlmostEqual(anchor, 20)
+
+    def test_zoom_enlarges_and_keeps_bottom(self):
+        from livescore.graphics.portrait import anchored_player
+        normal, _ = anchored_player(self._figure(20), 160)
+        big, _, up = anchored_player(self._figure(20), 160, None, 1.5)
+        self.assertEqual(big.height, 240)
+        self.assertEqual(big.height - up, 160)           # il fondo resta dov'era
+        self.assertGreater(big.width, normal.width)
