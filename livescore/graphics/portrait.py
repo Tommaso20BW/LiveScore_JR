@@ -134,9 +134,13 @@ def tight(source, white_mask=False):
 # Così nella card il giocatore ha la misura decisa nel PNG; le punte oltre il pannello si tagliano.
 RAISED_HANDS_POSES = {'point_sky'}
 BASE_TOP = 25 / 1254
+# Mani alzate: senza aiuto il giocatore resta piccolo e basso (volto a ~730 px contro ~325 della
+# posa base). Lo ingrandiamo e lo alziamo: le dita restano dentro il pannello per tutti.
+RAISED_HANDS_ZOOM = 1.2
+RAISED_HANDS_LIFT = 110
 
 
-def anchored_player(source, target_height=1450, ref_top=None):
+def anchored_player(source, target_height=1450, ref_top=None, zoom=1.0):
     """Ritaglia il PNG del giocatore senza perdere il centro originale del canvas.
 
     Prima il compositor usava ``tight(raw)`` e poi centrava geometricamente il
@@ -161,7 +165,7 @@ def anchored_player(source, target_height=1450, ref_top=None):
     # ref_top: cima di riferimento (px della sorgente) per la scala; quello che sta sopra
     # finisce sopra il pannello. extra_y = di quanto alzare il ritratto (negativo: abbassarlo).
     top = box[1] if ref_top is None else min(ref_top, box[3] - 1)
-    scale = target_height / (box[3] - top)
+    scale = target_height * zoom / (box[3] - top)
     height = max(1, round(cropped.height * scale))
     width = max(1, round(cropped.width * scale))
     portrait = cropped.resize((width, height), Image.Resampling.LANCZOS)
@@ -531,7 +535,9 @@ def event(
             # originale del PNG. In questo modo le pose con braccio/dito
             # esteso non trascinano tutto il corpo a destra o sinistra.
             if pose in RAISED_HANDS_POSES:
-                portrait, anchor_x, extra_y = anchored_player(raw, 1450, round(BASE_TOP * raw.height))
+                portrait, anchor_x, extra_y = anchored_player(
+                    raw, 1450, round(BASE_TOP * raw.height), RAISED_HANDS_ZOOM)
+                extra_y += RAISED_HANDS_LIFT  # il fondo sale ma resta sotto il pannello (margine 129 px)
             else:
                 portrait, anchor_x = anchored_player(raw, 1450)
                 extra_y = 0
