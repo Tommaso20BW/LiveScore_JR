@@ -580,7 +580,7 @@ def fix_scorers(ctx: MatchContext) -> None:
                 goal_score_new = f"{s_home_n} {gh}-<b>{ga} {s_away_n}</b>"
 
             e_comp_saved = leagues.get_league_emoji(ctx.league_slug)
-            hashtag_saved = team_names.build_hashtag(s_home_n, s_away_n)
+            hashtag_saved = ctx.hashtag or team_names.build_hashtag(ctx.home_name_raw, ctx.away_name_raw)
             _min_disp_new = current.get("minute_disp", str(current["minute"]))
             goal_text_new = f"<b>GOAL · {_min_disp_new}' {E_MIC}</b>\n\n{goal_score_new}\n{scorer_line_new}{assist_line_new}\n{e_comp_saved} {hashtag_saved}"
 

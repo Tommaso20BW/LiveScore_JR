@@ -865,13 +865,68 @@ class DynamicKitRuntime:
             # an already-visible state.
             self._log("DEBUG", "KIT", f"Aggiornamento recap Bot JR saltato: {exc}")
 
+    def pin_recap(self) -> None:
+        """Fissa "Partita trovata" su Bot JR e cancella subito l'avviso "JR BOT ha fissato…".
+
+        Telegram crea l'avviso di servizio come messaggio successivo a quello fissato.
+        """
+        if not self.recap_message_id or not self.recap_chat_id:
+            return
+        try:
+            response = self.bot._tg_post(
+                "pinChatMessage",
+                data={
+                    "chat_id": self.recap_chat_id,
+                    "message_id": self.recap_message_id,
+                    "disable_notification": "true",
+                },
+                timeout=15,
+            )
+            if response is not None:
+                response.raise_for_status()
+            self._log("OK", "KIT", "Partita trovata fissato su Bot JR")
+        except Exception as exc:
+            self._log("WARN", "KIT", f"Partita trovata non fissato: {exc}")
+            return
+        try:
+            response = self.bot._tg_post(
+                "deleteMessage",
+                data={
+                    "chat_id": self.recap_chat_id,
+                    "message_id": self.recap_message_id + 1,
+                },
+                timeout=15,
+            )
+            if response is not None:
+                response.raise_for_status()
+        except Exception as exc:
+            self._log("DEBUG", "KIT", f"Avviso di messaggio fissato non cancellato: {exc}")
+
+    def unpin_recap(self) -> None:
+        if not self.recap_message_id or not self.recap_chat_id:
+            return
+        try:
+            response = self.bot._tg_post(
+                "unpinChatMessage",
+                data={
+                    "chat_id": self.recap_chat_id,
+                    "message_id": self.recap_message_id,
+                },
+                timeout=15,
+            )
+            if response is not None:
+                response.raise_for_status()
+        except Exception as exc:
+            self._log("DEBUG", "KIT", f"Partita trovata non tolto dai fissati: {exc}")
+
     def delete_recap(self) -> None:
-        """Fine partita: il messaggio "Partita trovata" su Bot JR si cancella.
+        """Fine partita: "Partita trovata" su Bot JR si toglie dai fissati e si cancella.
 
         Se Telegram non lo permette, restano almeno tolti i pulsanti kit.
         """
         if not self.recap_message_id or not self.recap_chat_id:
             return
+        self.unpin_recap()
         try:
             response = self.bot._tg_post(
                 "deleteMessage",

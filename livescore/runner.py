@@ -187,6 +187,7 @@ def _notifica_partita_trovata_bot(partita: dict) -> None:
                     KIT_RUNTIME.latest_summary or data,
                 ),
             )
+            KIT_RUNTIME.pin_recap()
 
         bot.log_line(
             "DEBUG",

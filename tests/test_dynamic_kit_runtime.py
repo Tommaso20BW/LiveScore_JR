@@ -356,6 +356,39 @@ class DynamicKitRuntimeTests(unittest.TestCase):
         self.assertIn("deleteMessage", methods)
         self.assertNotIn("editMessageReplyMarkup", methods)
 
+    def test_pin_recap_pins_silently_and_deletes_service_notice(self):
+        self.bot.posts.clear()
+        self.runtime.recap_message_id = 99
+        self.runtime.recap_chat_id = "-100-botjr"
+        self.runtime.pin_recap()
+        calls = [(m, d) for m, _, d, _ in self.bot.posts]
+        self.assertEqual(calls[0][0], "pinChatMessage")
+        self.assertEqual(calls[0][1]["message_id"], 99)
+        self.assertEqual(calls[0][1]["disable_notification"], "true")
+        self.assertEqual(calls[1], ("deleteMessage", {"chat_id": "-100-botjr", "message_id": 100}))
+
+    def test_pin_recap_failed_deletes_nothing(self):
+        self.runtime.recap_message_id = 99
+        self.runtime.recap_chat_id = "-100-botjr"
+        original = self.bot._tg_post
+
+        def post(method, **kwargs):
+            if method == "pinChatMessage":
+                raise RuntimeError("not enough rights")
+            return original(method, **kwargs)
+
+        self.bot._tg_post = post
+        self.runtime.pin_recap()
+        self.assertNotIn("deleteMessage", [item[0] for item in self.bot.posts])
+
+    def test_delete_recap_unpins_before_deleting(self):
+        self.bot.posts.clear()
+        self.runtime.recap_message_id = 99
+        self.runtime.recap_chat_id = "-100-botjr"
+        self.runtime.delete_recap()
+        methods = [item[0] for item in self.bot.posts]
+        self.assertEqual(methods[:2], ["unpinChatMessage", "deleteMessage"])
+
     def test_recap_keeps_only_buttons_removed_if_delete_fails(self):
         self.runtime.recap_message_id = 99
         self.runtime.recap_chat_id = "-100-botjr"

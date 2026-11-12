@@ -39,6 +39,22 @@ def code_for(name: str) -> str | None:
     return None
 
 
+_TAG_FLAGS = {'gb-eng': 'eng', 'gb-sct': 'sct', 'gb-wls': 'wls'}
+
+
+def emoji_for(name: str) -> str:
+    """Emoji della bandiera per una nazionale ('🇮🇹' per Italia); '' se non è una nazione."""
+    code = code_for(name)
+    if not code:
+        return ''
+    if code in _TAG_FLAGS:
+        tags = ''.join(chr(0xE0000 + ord(c)) for c in _TAG_FLAGS[code])
+        return '🏴' + tags + '󠁿'
+    if len(code) != 2 or not code.isalpha():
+        return ''
+    return ''.join(chr(0x1F1E6 + ord(c) - ord('a')) for c in code.lower())
+
+
 def path_for(name: str, assets) -> Path | None:
     code = code_for(name)
     if not code:
