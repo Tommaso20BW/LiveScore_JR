@@ -17,6 +17,7 @@ import base64
 import html as _html
 import io
 import os
+import re
 import tempfile
 from functools import lru_cache
 from pathlib import Path
@@ -141,11 +142,20 @@ def event_html(*, kit, saved, player_name, minute, home_name, away_name, home_go
     word = 'SAVED' if saved else 'GOAL'
     minute = str(minute or '').strip().rstrip("'’")
     score = (home_goals, away_goals) if home_goals is not None and away_goals is not None else None
+    # "(RIGORE)" / "(AUTOGOL)": piccolo sotto il nome, sempre tra parentesi; il minuto scende.
+    name, tag = str(player_name or '').strip(), ''
+    match = re.fullmatch(r'(.*?)\s*(\([^()]*\))', name)
+    if match and match.group(1):
+        name, tag = match.group(1), match.group(2)
+    tag_html = (f'<div class="ab lab" style="left:0;right:0;top:962px;text-align:center;font-size:44px;'
+                f'color:{t["sub"]}">{_esc(tag.upper())}</div>') if tag else ''
+    minute_top = 1022 if tag else 965
     body = f'''
 <div class="ab" style="left:0;right:0;top:430px;text-align:center"><div class="word" style="font-size:440px" data-fit="940">{word}</div></div>
 <div class="ab" style="left:0;right:0;top:850px;text-align:center">
-  <div class="lab" style="display:inline-block;font-size:100px;line-height:1;letter-spacing:.03em;color:{t['ink']}" data-fit="920">{_esc(player_name.upper())}</div></div>
-<div class="ab lab" style="left:0;right:0;top:965px;text-align:center;font-size:46px;color:{t['sub']}">{_q(minute + "'") if minute else ''}</div>
+  <div class="lab" style="display:inline-block;font-size:100px;line-height:1;letter-spacing:.03em;color:{t['ink']}" data-fit="920">{_esc(name.upper())}</div></div>
+{tag_html}
+<div class="ab lab" style="left:0;right:0;top:{minute_top}px;text-align:center;font-size:46px;color:{t['sub']}">{_q(minute + "'") if minute else ''}</div>
 <div class="ab" style="left:0;right:0;top:1110px">{_score_row(home_name, away_name, score, t, assets, 80, 90)}</div>'''
     return _page(kit, body, assets)
 
