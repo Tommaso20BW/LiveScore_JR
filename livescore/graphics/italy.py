@@ -147,9 +147,9 @@ def event_html(*, kit, saved, player_name, minute, home_name, away_name, home_go
     match = re.fullmatch(r'(.*?)\s*(\([^()]*\))', name)
     if match and match.group(1):
         name, tag = match.group(1), match.group(2)
-    tag_html = (f'<div class="ab lab" style="left:0;right:0;top:960px;text-align:center;font-size:52px;'
+    tag_html = (f'<div class="ab lab" style="left:0;right:0;top:948px;text-align:center;font-size:52px;'
                 f'color:{t["sub"]}">{_esc(tag.upper())}</div>') if tag else ''
-    minute_top = 1030 if tag else 965
+    minute_top = 1018 if tag else 965
     body = f'''
 <div class="ab" style="left:0;right:0;top:430px;text-align:center"><div class="word" style="font-size:440px" data-fit="940">{word}</div></div>
 <div class="ab" style="left:0;right:0;top:850px;text-align:center">
