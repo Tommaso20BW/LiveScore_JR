@@ -1,7 +1,7 @@
 name: Match Scheduler
 
 # Nessun trigger schedule: il cron di GitHub può avere ritardi.
-# Il workflow viene avviato tramite cron-job.org ogni 30 minuti.
+# Il workflow viene avviato tramite cron-job.org ogni 10 minuti.
 on:
   workflow_dispatch:
 
@@ -33,6 +33,10 @@ jobs:
 
       - name: Controlla se c'e' una partita di Juve o Italia in arrivo
         id: check
+        env:
+          # Solo lettura dello stato del live: formazione dell'Italia già inviata?
+          GH_PAT:  ${{ secrets.GH_PAT }}
+          GIST_ID: ${{ secrets.GIST_ID }}
         run: python -u -m livescore schedule-check
 
       - name: Verifica che il bot non sia gia' in esecuzione

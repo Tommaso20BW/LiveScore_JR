@@ -63,9 +63,19 @@ MONITORED_TEAMS = [
      "leagues": NATIONAL_LEAGUES},
 ]
 
-# Il controllo esterno gira ogni 30 minuti.
+# Il controllo esterno (cron-job.org) gira ogni 10 minuti.
 # Il bot viene avviato quando il kickoff è entro 60 minuti.
 DISPATCH_WINDOW_MIN = 60
+
+# Solo Italia: la formazione può uscire prima dei 60 minuti. Da questo anticipo in poi
+# lo scheduler la cerca su ESPN; appena c'è avvia il live, che la invia e si ferma
+# ("avvio troppo anticipato") fino al giro dei 60 minuti.
+LINEUP_WINDOW_MIN = 180
+
+SUMMARY_URL = (
+    "https://site.api.espn.com/apis/site/v2/sports/"
+    "soccer/{league}/summary?event={event_id}"
+)
 
 # Recupero nel caso in cui lo scheduler parta dopo il kickoff.
 RECOVERY_WINDOW_MIN = 140
@@ -372,6 +382,66 @@ def choose_match(matches: dict, now: datetime):
     return team, kickoff, event, league
 
 
+def lineup_published(league: str, event_id: str, team_id: str = ITALY_TEAM_ID) -> bool:
+    """True se ESPN ha già gli 11 titolari della squadra (come la STARTING XI del live)."""
+    try:
+        data = fetch_json(SUMMARY_URL.format(league=league, event_id=event_id))
+    except Exception as exc:
+        print(f"[warn] formazione non controllabile: {exc}", file=sys.stderr)
+        return False
+    for roster in data.get("rosters") or []:
+        if str((roster.get("team") or {}).get("id", "")) != str(team_id):
+            continue
+        starters = [e for e in roster.get("roster") or [] if e.get("starter")]
+        return len(starters) == 11
+    return False
+
+
+def lineup_already_sent(event_id: str) -> bool:
+    """True se lo stato del live (Gist) dice che la STARTING XI di questa partita è già inviata.
+    Senza GH_PAT/GIST_ID si risponde False: il live non la rimanda comunque due volte."""
+    token, gist_id = os.environ.get("GH_PAT"), os.environ.get("GIST_ID")
+    if not token or not gist_id:
+        return False
+    try:
+        r = SESSION.get(
+            f"https://api.github.com/gists/{gist_id}",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+            timeout=15,
+        )
+        r.raise_for_status()
+        content = r.json()["files"]["match_state.json"]["content"].strip() or "{}"
+        import json
+        state = json.loads(content)
+    except Exception as exc:
+        print(f"[warn] stato del live non leggibile: {exc}", file=sys.stderr)
+        return False
+    return (
+        isinstance(state, dict)
+        and str(state.get("event_id")) == str(event_id)
+        and isinstance(state.get("lineup"), dict)
+    )
+
+
+def early_lineup_dispatch(team: dict, minutes_to_kickoff: float, event: dict, league: str,
+                          match_finished: bool) -> bool:
+    """Italia, fra 60 e LINEUP_WINDOW_MIN minuti dal via: avvia il live se la formazione è
+    uscita e non è ancora stata inviata."""
+    if team["id"] != ITALY_TEAM_ID or match_finished:
+        return False
+    if not DISPATCH_WINDOW_MIN < minutes_to_kickoff <= LINEUP_WINDOW_MIN:
+        return False
+    event_id = str(event.get("id") or "")
+    if not event_id or not lineup_published(league, event_id):
+        print("Formazione dell'Italia non ancora uscita su ESPN.")
+        return False
+    if lineup_already_sent(event_id):
+        print("Formazione dell'Italia già inviata.")
+        return False
+    print("Formazione dell'Italia uscita: avvio il live per inviarla subito.")
+    return True
+
+
 def write_output(name: str, value: str) -> None:
     """Scrive un output utilizzabile dal workflow GitHub Actions."""
     github_output = os.environ.get("GITHUB_OUTPUT")
@@ -416,6 +486,11 @@ def main() -> None:
 
     state, completed, status_description = get_match_status(event)
 
+    lineup_early = not should_dispatch and early_lineup_dispatch(
+        team, minutes_to_kickoff, event, league, match_finished
+    )
+    should_dispatch = should_dispatch or lineup_early
+
     print(f"Trovata partita ({team['name']}): {match_name} [{league}]")
     print(f"Kickoff UTC: {kickoff.isoformat()}")
     print(f"Minuti al kickoff: {minutes_to_kickoff:.1f}")
@@ -447,6 +522,9 @@ def main() -> None:
             "Partita già conclusa secondo ESPN: "
             "il bot LiveScore NON viene avviato."
         )
+
+    elif lineup_early:
+        print("Avvio anticipato solo per la formazione dell'Italia.")
 
     elif should_dispatch:
         print(
