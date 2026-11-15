@@ -39,37 +39,52 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Checkout asset privati (foto, font, loghi)
-        uses: actions/checkout@v6
-        with:
-          repository: Tommaso20BW/LiveScore_Assets_JR
-          token: ${{ secrets.ASSETS_PAT }}
-          path: _private_assets
-
-      - name: Installa asset privati
+      # Degli asset privati servono solo alcune cartelle (foto giocatori, font, loghi...: ~460 MB).
+      # Si scaricano solo quelle, in 5 pezzi in parallelo e in background, mentre gli step dopo
+      # preparano Python; li aspetta "Installa asset privati". Prima: un clone intero, ~27 s.
+      - name: Scarica asset privati in background
         shell: bash
+        env:
+          ASSETS_PAT: ${{ secrets.ASSETS_PAT }}
         run: |
-          mkdir -p assets/goal_graphics
-          cp -a _private_assets/players _private_assets/fonts _private_assets/team_logos _private_assets/overlays _private_assets/portrait _private_assets/word_textures assets/goal_graphics
-          # Correzioni squadre dalla mini app ImageGen (fuori da team_logos/: la sync FCLogo non le tocca).
-          if [ -d _private_assets/team_overrides ]; then cp -a _private_assets/team_overrides assets/goal_graphics/; fi
-          # Bandiere tonde delle nazionali (grafiche dell'Italia, livescore/graphics/flags.py).
-          if [ -d _private_assets/flags_round ]; then cp -a _private_assets/flags_round assets/goal_graphics/; fi
-
-      - name: Restore seasonal FCLogo team logos
-        uses: actions/cache@v6
-        with:
-          # Il manifest arriva da Git, mai da una cache precedente agli alias manuali.
-          path: assets/goal_graphics/team_logos/**/*.png
-          key: fclogo-pngs-v3-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: |
-            fclogo-pngs-v3-${{ runner.os }}-
+          set -euo pipefail
+          ASSETS_AUTH="$(printf 'x-access-token:%s' "$ASSETS_PAT" | base64 -w0)"
+          echo "::add-mask::$ASSETS_AUTH"
+          export ASSETS_AUTH ASSETS_URL=https://github.com/Tommaso20BW/LiveScore_Assets_JR.git
+          cat >"${RUNNER_TEMP}/assets_dl.sh" <<'EOF'
+          name=$1; dir="$GITHUB_WORKSPACE/$2"; shift 2
+          H="AUTHORIZATION: basic $ASSETS_AUTH"
+          {
+            git -c http.extraheader="$H" clone -q --depth 1 --filter=blob:none --no-checkout --single-branch "$ASSETS_URL" "$dir" &&
+            git -C "$dir" -c http.extraheader="$H" sparse-checkout set --no-cone "$@" &&
+            git -C "$dir" -c http.extraheader="$H" checkout -q
+          } >"$RUNNER_TEMP/assets_$name.log" 2>&1
+          echo $? >"$RUNNER_TEMP/assets_$name.status"
+          EOF
+          # Foto giocatori (~440 MB) in 4 pezzi simili. "resto" e' il clone vero in _private_assets:
+          # da li' la sync dei loghi fa commit e push di team_logos e team_overrides.
+          set -f
+          for spec in 'gioc1 _assets_gioc1 /players/[a-e]*' 'gioc2 _assets_gioc2 /players/[f-j]*' \
+                      'gioc3 _assets_gioc3 /players/[k-m]*' 'gioc4 _assets_gioc4 /players/[!a-m]*' \
+                      'resto _private_assets /fonts/ /team_logos/ /overlays/ /portrait/ /word_textures/ /team_overrides/ /flags_round/'; do
+            nohup bash "${RUNNER_TEMP}/assets_dl.sh" $spec >/dev/null 2>&1 &
+          done
+          set +f
 
       - name: Set up Python
+        id: py
         uses: actions/setup-python@v6
         with:
           python-version: '3.14'
-          cache: 'pip'
+
+      # Librerie Python gia' installate (venv) salvate in cache: reinstallarle ogni volta costava ~25 s.
+      # Cambia requirements.txt o la versione di Python -> chiave nuova, si reinstalla una volta sola.
+      - name: Cache librerie Python
+        id: venv
+        uses: actions/cache@v6
+        with:
+          path: ~/venv
+          key: venv-${{ runner.os }}-py${{ steps.py.outputs.python-version }}-${{ hashFiles('requirements.txt') }}-v1
 
       - name: Cache Playwright browsers
         id: playwright-cache
@@ -79,10 +94,17 @@ jobs:
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
       - name: Install dependencies
+        shell: bash
         run: |
-          python -m pip install --upgrade pip==26.1.2
-          pip install -r requirements.txt
-          playwright install chromium
+          set -euo pipefail
+          if [ "${{ steps.venv.outputs.cache-hit }}" != "true" ]; then
+            python -m venv ~/venv
+            ~/venv/bin/python -m pip install --disable-pip-version-check -q --upgrade pip==26.1.2
+            ~/venv/bin/python -m pip install --disable-pip-version-check -q -r requirements.txt
+          fi
+          echo "$HOME/venv/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$HOME/venv" >> "$GITHUB_ENV"
+          ~/venv/bin/playwright install chromium
 
       # Foto di HALF TIME / END OF 90' / FULL TIME: la Mini App raggiunge il bot
       # attraverso un tunnel temporaneo; il modello di scontorno resta in cache.
@@ -109,55 +131,109 @@ jobs:
           path: ~/.cache/jr_lama
           key: lama-fp32-v1
 
-      - name: Sync seasonal FCLogo team logos
-        id: fclogo_sync
-        continue-on-error: true
-        run: python -u -m livescore sync-logos --output-dir assets/goal_graphics/team_logos
-
-      - name: Publish seasonal FCLogo team logos
-        if: ${{ steps.fclogo_sync.outcome == 'success' }}
-        # I PNG sono già disponibili nel runner: un push fallito non ferma il live.
-        continue-on-error: true
+      - name: Installa asset privati
+        shell: bash
+        env:
+          ASSETS_PAT: ${{ secrets.ASSETS_PAT }}
         run: |
-          # I loghi vivono nel repo privato degli asset: allinea la copia e fai push li'.
-          rm -rf _private_assets/team_logos
-          cp -a assets/goal_graphics/team_logos _private_assets/team_logos
-          # La sync toglie i loghi caricati a mano quando FCLogo pubblica un mono nuovo.
-          if [ -d assets/goal_graphics/team_overrides ]; then
-            rm -rf _private_assets/team_overrides
-            cp -a assets/goal_graphics/team_overrides _private_assets/team_overrides
-          fi
-          cd _private_assets
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A team_logos team_overrides 2>/dev/null || git add -A team_logos
-          if git diff --cached --quiet; then
-            echo "Nessun logo nuovo da pubblicare"
-          else
-            git commit -m "Update seasonal FCLogo team logos"
-            # Anche ImageGen scrive nel repo asset (correzioni squadre): se il push trova
-            # commit nuovi, li riprende e riprova una volta.
-            if ! git push && ! { git pull --rebase -q && git push; }; then
-              echo "::warning::Loghi non pubblicati su GitHub; il live prosegue con i file già disponibili nel runner."
+          set -euo pipefail
+          # Aspetta i 5 download partiti all'inizio (al massimo 5 minuti).
+          PARTS="gioc1 gioc2 gioc3 gioc4 resto"
+          for part in $PARTS; do
+            for _ in $(seq 1 600); do [ -f "${RUNNER_TEMP}/assets_$part.status" ] && break; sleep 0.5; done
+            if [ "$(cat "${RUNNER_TEMP}/assets_$part.status" 2>/dev/null || echo 1)" != "0" ]; then
+              cat "${RUNNER_TEMP}/assets_$part.log" 2>/dev/null || true
+              echo "::error title=Asset::Download degli asset privati non riuscito ($part)."
               exit 1
             fi
-          fi
+          done
+          echo "Asset privati scaricati"
+          # Il push dei loghi parte da _private_assets: credenziali come le salvava actions/checkout.
+          ASSETS_AUTH="$(printf 'x-access-token:%s' "$ASSETS_PAT" | base64 -w0)"
+          echo "::add-mask::$ASSETS_AUTH"
+          git -C _private_assets config http.https://github.com/.extraheader "AUTHORIZATION: basic $ASSETS_AUTH"
+          mkdir -p assets/goal_graphics/players
+          # Le foto non servono in _private_assets (nessun push le tocca): mv, niente copie.
+          for part in gioc1 gioc2 gioc3 gioc4; do
+            if [ -d "_assets_$part/players" ]; then mv "_assets_$part"/players/* assets/goal_graphics/players/; fi
+            rm -rf "_assets_$part"
+          done
+          cp -a _private_assets/fonts _private_assets/team_logos _private_assets/overlays _private_assets/portrait _private_assets/word_textures assets/goal_graphics
+          # Correzioni squadre dalla mini app ImageGen (fuori da team_logos/: la sync FCLogo non le tocca).
+          if [ -d _private_assets/team_overrides ]; then cp -a _private_assets/team_overrides assets/goal_graphics/; fi
+          # Bandiere tonde delle nazionali (grafiche dell'Italia, livescore/graphics/flags.py).
+          if [ -d _private_assets/flags_round ]; then cp -a _private_assets/flags_round assets/goal_graphics/; fi
+          echo "Foto giocatori: $(ls assets/goal_graphics/players | wc -l)"
 
-      - name: Update public FCLogo manifest
-        # Solo metadati (nomi e alias dei club, nessuna immagine): serve alla web app di ImageGEN.
-        continue-on-error: true
+      - name: Restore seasonal FCLogo team logos
+        uses: actions/cache@v6
+        with:
+          # Il manifest arriva da Git, mai da una cache precedente agli alias manuali.
+          path: assets/goal_graphics/team_logos/**/*.png
+          key: fclogo-pngs-v3-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            fclogo-pngs-v3-${{ runner.os }}-
+
+      # Sync dei loghi FCLogo (~35 s) in background: il bot parte subito a cercare la partita.
+      # Poi pubblica i loghi nel repo degli asset e il manifest pubblico (per la web app di ImageGEN).
+      # Un problema qui non ferma mai il live: i loghi gia' nel runner restano validi.
+      - name: Sync seasonal FCLogo team logos in background
+        shell: bash
         run: |
-          mkdir -p data
-          cp assets/goal_graphics/team_logos/manifest.json data/fclogo_manifest.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/fclogo_manifest.json
-          if git diff --cached --quiet; then
-            echo "Manifest pubblico già aggiornato"
-          else
-            git commit -m "Update public FCLogo manifest"
-            git push origin "HEAD:${GITHUB_REF_NAME}" || echo "::warning::Manifest pubblico non aggiornato."
-          fi
+          cat >"${RUNNER_TEMP}/fclogo.sh" <<'EOF'
+          set -u
+          ok=0
+          for attempt in 1 2; do
+            if python -u -m livescore sync-logos --output-dir assets/goal_graphics/team_logos; then ok=1; break; fi
+            echo "::warning::Sync FCLogo non riuscita (tentativo $attempt)."
+            sleep 20
+          done
+          [ "$ok" = 1 ] || { echo "::warning::Loghi FCLogo non sincronizzati; il live usa quelli gia' presenti."; exit 0; }
+          echo "--- Publish seasonal FCLogo team logos"
+          (
+            set -e
+            # I loghi vivono nel repo privato degli asset: allinea la copia e fai push li'.
+            rm -rf _private_assets/team_logos
+            cp -a assets/goal_graphics/team_logos _private_assets/team_logos
+            # La sync toglie i loghi caricati a mano quando FCLogo pubblica un mono nuovo.
+            if [ -d assets/goal_graphics/team_overrides ]; then
+              rm -rf _private_assets/team_overrides
+              cp -a assets/goal_graphics/team_overrides _private_assets/team_overrides
+            fi
+            cd _private_assets
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A team_logos team_overrides 2>/dev/null || git add -A team_logos
+            if git diff --cached --quiet; then
+              echo "Nessun logo nuovo da pubblicare"
+            else
+              git commit -q -m "Update seasonal FCLogo team logos"
+              # Anche ImageGen scrive nel repo asset (correzioni squadre): se il push trova
+              # commit nuovi, li riprende e riprova una volta.
+              if ! git push -q && ! { git pull --rebase -q && git push -q; }; then
+                echo "::warning::Loghi non pubblicati su GitHub; il live prosegue con i file già disponibili nel runner."
+              fi
+            fi
+          ) || echo "::warning::Pubblicazione dei loghi non riuscita."
+          echo "--- Update public FCLogo manifest"
+          (
+            set -e
+            # Solo metadati (nomi e alias dei club, nessuna immagine): serve alla web app di ImageGEN.
+            mkdir -p data
+            cp assets/goal_graphics/team_logos/manifest.json data/fclogo_manifest.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/fclogo_manifest.json
+            if git diff --cached --quiet; then
+              echo "Manifest pubblico già aggiornato"
+            else
+              git commit -q -m "Update public FCLogo manifest"
+              git push -q origin "HEAD:${GITHUB_REF_NAME}" || echo "::warning::Manifest pubblico non aggiornato."
+            fi
+          ) || echo "::warning::Manifest pubblico non aggiornato."
+          echo "--- Fine sync loghi"
+          EOF
+          nohup bash "${RUNNER_TEMP}/fclogo.sh" >"${RUNNER_TEMP}/fclogo.log" 2>&1 &
 
       - name: Risolvi la squadra da seguire
         id: team
@@ -204,9 +280,15 @@ jobs:
           GOAL_GRAPHICS_ENABLED: 'true'
           # Checkpoint di stato ogni 5 minuti; eventi, cambi di fase ed errori restano immediati.
           LIVE_LOG_HEARTBEAT_MINUTES: '5'
-          # Salta solo una sincronizzazione già riuscita; in caso di errore il bot ritenta.
-          FCLOGO_SYNC_DONE: ${{ steps.fclogo_sync.outcome == 'success' && 'true' || 'false' }}
+          # La sync dei loghi gira gia' in background dal workflow (con un nuovo tentativo):
+          # il bot non ne avvia una seconda sugli stessi file.
+          FCLOGO_SYNC_DONE: 'true'
         run: python -u -m livescore run
+
+      - name: Esito sync loghi FCLogo
+        if: always()
+        shell: bash
+        run: cat "${RUNNER_TEMP}/fclogo.log" 2>/dev/null || echo "Sync loghi non avviata."
 
       - name: Pulisci la cronologia dei run
         if: always()
