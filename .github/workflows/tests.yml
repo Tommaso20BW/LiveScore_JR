@@ -301,7 +301,7 @@ jobs:
             exit 1
           fi
 
-          curl \
+          RESPONSE="$(curl \
             --fail \
             --silent \
             --show-error \
@@ -310,7 +310,23 @@ jobs:
             --data-urlencode "chat_id=${TELEGRAM_TO_BOT}" \
             --data-urlencode "parse_mode=HTML" \
             --data-urlencode "disable_web_page_preview=true" \
-            --data-urlencode "text@telegram_message.txt"
+            --data-urlencode "text@telegram_message.txt")"
+
+          # L'avviso resta nel canale solo 1 minuto, poi si cancella da solo.
+          MESSAGE_ID="$(printf '%s' "$RESPONSE" | python -c 'import json,sys; print(json.load(sys.stdin)["result"]["message_id"])')"
+          echo "Avviso inviato (messaggio $MESSAGE_ID): si cancella tra 60 s."
+          sleep 60
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --output /dev/null \
+            --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_TOKEN}/deleteMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_TO_BOT}" \
+            --data-urlencode "message_id=${MESSAGE_ID}" \
+            && echo "Avviso cancellato." \
+            || echo "::warning::Avviso Telegram non cancellato."
 
       - name: Salva log completi se qualcosa fallisce
         if: >-
