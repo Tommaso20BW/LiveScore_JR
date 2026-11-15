@@ -90,14 +90,22 @@ class StartupTests(unittest.TestCase):
 
 
 class WorkflowConfigurationTests(unittest.TestCase):
-    def test_publication_failure_is_non_blocking_and_sync_flag_uses_outcome(self):
+    def test_logo_sync_runs_in_background_and_never_blocks_live(self):
         workflow = (ROOT / ".github/workflows/main_espn.yml").read_text(encoding="utf-8")
-        publication = workflow.split("- name: Publish seasonal FCLogo team logos", 1)[1].split("- name:", 1)[0]
-        self.assertIn("continue-on-error: true", publication)
-        self.assertIn("::warning::", publication)
-        self.assertNotIn("--force", publication)
+        step = workflow.split("- name: Sync seasonal FCLogo team logos in background", 1)[1].split("\n      - name:", 1)[0]
+        # Sync, pubblicazione loghi e manifest girano in background: il bot parte subito.
+        self.assertIn("nohup bash", step)
+        self.assertIn("sync-logos --output-dir assets/goal_graphics/team_logos", step)
+        # Un problema di sync o di push resta un avviso: lo script non fallisce mai.
+        self.assertIn("::warning::", step)
+        self.assertIn("exit 0", step)
+        self.assertNotIn("--force", step)
+        self.assertIn("git pull --rebase", step)
         live = workflow.split("- name: Run Live Score Bot", 1)[1].split("- name:", 1)[0]
-        self.assertIn("FCLOGO_SYNC_DONE: ${{ steps.fclogo_sync.outcome == 'success' && 'true' || 'false' }}", live)
+        # Il bot non avvia una seconda sync sugli stessi file.
+        self.assertIn("FCLOGO_SYNC_DONE: 'true'", live)
+        # L'esito della sync in background resta visibile nel run.
+        self.assertIn('cat "${RUNNER_TEMP}/fclogo.log"', workflow)
 
 
 if __name__ == "__main__":
