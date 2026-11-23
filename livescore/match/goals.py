@@ -47,6 +47,7 @@ def catch_up_goals(ctx: MatchContext) -> None:
             else:
                 ca += 1
 
+            ge_minute = ge.get("minute_disp") or str(ge["minute"])   # 45+2, non 47
             p_name = ge.get("player_name", "")
             a_name = ge.get("assist_name", "")
             scorer_line, assist_line = fmt.goal_player_lines(
@@ -58,7 +59,7 @@ def catch_up_goals(ctx: MatchContext) -> None:
             else:
                 goal_score = f"{ctx.home_label} {ch}-<b>{ca} {ctx.away_label}</b>"
 
-            goal_text = f"<b>GOAL · {ge['minute']}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{ctx.e_comp} {ctx.hashtag}"
+            goal_text = f"<b>GOAL · {ge_minute}\' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{ctx.e_comp} {ctx.hashtag}"
             goal_key  = f"{ch}_{ca}"
 
             rendered_goal_retry = (lambda: media.prepara_grafica_goal(
@@ -66,7 +67,7 @@ def catch_up_goals(ctx: MatchContext) -> None:
                 scorer_name=p_name,
                 goal_type=ge["type"],
                 scoring_team_id=actual_tid,
-                minute=ge["minute"],
+                minute=ge_minute,
                 home_name=ctx.home_name_raw,
                 away_name=ctx.away_name_raw,
                 home_id=ctx.home_id,
@@ -87,18 +88,18 @@ def catch_up_goals(ctx: MatchContext) -> None:
                 # Invio non riuscito: interrompo il recupero. Annullo
                 # l'incremento di questo gol (non annunciato) e lascio che sia
                 # il rilevamento live a riprovare i gol rimanenti.
-                log_line("RETRY", "TELEGRAM", f"GOAL {ge['minute']}' non inviato | {ctx.home_name} {ch}-{ca} {ctx.away_name}")
+                log_line("RETRY", "TELEGRAM", f"GOAL {ge_minute}' non inviato | {ctx.home_name} {ch}-{ca} {ctx.away_name}")
                 if actual_tid == ctx.home_id:
                     ch -= 1
                 else:
                     ca -= 1
                 break
-            log_line("EVENT", "MATCH", f"GOAL {ge['minute']}' | {ctx.home_name} {ch}-{ca} {ctx.away_name} | Telegram inviato")
+            log_line("EVENT", "MATCH", f"GOAL {ge_minute}' | {ctx.home_name} {ch}-{ca} {ctx.away_name} | Telegram inviato")
             ctx.state.setdefault("goal_messages", {})[goal_key] = {
                 "msg_id":    msg_id,
                 "scorer":    p_name,
                 "assist":    a_name,
-                "minute":    ge["minute"],
+                "minute":    ge_minute,
                 "type":      ge["type"],
                 "home_n":    ctx.home_label,
                 "away_n":    ctx.away_label,
@@ -118,6 +119,174 @@ def catch_up_goals(ctx: MatchContext) -> None:
         ctx.state["prev_home_goals"] = ch
         ctx.state["prev_away_goals"] = ca
         ctx.state_changed = True
+
+
+def _goal_steps(ctx: MatchContext, prev_home: int, prev_away: int, goal_events: list) -> list:
+    """Punteggi da annunciare in ordine: piu' gol letti insieme escono uno alla volta."""
+    final = (ctx.g_home, ctx.g_away)
+    new_home, new_away = ctx.g_home - prev_home, ctx.g_away - prev_away
+    if (
+        new_home < 0 or new_away < 0 or new_home + new_away < 2
+        or prev_home + prev_away != ctx.state["goals_detected"]
+    ):
+        return [final]
+
+    def order(event):
+        return (event["minute"], event.get("seq", 0))
+
+    def missing(team_id, before, count):
+        own = sorted(
+            (e for e in goal_events if fmt.goal_scoring_team_id(e, ctx.home_id, ctx.away_id) == team_id),
+            key=order,
+        )
+        found = [(order(e), team_id) for e in own[before:before + count]]
+        return found + [((float("inf"), 0), team_id)] * (count - len(found))   # feed in ritardo
+
+    steps, home, away = [], prev_home, prev_away
+    pending = missing(ctx.home_id, prev_home, new_home) + missing(ctx.away_id, prev_away, new_away)
+    for _, team_id in sorted(pending, key=lambda item: item[0]):
+        if team_id == ctx.home_id:
+            home += 1
+        else:
+            away += 1
+        steps.append((home, away))
+    return steps
+
+
+def _announce_goal(ctx: MatchContext, prev_home: int, prev_away: int, goal_events: list) -> bool:
+    """Annuncia il gol che porta al punteggio in ctx. True se e' stato davvero annunciato."""
+    # Quale squadra ha segnato.
+    # Di norma lo si capisce dall'aumento rispetto all'ultimo punteggio
+    # annunciato (prev_*). Se però lo stato salvato è incoerente
+    # (prev_* gia avanti, p.es. dopo un riavvio del job), questi confronti
+    # fallirebbero e il gol verrebbe perso in silenzio: in quel caso si
+    # ricava il marcatore dall'ultimo evento del feed ESPN.
+    if ctx.g_home > prev_home:
+        scoring_tid = ctx.home_id
+    elif ctx.g_away > prev_away:
+        scoring_tid = ctx.away_id
+    else:
+        _gevs = sorted(goal_events, key=lambda x: x["minute"])
+        if _gevs:
+            _last_ev = _gevs[-1]
+            scoring_tid = fmt.goal_scoring_team_id(
+                _last_ev, ctx.home_id, ctx.away_id
+            )
+        else:
+            scoring_tid = ctx.home_id if ctx.g_home >= ctx.g_away else ctx.away_id
+        log_line("WARN", "MATCH", f"Punteggio incoerente | prima={prev_home}-{prev_away} | ora={ctx.g_home}-{ctx.g_away}; marcatore dedotto dal feed")
+
+    # Flag: True solo se il gol è stato realmente annunciato (ora o in passato).
+    # Il contatore avanzerà SOLO in quel caso.
+    goal_announced = False
+
+    if scoring_tid:
+        candidates = sorted(
+            [
+                e for e in goal_events
+                if fmt.goal_scoring_team_id(e, ctx.home_id, ctx.away_id) == scoring_tid
+            ],
+            key=lambda x: (x["minute"], x.get("seq", 0)),
+        )
+
+        expected_count = ctx.g_home if scoring_tid == ctx.home_id else ctx.g_away
+
+        last = candidates[expected_count - 1] if len(candidates) >= expected_count else (candidates[-1] if candidates else None)
+
+        if last:
+            player_name = last.get("player_name", "")
+            assist_name = last.get("assist_name", "")
+            goal_minute = last.get("minute_disp", str(last.get("minute", ctx.elapsed)))
+            goal_type   = last.get("type", "goal")
+        else:
+            # Feed ESPN incompleto: gol rilevato dal punteggio ma nessun
+            # evento marcatore associato. Annuncio comunque per non bloccare
+            # il ciclo (altrimenti goals_detected non avanza mai).
+            log_line("WARN", "ESPN", "GOAL rilevato senza marcatore; invio provvisorio")
+            player_name = ""
+            assist_name = ""
+            goal_minute = ctx.elapsed
+            goal_type   = "goal"
+
+        actual_scoring_tid = scoring_tid
+        scorer_line, assist_line = fmt.goal_player_lines(
+            player_name,
+            assist_name,
+            goal_type,
+            actual_scoring_tid,
+        )
+
+        if actual_scoring_tid == ctx.home_id:
+            goal_score = f"<b>{ctx.home_label} {ctx.g_home}</b>-{ctx.g_away} {ctx.away_label}"
+        else:
+            goal_score = f"{ctx.home_label} {ctx.g_home}-<b>{ctx.g_away} {ctx.away_label}</b>"
+
+        goal_text = f"<b>GOAL · {goal_minute}' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{ctx.e_comp} {ctx.hashtag}"
+        goal_key = f"{ctx.g_home}_{ctx.g_away}"
+
+        if ctx.state.get("goal_messages", {}).get(goal_key, {}).get("msg_id"):
+            # Gol già annunciato davvero in passato: duplicato corretto,
+            # il contatore può avanzare.
+            goal_announced = True
+        else:
+            _scorer_log = f" {txt.fmt_player(player_name)}" if player_name else " (marcatore in attesa)"
+            _assist_log = f" | assist: {txt.fmt_player(assist_name)}" if assist_name and assist_name != player_name else ""
+            rendered_goal_retry = (lambda: media.prepara_grafica_goal(
+                data_espn=ctx.data,
+                scorer_name=player_name,
+                goal_type=goal_type,
+                scoring_team_id=actual_scoring_tid,
+                minute=goal_minute,
+                home_name=ctx.home_name_raw,
+                away_name=ctx.away_name_raw,
+                home_id=ctx.home_id,
+                away_id=ctx.away_id,
+                home_goals=ctx.g_home,
+                away_goals=ctx.g_away,
+                league_slug=ctx.league_slug,
+                league_name=ctx.league_name,
+                event_key=f"{ctx.event_id}|{goal_key}",
+            )) if (settings.GOAL_GRAPHICS_ENABLED and str(actual_scoring_tid) == (teams.graphics_team(ctx.home_id, ctx.away_id, ctx.league_slug, ctx.league_name) or '-') and bool(player_name) and goal_type in ('goal', 'own goal', 'penalty goal')) else None
+            rendered_goal = rendered_goal_retry() if rendered_goal_retry else None
+            msg_id, sent_as_photo = tg.send_telegram_goal_get_id(
+                goal_text,
+                rendered_goal.png if rendered_goal else None,
+                retry_factory=rendered_goal_retry,
+            )
+            if msg_id:
+                ctx.state.setdefault("goal_messages", {})[goal_key] = {
+                    "msg_id":    msg_id,
+                    "scorer":    player_name,
+                    "assist":    assist_name,
+                    "minute":    goal_minute,
+                    "type":      goal_type,
+                    "home_n":    ctx.home_label,
+                    "away_n":    ctx.away_label,
+                    "g_home":    ctx.g_home,
+                    "g_away":    ctx.g_away,
+                    "home_id":   ctx.home_id,
+                    "away_id":   ctx.away_id,
+                    "score_tid": actual_scoring_tid,
+                    "is_photo":  sent_as_photo,
+                    "graphic_kit": rendered_goal.kit if rendered_goal and sent_as_photo else None,
+                }
+                ctx.state_changed = True
+                goal_announced = True
+                log_line("EVENT", "MATCH", f"GOAL{_scorer_log}{_assist_log} | {ctx.home_name} {ctx.g_home}-{ctx.g_away} {ctx.away_name} | Telegram inviato")
+            else:
+                # Invio NON riuscito: non avanzo il contatore così al ciclo
+                # successivo il bot rientra qui e riprova (il gol non si perde).
+                log_line("RETRY", "TELEGRAM", f"GOAL non inviato | {ctx.home_name} {ctx.g_home}-{ctx.g_away} {ctx.away_name}; nuovo tentativo al prossimo ciclo")
+
+    # Il contatore avanza SOLO se il gol è stato davvero annunciato.
+    # Se l'invio è fallito (o scoring_tid assente), lo stato resta indietro
+    # e il gol verrà ritentato, invece di sparire.
+    if goal_announced:
+        ctx.state["goals_detected"]  = ctx.g_home + ctx.g_away
+        ctx.state["prev_home_goals"] = ctx.g_home
+        ctx.state["prev_away_goals"] = ctx.g_away
+        ctx.state_changed = True
+    return goal_announced
 
 
 def handle_goals(ctx: MatchContext) -> Flow | None:
@@ -151,138 +320,19 @@ def handle_goals(ctx: MatchContext) -> Flow | None:
 
         goal_events = [e for e in ctx.events
                        if e["type"] in ("goal", "own goal", "penalty goal")]
-
-        # Quale squadra ha segnato.
-        # Di norma lo si capisce dall'aumento rispetto all'ultimo punteggio
-        # annunciato (prev_*). Se però lo stato salvato è incoerente
-        # (prev_* gia avanti, p.es. dopo un riavvio del job), questi confronti
-        # fallirebbero e il gol verrebbe perso in silenzio: in quel caso si
-        # ricava il marcatore dall'ultimo evento del feed ESPN.
-        if ctx.g_home > prev_home:
-            scoring_tid = ctx.home_id
-        elif ctx.g_away > prev_away:
-            scoring_tid = ctx.away_id
-        else:
-            _gevs = sorted(goal_events, key=lambda x: x["minute"])
-            if _gevs:
-                _last_ev = _gevs[-1]
-                scoring_tid = fmt.goal_scoring_team_id(
-                    _last_ev, ctx.home_id, ctx.away_id
-                )
-            else:
-                scoring_tid = ctx.home_id if ctx.g_home >= ctx.g_away else ctx.away_id
-            log_line("WARN", "MATCH", f"Punteggio incoerente | prima={prev_home}-{prev_away} | ora={ctx.g_home}-{ctx.g_away}; marcatore dedotto dal feed")
-
-        # Flag: True solo se il gol è stato realmente annunciato (ora o in passato).
-        # Il contatore avanzerà SOLO in quel caso.
-        goal_announced = False
-
-        if scoring_tid:
-            candidates = sorted(
-                [
-                    e for e in goal_events
-                    if fmt.goal_scoring_team_id(e, ctx.home_id, ctx.away_id) == scoring_tid
-                ],
-                key=lambda x: (x["minute"], x.get("seq", 0)),
-            )
-
-            expected_count = ctx.g_home if scoring_tid == ctx.home_id else ctx.g_away
-
-            last = candidates[expected_count - 1] if len(candidates) >= expected_count else (candidates[-1] if candidates else None)
-
-            if last:
-                player_name = last.get("player_name", "")
-                assist_name = last.get("assist_name", "")
-                goal_minute = last.get("minute_disp", str(last.get("minute", ctx.elapsed)))
-                goal_type   = last.get("type", "goal")
-            else:
-                # Feed ESPN incompleto: gol rilevato dal punteggio ma nessun
-                # evento marcatore associato. Annuncio comunque per non bloccare
-                # il ciclo (altrimenti goals_detected non avanza mai).
-                log_line("WARN", "ESPN", "GOAL rilevato senza marcatore; invio provvisorio")
-                player_name = ""
-                assist_name = ""
-                goal_minute = ctx.elapsed
-                goal_type   = "goal"
-
-            actual_scoring_tid = scoring_tid
-            scorer_line, assist_line = fmt.goal_player_lines(
-                player_name,
-                assist_name,
-                goal_type,
-                actual_scoring_tid,
-            )
-
-            if actual_scoring_tid == ctx.home_id:
-                goal_score = f"<b>{ctx.home_label} {ctx.g_home}</b>-{ctx.g_away} {ctx.away_label}"
-            else:
-                goal_score = f"{ctx.home_label} {ctx.g_home}-<b>{ctx.g_away} {ctx.away_label}</b>"
-
-            goal_text = f"<b>GOAL · {goal_minute}' {E_MIC}</b>\n\n{goal_score}\n{scorer_line}{assist_line}\n{ctx.e_comp} {ctx.hashtag}"
-            goal_key = f"{ctx.g_home}_{ctx.g_away}"
-
-            if ctx.state.get("goal_messages", {}).get(goal_key, {}).get("msg_id"):
-                # Gol già annunciato davvero in passato: duplicato corretto,
-                # il contatore può avanzare.
-                goal_announced = True
-            else:
-                _scorer_log = f" {txt.fmt_player(player_name)}" if player_name else " (marcatore in attesa)"
-                _assist_log = f" | assist: {txt.fmt_player(assist_name)}" if assist_name and assist_name != player_name else ""
-                rendered_goal_retry = (lambda: media.prepara_grafica_goal(
-                    data_espn=ctx.data,
-                    scorer_name=player_name,
-                    goal_type=goal_type,
-                    scoring_team_id=actual_scoring_tid,
-                    minute=goal_minute,
-                    home_name=ctx.home_name_raw,
-                    away_name=ctx.away_name_raw,
-                    home_id=ctx.home_id,
-                    away_id=ctx.away_id,
-                    home_goals=ctx.g_home,
-                    away_goals=ctx.g_away,
-                    league_slug=ctx.league_slug,
-                    league_name=ctx.league_name,
-                    event_key=f"{ctx.event_id}|{goal_key}",
-                )) if (settings.GOAL_GRAPHICS_ENABLED and str(actual_scoring_tid) == (teams.graphics_team(ctx.home_id, ctx.away_id, ctx.league_slug, ctx.league_name) or '-') and bool(player_name) and goal_type in ('goal', 'own goal', 'penalty goal')) else None
-                rendered_goal = rendered_goal_retry() if rendered_goal_retry else None
-                msg_id, sent_as_photo = tg.send_telegram_goal_get_id(
-                    goal_text,
-                    rendered_goal.png if rendered_goal else None,
-                    retry_factory=rendered_goal_retry,
-                )
-                if msg_id:
-                    ctx.state.setdefault("goal_messages", {})[goal_key] = {
-                        "msg_id":    msg_id,
-                        "scorer":    player_name,
-                        "assist":    assist_name,
-                        "minute":    goal_minute,
-                        "type":      goal_type,
-                        "home_n":    ctx.home_label,
-                        "away_n":    ctx.away_label,
-                        "g_home":    ctx.g_home,
-                        "g_away":    ctx.g_away,
-                        "home_id":   ctx.home_id,
-                        "away_id":   ctx.away_id,
-                        "score_tid": actual_scoring_tid,
-                        "is_photo":  sent_as_photo,
-                        "graphic_kit": rendered_goal.kit if rendered_goal and sent_as_photo else None,
-                    }
-                    ctx.state_changed = True
-                    goal_announced = True
-                    log_line("EVENT", "MATCH", f"GOAL{_scorer_log}{_assist_log} | {ctx.home_name} {ctx.g_home}-{ctx.g_away} {ctx.away_name} | Telegram inviato")
-                else:
-                    # Invio NON riuscito: non avanzo il contatore così al ciclo
-                    # successivo il bot rientra qui e riprova (il gol non si perde).
-                    log_line("RETRY", "TELEGRAM", f"GOAL non inviato | {ctx.home_name} {ctx.g_home}-{ctx.g_away} {ctx.away_name}; nuovo tentativo al prossimo ciclo")
-
-        # Il contatore avanza SOLO se il gol è stato davvero annunciato.
-        # Se l'invio è fallito (o scoring_tid assente), lo stato resta indietro
-        # e il gol verrà ritentato, invece di sparire.
-        if goal_announced:
-            ctx.state["goals_detected"]  = total_goals_now
-            ctx.state["prev_home_goals"] = ctx.g_home
-            ctx.state["prev_away_goals"] = ctx.g_away
-            ctx.state_changed = True
+        final_home, final_away = ctx.g_home, ctx.g_away
+        try:
+            for index, (step_home, step_away) in enumerate(_goal_steps(ctx, prev_home, prev_away, goal_events)):
+                if index:
+                    time.sleep(2)
+                ctx.g_home, ctx.g_away = step_home, step_away
+                ctx.score_str = fmt.build_score_str(ctx.home_label, ctx.away_label, step_home, step_away)
+                if not _announce_goal(ctx, prev_home, prev_away, goal_events):
+                    break        # il resto si riprova al prossimo ciclo
+                prev_home, prev_away = step_home, step_away
+        finally:
+            ctx.g_home, ctx.g_away = final_home, final_away
+            ctx.score_str = fmt.build_score_str(ctx.home_label, ctx.away_label, final_home, final_away)
 
     elif total_goals_now < ctx.state["goals_detected"]:
         # ======================================================

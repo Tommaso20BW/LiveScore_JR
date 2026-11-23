@@ -19,15 +19,12 @@ from livescore.state import gist
 def prepare_cycle(ctx: MatchContext) -> Flow | None:
     """Legge ESPN e prepara i valori del ciclo (stato, punteggio, nomi, eventi)."""
     if ctx.state.get("_gist_dirty"):
-        if not gist.salva_stato_su_gist(ctx.state):
-            log_line(
-                "WAIT",
-                "STATE",
-                "Gist non sincronizzato; sospendo nuovi invii "
-                "per evitare duplicati",
-            )
-            time.sleep(ctx.sleep_time)
-            return Flow.CONTINUE
+        # GitHub giu' non deve fermare il live: lo stato vero e' in memoria (niente doppioni)
+        # e si riprova in background. Se fallisce ancora, il ciclo dopo lo rimette qui.
+        log_line("WARN", "STATE", "Gist non sincronizzato; il live continua e riprovo in background")
+        ctx.state.pop("_gist_dirty", None)
+        with gist.background():
+            gist.salva_stato_su_gist(ctx.state)
 
     ctx.data = espn_client.fetch_evento(ctx.event_id, ctx.league_slug)
     if not ctx.data:
