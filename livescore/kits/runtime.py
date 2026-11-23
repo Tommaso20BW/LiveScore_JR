@@ -336,6 +336,7 @@ class DynamicKitRuntime:
         self.bot.goal_graphics.render_saved_card = self._render_saved_proxy
         stats_graphics.build_html = self._stats_build_html_proxy
         phase_photo.layers_for = self._phase_layers_proxy
+        phase_photo.SNAPSHOT_PRELOAD = self._preload_snapshot
 
         self.installed = True
         return self
@@ -1089,6 +1090,19 @@ class DynamicKitRuntime:
             }
             self._set_pending(kind, context, png)
         return png
+
+    def _preload_snapshot(self, kind: str, snapshot_dir: Path) -> None:
+        """Salva la foto prima che esca la fase. Se fallisce, ci riprova la pubblicazione."""
+        if not self.enabled or self.italy or not self.current_event_id:
+            return
+        try:
+            self.snapshot_store.persist_snapshot(
+                event_id=str(self.current_event_id),
+                kind=kind,
+                snapshot_dir=snapshot_dir,
+            )
+        except Exception as exc:
+            self._log("WARN", "PHOTO", f"Snapshot {kind} non preparato in anticipo: {exc}")
 
     def _phase_layers_proxy(self, *args, **kwargs):
         result = self._originals["phase_layers"](*args, **kwargs)

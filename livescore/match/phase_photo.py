@@ -52,6 +52,9 @@ WAIT_SECONDS: float | None = 120
 # Minuto dell'avviso per ogni slot: (stato ESPN, minuto).
 PROMPT_AT = {"half": ("1H", 35), "end": ("2H", 80), "extra": ("ET", 110)}
 SLOT_KIND = {"half": "half", "end": "full", "extra": "full"}
+# Da questo minuto la foto confermata si salva in anticipo: quando esce la fase e' gia' pronta.
+PRELOAD_AT = {"half": ("1H", 45), "end": ("2H", 90), "extra": ("ET", 120)}
+SNAPSHOT_PRELOAD = None           # (tipo, cartella foto): impostato dal runtime dei kit
 SLOT_TITLE = {
     "half": "HALF TIME",
     "end": "FINE PARTITA",
@@ -220,6 +223,24 @@ class Desk:
         for slot in self.wanted_slots(ctx):
             self.prompt_async(slot)
         self._refresh_copies()
+        self._preload_snapshots(ctx)
+
+    def _preload_snapshots(self, ctx) -> None:
+        hook = SNAPSHOT_PRELOAD
+        if hook is None:
+            return
+        status, minute = ctx.status, int(ctx.elapsed or 0)
+        for slot, (phase, at) in PRELOAD_AT.items():
+            if status != phase or minute < at:
+                continue
+            with self.lock:
+                state = self.slots[slot]
+                confirmed = state["confirmed"]
+                if not confirmed or state["used"] or state.get("preloaded") == confirmed["layers"]:
+                    continue
+                state["preloaded"] = confirmed["layers"]
+            threading.Thread(target=hook, args=(SLOT_KIND[slot], Path(confirmed["layers"])),
+                             name=f"photo-preload-{slot}", daemon=True).start()
 
     # ------------------------------------------------------------------
     # Avviso, attesa e livelli
@@ -366,10 +387,7 @@ class Desk:
             except Exception:
                 pass
         for message_id in copies:
-            try:
-                self._call("deleteMessage", {"chat_id": self.bot_chat_id, "message_id": message_id})
-            except Exception as exc:
-                log_line("DEBUG", "PHOTO", f"Copia Bot JR non cancellata: {exc}")
+            self._delete_copy(message_id)
         if self.tunnel is not None:
             try:
                 self.tunnel.terminate()
@@ -449,6 +467,24 @@ class Desk:
             if slot:
                 self.slots[slot]["messages"].append(message_id)
         return message_id
+
+    def _delete_copy(self, message_id: int) -> bool:
+        """Cancella una copia da Bot JR: e' l'ultima occasione, quindi riprova e lascia traccia."""
+        for attempt in range(3):
+            try:
+                self._call("deleteMessage", {"chat_id": self.bot_chat_id, "message_id": message_id})
+                log_line("INFO", "PHOTO", f"Copia Bot JR cancellata (messaggio {message_id})")
+                return True
+            except Exception as exc:
+                text = str(exc)
+                if "not found" in text.lower():      # gia' cancellata a mano
+                    return True
+                if attempt == 2:
+                    log_line("WARN", "PHOTO", f"Copia Bot JR non cancellata (messaggio {message_id}): {text}")
+                    return False
+                wanted = re.search(r"retry after (\d+)", text, re.IGNORECASE)
+                time.sleep(min(int(wanted.group(1)), 10) if wanted else attempt + 1)
+        return False
 
     def _delete(self, message_ids) -> None:
         for message_id in message_ids:

@@ -21,3 +21,8 @@ _retry = Retry(
 
 
 SESSION.mount("https://", HTTPAdapter(max_retries=_retry, pool_maxsize=10))
+
+# Lettura della partita in corso: niente attese lunghe dentro la richiesta, ci pensa il ciclo live.
+LIVE_SESSION = requests.Session()
+LIVE_SESSION.headers = SESSION.headers
+LIVE_SESSION.mount("https://", HTTPAdapter(pool_maxsize=10))

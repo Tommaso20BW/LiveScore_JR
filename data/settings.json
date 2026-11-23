@@ -2,6 +2,6 @@
   "poll_seconds": 6,
   "goal_confirm_seconds": 6,
   "stats_delay_seconds": 300,
-  "sub_group_seconds": 10,
+  "sub_group_seconds": 5,
   "log_heartbeat_minutes": 5
 }

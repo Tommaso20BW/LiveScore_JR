@@ -35,7 +35,7 @@ TUNABLES: dict[str, Tunable] = {
     "stats_delay_seconds": Tunable(
         300, 0, 3600, "Attesa prima delle statistiche dopo HT / fine tempi / fine partita"),
     "sub_group_seconds": Tunable(
-        10, 0, 60, "Finestra per unire piu' cambi ravvicinati in un solo messaggio"),
+        5, 0, 60, "Finestra per unire piu' cambi ravvicinati in un solo messaggio"),
     "log_heartbeat_minutes": Tunable(
         5, 1, 60, "Ogni quanti minuti scrivere un punto di stato nel log live",
         env="LIVE_LOG_HEARTBEAT_MINUTES"),

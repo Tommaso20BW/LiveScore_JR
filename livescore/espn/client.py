@@ -3,6 +3,8 @@
 import time
 from datetime import datetime, timedelta
 
+import requests
+
 from livescore.constants import ESPN_BASE, ESPN_TZ
 from livescore.core import http as net
 from livescore.core import leagues
@@ -106,12 +108,18 @@ def trova_partita_oggi(team_id: str):
 
 
 def fetch_evento(event_id: str, league_slug: str):
-    try:
-        r = net.SESSION.get(f"{ESPN_BASE}/{league_slug}/summary",
-                        params={"event": event_id}, timeout=15)
-        if r.status_code == 200:
-            return r.json()
-        return None
-    except Exception as e:
-        log_line("ERROR", "ESPN", f"Lettura evento fallita: {e}")
-        return None
+    # Primo tentativo corto, secondo piu' paziente se ESPN e' solo lenta.
+    for attempt, read_timeout in enumerate((5, 12)):
+        try:
+            r = net.LIVE_SESSION.get(f"{ESPN_BASE}/{league_slug}/summary",
+                                     params={"event": event_id}, timeout=(3, read_timeout))
+            if r.status_code == 200:
+                return r.json()
+            return None
+        except (requests.Timeout, requests.ConnectionError) as e:
+            if attempt:
+                log_line("ERROR", "ESPN", f"Lettura evento fallita: {e}")
+        except Exception as e:
+            log_line("ERROR", "ESPN", f"Lettura evento fallita: {e}")
+            return None
+    return None

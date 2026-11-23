@@ -58,15 +58,14 @@ def _deterministic_zip(snapshot_dir: Path) -> bytes:
     with zipfile.ZipFile(
         stream,
         mode="w",
-        compression=zipfile.ZIP_DEFLATED,
-        compresslevel=9,
+        compression=zipfile.ZIP_STORED,      # PNG gia' compressi: ricomprimerli costa e non riduce
     ) as archive:
         for name in REQUIRED_FILES + tuple(n for n in OPTIONAL_FILES if (snapshot_dir / n).is_file()):
             info = zipfile.ZipInfo(
                 filename=name,
                 date_time=(1980, 1, 1, 0, 0, 0),
             )
-            info.compress_type = zipfile.ZIP_DEFLATED
+            info.compress_type = zipfile.ZIP_STORED
             info.external_attr = 0o100644 << 16
             archive.writestr(info, (snapshot_dir / name).read_bytes())
     return stream.getvalue()
