@@ -28,17 +28,14 @@ class CopyTextTest(unittest.TestCase):
                          'FINE PRIMO TEMPO 🏁\n\n#Juventus 0-0 #Venezia\n\n🇮🇹 #JuveVenezia')
         self.assertEqual(copy_text.plain(text), 'FINE PRIMO TEMPO 🏁\n\nJuventus 0-0 Venezia\n\n🇮🇹 #JuveVenezia')
 
-    def test_one_message_x_then_channel_text(self):
-        post = mock.Mock(return_value=mock.Mock(status_code=200))
+    def test_telegram_text_then_x_box_as_reply(self):
+        post = mock.Mock(return_value=mock.Mock(status_code=200, json=lambda: {'result': {'message_id': 55}}))
         text = FT.replace('🇪🇺', '<tg-emoji emoji-id="1">🇪🇺</tg-emoji>')
         copy_text.send(post, '123', text, 'Juventus', 'Omonia')
-        post.assert_called_once()
-        sent = post.call_args.kwargs['payload']
-        self.assertEqual(sent['chat_id'], '123')
-        self.assertTrue(sent['text'].startswith('<b>X</b>\nFINE PARTITA 🏁\n\n#Juventus 4-1 #Omonia'))
-        # niente riquadri: Telegram come sul canale, emoji personalizzate comprese
-        self.assertTrue(sent['text'].endswith('#JuveOmonia\n\n<b>IG/Telegram</b>\n' + text))
-        self.assertNotIn('<pre>', sent['text'])
+        tg, xb = [c.kwargs['payload'] for c in post.call_args_list]
+        self.assertEqual((tg['chat_id'], tg['text']), ('123', text))        # come sul canale, senza scritte
+        self.assertTrue(xb['text'].startswith('<pre>FINE PARTITA 🏁\n\n#Juventus 4-1 #Omonia'))
+        self.assertEqual(xb['reply_parameters']['message_id'], 55)          # X in risposta
 
     def test_no_chat_no_messages_and_errors_never_raise(self):
         post = mock.Mock(side_effect=RuntimeError('rete giù'))

@@ -1,6 +1,6 @@
-"""Testi pronti da copiare su Bot JR dopo HALF / END / FULL TIME, in un solo messaggio:
-"X" col testo per X e "IG/Telegram" col testo del canale così com'è, emoji personalizzate comprese.
-Niente riquadri: dentro Telegram non mostra le emoji personalizzate.
+"""Testi pronti da copiare su Bot JR dopo HALF / END / FULL TIME, senza scritte sopra:
+prima il testo del canale così com'è (IG/Telegram, emoji personalizzate comprese), poi in risposta
+il testo per X in un riquadro che si copia con un tocco.
 Il testo per X segue i post di @Juventus_Reborn: squadre, marcatori e competizione con l'hashtag,
 emoji normali, niente grassetto:
 
@@ -55,20 +55,31 @@ def x_text(text: str, home: str, away: str) -> str:
     return '\n'.join(out)
 
 
-def message(text: str, home: str, away: str) -> str:
-    """Il messaggio da copiare: X (testo semplice) e IG/Telegram (come sul canale)."""
-    return (f"<b>X</b>\n{html.escape(x_text(text, home, away), quote=False)}\n\n"
-            f"<b>IG/Telegram</b>\n{text.strip()}")
+def messages(text: str, home: str, away: str) -> tuple[str, str]:
+    """(testo IG/Telegram come sul canale, testo per X nel riquadro)."""
+    return text.strip(), f"<pre>{html.escape(x_text(text, home, away), quote=False)}</pre>"
+
+
+def reply_to(message_id) -> dict:
+    """Campi per mandare un messaggio in risposta (se quello e' sparito, parte lo stesso)."""
+    return {'reply_parameters': {'message_id': int(message_id), 'allow_sending_without_reply': True}}
 
 
 def send(post, chat_id, text: str, home: str, away: str) -> None:
-    """Manda su Bot JR il messaggio coi testi da copiare. Non ferma mai il live."""
+    """Manda su Bot JR i testi da copiare (Telegram, poi X in risposta). Non ferma mai il live."""
     if not chat_id or not text:
         return
     try:
-        r = post('sendMessage', payload={'chat_id': chat_id, 'text': message(text, home, away),
+        tg_body, x_body = messages(text, home, away)
+        r = post('sendMessage', payload={'chat_id': chat_id, 'text': tg_body,
                                          'parse_mode': 'HTML', 'disable_web_page_preview': True})
         if r is None or r.status_code != 200:
             log_line('WARN', 'TELEGRAM', 'Testi da copiare non inviati su Bot JR')
+            return
+        r = post('sendMessage', payload={'chat_id': chat_id, 'text': x_body, 'parse_mode': 'HTML',
+                                         'disable_web_page_preview': True,
+                                         **reply_to(r.json()['result']['message_id'])})
+        if r is None or r.status_code != 200:
+            log_line('WARN', 'TELEGRAM', 'Testo per X non inviato su Bot JR')
     except Exception as exc:  # noqa: BLE001 - i testi da copiare non devono fermare la diretta
         log_line('WARN', 'TELEGRAM', f'Testi da copiare non inviati: {type(exc).__name__}: {exc}')

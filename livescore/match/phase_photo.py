@@ -145,7 +145,7 @@ class Desk:
                              "confirmed": None, "used": False,
                              "wait_started": None, "expired": False, "reminded": False,
                              "copy_id": None, "copy_score": None,
-                             "text_id": None, "text_final": False}
+                             "text_id": None, "x_id": None, "text_final": False}
                       for slot in PROMPT_AT}
         self.match: dict = {}
         self.texts: dict[str, str] = {}      # slot -> testo della fase come uscirebbe ora sul canale
@@ -381,10 +381,10 @@ class Desk:
             copies = []
             for state in self.slots.values():
                 # Copie delle grafiche e testi da copiare: a fine partita via da Bot JR.
-                copies += [i for i in (state["copy_id"], state["text_id"]) if i]
+                copies += [i for i in (state["copy_id"], state["text_id"], state["x_id"]) if i]
                 state["copy_id"] = None
                 state["copy_score"] = None
-                state["text_id"], state["text_final"] = None, False
+                state["text_id"], state["x_id"], state["text_final"] = None, None, False
         for message_id in messages:
             try:
                 self._call("deleteMessage", {"chat_id": self.chat_id, "message_id": message_id})
@@ -763,34 +763,42 @@ class Desk:
     # Testi da copiare (X e IG/Telegram) sotto la copia: col risultato di adesso
     # ------------------------------------------------------------------
     def _publish_text(self, chat: str, slot: str, text: str, *, final: bool = False) -> bool:
-        """Manda o modifica il messaggio coi testi da copiare. Dopo il testo vero del canale
-        (final) non si tocca piu'. True se il messaggio c'e'."""
+        """Manda o modifica i testi da copiare: quello IG/Telegram e, in risposta, quello per X nel
+        riquadro. Dopo il testo vero del canale (final) non si toccano piu'. True se ci sono."""
         from livescore.core import team_names
         from livescore.telegram import copy_text
         with self.lock:
             state = self.slots[slot]
             if state["text_final"] and not final:
                 return True
-            text_id = state["text_id"]
-        body = copy_text.message(text, team_names.translate_team(self.match.get("home_name", "")),
-                                 team_names.translate_team(self.match.get("away_name", "")))
-        if text_id:
-            try:
-                self._call("editMessageText", {"chat_id": chat, "message_id": text_id, "text": body,
-                                               "parse_mode": "HTML", "disable_web_page_preview": True})
-            except RuntimeError as exc:
-                why = str(exc).lower()
-                if "not modified" not in why:
-                    if "not found" not in why and "can't be edited" not in why:
-                        raise
-                    text_id = None          # cancellato a mano su Bot JR: se ne manda uno nuovo
-        if not text_id:
-            text_id = int(self._call("sendMessage", {"chat_id": chat, "text": body, "parse_mode": "HTML",
-                                                     "disable_web_page_preview": True})["message_id"])
+            text_id, x_id = state["text_id"], state["x_id"]
+        tg_body, x_body = copy_text.messages(text, team_names.translate_team(self.match.get("home_name", "")),
+                                             team_names.translate_team(self.match.get("away_name", "")))
+        new_id = self._upsert_text(chat, text_id, tg_body)
+        if new_id != text_id:
+            x_id = None                     # Telegram rimandato: anche X riparte, in risposta al nuovo
+        x_id = self._upsert_text(chat, x_id, x_body, copy_text.reply_to(new_id))
         with self.lock:
-            state["text_id"] = text_id
+            state["text_id"], state["x_id"] = new_id, x_id
             state["text_final"] = state["text_final"] or final
         return True
+
+    def _upsert_text(self, chat: str, message_id, body: str, extra: dict | None = None) -> int:
+        """Modifica il messaggio (se c'e' ancora) o ne manda uno nuovo; torna il suo id."""
+        if message_id:
+            try:
+                self._call("editMessageText", {"chat_id": chat, "message_id": message_id, "text": body,
+                                               "parse_mode": "HTML", "disable_web_page_preview": True})
+                return message_id
+            except RuntimeError as exc:
+                why = str(exc).lower()
+                if "not modified" in why:
+                    return message_id
+                if "not found" not in why and "can't be edited" not in why:
+                    raise
+                # cancellato a mano su Bot JR: se ne manda uno nuovo
+        return int(self._call("sendMessage", {"chat_id": chat, "text": body, "parse_mode": "HTML",
+                                              "disable_web_page_preview": True, **(extra or {})})["message_id"])
 
     def final_text(self, kind: str, text: str, *, extra_time=False, shootout=None) -> bool:
         """Stato uscito sul canale: il messaggio dei testi prende il testo vero (se non c'era
