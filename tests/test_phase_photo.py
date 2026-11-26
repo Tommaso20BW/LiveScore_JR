@@ -242,9 +242,10 @@ class BotJrCopyTests(unittest.TestCase):
             self.assertEqual(edits[0]['message_id'], copy_id)
             self.assertEqual(len(self.calls(desk, 'sendPhoto')), 1)   # nessun nuovo messaggio
 
+        text_id = desk.slots['half']['text_id']               # testi da copiare: via anche loro
         desk.finish()
         deleted = [b for b in self.calls(desk, 'deleteMessage') if b['chat_id'] == '99']
-        self.assertEqual([b['message_id'] for b in deleted], [copy_id])
+        self.assertEqual([b['message_id'] for b in deleted], [copy_id, text_id])
 
     def test_copy_texts_follow_score_then_take_channel_text(self):
         desk = self.make()
@@ -273,14 +274,20 @@ class BotJrCopyTests(unittest.TestCase):
         desk._sync_copy('half', True)                      # dopo il testo vero non si torna indietro
         self.assertEqual([b for b in self.calls(desk, 'editMessageText') if b['chat_id'] == '99'][-1], last)
 
-        desk.finish()                                      # la grafica sparisce, i testi restano
+        copy_id = desk.slots['half']['copy_id']
+        desk.finish()                                      # a fine partita via grafica e testi
         deleted = [b['message_id'] for b in self.calls(desk, 'deleteMessage') if b['chat_id'] == '99']
-        self.assertNotIn(text_id, deleted)
+        self.assertEqual(sorted(deleted), sorted([copy_id, text_id]))
 
-    def test_final_text_without_early_copy_is_sent_by_channel(self):
+    def test_final_text_without_early_copy_sent_now_and_deleted_at_end(self):
         desk = make_desk(bot_chat_id='99')
-        self.assertFalse(desk.final_text('half', '<b>FINE PRIMO TEMPO 🏁</b>'))
-        self.assertEqual(desk.http.calls, [])
+        self.assertTrue(desk.final_text('half', '<b>FINE PRIMO TEMPO 🏁</b>'))
+        self.assertEqual(len(self.calls(desk, 'sendMessage')), 1)
+        text_id = desk.slots['half']['text_id']
+        desk.finish()
+        self.assertEqual([b['message_id'] for b in self.calls(desk, 'deleteMessage') if b['chat_id'] == '99'],
+                         [text_id])
+        self.assertFalse(make_desk(bot_chat_id='').final_text('half', 'x'))
 
     def test_no_copy_without_bot_chat(self):
         desk = make_desk(bot_chat_id='')

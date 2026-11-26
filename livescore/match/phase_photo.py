@@ -380,11 +380,10 @@ class Desk:
             messages, self.messages = list(self.messages), []
             copies = []
             for state in self.slots.values():
-                if state["copy_id"]:
-                    copies.append(state["copy_id"])
+                # Copie delle grafiche e testi da copiare: a fine partita via da Bot JR.
+                copies += [i for i in (state["copy_id"], state["text_id"]) if i]
                 state["copy_id"] = None
                 state["copy_score"] = None
-                # I testi da copiare restano su Bot JR (si cancellano solo le copie delle grafiche).
                 state["text_id"], state["text_final"] = None, False
         for message_id in messages:
             try:
@@ -794,16 +793,13 @@ class Desk:
         return True
 
     def final_text(self, kind: str, text: str, *, extra_time=False, shootout=None) -> bool:
-        """Stato uscito sul canale: il messaggio dei testi prende il testo vero.
-        False se non c'era (allora lo manda chi pubblica)."""
+        """Stato uscito sul canale: il messaggio dei testi prende il testo vero (se non c'era
+        si manda adesso; a fine partita si cancella). False = nessuna chat di Bot JR."""
         slot = slot_for(kind, extra_time=extra_time, shootout=shootout)
         chat = self.bot_chat_id
         if slot is None or not chat:
             return False
         with self.sync_lock:
-            with self.lock:
-                if not self.slots[slot]["text_id"]:
-                    return False
             return self._publish_text(chat, slot, text, final=True)
 
     def _publish_copy(self, chat: str, copy_id, caption: str, image: bytes) -> int | None:
@@ -1027,12 +1023,10 @@ def layers_for(kind: str, **kwargs) -> Path | None:
 
 
 def final_text(kind: str, text: str, **kwargs) -> bool:
-    """True se il messaggio dei testi da copiare c'era gia' (mandato con la copia) ed e' stato
-    aggiornato col testo del canale; False = va mandato adesso."""
-    if DESK is None:
-        return False
+    """Testi da copiare col testo del canale su Bot JR (si cancellano a fine partita).
+    False = non mandati da qui: li manda chi pubblica."""
     try:
-        return DESK.final_text(kind, text, **kwargs)
+        return desk().final_text(kind, text, **kwargs)
     except Exception as exc:
         log_line("WARN", "PHOTO", f"Testi da copiare non aggiornati: {type(exc).__name__}: {exc}")
         return False
