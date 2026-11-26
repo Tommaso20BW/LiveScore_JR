@@ -35,10 +35,10 @@ class CopyTextTest(unittest.TestCase):
         post.assert_called_once()
         sent = post.call_args.kwargs['payload']
         self.assertEqual(sent['chat_id'], '123')
-        self.assertTrue(sent['text'].startswith('<b>X</b>\n<pre>FINE PARTITA 🏁\n\n#Juventus 4-1 #Omonia'))
-        # riquadro Telegram: emoji normale al posto di quella del canale, niente grassetto
-        self.assertTrue(sent['text'].endswith('</pre>\n\n<b>IG/Telegram</b>\n<pre>' + copy_text.plain(text) + '</pre>'))
-        self.assertNotIn('tg-emoji', sent['text'])
+        self.assertTrue(sent['text'].startswith('<b>X</b>\nFINE PARTITA 🏁\n\n#Juventus 4-1 #Omonia'))
+        # niente riquadri: Telegram come sul canale, emoji personalizzate comprese
+        self.assertTrue(sent['text'].endswith('#JuveOmonia\n\n<b>IG/Telegram</b>\n' + text))
+        self.assertNotIn('<pre>', sent['text'])
 
     def test_no_chat_no_messages_and_errors_never_raise(self):
         post = mock.Mock(side_effect=RuntimeError('rete giù'))
