@@ -144,9 +144,11 @@ class Desk:
         self.slots = {slot: {"prompt_id": None, "prompted": False, "messages": [],
                              "confirmed": None, "used": False,
                              "wait_started": None, "expired": False, "reminded": False,
-                             "copy_id": None, "copy_score": None}
+                             "copy_id": None, "copy_score": None,
+                             "text_id": None, "text_final": False}
                       for slot in PROMPT_AT}
         self.match: dict = {}
+        self.texts: dict[str, str] = {}      # slot -> testo della fase come uscirebbe ora sul canale
         self.data = None
         self.eligible = False
         self.photos: dict[str, bytes] = {}
@@ -195,6 +197,7 @@ class Desk:
                 "home_goals": int(ctx.g_home or 0), "away_goals": int(ctx.g_away or 0),
                 "league_slug": ctx.league_slug, "league_name": ctx.league_name,
             }
+            self.texts = _phase_texts(ctx)
 
     def wanted_slots(self, ctx) -> list[str]:
         status, minute = ctx.status, int(ctx.elapsed or 0)
@@ -381,6 +384,8 @@ class Desk:
                     copies.append(state["copy_id"])
                 state["copy_id"] = None
                 state["copy_score"] = None
+                # I testi da copiare restano su Bot JR (si cancellano solo le copie delle grafiche).
+                state["text_id"], state["text_final"] = None, False
         for message_id in messages:
             try:
                 self._call("deleteMessage", {"chat_id": self.chat_id, "message_id": message_id})
@@ -748,8 +753,58 @@ class Desk:
                     state["copy_id"], state["copy_score"] = new_id, score
                 log_line("INFO", "PHOTO", f"{SLOT_TITLE[slot]}: copia su Bot JR "
                          f"{'aggiornata' if copy_id and new_id == copy_id else 'inviata'}")
+                with self.lock:
+                    text = self.texts.get(slot, "")
+                if text:
+                    self._publish_text(chat, slot, text)
         except Exception as exc:
             log_line("WARN", "PHOTO", f"Copia Bot JR {slot} non aggiornata: {type(exc).__name__}: {exc}")
+
+    # ------------------------------------------------------------------
+    # Testi da copiare (X e IG/Telegram) sotto la copia: col risultato di adesso
+    # ------------------------------------------------------------------
+    def _publish_text(self, chat: str, slot: str, text: str, *, final: bool = False) -> bool:
+        """Manda o modifica il messaggio coi testi da copiare. Dopo il testo vero del canale
+        (final) non si tocca piu'. True se il messaggio c'e'."""
+        from livescore.core import team_names
+        from livescore.telegram import copy_text
+        with self.lock:
+            state = self.slots[slot]
+            if state["text_final"] and not final:
+                return True
+            text_id = state["text_id"]
+        body = copy_text.message(text, team_names.translate_team(self.match.get("home_name", "")),
+                                 team_names.translate_team(self.match.get("away_name", "")))
+        if text_id:
+            try:
+                self._call("editMessageText", {"chat_id": chat, "message_id": text_id, "text": body,
+                                               "parse_mode": "HTML", "disable_web_page_preview": True})
+            except RuntimeError as exc:
+                why = str(exc).lower()
+                if "not modified" not in why:
+                    if "not found" not in why and "can't be edited" not in why:
+                        raise
+                    text_id = None          # cancellato a mano su Bot JR: se ne manda uno nuovo
+        if not text_id:
+            text_id = int(self._call("sendMessage", {"chat_id": chat, "text": body, "parse_mode": "HTML",
+                                                     "disable_web_page_preview": True})["message_id"])
+        with self.lock:
+            state["text_id"] = text_id
+            state["text_final"] = state["text_final"] or final
+        return True
+
+    def final_text(self, kind: str, text: str, *, extra_time=False, shootout=None) -> bool:
+        """Stato uscito sul canale: il messaggio dei testi prende il testo vero.
+        False se non c'era (allora lo manda chi pubblica)."""
+        slot = slot_for(kind, extra_time=extra_time, shootout=shootout)
+        chat = self.bot_chat_id
+        if slot is None or not chat:
+            return False
+        with self.sync_lock:
+            with self.lock:
+                if not self.slots[slot]["text_id"]:
+                    return False
+            return self._publish_text(chat, slot, text, final=True)
 
     def _publish_copy(self, chat: str, copy_id, caption: str, image: bytes) -> int | None:
         if copy_id:
@@ -969,6 +1024,41 @@ def holding() -> bool:
 
 def layers_for(kind: str, **kwargs) -> Path | None:
     return desk().layers_for(kind, **kwargs)
+
+
+def final_text(kind: str, text: str, **kwargs) -> bool:
+    """True se il messaggio dei testi da copiare c'era gia' (mandato con la copia) ed e' stato
+    aggiornato col testo del canale; False = va mandato adesso."""
+    if DESK is None:
+        return False
+    try:
+        return DESK.final_text(kind, text, **kwargs)
+    except Exception as exc:
+        log_line("WARN", "PHOTO", f"Testi da copiare non aggiornati: {type(exc).__name__}: {exc}")
+        return False
+
+
+def _phase_texts(ctx) -> dict[str, str]:
+    """Testo di ogni fase come uscirebbe adesso sul canale (stesso formato di phases/finish)."""
+    try:
+        from livescore.constants import E_FLAG
+        from livescore.core import team_names
+        from livescore.core.text import esc
+        from livescore.match import formatting as fmt
+        score = getattr(ctx, "score_str", None) or fmt.build_score_str(
+            esc(team_names.translate_team(ctx.home_name_raw)), esc(team_names.translate_team(ctx.away_name_raw)),
+            int(ctx.g_home or 0), int(ctx.g_away or 0))
+        tail = f"{getattr(ctx, 'e_comp', '') or ''} {getattr(ctx, 'hashtag', '') or ''}".strip()
+        events = getattr(ctx, "events", None) or []
+        out = {}
+        for slot, title, scorers in (("half", "FINE PRIMO TEMPO", "half"), ("end", "FINE PARTITA", "end_of_90"),
+                                     ("extra", "FINE PARTITA", "extra_time")):
+            line = fmt.phase_scorers_line(events, ctx.home_id, ctx.away_id, scorers)
+            out[slot] = f"<b>{title} {E_FLAG}</b>\n\n{score}\n{line}\n{tail}"
+        return out
+    except Exception as exc:  # noqa: BLE001 - senza testo la copia parte lo stesso
+        log_line("DEBUG", "PHOTO", f"Testi delle fasi non pronti: {type(exc).__name__}: {exc}")
+        return {}
 
 
 def finish() -> None:

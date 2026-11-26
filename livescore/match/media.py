@@ -269,7 +269,11 @@ def send_phase_message(text, **kwargs):
     message_id = tg._send_telegram_event_photo_get_id(text, photo, filename='phase.png',
         label=kwargs['kind'], retry_factory=(lambda: build_phase_graphic(**kwargs)) if eligible else None)[0]
     if message_id and kwargs['kind'] in copy_text.COPY_KINDS and phase_photo.BOT_COPY:
-        # HALF / END / FULL TIME: su Bot JR anche i testi da copiare per X e per Telegram/IG.
+        # HALF / END / FULL TIME: su Bot JR anche i testi da copiare per X e per IG/Telegram.
+        # Se sono gia' arrivati con la grafica confermata prima del fischio, si aggiorna quel messaggio.
+        if phase_photo.final_text(kwargs['kind'], text, extra_time=kwargs.get('extra_time', False),
+                                  shootout=kwargs.get('shootout')):
+            return message_id
         from livescore.core import team_names
         copy_text.send(tg._tg_post, settings.BOT_JR_CHAT_ID, text,
                        team_names.translate_team(kwargs['home_name']),

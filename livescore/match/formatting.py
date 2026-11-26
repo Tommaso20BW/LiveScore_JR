@@ -9,7 +9,8 @@ from livescore.graphics import goal as goal_graphics
 
 def phase_scorers_line(events, home_id, away_id, kind):
     """FT-style scorer summary for HT and regulation end, never ET notices."""
-    limits = {'half': (1, 45), 'end_of_90': (2, 90)}
+    # 'extra_time': gol fino ai supplementari (rigori esclusi), per il testo da copiare in anticipo.
+    limits = {'half': (1, 45), 'end_of_90': (2, 90), 'extra_time': (4, 120)}
     if kind not in limits:
         return ''
     period_limit, minute_limit = limits[kind]

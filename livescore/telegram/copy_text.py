@@ -57,7 +57,7 @@ def x_text(text: str, home: str, away: str) -> str:
 
 def message(text: str, home: str, away: str) -> str:
     """Il messaggio da copiare: X (in un blocco) e IG/Telegram (come sul canale)."""
-    return (f"<b>X</b>\n<pre>{html.escape(x_text(text, home, away))}</pre>\n\n"
+    return (f"<b>X</b>\n<pre>{html.escape(x_text(text, home, away), quote=False)}</pre>\n\n"
             f"<b>IG/Telegram</b>\n{text.strip()}")
 
 
