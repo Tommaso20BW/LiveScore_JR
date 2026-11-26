@@ -28,16 +28,15 @@ class CopyTextTest(unittest.TestCase):
                          'FINE PRIMO TEMPO 🏁\n\n#Juventus 0-0 #Venezia\n\n🇮🇹 #JuveVenezia')
         self.assertEqual(copy_text.plain(text), 'FINE PRIMO TEMPO 🏁\n\nJuventus 0-0 Venezia\n\n🇮🇹 #JuveVenezia')
 
-    def test_two_messages_in_copy_blocks(self):
+    def test_one_message_x_then_channel_text(self):
         post = mock.Mock(return_value=mock.Mock(status_code=200))
-        copy_text.send(post, '123', FT, 'Juventus', 'Omonia')
-        texts = [c.kwargs['payload']['text'] for c in post.call_args_list]
-        self.assertEqual(len(texts), 2)
-        self.assertIn('Testo per X', texts[0])
-        self.assertIn('<pre>FINE PARTITA 🏁\n\n#Juventus 4-1 #Omonia', texts[0])
-        self.assertIn('Telegram / IG', texts[1])
-        self.assertIn('<pre>FINE PARTITA 🏁\n\nJuventus 4-1 Omonia', texts[1])
-        self.assertTrue(all(c.kwargs['payload']['chat_id'] == '123' for c in post.call_args_list))
+        text = FT.replace('🇪🇺', '<tg-emoji emoji-id="1">🇪🇺</tg-emoji>')
+        copy_text.send(post, '123', text, 'Juventus', 'Omonia')
+        post.assert_called_once()
+        sent = post.call_args.kwargs['payload']
+        self.assertEqual(sent['chat_id'], '123')
+        self.assertTrue(sent['text'].startswith('<b>X</b>\n<pre>FINE PARTITA 🏁\n\n#Juventus 4-1 #Omonia'))
+        self.assertTrue(sent['text'].endswith('</pre>\n\n<b>IG/Telegram</b>\n' + text))
 
     def test_no_chat_no_messages_and_errors_never_raise(self):
         post = mock.Mock(side_effect=RuntimeError('rete giù'))
