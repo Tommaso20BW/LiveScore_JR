@@ -13,6 +13,7 @@ from livescore.kits import detect as kit_detect
 from livescore.match import teams
 from livescore.match import phase_photo
 from livescore.telegram import api as tg
+from livescore.telegram import copy_text
 
 
 def prepara_grafica_goal(*, data_espn: dict, scorer_name: str,
@@ -265,5 +266,12 @@ def send_phase_message(text, **kwargs):
     eligible = (settings.GOAL_GRAPHICS_ENABLED
         and teams.graphics_team(kwargs['home_id'], kwargs['away_id'], kwargs['league_slug'], kwargs['league_name'])
         and kwargs['kind'] in PHASE_GRAPHIC_KINDS)
-    return tg._send_telegram_event_photo_get_id(text, photo, filename='phase.png',
+    message_id = tg._send_telegram_event_photo_get_id(text, photo, filename='phase.png',
         label=kwargs['kind'], retry_factory=(lambda: build_phase_graphic(**kwargs)) if eligible else None)[0]
+    if message_id and kwargs['kind'] in copy_text.COPY_KINDS and phase_photo.BOT_COPY:
+        # HALF / END / FULL TIME: su Bot JR anche i testi da copiare per X e per Telegram/IG.
+        from livescore.core import team_names
+        copy_text.send(tg._tg_post, settings.BOT_JR_CHAT_ID, text,
+                       team_names.translate_team(kwargs['home_name']),
+                       team_names.translate_team(kwargs['away_name']))
+    return message_id
