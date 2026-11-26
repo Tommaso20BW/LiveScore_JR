@@ -255,7 +255,7 @@ class BotJrCopyTests(unittest.TestCase):
             texts = [b for b in texts if b['chat_id'] == '99']
             self.assertEqual(len(texts), 1)                # testi subito, con la copia
             self.assertTrue(texts[0]['text'].startswith('<b>X</b>\n<pre>FINE PRIMO TEMPO 🏁\n\n#Juventus 1-0 #Inter'))
-            self.assertIn('<b>IG/Telegram</b>\n<b>FINE PRIMO TEMPO 🏁</b>', texts[0]['text'])
+            self.assertIn('<b>IG/Telegram</b>\n<pre>FINE PRIMO TEMPO 🏁\n\nJuventus 1-0 Inter', texts[0]['text'])
             text_id = desk.slots['half']['text_id']
 
             with patch.object(bot, 'GOAL_GRAPHICS_ENABLED', True):     # gol: 2-0
@@ -270,7 +270,8 @@ class BotJrCopyTests(unittest.TestCase):
         self.assertTrue(desk.final_text('half', channel))
         last = [b for b in self.calls(desk, 'editMessageText') if b['chat_id'] == '99'][-1]
         self.assertIn("⚽️ 3' #Yildiz, 9' #Yildiz", last['text'])
-        self.assertTrue(last['text'].endswith('\n' + channel))
+        self.assertTrue(last['text'].endswith("<b>IG/Telegram</b>\n<pre>FINE PRIMO TEMPO 🏁\n\n"
+                                              "Juventus 2-0 Inter\n⚽️ 3' Yildiz, 9' Yildiz\n\n🇮🇹 #JuveInter</pre>"))
         desk._sync_copy('half', True)                      # dopo il testo vero non si torna indietro
         self.assertEqual([b for b in self.calls(desk, 'editMessageText') if b['chat_id'] == '99'][-1], last)
 

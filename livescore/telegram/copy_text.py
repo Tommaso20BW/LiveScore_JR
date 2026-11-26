@@ -1,6 +1,6 @@
 """Testi pronti da copiare su Bot JR dopo HALF / END / FULL TIME, in un solo messaggio:
-"X" col testo per X in un blocco che si copia con un tocco, poi "IG/Telegram" col testo del canale
-così com'è (emoji personalizzate comprese: dentro il blocco Telegram non le mostra).
+"X" e "IG/Telegram", ognuno in un riquadro che si copia con un tocco. Nel riquadro Telegram non
+mette le emoji personalizzate né il grassetto: il testo del canale va con le emoji normali.
 Il testo per X segue i post di @Juventus_Reborn: squadre, marcatori e competizione con l'hashtag,
 emoji normali, niente grassetto:
 
@@ -56,9 +56,9 @@ def x_text(text: str, home: str, away: str) -> str:
 
 
 def message(text: str, home: str, away: str) -> str:
-    """Il messaggio da copiare: X (in un blocco) e IG/Telegram (come sul canale)."""
+    """Il messaggio da copiare: X e IG/Telegram, ognuno nel suo riquadro."""
     return (f"<b>X</b>\n<pre>{html.escape(x_text(text, home, away), quote=False)}</pre>\n\n"
-            f"<b>IG/Telegram</b>\n{text.strip()}")
+            f"<b>IG/Telegram</b>\n<pre>{html.escape(plain(text), quote=False)}</pre>")
 
 
 def send(post, chat_id, text: str, home: str, away: str) -> None:
