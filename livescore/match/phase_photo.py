@@ -145,7 +145,8 @@ class Desk:
                              "confirmed": None, "used": False,
                              "wait_started": None, "expired": False, "reminded": False,
                              "copy_id": None, "copy_score": None,
-                             "text_id": None, "x_id": None, "text_final": False}
+                             "text_id": None, "x_id": None, "x_anchor": None,
+                             "text_final": False, "final_text": None}
                       for slot in PROMPT_AT}
         self.match: dict = {}
         self.texts: dict[str, str] = {}      # slot -> testo della fase come uscirebbe ora sul canale
@@ -384,7 +385,8 @@ class Desk:
                 copies += [i for i in (state["copy_id"], state["text_id"], state["x_id"]) if i]
                 state["copy_id"] = None
                 state["copy_score"] = None
-                state["text_id"], state["x_id"], state["text_final"] = None, None, False
+                state["text_id"], state["x_id"], state["x_anchor"] = None, None, None
+                state["text_final"], state["final_text"] = False, None
         for message_id in messages:
             try:
                 self._call("deleteMessage", {"chat_id": self.chat_id, "message_id": message_id})
@@ -746,42 +748,59 @@ class Desk:
                     return
                 with self.render_lock:
                     image = self._draw(slot, Path(confirmed["layers"]))
-                caption = f"{SLOT_TITLE[slot]}\n{self._score_line()}"
+                with self.lock:
+                    # didascalia = testo IG/Telegram (quello vero dopo il fischio, prima quello di adesso)
+                    text = state["final_text"] or self.texts.get(slot, "")
+                caption = text.strip() or f"{SLOT_TITLE[slot]}\n{self._score_line()}"
                 new_id = self._publish_copy(chat, copy_id, caption, image)
                 with self.lock:
                     state["copy_id"], state["copy_score"] = new_id, score
                 log_line("INFO", "PHOTO", f"{SLOT_TITLE[slot]}: copia su Bot JR "
                          f"{'aggiornata' if copy_id and new_id == copy_id else 'inviata'}")
-                with self.lock:
-                    text = self.texts.get(slot, "")
                 if text:
                     self._publish_text(chat, slot, text)
         except Exception as exc:
             log_line("WARN", "PHOTO", f"Copia Bot JR {slot} non aggiornata: {type(exc).__name__}: {exc}")
 
     # ------------------------------------------------------------------
-    # Testi da copiare (X e IG/Telegram) sotto la copia: col risultato di adesso
+    # Testi da copiare: la didascalia della copia e' il testo IG/Telegram, X arriva in risposta
     # ------------------------------------------------------------------
     def _publish_text(self, chat: str, slot: str, text: str, *, final: bool = False) -> bool:
-        """Manda o modifica i testi da copiare: quello IG/Telegram e, in risposta, quello per X nel
-        riquadro. Dopo il testo vero del canale (final) non si toccano piu'. True se ci sono."""
+        """Testo per X nel riquadro, in risposta alla copia della grafica (che ha come didascalia il
+        testo IG/Telegram). Senza copia: prima il testo IG/Telegram, poi X in risposta a quello.
+        Dopo il testo vero del canale (final) non si toccano piu'. True se ci sono."""
         from livescore.core import team_names
         from livescore.telegram import copy_text
         with self.lock:
             state = self.slots[slot]
             if state["text_final"] and not final:
                 return True
-            text_id, x_id = state["text_id"], state["x_id"]
+            if final:
+                state["final_text"] = text
+            copy_id, text_id, x_id, anchor = state["copy_id"], state["text_id"], state["x_id"], state["x_anchor"]
         tg_body, x_body = copy_text.messages(text, team_names.translate_team(self.match.get("home_name", "")),
                                              team_names.translate_team(self.match.get("away_name", "")))
-        new_id = self._upsert_text(chat, text_id, tg_body)
-        if new_id != text_id:
-            x_id = None                     # Telegram rimandato: anche X riparte, in risposta al nuovo
-        x_id = self._upsert_text(chat, x_id, x_body, copy_text.reply_to(new_id))
+        if copy_id:
+            if final:
+                self._edit_caption(chat, copy_id, tg_body)
+            new_anchor = copy_id
+        else:
+            new_anchor = text_id = self._upsert_text(chat, text_id, tg_body)
+        if new_anchor != anchor:
+            x_id = None                     # messaggio nuovo: anche X riparte, in risposta a quello
+        x_id = self._upsert_text(chat, x_id, x_body, copy_text.reply_to(new_anchor))
         with self.lock:
-            state["text_id"], state["x_id"] = new_id, x_id
+            state["text_id"], state["x_id"], state["x_anchor"] = text_id, x_id, new_anchor
             state["text_final"] = state["text_final"] or final
         return True
+
+    def _edit_caption(self, chat: str, message_id, caption: str) -> None:
+        try:
+            self._call("editMessageCaption", {"chat_id": chat, "message_id": message_id,
+                                              "caption": caption, "parse_mode": "HTML"})
+        except RuntimeError as exc:
+            if "not modified" not in str(exc).lower():
+                raise
 
     def _upsert_text(self, chat: str, message_id, body: str, extra: dict | None = None) -> int:
         """Modifica il messaggio (se c'e' ancora) o ne manda uno nuovo; torna il suo id."""

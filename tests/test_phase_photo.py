@@ -242,43 +242,47 @@ class BotJrCopyTests(unittest.TestCase):
             self.assertEqual(edits[0]['message_id'], copy_id)
             self.assertEqual(len(self.calls(desk, 'sendPhoto')), 1)   # nessun nuovo messaggio
 
-        text_id, x_id = desk.slots['half']['text_id'], desk.slots['half']['x_id']   # testi: via anche loro
+        x_id = desk.slots['half']['x_id']                    # testo per X: via anche lui
         desk.finish()
         deleted = [b for b in self.calls(desk, 'deleteMessage') if b['chat_id'] == '99']
-        self.assertEqual([b['message_id'] for b in deleted], [copy_id, text_id, x_id])
+        self.assertEqual([b['message_id'] for b in deleted], [copy_id, x_id])
 
-    def test_copy_texts_follow_score_then_take_channel_text(self):
+    def test_photo_caption_is_telegram_text_and_x_replies(self):
         desk = self.make()
         with patch.object(desk, '_draw', return_value=b'png'):
             desk._sync_copy('half', True)
-            texts = self.calls(desk, 'sendMessage')
-            texts = [b for b in texts if b['chat_id'] == '99']
-            self.assertEqual(len(texts), 2)                # testi subito, con la copia
-            self.assertTrue(texts[0]['text'].startswith('<b>FINE PRIMO TEMPO 🏁</b>'))      # Telegram com'è
-            self.assertTrue(texts[1]['text'].startswith('<pre>FINE PRIMO TEMPO 🏁\n\n#Juventus 1-0 #Inter'))
-            text_id, x_id = desk.slots['half']['text_id'], desk.slots['half']['x_id']
-            self.assertEqual(texts[1]['reply_parameters']['message_id'], text_id)        # X in risposta
+            photo = self.calls(desk, 'sendPhoto')[0]
+            self.assertTrue(photo['caption'].startswith('<b>FINE PRIMO TEMPO 🏁</b>'))    # foto + testo Telegram
+            copy_id = desk.slots['half']['copy_id']
+            texts = [b for b in self.calls(desk, 'sendMessage') if b['chat_id'] == '99']
+            self.assertEqual(len(texts), 1)                # solo X, niente testo Telegram a parte
+            self.assertTrue(texts[0]['text'].startswith('<pre>FINE PRIMO TEMPO 🏁\n\n#Juventus 1-0 #Inter'))
+            self.assertEqual(texts[0]['reply_parameters']['message_id'], copy_id)      # X in risposta alla foto
+            x_id = desk.slots['half']['x_id']
 
             with patch.object(bot, 'GOAL_GRAPHICS_ENABLED', True):     # gol: 2-0
                 desk.update(SimpleNamespace(**{**vars(ctx()), 'g_home': 2}))
             desk._sync_copy('half', False)
+            media = json.loads(self.calls(desk, 'editMessageMedia')[-1]['media'])
+            self.assertIn('2</b>-0', media['caption'])        # didascalia aggiornata
             edits = [b for b in self.calls(desk, 'editMessageText') if b['chat_id'] == '99']
-            self.assertEqual([b['message_id'] for b in edits], [text_id, x_id])
-            self.assertIn('2</b>-0', edits[0]['text'])
-            self.assertIn('#Juventus 2-0 #Inter', edits[1]['text'])
+            self.assertEqual([b['message_id'] for b in edits], [x_id])
+            self.assertIn('#Juventus 2-0 #Inter', edits[0]['text'])
 
-        channel = '<b>FINE PRIMO TEMPO 🏁</b>\n\n<b>Juventus 2</b>-0 Inter\n⚽️ <i>3\' Yildiz, 9\' Yildiz</i>\n\n🇮🇹 #JuveInter'
-        self.assertTrue(desk.final_text('half', channel))
-        tg_last, x_last = [b for b in self.calls(desk, 'editMessageText') if b['chat_id'] == '99'][-2:]
-        self.assertEqual(tg_last['text'], channel)
-        self.assertIn("⚽️ 3' #Yildiz, 9' #Yildiz", x_last['text'])
-        desk._sync_copy('half', True)                      # dopo il testo vero non si torna indietro
-        self.assertEqual([b for b in self.calls(desk, 'editMessageText') if b['chat_id'] == '99'][-1], x_last)
+            channel = ('<b>FINE PRIMO TEMPO 🏁</b>\n\n<b>Juventus 2</b>-0 Inter\n'
+                       '⚽️ <i>3\' Yildiz, 9\' Yildiz</i>\n\n🇮🇹 #JuveInter')
+            self.assertTrue(desk.final_text('half', channel))
+            self.assertEqual(self.calls(desk, 'editMessageCaption')[-1]['caption'], channel)
+            x_last = [b for b in self.calls(desk, 'editMessageText') if b['chat_id'] == '99'][-1]
+            self.assertIn("⚽️ 3' #Yildiz, 9' #Yildiz", x_last['text'])
+            desk._sync_copy('half', True)                  # dopo il testo vero la didascalia resta quella
+            media = json.loads(self.calls(desk, 'editMessageMedia')[-1]['media'])
+            self.assertEqual(media['caption'], channel)
+            self.assertEqual([b for b in self.calls(desk, 'editMessageText') if b['chat_id'] == '99'][-1], x_last)
 
-        copy_id = desk.slots['half']['copy_id']
-        desk.finish()                                      # a fine partita via grafica e testi
+        desk.finish()                                      # a fine partita via grafica e testo per X
         deleted = [b['message_id'] for b in self.calls(desk, 'deleteMessage') if b['chat_id'] == '99']
-        self.assertEqual(sorted(deleted), sorted([copy_id, text_id, x_id]))
+        self.assertEqual(sorted(deleted), sorted([copy_id, x_id]))
 
     def test_final_text_without_early_copy_sent_now_and_deleted_at_end(self):
         desk = make_desk(bot_chat_id='99')
