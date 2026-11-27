@@ -1,4 +1,4 @@
-"""Grafica CAMBIO: schermo a led solo per i cambi Juventus (mai amichevoli), foto rifatta a ogni correzione."""
+"""Grafica CAMBIO (SUB / SUBS) solo per i cambi Juventus (mai amichevoli), foto rifatta a ogni correzione."""
 
 import io
 import unittest
@@ -69,12 +69,12 @@ class RosterTests(unittest.TestCase):
     def test_numbers_and_surnames_from_espn_rosters(self):
         pairs = subs.graphic_pairs([{"in": "K. Thuram", "out": "M. Locatelli"},
                                     {"in": "Bremer", "out": "R. Kolo Muani"}], self.players)
-        self.assertEqual(pairs, [(("5", "Locatelli"), ("19", "Thuram")),
-                                 (("9", "Kolo Muani"), ("3", "Bremer"))])
+        self.assertEqual(pairs, [(("5", "Locatelli", "Manuel Locatelli"), ("19", "Thuram", "Khephren Thuram")),
+                                 (("9", "Kolo Muani", "Randal Kolo Muani"), ("3", "Bremer", "Bremer"))])
 
     def test_shirt_name_override(self):
         pairs = subs.graphic_pairs([{"in": "D. Luiz", "out": "W. McKennie"}], self.players)
-        self.assertEqual(pairs[0][1], ("12", "Douglas Luiz"))
+        self.assertEqual(pairs[0][1], ("12", "Douglas Luiz", "Douglas Luiz"))
 
     def test_unknown_player_or_missing_number_means_no_graphic(self):
         self.assertIsNone(subs.graphic_pairs([{"in": "X. Nessuno", "out": "M. Locatelli"}], self.players))
@@ -98,12 +98,15 @@ class RosterTests(unittest.TestCase):
 
 class RenderTests(unittest.TestCase):
     def test_portrait_png_for_one_to_five_substitutions(self):
-        pairs = [(("22", "McKennie"), ("10", "Yildiz")), (("8", "Koopmeiners"), ("7", "Conceição")),
-                 (("20", "Cambiaso"), ("40", "Radu")), (("4", "Gatti"), ("24", "Rugani")),
-                 (("14", "Milik"), ("9", "Kolo Muani"))]
+        pairs = [(("22", "McKennie", "Weston McKennie"), ("10", "Yildiz", "Kenan Yildiz")),
+                 (("8", "Koopmeiners", "Teun Koopmeiners"), ("7", "Conceição", "Francisco Conceição")),
+                 (("20", "Cambiaso", "Andrea Cambiaso"), ("40", "Radu", "Ionuț Radu")),
+                 (("4", "Gatti"), ("24", "Rugani")),                      # senza nome completo: solo il cognome
+                 (("14", "Milik", "Arkadiusz Milik"), ("9", "Kolo Muani", "Randal Kolo Muani"))]
         with patch.object(g, "_remote_espn_team_logo", return_value=None):
-            for n in (1, 2, 3, 5):
-                for kit, comp in (("home", "ita.1"), ("away", "uefa.champions")):
+            for n in (1, 2, 3, 4, 5):
+                for kit, comp in (("home", "ita.1"), ("away", "ita.1"), ("third", "uefa.champions"),
+                                  ("home", "uefa.europa"), ("home", "coppa_italia")):
                     png = sub_graphics.render_png(pairs[:n], home_name="Juventus", away_name="Inter",
                                                   home_id=HOME_ID, away_id=AWAY_ID, kit=kit, competition=comp)
                     self.assertEqual(Image.open(io.BytesIO(png)).size, (1086, 1448))
@@ -127,7 +130,7 @@ class TelegramFlowTests(unittest.TestCase):
         self.assertEqual([r[0] for r in rows], ["sendPhoto"])
         self.assertIn("CAMBIO JUVENTUS · 60'", rows[0][2])
         pairs = render.call_args.args[0]
-        self.assertEqual(pairs, [(("5", "Locatelli"), ("19", "Thuram"))])
+        self.assertEqual(pairs, [(("5", "Locatelli", "Manuel Locatelli"), ("19", "Thuram", "Khephren Thuram"))])
         self.assertEqual(render.call_args.kwargs["competition"], "ita.1")
 
     def test_correction_replaces_the_photo_in_the_same_message(self, render):
@@ -138,7 +141,8 @@ class TelegramFlowTests(unittest.TestCase):
         self.assertEqual([r[0] for r in rows], ["sendPhoto", "editMessageMedia"])
         self.assertEqual(rows[0][1], rows[1][1], "la correzione deve cambiare la foto dello stesso messaggio")
         self.assertIn("F. Conceicao", rows[1][2])
-        self.assertEqual(render.call_args.args[0], [(("5", "Locatelli"), ("7", "Conceicao"))])
+        self.assertEqual(render.call_args.args[0], [(("5", "Locatelli", "Manuel Locatelli"),
+                                                     ("7", "Conceicao", "Francisco Conceicao"))])
 
     def test_added_substitution_redraws_with_both(self, render):
         s1 = sub("s1", "60'", 2, HOME_ID, THURAM, LOCATELLI)

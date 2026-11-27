@@ -22,10 +22,11 @@ dopo che Telegram ha confermato, cosi' un invio fallito viene ritentato al ciclo
 
 Grafica (solo cambi della Juventus, mai nelle amichevoli)
 -------------------------------------------------------
-Il messaggio parte come foto (schermo a led, `livescore/graphics/substitution.py`) con il
-testo di sempre come didascalia. A ogni correzione o aggiunta la grafica si rifà e sostituisce
-la foto dello stesso messaggio (editMessageMedia). Numeri di maglia e cognomi arrivano dalle
-rose ESPN (``rosters[]``); se ne manca uno il cambio resta solo testo. Lo slot ricorda
+Il messaggio parte come foto (SUB / SUBS con chi entra e chi esce,
+`livescore/graphics/substitution.py`) con il testo di sempre come didascalia. A ogni correzione
+o aggiunta la grafica si rifà e sostituisce la foto dello stesso messaggio (editMessageMedia).
+Numeri di maglia, cognomi e nomi completi arrivano dalle rose ESPN (``rosters[]``); se manca un
+giocatore o un numero il cambio resta solo testo. Lo slot ricorda
 ``photo: True`` quando il messaggio e' una foto.
 """
 
@@ -342,14 +343,14 @@ def _without_initials(name: str) -> str:
 
 
 def roster_index(data: dict | None, team_id: str) -> list[dict]:
-    """Giocatori della squadra nelle rose ESPN: nomi (normalizzati), numero di maglia e cognome."""
+    """Giocatori della squadra nelle rose ESPN: nomi (normalizzati), numero di maglia, cognome e nome completo."""
     players = []
     for block in (data or {}).get("rosters") or []:
         if str((block.get("team") or {}).get("id", "")) != str(team_id):
             continue
         for entry in block.get("roster") or block.get("athletes") or []:
             athlete = entry.get("athlete") or {}
-            display = str(athlete.get("displayName") or athlete.get("fullName") or "").strip()
+            display = html.unescape(str(athlete.get("displayName") or athlete.get("fullName") or "")).strip()
             short = str(athlete.get("shortName") or "").strip()
             surname = (SHIRT_NAMES.get(_norm(display)) or str(athlete.get("lastName") or "").strip()
                        or _without_initials(short) or display)
@@ -357,7 +358,7 @@ def roster_index(data: dict | None, team_id: str) -> list[dict]:
                                         txt.fmt_player(display) if display else "") if n}
             names.discard("")
             players.append({"names": names, "number": str(entry.get("jersey") or "").strip(),
-                            "surname": surname, "display": _norm(display)})
+                            "surname": surname, "full": display or surname, "display": _norm(display)})
     return players
 
 
@@ -375,13 +376,13 @@ def _find(players: list[dict], name: str) -> dict | None:
 
 
 def graphic_pairs(subs: list[dict], players: list[dict]) -> list | None:
-    """[(esce, entra)] con (numero, cognome) per ogni record dello slot; None se ne manca uno."""
+    """[(esce, entra)] con (numero, cognome, nome completo) per ogni record dello slot; None se ne manca uno."""
     pairs = []
     for r in subs:
         out, inn = _find(players, r["out"]), _find(players, r["in"])
         if not out or not inn or not out["number"] or not inn["number"]:
             return None
-        pairs.append(((out["number"], out["surname"]), (inn["number"], inn["surname"])))
+        pairs.append(((out["number"], out["surname"], out["full"]), (inn["number"], inn["surname"], inn["full"])))
     return pairs
 
 
@@ -393,7 +394,7 @@ def graphic_eligible(ctx: MatchContext, team_id: str) -> bool:
 
 
 def build_graphic(ctx: MatchContext, team_id: str, subs: list[dict]) -> bytes | None:
-    """PNG dello schermo CAMBIO, None se non si puo' fare (il bot usa il testo)."""
+    """PNG della grafica CAMBIO, None se non si puo' fare (il bot usa il testo)."""
     if not graphic_eligible(ctx, team_id):
         return None
     try:
