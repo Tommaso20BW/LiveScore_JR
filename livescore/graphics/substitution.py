@@ -1,7 +1,8 @@
 """CAMBIO: il pannello diventa lo schermo a led del quarto uomo (solo cambi Juventus).
 
 - Tutto il pannello è uno schermo a puntini (si vedono anche i puntini spenti).
-- Sopra chi entra (verde), sotto chi esce (rosso), in tutti i temi; divisi da una riga di puntini.
+- Sopra chi entra (colore del tema), sotto chi esce (bianco); divisi da una riga di puntini.
+  Pannello chiaro (Away rosa): lo schermo resta rosa, un po' più scuro; chi entra a led neri.
 - Numero di maglia a puntini (Dharma) e solo il cognome a puntini (Bebas), anche con un cambio.
 - 1-2 cambi: colonne, numero sopra il cognome. 3 o più: una riga per giocatore
   (triangolo, numero allineato a destra, cognome), blocco centrato.
@@ -12,6 +13,7 @@ Nessun effetto su Telegram: restituisce solo il PNG.
 
 from __future__ import annotations
 
+import colorsys
 import math
 import unicodedata
 from functools import lru_cache
@@ -28,16 +30,19 @@ DOT = 5                         # passo dei puntini accesi
 BG = 3 * DOT                    # passo dei puntini spenti dello sfondo (visibili, come uno schermo vero)
 GX0 = X0 + ((X1 - X0) % BG) // 2
 GY0 = Y0 + ((Y1 - Y0) % BG) // 2
-IN_LED = '#14FF55'              # chi entra: verde acceso, come il tabellone del quarto uomo (in ogni tema)
-OUT_LED = '#FF2222'             # chi esce: rosso acceso
+OUT_LED = '#FFFFFF'             # chi esce: bianco (chi entra: P.COLORS del tema)
 GLOW = ((16, .55), (4, .9))     # bagliore dei puntini accesi: (sfocatura, intensità), largo e stretto
+WHITE_GLOW = .6                 # il bianco con meno bagliore, se no si impasta
+DARK_LED = '#000000'            # schermo chiaro: chi entra (e lo stemma Juve) a led neri, chi esce bianco
 NUMBER_FONT = 'fonts/DharmaGothicEBold.otf'
 NAME_FONT = 'fonts/BebasNeue2014-Regular.ttf'
 CREST_HEIGHT = 52
 OFF_MIX = .02                   # puntino spento: colore del pannello schiarito appena
 DIM_MIX = .214                  # riga che divide entra / esce
-LIGHT_PANEL = 110               # pannelli chiari (Away rosa): lo schermo diventa scuro
-DARK_SCREEN_MIX = .06           # schermo scuro: ombra del tema con un po' del colore del pannello
+LIGHT_PANEL = 110               # pannelli chiari (Away rosa): schermo chiaro con i led neri
+LIGHT_SCREEN = .67              # luminosità dello schermo chiaro (Away: il rosa del pannello un po' più scuro)
+LIGHT_OFF_MIX = .05             # puntino spento sullo schermo chiaro: appena più scuro
+LIGHT_DIM_MIX = .28
 
 
 class SubstitutionGraphicUnavailable(RuntimeError):
@@ -146,14 +151,22 @@ class Screen:
         box = (X0, Y0, X1, Y1)
         panel = self.c.crop(box).filter(ImageFilter.GaussianBlur(60))      # via le linee curve
         mean = tuple(round(v) for v in ImageStat.Stat(panel.convert('RGB')).mean)
-        if sum(mean) / 3 > LIGHT_PANEL:
-            # pannello chiaro: uno schermo a led è scuro
-            base = _mix(ImageColor.getrgb(P.SHADOW.get(key, '#000000')), mean, DARK_SCREEN_MIX)
-            panel = Image.blend(Image.new("RGBA", panel.size, base + (255,)), panel, .03)
+        self.bright = sum(mean) / 3 > LIGHT_PANEL
+        if self.bright:
+            # pannello chiaro: resta del suo colore, solo un po' più scuro (stessa tinta e saturazione)
+            h, _, sat = colorsys.rgb_to_hls(*(v / 255 for v in mean))
+            target = [round(v * 255) for v in colorsys.hls_to_rgb(h, LIGHT_SCREEN, sat)]
+            scale = Image.new('RGB', panel.size, tuple(min(255, round(255 * t / max(1, m)))
+                                                       for t, m in zip(target, mean)))
+            panel = ImageChops.multiply(panel.convert('RGB'), scale).convert('RGBA')
             mean = tuple(round(v) for v in ImageStat.Stat(panel.convert('RGB')).mean)
+            self.off = _mix(mean, (0, 0, 0), LIGHT_OFF_MIX) + (255,)
+            self.dim = _mix(mean, (0, 0, 0), LIGHT_DIM_MIX) + (255,)
+        else:
+            self.off = _mix(mean, (255, 255, 255), OFF_MIX) + (255,)
+            self.dim = _mix(mean, (255, 255, 255), DIM_MIX) + (255,)
         self.c.paste(panel, box[:2])
-        self.off = _mix(mean, (255, 255, 255), OFF_MIX) + (255,)
-        self.dim = _mix(mean, (255, 255, 255), DIM_MIX) + (255,)
+        self.theme = P.COLORS.get(key, P.COLORS['home'])
         self.gold = Image.new('L', (W, H))
         self.white = Image.new('L', (W, H))
         d = ImageDraw.Draw(self.c)
@@ -180,10 +193,16 @@ class Screen:
     def light(self):
         base = self.c.convert('RGB')
         black = Image.new('RGB', base.size, 0)
-        for mask, color in ((self.gold, IN_LED), (self.white, OUT_LED)):
+        if self.bright:                 # schermo chiaro: niente bagliore, sul chiaro non si vedrebbe
+            for mask, color in ((self.gold, DARK_LED), (self.white, OUT_LED)):
+                base.paste(Image.new('RGB', mask.size, ImageColor.getrgb(color)), (0, 0), mask)
+            self.c = base.convert('RGBA')
+            return self.c
+        for mask, color, soft in ((self.gold, self.theme, 1), (self.white, OUT_LED, WHITE_GLOW)):
             col = Image.new('RGB', mask.size, ImageColor.getrgb(color))
             for blur, k in GLOW:        # luce sommata (screen): il fondo si illumina, non si sporca
-                glow = mask.filter(ImageFilter.GaussianBlur(blur)).point(lambda a, k=k: min(255, round(a * k)))
+                glow = mask.filter(ImageFilter.GaussianBlur(blur)).point(
+                    lambda a, k=k * soft: min(255, round(a * k)))
                 base = ImageChops.screen(base, Image.composite(col, black, glow))
             base.paste(col, (0, 0), mask)
         self.c = base.convert('RGBA')
@@ -233,16 +252,19 @@ class Layout:
                 return max(5, int(nh_max / cell)), cell
 
     def player(self, p, out, ax, y, nd, cell, capd):
-        """Triangolo + numero centrati sull'asse ax (il triangolo fuori, a sinistra), cognome sotto."""
+        """Triangolo + numero centrati insieme sull'asse ax, cognome sotto centrato sullo stesso blocco."""
         on, w, _, _ = self.num(p[0], nd, cell)
         nh = nd * cell
-        self.s.stamp(on, ax - w * cell / 2, y, cell, out)
         ton, tw, th = tri_cells(max(6, round(nh * .3 / DOT)), not out)
-        self.s.stamp(ton, ax - w * cell / 2 - max(DOT * 3, round(nh * .08)) - tw * DOT,
-                     y + (nh - th * DOT) / 2, DOT, out)
+        side = max(DOT * 3, round(nh * .08)) + tw * DOT          # triangolo + spazio prima del numero
+        # numero agganciato alla sua griglia; triangolo e cognome si misurano dal numero già agganciato
+        xn = snap(ax - (side + w * cell) / 2 + side, GX0, BG if cell % BG == 0 else DOT)
+        self.s.stamp(on, xn, y, cell, out)
+        self.s.stamp(ton, xn - side, y + (nh - th * DOT) / 2, DOT, out)
         nm, nw, _, ntop = self.name(p[1], capd)
         gap = max(18, round(nh * .1))
-        self.s.stamp(nm, ax - nw * DOT / 2, y + nh + gap - ntop * DOT, DOT, out)
+        center = (xn - side + xn + w * cell) / 2
+        self.s.stamp(nm, center - nw * DOT / 2, y + nh + gap - ntop * DOT, DOT, out)
 
     def columns(self, players, out, y0, h, nd, cell, capd, inner):
         """Giocatori affiancati: numero grande e cognome sotto, centrati nella loro colonna."""
@@ -266,8 +288,20 @@ class Layout:
             self.s.stamp(nm, xr + round(nh * .22), cy - capd * DOT / 2 - ntop * DOT, DOT, out)
 
 
-def _crests(card, key, assets, home, away):
-    marks = [P.logo(name, tid, key, assets, CREST_HEIGHT) for name, tid in (home, away)]
+def _crest(name, tid, key, assets, ink=None):
+    """Stemma come nelle altre grafiche; sullo schermo chiaro gli stemmi a un colore (Juve) diventano `ink`."""
+    mark = P.logo(name, tid, key, assets, CREST_HEIGHT)
+    if mark is None or ink is None or key in P.ITALY_THEMES:
+        return mark
+    if g.resolve_team_logo_source(name, str(tid), assets)[1] != 'FCLogo':
+        return mark
+    flat = Image.new('RGBA', mark.size, ImageColor.getrgb(ink) + (255,))
+    flat.putalpha(mark.convert('RGBA').getchannel('A'))
+    return flat
+
+
+def _crests(card, key, assets, home, away, ink=None):
+    marks = [_crest(name, tid, key, assets, ink) for name, tid in (home, away)]
     marks = [m for m in marks if m is not None]
     if not marks:
         return
@@ -302,7 +336,7 @@ def render(pairs, *, home_name, away_name, home_id, away_id, kit='home', competi
     lay = Layout(s, assets)
     n = len(clean)
     top = Y0 + 56
-    _crests(s.c, key, assets, (home_name, home_id), (away_name, away_id))
+    _crests(s.c, key, assets, (home_name, home_id), (away_name, away_id), DARK_LED if s.bright else None)
     bottom = Y1 - 40 - CREST_HEIGHT - 40
     inner = X1 - X0 - 60
     half = (bottom - top) / 2
