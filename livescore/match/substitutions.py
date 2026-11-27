@@ -19,23 +19,36 @@ A ogni ciclo si confronta il feed ESPN con i record gia' annunciati:
 La logica di decisione (`SubstitutionBook.plan`) non fa nulla da sola: restituisce cosa
 cambiare e il gestore (`handle_substitutions`) lo applica a Telegram. Lo stato si aggiorna solo
 dopo che Telegram ha confermato, cosi' un invio fallito viene ritentato al ciclo dopo.
+
+Grafica (solo cambi della Juventus, mai nelle amichevoli)
+-------------------------------------------------------
+Il messaggio parte come foto (schermo a led, `livescore/graphics/substitution.py`) con il
+testo di sempre come didascalia. A ogni correzione o aggiunta la grafica si rifà e sostituisce
+la foto dello stesso messaggio (editMessageMedia). Numeri di maglia e cognomi arrivano dalle
+rose ESPN (``rosters[]``); se ne manca uno il cambio resta solo testo. Lo slot ricorda
+``photo: True`` quando il messaggio e' una foto.
 """
 
 from __future__ import annotations
 
 import copy
+import html
 import time
 from dataclasses import dataclass, field
 
 from livescore import settings
-from livescore.constants import E_DOWN, E_SUB, E_UP
+from livescore.constants import E_DOWN, E_SUB, E_UP, JUVE_ID
 from livescore.core import text as txt
 from livescore.core.log import log_line
+from livescore.graphics import goal as goal_graphics
+from livescore.match import teams
 from livescore.match.context import MatchContext
 from livescore.telegram import api as tg
 
 WINDOW_MINUTES = 2          # cambi entro ±2' (stesso tempo) finiscono nello stesso messaggio
 MAX_CORRECTION_MINUTES = 15  # una correzione di minuto oltre questo scarto e' considerata un'altra cosa
+# Cognome scritto sulla maglia quando ESPN (lastName) ne da' solo una parte.
+SHIRT_NAMES = {"douglas luiz": "Douglas Luiz"}
 
 
 # ───────────────────────────────── dati ─────────────────────────────────
@@ -273,7 +286,7 @@ class SubstitutionBook:
     def commit(self, key: str, slot: dict) -> None:
         self.slots[key] = slot
 
-    def add_slot(self, team_id: str, period: int, msg_id, group: list[SubEvent]) -> str:
+    def add_slot(self, team_id: str, period: int, msg_id, group: list[SubEvent], photo: bool = False) -> str:
         minute = min(s.minute for s in group)
         key = f"{team_id}:{period}:{minute}"
         slot = {
@@ -282,6 +295,8 @@ class SubstitutionBook:
             "subs": [{"uid": s.uid, "uids": [s.uid], "in": s.player_in, "out": s.player_out,
                       "minute": s.minute, "seen": []} for s in group],
         }
+        if photo:
+            slot["photo"] = True
         self._sync(slot)
         self.slots[key] = slot
         return key
@@ -313,6 +328,112 @@ def group_fresh(events: list[SubEvent]) -> list[list[SubEvent]]:
     return groups
 
 
+# ───────────────────────────────── grafica ─────────────────────────────────
+def _norm(name) -> str:
+    return goal_graphics.normalize_name(html.unescape(str(name or "")))
+
+
+def _without_initials(name: str) -> str:
+    """'R. Kolo Muani' -> 'Kolo Muani' (forma breve ESPN senza le iniziali)."""
+    parts = str(name or "").split()
+    while len(parts) > 1 and parts[0].endswith("."):
+        parts = parts[1:]
+    return " ".join(parts)
+
+
+def roster_index(data: dict | None, team_id: str) -> list[dict]:
+    """Giocatori della squadra nelle rose ESPN: nomi (normalizzati), numero di maglia e cognome."""
+    players = []
+    for block in (data or {}).get("rosters") or []:
+        if str((block.get("team") or {}).get("id", "")) != str(team_id):
+            continue
+        for entry in block.get("roster") or block.get("athletes") or []:
+            athlete = entry.get("athlete") or {}
+            display = str(athlete.get("displayName") or athlete.get("fullName") or "").strip()
+            short = str(athlete.get("shortName") or "").strip()
+            surname = (SHIRT_NAMES.get(_norm(display)) or str(athlete.get("lastName") or "").strip()
+                       or _without_initials(short) or display)
+            names = {_norm(n) for n in (display, short, athlete.get("fullName"),
+                                        txt.fmt_player(display) if display else "") if n}
+            names.discard("")
+            players.append({"names": names, "number": str(entry.get("jersey") or "").strip(),
+                            "surname": surname, "display": _norm(display)})
+    return players
+
+
+def _find(players: list[dict], name: str) -> dict | None:
+    """Giocatore della rosa con quel nome (anche 'K. Yildiz'); in mancanza, l'unico con quel cognome."""
+    wanted = _norm(name)
+    if not wanted:
+        return None
+    for p in players:
+        if wanted in p["names"]:
+            return p
+    tail = _norm(_without_initials(html.unescape(str(name))))
+    found = [p for p in players if tail and (p["display"] == tail or p["display"].endswith(" " + tail))]
+    return found[0] if len(found) == 1 else None
+
+
+def graphic_pairs(subs: list[dict], players: list[dict]) -> list | None:
+    """[(esce, entra)] con (numero, cognome) per ogni record dello slot; None se ne manca uno."""
+    pairs = []
+    for r in subs:
+        out, inn = _find(players, r["out"]), _find(players, r["in"])
+        if not out or not inn or not out["number"] or not inn["number"]:
+            return None
+        pairs.append(((out["number"], out["surname"]), (inn["number"], inn["surname"])))
+    return pairs
+
+
+def graphic_eligible(ctx: MatchContext, team_id: str) -> bool:
+    """Grafica solo per i cambi della Juventus e mai nelle amichevoli."""
+    return bool(settings.GOAL_GRAPHICS_ENABLED
+                and str(team_id) == JUVE_ID
+                and teams.graphics_team(ctx.home_id, ctx.away_id, ctx.league_slug, ctx.league_name) == JUVE_ID)
+
+
+def build_graphic(ctx: MatchContext, team_id: str, subs: list[dict]) -> bytes | None:
+    """PNG dello schermo CAMBIO, None se non si puo' fare (il bot usa il testo)."""
+    if not graphic_eligible(ctx, team_id):
+        return None
+    try:
+        pairs = graphic_pairs(subs, roster_index(ctx.data, team_id))
+        if not pairs:
+            log_line("INFO", "GRAPHICS", "CAMBIO: numero di maglia non trovato nelle rose ESPN; solo testo")
+            return None
+        from livescore.graphics import substitution as sub_graphics
+        kit = teams.graphics_kit(ctx.data, ctx.home_id, ctx.away_id, ctx.home_name_raw, ctx.away_name_raw,
+                                 ctx.league_slug, ctx.league_name)
+        return sub_graphics.render_png(pairs, home_name=ctx.home_name_raw, away_name=ctx.away_name_raw,
+                                       home_id=ctx.home_id, away_id=ctx.away_id, kit=kit,
+                                       competition=ctx.league_slug or "")
+    except Exception as exc:
+        log_line("WARN", "GRAPHICS", f"CAMBIO non disponibile: {type(exc).__name__}: {exc}; solo testo")
+        return None
+
+
+def _apply_edit(ctx: MatchContext, team_id: str, slot: dict, text: str) -> bool:
+    """Porta su Telegram la correzione di uno slot. Con la grafica rifà la foto nello stesso
+    messaggio (anche un messaggio di solo testo diventa foto). Aggiorna msg_id/photo dello slot."""
+    msg_id, was_photo = slot["msg_id"], bool(slot.get("photo"))
+    photo = build_graphic(ctx, team_id, slot["subs"]) if (was_photo or graphic_eligible(ctx, team_id)) else None
+    if photo and tg.edit_telegram_goal_photo(msg_id, text, photo):
+        slot["photo"] = True
+        return True
+    if not was_photo:
+        return tg.send_telegram_edit(msg_id, text)
+    if photo:
+        return False                       # foto rifiutata: si riprova al ciclo dopo
+    # era una foto ma la nuova grafica non si puo' fare: niente foto sbagliata, resta il testo giusto
+    new_id = tg.send_telegram_get_id(text)
+    if not new_id:
+        return False
+    tg.delete_telegram_message(msg_id)
+    slot["msg_id"] = new_id
+    slot.pop("photo", None)
+    return True
+
+
 # ───────────────────────────────── gestore del ciclo ─────────────────────────────────
 def _team_title(ctx: MatchContext, team_id: str) -> str:
     return ctx.home_name.upper() if team_id == ctx.home_id else ctx.away_name.upper()
@@ -331,11 +452,12 @@ def handle_substitutions(ctx: MatchContext) -> None:
         title = _team_title(ctx, team_id)
         text = render_text(title, new_slot["minute"], new_slot["ins"], new_slot["outs"], ctx.e_comp, ctx.hashtag)
         what = "; ".join(r for r in plan.reasons.get(key, []) if r)
-        if tg.send_telegram_edit(new_slot["msg_id"], text):
+        if _apply_edit(ctx, team_id, new_slot, text):
             book.commit(key, new_slot)
             ctx.state_changed = True
             log_line("EDIT", "MATCH", f"CAMBIO {title} {new_slot['minute']}' aggiornato | {what}"
-                                      f" | entra: {', '.join(new_slot['ins'])} | esce: {', '.join(new_slot['outs'])}")
+                                      f" | entra: {', '.join(new_slot['ins'])} | esce: {', '.join(new_slot['outs'])}"
+                                      f"{' | grafica' if new_slot.get('photo') else ''}")
         else:
             log_line("RETRY", "TELEGRAM", f"Edit CAMBIO {title} {new_slot['minute']}' fallito | {what}")
 
@@ -361,10 +483,24 @@ def _send_new_substitutions(ctx: MatchContext, book: SubstitutionBook, fresh: li
         minute = min(s.minute for s in group)
         ins = [s.player_in for s in group]
         outs = [s.player_out for s in group]
-        msg_id = tg.send_telegram_get_id(render_text(title, minute, ins, outs, ctx.e_comp, ctx.hashtag))
+        text = render_text(title, minute, ins, outs, ctx.e_comp, ctx.hashtag)
+        is_photo = False
+        if graphic_eligible(ctx, team_id):
+            subs = [{"in": s.player_in, "out": s.player_out} for s in group]
+
+            def factory(subs=subs, team_id=team_id):
+                return build_graphic(ctx, team_id, subs)
+
+            photo = factory()
+            # nuovi tentativi solo se Telegram rifiuta la foto (senza numeri di maglia rifarla non serve)
+            msg_id, is_photo = tg._send_telegram_event_photo_get_id(
+                text, photo, filename="cambio.png", label="CAMBIO", retry_factory=factory if photo else None)
+        else:
+            msg_id = tg.send_telegram_get_id(text)
         if msg_id:
-            log_line("EVENT", "MATCH", f"CAMBIO {title} {minute}' | entra: {', '.join(ins)} | esce: {', '.join(outs)} | Telegram inviato")
-            book.add_slot(team_id, period, msg_id, group)
+            log_line("EVENT", "MATCH", f"CAMBIO {title} {minute}' | entra: {', '.join(ins)} | esce: {', '.join(outs)} | "
+                                       f"Telegram inviato{' con grafica' if is_photo else ''}")
+            book.add_slot(team_id, period, msg_id, group, photo=is_photo)
             ctx.state_changed = True
         else:
             # invio non riuscito: nessuno stato salvato, al ciclo dopo il cambio risulta ancora nuovo e si riprova
