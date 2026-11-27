@@ -34,7 +34,7 @@ class CopyTextTest(unittest.TestCase):
         copy_text.send(post, '123', text, 'Juventus', 'Omonia')
         tg, xb = [c.kwargs['payload'] for c in post.call_args_list]
         self.assertEqual((tg['chat_id'], tg['text']), ('123', text))        # come sul canale, senza scritte
-        self.assertTrue(xb['text'].startswith('<pre>FINE PARTITA 🏁\n\n#Juventus 4-1 #Omonia'))
+        self.assertTrue(xb['text'].startswith('FINE PARTITA 🏁\n\n#Juventus 4-1 #Omonia'))
         self.assertEqual(xb['reply_parameters']['message_id'], 55)          # X in risposta
 
     def test_no_chat_no_messages_and_errors_never_raise(self):

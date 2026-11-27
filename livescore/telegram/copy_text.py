@@ -1,6 +1,6 @@
 """Testi pronti da copiare su Bot JR dopo HALF / END / FULL TIME, senza scritte sopra:
 prima il testo del canale così com'è (IG/Telegram, emoji personalizzate comprese), poi in risposta
-il testo per X in un riquadro che si copia con un tocco.
+il testo per X come testo normale.
 Il testo per X segue i post di @Juventus_Reborn: squadre, marcatori e competizione con l'hashtag,
 emoji normali, niente grassetto:
 
@@ -56,8 +56,8 @@ def x_text(text: str, home: str, away: str) -> str:
 
 
 def messages(text: str, home: str, away: str) -> tuple[str, str]:
-    """(testo IG/Telegram come sul canale, testo per X nel riquadro)."""
-    return text.strip(), f"<pre>{html.escape(x_text(text, home, away), quote=False)}</pre>"
+    """(testo IG/Telegram come sul canale, testo per X come testo normale)."""
+    return text.strip(), html.escape(x_text(text, home, away), quote=False)
 
 
 def reply_to(message_id) -> dict:

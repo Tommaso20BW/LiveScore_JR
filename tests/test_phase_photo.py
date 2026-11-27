@@ -256,7 +256,7 @@ class BotJrCopyTests(unittest.TestCase):
             copy_id = desk.slots['half']['copy_id']
             texts = [b for b in self.calls(desk, 'sendMessage') if b['chat_id'] == '99']
             self.assertEqual(len(texts), 1)                # solo X, niente testo Telegram a parte
-            self.assertTrue(texts[0]['text'].startswith('<pre>FINE PRIMO TEMPO 🏁\n\n#Juventus 1-0 #Inter'))
+            self.assertTrue(texts[0]['text'].startswith('FINE PRIMO TEMPO 🏁\n\n#Juventus 1-0 #Inter'))
             self.assertEqual(texts[0]['reply_parameters']['message_id'], copy_id)      # X in risposta alla foto
             x_id = desk.slots['half']['x_id']
 

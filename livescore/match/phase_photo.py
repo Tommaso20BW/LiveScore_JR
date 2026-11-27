@@ -766,7 +766,7 @@ class Desk:
     # Testi da copiare: la didascalia della copia e' il testo IG/Telegram, X arriva in risposta
     # ------------------------------------------------------------------
     def _publish_text(self, chat: str, slot: str, text: str, *, final: bool = False) -> bool:
-        """Testo per X nel riquadro, in risposta alla copia della grafica (che ha come didascalia il
+        """Testo per X come testo normale, in risposta alla copia della grafica (che ha come didascalia il
         testo IG/Telegram). Senza copia: prima il testo IG/Telegram, poi X in risposta a quello.
         Dopo il testo vero del canale (final) non si toccano piu'. True se ci sono."""
         from livescore.core import team_names
