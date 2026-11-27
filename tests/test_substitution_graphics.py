@@ -4,7 +4,7 @@ import io
 import unittest
 from unittest.mock import patch
 
-from PIL import Image
+from PIL import Image, ImageChops
 
 from livescore.graphics import goal as g
 from livescore.graphics import substitution as sub_graphics
@@ -110,6 +110,22 @@ class RenderTests(unittest.TestCase):
                     png = sub_graphics.render_png(pairs[:n], home_name="Juventus", away_name="Inter",
                                                   home_id=HOME_ID, away_id=AWAY_ID, kit=kit, competition=comp)
                     self.assertEqual(Image.open(io.BytesIO(png)).size, (1086, 1448))
+
+    def test_up_to_eleven_in_friendlies_stay_inside_the_panel(self):
+        """ImageGen, amichevoli: fino a 11 cambi, niente esce dal pannello (sopra resta lo sfondo pulito)."""
+        names = ["Kalulu", "Locatelli", "Thuram", "Gatti", "Bremer", "Yildiz", "Vlahovic", "Kelly", "Weah",
+                 "Miretti", "Rugani", "Cabal", "Openda", "Adzic", "Zhegrova", "Conceicao", "Cambiaso",
+                 "McKennie", "Koopmeiners", "David", "Perin", "Savona"]
+        players = [(str(k + 1), name, f"Francisco {name}") for k, name in enumerate(names)]
+        clean = Image.open(g.DEFAULT_ASSET_DIR / "portrait" / "friendly_clean_1086x1448.png").convert("RGB")
+        top = (0, 0, 900, sub_graphics.Y0)
+        with patch.object(g, "_remote_espn_team_logo", return_value=None):
+            for n in (6, 8, 11):
+                img = sub_graphics.render([(players[k], players[k + 11]) for k in range(n)], home_name="Juventus",
+                                          away_name="Inter", home_id=HOME_ID, away_id=AWAY_ID,
+                                          competition="club.friendly").convert("RGB")
+                self.assertEqual(img.size, (1086, 1448))
+                self.assertIsNone(ImageChops.difference(img.crop(top), clean.crop(top)).getbbox(), n)
 
     def test_missing_number_raises(self):
         with self.assertRaises(sub_graphics.SubstitutionGraphicUnavailable):

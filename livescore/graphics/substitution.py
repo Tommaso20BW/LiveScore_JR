@@ -1,10 +1,11 @@
 """CAMBIO: "SUB" / "SUBS" grande al centro, chi entra sopra e chi esce sotto (solo cambi Juventus).
 
-- In alto il riquadro IN (pieno, colore del tema) con, accanto, numero di maglia nel suo riquadro
-  e nome e cognome di ogni giocatore che entra; in basso lo stesso con OUT (grigio chiaro).
+- In alto il quadrato IN (pieno, colore del tema, lato alto quanto la lista) con, accanto, numero di maglia nel suo riquadro
+  e nome e cognome di ogni giocatore che entra; in basso lo stesso con OUT (grigio chiaro, con le stesse linee).
 - In mezzo SUB (un cambio) o SUBS (più cambi), alto e stretto, nel colore del tema; ai lati un
   triangolo che sale (entra) e uno che scende (esce).
-- 1-5 cambi: con più giocatori righe, scritta e riquadri si rimpiccioliscono; tutto resta centrato.
+- 1-5 cambi (fino a 11 nelle amichevoli di ImageGen): con più giocatori righe, scritta e riquadri
+  si rimpiccioliscono, il quadrato IN / OUT (lettere comprese) segue la lista; tutto resta centrato.
 - Stemmi in fondo. Niente minuto o risultato: il minuto resta nel testo del messaggio.
 - Pannello chiaro (Away rosa): scritta e riquadro IN scuri, OUT bianco.
 - Coppa Italia, Supercoppa, Supercoppa UEFA e Champions: lettere di IN bianche sul riquadro rosso o blu.
@@ -18,7 +19,7 @@ import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image, ImageColor, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 from livescore.graphics import goal as g
 from livescore.graphics import portrait as P
@@ -27,8 +28,12 @@ W, H = P.W, P.H
 X0, Y0, X1, Y1 = P.M, P.M, P.W - P.M, P.H - P.M
 NAME_FONT = 'fonts/DharmaGothicEBold.otf'
 CREST_HEIGHT = 52
-LINE = {1: 70, 2: 70, 3: 58, 4: 50, 5: 44}           # altezza di una riga (riquadro del numero)
-WORD_H = {1: 520, 2: 520, 3: 470, 4: 400, 5: 350}    # altezza di SUB / SUBS
+LINE = {1: 70, 2: 70, 3: 58, 4: 50, 5: 44, 6: 42, 7: 40, 8: 38, 9: 36, 10: 35, 11: 34}   # altezza di una riga
+WORD_H = {1: 520, 2: 520, 3: 470, 4: 400, 5: 350,                                     # altezza di SUB / SUBS
+          6: 300, 7: 260, 8: 230, 9: 205, 10: 180, 11: 160}
+TAG_FILL = .8                                         # OUT occupa al massimo questa parte del lato del quadrato
+TAG_SCALE = .64                                       # trama di IN / OUT sempre a questa scala: linee uguali ovunque
+TAG_LINE = 52                                         # le linee staccano dal fondo di tanto (0-255), in ogni colore
 WORD_SRC = 560                                        # SUB / SUBS disegnato a questa altezza e poi stretto
 TEXT = '#EDEDED'
 INK = '#151515'
@@ -147,8 +152,13 @@ class Style:
             return '#FFFFFF'
         return P.AWAY_DARK if self.light else INK
 
-    def out_fill(self):
-        return '#FFFFFF' if self.light else OUT_TAG
+    def tag_color(self, up):
+        """Colore del quadrato IN / OUT (None: i due blu della Champions)."""
+        if not up:
+            return '#FFFFFF' if self.light else OUT_TAG
+        if self.light:
+            return P.AWAY_DARK
+        return None if self.key == 'ucl' else P.COLORS[self.key]
 
     def num_colors(self, up):
         """(fondo, cifre) del riquadro del numero."""
@@ -171,11 +181,51 @@ def _num_box(num, h, up, st, font_path):
     return box
 
 
+@lru_cache(maxsize=4)
+def _tag_texture(assets):
+    """Trama a linee (la stessa per tutti i temi) divisa in sfumatura e linee, a piena risoluzione."""
+    tex = Image.open(Path(assets) / 'word_textures' / 'home.png').convert('L')
+    lines = ImageChops.subtract(tex, tex.filter(ImageFilter.GaussianBlur(4)))
+    shade = ImageOps.autocontrast(tex.filter(ImageFilter.GaussianBlur(24)), cutoff=1)
+    return shade, lines
+
+
+def _tag_fill(size, up, st):
+    """Fondo del quadrato IN / OUT: colore sfumato e linee chiare (scure sul bianco) sempre alla stessa
+    scala e con lo stesso stacco dal fondo, qualunque sia il colore o la misura del quadrato."""
+    shade, lines = _tag_texture(str(st.assets))
+    w, h = size
+    cw, ch = min(shade.width, round(w / TAG_SCALE)), min(shade.height, round(h / TAG_SCALE))
+    x, y = (shade.width - cw) // 2, (shade.height - ch) // 2
+    sh = shade.crop((x, y, x + cw, y + ch)).resize(size, Image.Resampling.LANCZOS)
+    ln = lines.crop((x, y, x + cw, y + ch)).resize(size, Image.Resampling.LANCZOS)
+    color = st.tag_color(up)
+    if color is None:
+        dark, _, light = P.UCL_GRADIENT
+        base = ImageOps.colorize(sh, black=dark, white=light)
+        rgb = ImageColor.getrgb(P.UCL_GRADIENT[1])
+    else:
+        rgb = ImageColor.getrgb(color)
+        base = ImageChops.multiply(Image.new('RGB', size, rgb),
+                                   sh.point(lambda v: round(255 * (.8 + .2 * v / 255))).convert('RGB'))
+    lum = .9 * (.299 * rgb[0] + .587 * rgb[1] + .114 * rgb[2])
+    if lum > 215:                                     # fondo bianco: linee scure
+        target, alpha = (0, 0, 0), TAG_LINE / lum
+    else:
+        target, alpha = (255, 255, 255), min(.9, max(.22, TAG_LINE / (255 - lum)))
+    mask = ln.point(lambda v: round(min(255, v * 5) * alpha))
+    return Image.composite(Image.new('RGB', size, target), base, mask).convert('RGBA')
+
+
 def _tag(text, h, up, st, font_path):
-    """Riquadro pieno IN / OUT alto quanto la lista dei giocatori."""
-    t = _tight_text(text, round(h * .62), font_path)
-    box = Image.new('RGBA', (t.width + round(h * .34), h), 'white')
-    box = st.fill(box) if up else _flat(box, st.out_fill())
+    """Quadrato pieno IN / OUT con il lato alto quanto la lista dei giocatori; IN e OUT con lettere della
+    stessa altezza (quella con cui OUT ci sta)."""
+    cap = round(h * .62)
+    wide = _tight_text('OUT', cap, font_path).width
+    if wide > h * TAG_FILL:
+        cap = max(1, int(cap * h * TAG_FILL / wide))
+    t = _tight_text(text, cap, font_path)
+    box = _tag_fill((h, h), up, st)
     box.alpha_composite(_flat(t, st.tag_text(up)), ((box.width - t.width) // 2, (box.height - t.height) // 2))
     return box
 
@@ -244,13 +294,14 @@ def render(pairs, *, home_name, away_name, home_id, away_id, kit='home', competi
     st = Style(key, assets)
     card = Image.open(assets / 'portrait' / f'{key}_clean_1086x1448.png').convert('RGBA')
     n = len(clean)
-    line_h = LINE.get(n, 40)
+    line_h = LINE.get(n, 34)
     word = _tight_text('SUB' if n == 1 else 'SUBS', WORD_SRC, font)
-    word = st.word(word.resize((min(word.width, 640 if n == 1 else 720), WORD_H.get(n, 320)),
-                               Image.Resampling.LANCZOS))
+    word_h = WORD_H.get(n, 160)
+    word_w = min(word.width, 640 if n == 1 else 720, 720 if n <= 5 else round(word_h * 2.2))   # oltre 5 non si allarga
+    word = st.word(word.resize((word_w, word_h), Image.Resampling.LANCZOS))
     top = _fit(_block([i for _, i in clean], True, line_h, st, font), X1 - X0 - 100)
     bot = _fit(_block([o for o, _ in clean], False, line_h, st, font), X1 - X0 - 100)
-    gap = 50 if n < 4 else 38
+    gap = 50 if n < 4 else 38 if n <= 5 else 30 if n <= 8 else 26
 
     # blocco centrato tra il bordo alto e gli stemmi
     crest_top = Y1 - 40 - CREST_HEIGHT
