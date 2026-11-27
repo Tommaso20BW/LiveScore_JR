@@ -139,6 +139,12 @@ def tri_cells(w, up):
     return on, w, h
 
 
+def _span(on):
+    """Prima e ultima colonna con puntini accesi."""
+    cols = [q for _, q in on]
+    return min(cols), max(cols)
+
+
 def snap(v, o, step=DOT):
     return o + round((v - o) / step) * step
 
@@ -252,19 +258,21 @@ class Layout:
                 return max(5, int(nh_max / cell)), cell
 
     def player(self, p, out, ax, y, nd, cell, capd):
-        """Triangolo + numero centrati insieme sull'asse ax, cognome sotto centrato sullo stesso blocco."""
-        on, w, _, _ = self.num(p[0], nd, cell)
+        """Numero e cognome centrati sull'asse ax; il triangolo non conta, sta fuori a sinistra del numero."""
+        on, _, _, _ = self.num(p[0], nd, cell)
         nh = nd * cell
-        ton, tw, th = tri_cells(max(6, round(nh * .3 / DOT)), not out)
-        side = max(DOT * 3, round(nh * .08)) + tw * DOT          # triangolo + spazio prima del numero
-        # numero agganciato alla sua griglia; triangolo e cognome si misurano dal numero già agganciato
-        xn = snap(ax - (side + w * cell) / 2 + side, GX0, BG if cell % BG == 0 else DOT)
+        lo, hi = _span(on)
+        # numero agganciato alla sua griglia; triangolo e cognome si misurano dai puntini accesi del numero
+        xn = snap(ax - (lo + hi + 1) * cell / 2, GX0, BG if cell % BG == 0 else DOT)
         self.s.stamp(on, xn, y, cell, out)
-        self.s.stamp(ton, xn - side, y + (nh - th * DOT) / 2, DOT, out)
-        nm, nw, _, ntop = self.name(p[1], capd)
+        center = xn + (lo + hi + 1) * cell / 2
+        ton, tw, th = tri_cells(max(6, round(nh * .3 / DOT)), not out)
+        self.s.stamp(ton, xn + lo * cell - max(DOT * 3, round(nh * .08)) - tw * DOT,
+                     y + (nh - th * DOT) / 2, DOT, out)
+        nm, _, _, ntop = self.name(p[1], capd)
+        nlo, nhi = _span(nm)
         gap = max(18, round(nh * .1))
-        center = (xn - side + xn + w * cell) / 2
-        self.s.stamp(nm, center - nw * DOT / 2, y + nh + gap - ntop * DOT, DOT, out)
+        self.s.stamp(nm, center - (nlo + nhi + 1) * DOT / 2, y + nh + gap - ntop * DOT, DOT, out)
 
     def columns(self, players, out, y0, h, nd, cell, capd, inner):
         """Giocatori affiancati: numero grande e cognome sotto, centrati nella loro colonna."""
